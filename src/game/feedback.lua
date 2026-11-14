@@ -26,6 +26,22 @@ local function attach(world)
     ev:on("chapter_cleared", function() Audio.play("victory", { pitch = 1.06 }) end)
     ev:on("player_died", function() Audio.play("defeat") end)
     Tutorial.attach(world)
+    local p = world.player
+    Music.setCharacter(p.def, p.radius, p.stats:get("moveSpeed"))
+end
+
+-- What else the music follows: low health, a kill combo, and the night.
+local function extras(world)
+    local p = world.player
+    local frac = p.hp / math.max(1, p.stats:get("maxHp"))
+    local danger = 0
+    if not p.dead and not world.flags.god then danger = math.max(0, math.min(1, (0.35 - frac) / 0.25)) end
+    local frenzy = math.max(0, math.min(1, ((world.combo or 0) - 20) / 50))
+    local night = world.daylight and 1 - world:daylight() or 0
+    local ex = Feedback.ex or {}
+    Feedback.ex = ex
+    ex.danger, ex.frenzy, ex.night = danger, frenzy, night
+    return ex
 end
 
 -- The mood of the fight, for the music.
@@ -53,7 +69,7 @@ function Feedback.update(dt)
     Feedback.game = game
     local top = State.top() == game
     local over = not top and world.player.dead
-    Music.drive(mood(world, dt), (top or over) and 1 or 0.45)
+    Music.drive(mood(world, dt), (top or over) and 1 or 0.45, extras(world))
     if not top then return end
 
     -- a queen walks in

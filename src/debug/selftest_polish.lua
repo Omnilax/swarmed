@@ -34,6 +34,25 @@ return function(wait, shot)
     wait(0.2)
     assert(Music.playing, "music not playing")
 
+    -- every bug's signature stem renders, loops with the rest and is not silent
+    t0 = love.timer.getTime()
+    for _, theme in ipairs(Music.THEMES) do
+        Music.setCharacter({ music = theme })
+        Music.finish()
+        local d = Music.data[theme]
+        assert(d and d:getSampleCount() == len, "signature stem " .. theme .. " missing or wrong length")
+        assert(rms(d) > 0.02, "signature stem " .. theme .. " is silent")
+        assert(Music.stems[theme], "signature stem " .. theme .. " has no source")
+    end
+    print(("polish: %d signature stems in %.2f s"):format(#Music.THEMES, love.timer.getTime() - t0))
+    -- tags pick the stem, size and speed pick the key
+    local function th(id) return Music.themeFor(Content.characters:get(id)) end
+    local t1, k1 = th("lobster")
+    local t2, k2 = th("dragonfly")
+    assert(t1 == "bubble" and t2 == "flute" and th("tarantula") == "creep" and th("millipede") == "rattle"
+        and th("mantis") == "kalimba", "wrong signature themes")
+    assert(k1 < 0 and k2 > 0, "big slow bugs should play lower, small fast ones higher")
+
     -- every event sound exists and plays
     for _, name in ipairs({ "swing", "special", "wave_start", "wave_clear", "queen", "victory", "defeat", "heartbeat", "hint" }) do
         assert(Audio.sounds[name], "missing sound " .. name)
@@ -54,6 +73,7 @@ return function(wait, shot)
     assert(Tutorial.current and Tutorial.current.hint.id == "move", "move hint not shown")
     shot("polish_hint")
     assert(Music.mood == "break" or Music.mood == "wave", "mood at start: " .. Music.mood)
+    assert(Music.theme == "chug", "rhino beetle should get the beetle chug: " .. tostring(Music.theme))
 
     world.spawner.enabled = false
     world:clearEnemies()
@@ -61,6 +81,11 @@ return function(wait, shot)
     for i = 1, 40 do world:spawnEnemy("worker_ant", pl.x + 120 + i, pl.y + 60) end
     wait(0.3)
     assert(Music.mood == "wave" or Music.mood == "swarm", "mood with ants: " .. Music.mood)
+    assert(Music.gains.chug > 0.1, "signature stem not mixed in during a wave")
+    world.combo = 80
+    wait(1)
+    assert(Music.frenzy > 0.9 and Music.gains.frenzy > 0.3, "big combo did not bring the frenzy layer in")
+    world.combo = 0
 
     -- a queen far away: boss music, and an arrow points at her
     local queen = Content.enemies:filter(function(d) return d.boss end)[1]
@@ -84,6 +109,8 @@ return function(wait, shot)
     Audio.sounds.heartbeat.last = -1
     wait(0.2)
     assert(Feedback.beatT > 0, "no heartbeat at low health")
+    wait(1.2)
+    assert(Music.danger > 0.9 and Music.gains.danger > 0.3, "low health did not bring the danger layer in")
     pl:hurt(9999, {})
     wait(2.5)
     assert(Music.mood == "dead", "mood after death: " .. Music.mood)
