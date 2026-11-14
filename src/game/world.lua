@@ -42,7 +42,7 @@ function World.new(opts)
     self.events = Events.new()
     self.time, self.timeScale = 0, 1
     self.enemies, self.enemyCount = {}, 0
-    self.hash = SpatialHash.new(24)
+    self.hash = SpatialHash.new(16)
     self.particles = Particles.new(2500)
     self.ground = Ground.new(self.stage)
     Cosmetics.paintDecor(self.ground, self.stage)
@@ -564,6 +564,14 @@ function World:updateEnemies(dt)
     local attackers, shields = 0, 0
     local sqrt = math.sqrt
     local atan2 = math.atan2
+    local floor = math.floor
+    local cells, cellS = hash.cells, hash.size     -- (SpatialHash keys cells as cx * 65536 + cy)
+    -- the visible area (projected), with a margin, for the off-screen shortcut below
+    local vw, vh = Screen.viewW or 960, Screen.viewH or 540
+    local ox, oy = self.camera:origin(vw, vh)
+    local vx0, vy0, vx1, vy1 = ox - 80, oy - 80, ox + vw + 80, oy + vh + 80
+    self.frameNo = (self.frameNo or 0) + 1
+    local frameNo = self.frameNo
     for i = 1, self.enemyCount do
         local e = enemies[i]
         if not e.dead then
@@ -619,23 +627,51 @@ function World:updateEnemies(dt)
             local r0 = e.radius
             local space = def.personalSpace or 1
             local flock = def.flock or 0
-            local list, cnt = hash:query(e.x, e.y, flock > 0 and r0 * 4 or r0 * 2)
-            if e.hidden then cnt = 0 end    -- burrowed: passes under the crowd
-            for j = 1, cnt do
-                local o = list[j]
-                if o ~= e and not o.hidden then
-                    local dx, dy = e.x - o.x, e.y - o.y
-                    local r = (r0 + o.radius) * space
-                    local d2 = dx * dx + dy * dy
-                    if d2 < r * r and d2 > 0.0001 and checks < 6 then
-                        local d = sqrt(d2)
-                        local push = (r - d) / d * (o.mass / (e.mass + o.mass))
-                        sx, sy = sx + dx * push, sy + dy * push
-                        checks = checks + 1
+            -- The grid cells are walked directly (no copied result list), and the walk stops
+            -- as soon as both caps (6 pushes, 8 flock mates) are reached: in a dense crowd a
+            -- query covers dozens of ants and most of them would be skipped anyway.
+            -- Off screen, the crowd only sorts itself out every other frame (alternating halves
+            -- of the horde): nobody sees it, and it halves the cost of the far side of a big wave.
+            local ex, ey = e.x, e.y
+            local psx, psy = ex - ey, (ex + ey) * 0.5
+            local lazy = (psx < vx0 or psx > vx1 or psy < vy0 or psy > vy1) and (e.uid + frameNo) % 2 == 0
+            if not e.hidden and not lazy then    -- burrowed: passes under the crowd
+                local em = e.mass
+                local qr = flock > 0 and r0 * 4 or r0 * 2
+                local x0, x1 = floor((ex - qr) / cellS), floor((ex + qr) / cellS)
+                local y0, y1 = floor((ey - qr) / cellS), floor((ey + qr) / cellS)
+                local needFlock = flock > 0
+                local cx = x0
+                while cx <= x1 do
+                    local cy = y0
+                    while cy <= y1 do
+                        local cell = cells[cx * 65536 + cy]
+                        if cell then
+                            for j = 1, cell.n do
+                                local o = cell[j]
+                                if o ~= e and not o.hidden then
+                                    if checks < 6 then
+                                        local dx, dy = ex - o.x, ey - o.y
+                                        local r = (r0 + o.radius) * space
+                                        local d2 = dx * dx + dy * dy
+                                        if d2 < r * r and d2 > 0.0001 then
+                                            local d = sqrt(d2)
+                                            local push = (r - d) / d * (o.mass / (em + o.mass))
+                                            sx, sy = sx + dx * push, sy + dy * push
+                                            checks = checks + 1
+                                        end
+                                    end
+                                    if needFlock and o.def == def and an < 8 then
+                                        ax, ay, an = ax + o.mx, ay + o.my, an + 1
+                                    end
+                                    if checks >= 6 and (not needFlock or an >= 8) then break end
+                                end
+                            end
+                            if checks >= 6 and (not needFlock or an >= 8) then cy = y1 cx = x1 end
+                        end
+                        cy = cy + 1
                     end
-                    if flock > 0 and o.def == def and an < 8 then
-                        ax, ay, an = ax + o.mx, ay + o.my, an + 1
-                    end
+                    cx = cx + 1
                 end
             end
             if an > 0 and not freeze then
@@ -888,6 +924,8 @@ function World:draw()
     lg.setColor(1, 1, 1, 1)
 
     local flashOk = Settings.get("hitFlash") and not Settings.get("reduceFlashing")
+    local sheens, nSheen = self.sheens, 0
+    if not sheens then sheens = {} self.sheens = sheens end
     for i = 1, n do
         local o = list[i]
         local flash = flashOk and o.flash > 0
@@ -996,14 +1034,31 @@ function World:draw()
             local fy = o._sy - (o.z or 0)
             Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, flash, sxs, sys)
             if el then
-                local c = Elites.color(el)
-                lg.setBlendMode("add")
-                lg.setColor(c[1], c[2], c[3], el.glow * (0.75 + 0.25 * math.sin(self.time * 6 + o.uid)) * alpha)
-                Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, false, sxs, sys)
-                lg.setBlendMode("alpha")
+                -- the sheen is drawn after the crowd in one additive batch (switching blend modes
+                -- per elite split the sprite batch twice for every elite on screen)
+                nSheen = nSheen + 1
+                local sh = sheens[nSheen]
+                if not sh then sh = {} sheens[nSheen] = sh end
+                sh.o, sh.y, sh.sx, sh.sy, sh.a = o, fy, sxs, sys, alpha
             end
         end
         if skinShader then lg.setShader() end
+        -- plain ants leave the colour white; skip the reset for them (it adds up in a horde)
+        if o == p or o.model or o.elite or (o.alpha or 1) < 1 then lg.setColor(1, 1, 1, 1) end
+    end
+
+    if nSheen > 0 then
+        lg.setBlendMode("add")
+        for i = 1, nSheen do
+            local sh = sheens[i]
+            local o = sh.o
+            local el = o.elite
+            local c = Elites.color(el)
+            lg.setColor(c[1], c[2], c[3], el.glow * (0.75 + 0.25 * math.sin(self.time * 6 + o.uid)) * sh.a)
+            Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, sh.y, o.angle, false, sh.sx, sh.sy)
+            sh.o = nil
+        end
+        lg.setBlendMode("alpha")
         lg.setColor(1, 1, 1, 1)
     end
 
@@ -1026,7 +1081,7 @@ function World:draw()
         lg.setColor(1, 1, 1, 1)
     end
 
-    self.particles:draw()
+    self.particles:draw(cx0, cy0, cx1, cy1)
     self.hazards:drawAir()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
@@ -1040,7 +1095,7 @@ function World:draw()
     -- Additive glow pass: attack swooshes, sparks, explosions.
     lg.setBlendMode("add")
     self:drawFx()
-    self.particles:drawGlow()
+    self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
     if Settings.get("showHitboxes") then self:drawHitboxes(list, n) end
     if Settings.get("showSpatialGrid") then self:drawGrid() end
@@ -1077,6 +1132,11 @@ function World:drawLighting(ox, oy, list, n)
     lg.setCanvas(Screen.light)
     lg.clear(ar, ag, ab, 1)
     lg.setBlendMode("add")
+    -- the light map is smaller than the scene (Screen.LIGHT_DIV): same projected coordinates, scaled down
+    local div = Screen.LIGHT_DIV
+    lg.origin()
+    lg.scale(1 / div)
+    lg.translate(-ox, -oy)
     local p = self.player
     if not p.dead then
         local px, py = Iso.toScreen(p.x, p.y)
@@ -1125,19 +1185,24 @@ function World:drawLighting(ox, oy, list, n)
     end
     local plist = self.particles.list
     local lit = 0
+    -- (only on-screen sparks spend the 120-light budget)
+    local vx0, vy0, vx1, vy1 = ox - 20, oy - 20, ox + Screen.viewW + 20, oy + Screen.viewH + 20
     for i = 1, self.particles.n do
         local pt = plist[i]
-        if pt.glow and lit < 120 then
-            lit = lit + 1
+        if pt.glow then
             local x, y = Iso.toScreen(pt.x, pt.y, pt.z)
-            light(x, y, 18, pt.r, pt.g, pt.b, 0.3 * pt.life / pt.maxLife)
+            if x > vx0 and x < vx1 and y > vy0 and y < vy1 then
+                lit = lit + 1
+                light(x, y, 18, pt.r, pt.g, pt.b, 0.3 * pt.life / pt.maxLife)
+                if lit >= 120 then break end
+            end
         end
     end
     lg.setCanvas(Screen.canvas)
     lg.setBlendMode("multiply", "premultiplied")
     lg.origin()
     lg.setColor(1, 1, 1, 1)
-    lg.draw(Screen.light, 0, 0)
+    lg.draw(Screen.light, Screen.lightQuad, 0, 0, 0, div, div)
     lg.pop()
 end
 

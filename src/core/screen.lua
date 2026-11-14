@@ -8,6 +8,7 @@ local Screen = { VW = 640, VH = 360, scale = 2, ox = 0, oy = 0, zoom = 1 }
 -- VH/zoom pixels that is stretched over the screen, so pixel art stays crisp at any zoom and
 -- zooming out shows more of the arena. The canvases are made big enough for the widest zoom.
 Screen.ZOOM_MIN, Screen.ZOOM_MAX = 0.6, 2
+Screen.LIGHT_DIV = 2     -- the light map is this many times smaller than the world canvas
 
 local POST = [[
 extern number brightness;
@@ -58,7 +59,11 @@ local function fitCanvas()
     Screen.VW, Screen.VH = vw, vh
     local cw, ch = math.ceil(vw / Screen.ZOOM_MIN), math.ceil(vh / Screen.ZOOM_MIN)
     Screen.canvas = love.graphics.newCanvas(cw, ch)
-    Screen.light = love.graphics.newCanvas(cw, ch)
+    -- The light map is soft blobs only, so it is drawn at half resolution and smoothly
+    -- stretched over the scene: a quarter of the pixels to fill for the same look.
+    Screen.light = love.graphics.newCanvas(math.ceil(cw / Screen.LIGHT_DIV), math.ceil(ch / Screen.LIGHT_DIV))
+    Screen.light:setFilter("linear", "linear")
+    Screen.lightQuad = love.graphics.newQuad(0, 0, 1, 1, Screen.light:getDimensions())
     Screen.quad = love.graphics.newQuad(0, 0, vw, vh, cw, ch)
     Screen.setZoom(Screen.zoom)
 end
@@ -97,13 +102,19 @@ function Screen.setZoom(z)
     Screen.viewW = math.min(Screen.canvas:getWidth(), math.floor(Screen.VW / z + 0.5))
     Screen.viewH = math.min(Screen.canvas:getHeight(), math.floor(Screen.VH / z + 0.5))
     Screen.quad:setViewport(0, 0, Screen.viewW, Screen.viewH)
+    local lw, lh = Screen.light:getDimensions()
+    Screen.lightQuad:setViewport(0, 0, math.min(lw, math.ceil(Screen.viewW / Screen.LIGHT_DIV)),
+        math.min(lh, math.ceil(Screen.viewH / Screen.LIGHT_DIV)))
 end
 
 -- zoom: the camera's zoom (omit for 1, e.g. the title screen's demo arena)
 function Screen.beginWorld(bg, zoom)
     if (zoom or 1) ~= Screen.zoom or not Screen.viewW then Screen.setZoom(zoom or 1) end
     love.graphics.setCanvas(Screen.canvas)
+    -- the canvas is sized for the widest zoom; only the visible part needs clearing
+    love.graphics.setScissor(0, 0, Screen.viewW, Screen.viewH)
     love.graphics.clear(bg or { 0.08, 0.07, 0.1, 1 })
+    love.graphics.setScissor()
 end
 
 function Screen.endWorld()
