@@ -1,0 +1,21 @@
+-- Flying ant (alate): circles overhead and dives in to bite.
+return {
+    name = "Flying Ant",
+    description = "Winged ants that flutter above the swarm, circle you, then dive in to bite and climb away again. They only bite at the bottom of a dive.",
+    lore = "On one warm, humid day a year, colonies release all their winged princes and princesses at once for the nuptial flight. The sky fills with them.",
+    tip = "Watch the shadows on the ground. Strike as they swoop in, or step aside and let them overshoot.",
+    sprite = "flying_ant",
+    hp = 3,
+    speed = 70,
+    damage = 2.5,
+    radius = 3,
+    mass = 0.5,
+    behavior = "flyer",
+    behaviorParams = { height = 16, orbit = 75, dive = 2.3, cooldown = { 1.4, 3 } },
+    biteRate = 0.65,
+    personalSpace = 1.3,
+    spawn = { weight = 16, minWave = 3, groupSize = 0.7 },
+    gibs = { "#160e0c", "#3c2a20", "#d8e4f0" },
+    splat = "#7a6a40",
+    tags = { "ant", "flying" },
+}

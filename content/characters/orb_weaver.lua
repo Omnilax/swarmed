@@ -1,0 +1,15 @@
+return {
+    name = "Orb Weaver",
+    description = "Flings balls of silk that burst into webs. Ants caught in a web crawl, easy prey. Hold right click to spin sticky silk walls that hold the crowd back.",
+    lore = "Garden orb weavers rebuild their web every day, often eating the old silk to recycle it.",
+    sprite = "orb_weaver",
+    model = { legs = "orb_weaver_legs", body = "orb_weaver_body", height = 4, lift = 4, kneeUp = 3 },
+    order = 11,
+    radius = 7,
+    stats = { maxHp = 45, moveSpeed = 108, area = 10 },
+    attack = { type = "web", damage = 8, cooldown = 0.9, range = 100, radius = 30, slow = 0.3, duration = 4, color = { 1, 1, 0.95 } },
+    secondary = { type = "silkwall", damage = 2, cooldown = 1.2, range = 120, length = 130, duration = 8, strength = 40, hold = 2.5, max = 3 },
+    dash = { type = "grapple", range = 160, speed = 1.1 },
+    startingItems = {},
+    tags = { "spider", "arachnid", "ranged" },
+}

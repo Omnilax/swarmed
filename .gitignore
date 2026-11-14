@@ -1,0 +1,21 @@
+# Build outputs (tools/build_web.sh writes these next to the game folder,
+# but keep them out of the repo if they ever land here)
+*.love
+*.zip
+web/
+/swarmed-web/
+
+# Caches
+__pycache__/
+*.pyc
+node_modules/
+.cache/
+
+# Local saves and editor/OS clutter
+*.sav
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~

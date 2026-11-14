@@ -1,0 +1,20 @@
+-- Hover wasp: hangs still, darts in, and sidesteps right before your attack lands.
+return {
+    name = "Hover Wasp",
+    description = "Hangs perfectly still in the air, then darts in to sting. It reads your rhythm: just before your attack lands it flicks out of the way, but only every so often.",
+    lore = "Hover wasps (Stenogastrinae) can hold dead still in the air. They build tiny nests on hanging rootlets in the rainforests of Asia.",
+    tip = "Swing, let it dodge, then hit it straight after. Wide attacks catch it too.",
+    family = "wasp",
+    sprite = "hover_wasp",
+    hp = 5,
+    speed = 58,
+    damage = 4,
+    radius = 2.5,
+    mass = 0.5,
+    behavior = "wasp_hover",
+    behaviorParams = { keep = 46, dodge = 26, dodgeCd = 1.4, dart = 3, cooldown = 2.2 },
+    spawn = { weight = 10, minWave = 9, groupSize = 0.3 },
+    gibs = { "#141008", "#4a3a20", "#f0e0a0" },
+    splat = "#c8b070",
+    tags = { "wasp", "flying", "evasive" },
+}

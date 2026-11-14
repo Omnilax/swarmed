@@ -1,0 +1,21 @@
+-- Pebble ant (Dorymyrmex): lobs pebbles that land on a marked spot and daze you.
+return {
+    name = "Pebble Ant",
+    description = "Forms a firing line at a distance and lobs pebbles at where you're heading. A ring marks where each one lands; get hit and you're dazed.",
+    lore = "Dorymyrmex ants drop pebbles down the entrances of rival honeypot ant nests, keeping them trapped underground while they forage.",
+    tip = "Keep moving and change direction. Swat a pebble with an attack to send it back at them.",
+    sprite = "pebble_ant",
+    hp = 4,
+    speed = 42,
+    damage = 1,
+    radius = 3,
+    mass = 0.7,
+    behavior = "lobber",
+    behaviorParams = { keep = 150, cooldown = 2.6, windup = 0.55, flight = 0.9, blast = 14, shotDamage = 5, slow = 0.5, slowTime = 0.9 },
+    swarmShade = 0.1,
+    spawn = { weight = 14, minWave = 4, groupSize = 0.35 },
+    gibs = { "#1c1414", "#e06424", "#a89a88" },
+    splat = "#8a7a40",
+    tags = { "ant", "ranged" },
+    elites = { aggressive = { params = { cooldown = 1.2, blast = 20, flight = 0.75 }, note = "Throws bigger rocks, more often." } },
+}

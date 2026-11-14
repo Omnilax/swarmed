@@ -1,0 +1,21 @@
+-- Velvet ant: a wingless wasp, armoured so hard weak hits just glance off.
+return {
+    name = "Velvet Ant",
+    description = "Runs fast on a jittery zigzag. So hard that weak hits glance off (CLINK): only hits of 8 or more really hurt it. Its sting is one of the worst there is.",
+    lore = "Not an ant: a wingless female wasp, nicknamed the cow killer. Its fuzzy shell is so tough that most predators give up, and it squeaks when grabbed.",
+    tip = "Use your heavy attacks on it (specials, slams, charged hits). Fast jabs barely scratch it.",
+    family = "wasp",
+    sprite = "velvet_ant",
+    hp = 18,
+    speed = 62,
+    damage = 5,
+    radius = 3.5,
+    mass = 1.5,
+    behavior = "wasp_velvet",
+    behaviorParams = { threshold = 8, glance = 0.15, zig = 0.3, turn = 0.9 },
+    biteRate = 1.2,
+    spawn = { weight = 12, minWave = 6, groupSize = 0.3 },
+    gibs = { "#1a0606", "#d02a1a", "#ff8a6a" },
+    splat = "#c8a060",
+    tags = { "wasp", "armored" },
+}

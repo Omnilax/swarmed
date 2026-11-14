@@ -1,0 +1,25 @@
+-- Termite worker: tunnels underground (untouchable) and bursts up next to you to chew.
+return {
+    name = "Termite Worker",
+    family = "termite",
+    description = "Tunnels under the arena where nothing can touch it, then bursts out beside you to chew.",
+    lore = "Blind, soft and pale, workers spend their lives in the dark, chewing wood and building galleries. You can see the wood in their gut through their skin.",
+    tip = "Watch for ridges of soil racing toward you. They're fragile once they surface; hit them before they dig back in.",
+    sprite = "termite_worker",
+    hp = 4,
+    speed = 40,
+    damage = 2,
+    radius = 3.5,
+    mass = 0.6,
+    behavior = "termite_tunnel",
+    behaviorParams = { surface = 22, up = { 2.2, 3.4 }, dig = 0.45, under = 1.35, away = 70 },
+    personalSpace = 0.8,
+    swarmShade = 0.15,
+    spawn = { weight = 30, minWave = 8, groupSize = 0.9 },
+    gibs = { "#cbbd9c", "#a8987a", "#3a2a1a" },
+    splat = "#b8b090",
+    tags = { "termite", "swarm", "burrower" },
+    elites = {
+        aggressive = { params = { up = { 3.2, 4.4 }, under = 1.7 }, note = "Tunnels faster and stays up longer to chew." },
+    },
+}

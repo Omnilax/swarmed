@@ -1,0 +1,20 @@
+-- Dracula ant: fastest snap on Earth, a shockwave that hurls you back; drinks blood to heal.
+return {
+    name = "Dracula Ant",
+    description = "Cocks its jaws and snaps them so fast it sends out a shockwave that hurls you back. When hurt, it drinks the blood of nearby ants to heal.",
+    lore = "Its jaws snap shut at up to 90 metres per second, the fastest known movement in the animal kingdom. Adults feed by drinking the blood of their own larvae.",
+    tip = "Hit it while its jaws are cocked to jam them. Thin out the ants around it so it can't feed.",
+    sprite = "dracula_ant",
+    hp = 9,
+    speed = 46,
+    damage = 3,
+    radius = 4,
+    mass = 1.2,
+    behavior = "dracula",
+    behaviorParams = { range = 24, windup = 0.2, snapDamage = 9, knock = 320, cone = 1.5, cooldown = 1.5, drainRange = 36, drainRate = 8 },
+    swarmShade = 0.12,
+    spawn = { weight = 12, minWave = 6, groupSize = 0.3 },
+    gibs = { "#9e5418", "#dc8c36", "#f0d8a0" },
+    splat = "#b08a3a",
+    tags = { "ant", "vampire" },
+}

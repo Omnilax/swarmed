@@ -1,0 +1,22 @@
+-- A paper wasp nest: stands still and releases paper wasps until broken.
+return {
+    name = "Paper Nest",
+    description = "Built by paper wasps. Doesn't move, and every few seconds a new wasp crawls out of a cell. Break it to stop them.",
+    lore = "Each cell holds one larva. The queen started it alone in spring from a single stalk of chewed wood.",
+    tip = "It's fragile for what it does. Break it on your way past.",
+    family = "wasp",
+    sprite = "paper_nest",
+    hp = 30,
+    speed = 0,
+    damage = 0,
+    radius = 7,
+    mass = 60,
+    behavior = "wasp_nest",
+    behaviorParams = { brood = "paper_wasp", interval = 4, max = 5 },
+    solid = true,
+    noElites = true,
+    spawn = { weight = 0, minWave = 4 },
+    gibs = { "#8a8070", "#b0a898", "#5a5248" },
+    splat = "#a09880",
+    tags = { "wasp", "structure" },
+}

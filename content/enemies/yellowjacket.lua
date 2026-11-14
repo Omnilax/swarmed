@@ -1,0 +1,20 @@
+-- Yellowjacket: flies to fresh kills and feeds, growing bigger and tougher with each meal.
+return {
+    name = "Yellowjacket",
+    description = "A scavenger. When something dies nearby it flies to the body and feeds, and every meal makes it bigger, tougher and harder-biting, up to three.",
+    lore = "Yellowjackets are why picnics end early. Late in summer, with no more brood to feed, they go after anything sweet or dead.",
+    tip = "Kill them before they eat, or fight away from them so your kills don't feed them.",
+    family = "wasp",
+    sprite = "yellowjacket",
+    hp = 4,
+    speed = 64,
+    damage = 3,
+    radius = 3,
+    mass = 0.7,
+    behavior = "wasp_scavenger",
+    behaviorParams = { smell = 150, meals = 3, eat = 1.0, grow = 0.15, height = 7 },
+    spawn = { weight = 20, minWave = 3, groupSize = 0.7 },
+    gibs = { "#141008", "#e8c020", "#f0e8c0" },
+    splat = "#d8c070",
+    tags = { "wasp", "flying", "scavenger" },
+}

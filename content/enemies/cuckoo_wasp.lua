@@ -1,0 +1,20 @@
+-- Cuckoo wasp: curls into an armoured ball when hit and rolls away.
+return {
+    name = "Cuckoo Wasp",
+    description = "Jewel-bright and armoured. Hit it and it curls up into a ball: the first hit lands, then it's almost immune while it rolls away, and it bowls you over if it rolls into you.",
+    lore = "Also called jewel wasps or emerald wasps. Their shell is so thick and dimpled that bees' stings can't get through, and they curl up when attacked.",
+    tip = "Get the first hit count, then catch it again when it uncurls.",
+    family = "wasp",
+    sprite = "cuckoo_wasp",
+    hp = 8,
+    speed = 60,
+    damage = 3,
+    radius = 3,
+    mass = 0.8,
+    behavior = "wasp_rollup",
+    behaviorParams = { ball = 1.6, armor = 0.1, roll = 170, height = 6 },
+    spawn = { weight = 12, minWave = 5, groupSize = 0.3 },
+    gibs = { "#04202a", "#20a0c0", "#e04060" },
+    splat = "#b8c870",
+    tags = { "wasp", "flying", "armored" },
+}

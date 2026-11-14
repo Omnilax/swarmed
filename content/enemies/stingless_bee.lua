@@ -1,0 +1,20 @@
+-- Stingless bee: can't sting, smears resin that slows your attacks (stacks).
+return {
+    name = "Stingless Bee",
+    description = "Has no sting, but every bee that dives into you smears sticky resin on your jaws: your attacks recharge slower, more with every smear, until it wears off.",
+    lore = "Stingless bees defend their nests by biting, tangling in hair and smearing attackers with resin (propolis) they collect from trees.",
+    tip = "Don't let the swarm keep touching you or your damage drops off a cliff. Area attacks clear them.",
+    family = "bee",
+    sprite = "stingless_bee",
+    hp = 1,
+    speed = 70,
+    damage = 1,
+    radius = 2,
+    mass = 0.4,
+    behavior = "bee_resin",
+    behaviorParams = { gum = 0.8, gumTime = 3.5, cooldown = 1.3, height = 6 },
+    spawn = { weight = 20, minWave = 6, groupSize = 1.2 },
+    gibs = { "#1a120a", "#5a3a1a", "#e0a040" },
+    splat = "#d0a040",
+    tags = { "bee", "flying", "debuff" },
+}

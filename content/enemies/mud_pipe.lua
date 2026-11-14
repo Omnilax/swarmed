@@ -1,0 +1,22 @@
+-- A mud dauber's pipe: a solid mud tube that crumbles after a while.
+return {
+    name = "Mud Pipe",
+    description = "A solid tube of mud built by a mud dauber. Blocks you (and ants) until it's broken or crumbles.",
+    lore = "Each pipe is built from dozens of little balls of mud, carried in one at a time.",
+    tip = "One good hit breaks it.",
+    family = "wasp",
+    sprite = "mud_pipe",
+    hp = 6,
+    speed = 0,
+    damage = 0,
+    radius = 4,
+    mass = 40,
+    behavior = "mud_pipe",
+    behaviorParams = { life = 14 },
+    solid = true,
+    noElites = true,
+    spawn = { weight = 0, minWave = 7 },
+    gibs = { "#5a4430", "#7a6248", "#3a2c1e" },
+    splat = "#6a5440",
+    tags = { "wasp", "structure" },
+}

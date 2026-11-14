@@ -1,0 +1,20 @@
+-- Mining bee: burrows and tunnels under you, then bursts out and stings.
+return {
+    name = "Mining Bee",
+    description = "Lands, digs in and tunnels toward you under the ground, where nothing can touch it. A ring of cracking earth warns you half a second before it bursts out under your feet.",
+    lore = "Mining bees dig their nests straight down into bare soil. In spring a lawn can be dotted with hundreds of their little volcano-shaped mounds.",
+    tip = "When the ring appears under you, move. Hit it while it's above ground.",
+    family = "bee",
+    sprite = "mining_bee",
+    hp = 6,
+    speed = 55,
+    damage = 4,
+    radius = 3,
+    mass = 0.7,
+    behavior = "bee_burrow",
+    behaviorParams = { approach = 80, tunnel = { 1.4, 2.2 }, dig = 1.3, warn = 0.55, blast = 14, mult = 1.6 },
+    spawn = { weight = 14, minWave = 5, groupSize = 0.35 },
+    gibs = { "#1a120c", "#6a4a2a", "#d8c0a0" },
+    splat = "#c8b070",
+    tags = { "bee", "flying", "burrow" },
+}

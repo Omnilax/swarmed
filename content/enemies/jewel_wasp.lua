@@ -1,0 +1,20 @@
+-- Jewel wasp: stings ants into Zombified brutes, then comes for you.
+return {
+    name = "Jewel Wasp",
+    description = "Keeps away from you and stings ants instead: each one becomes a Zombified brute, much tougher, bigger and slower. Once it has made four, it comes for you.",
+    lore = "The emerald cockroach wasp stings a cockroach in the brain, then leads it to her burrow by its antenna like a dog on a leash.",
+    tip = "Kill it before it builds its horde. It's fragile but stays out of reach.",
+    family = "wasp",
+    sprite = "jewel_wasp",
+    hp = 5,
+    speed = 64,
+    damage = 3,
+    radius = 3,
+    mass = 0.6,
+    behavior = "wasp_zombify",
+    behaviorParams = { keep = 130, cooldown = 3.5, max = 4, search = 150, elite = "zombified" },
+    spawn = { weight = 10, minWave = 6, groupSize = 0.2 },
+    gibs = { "#062a20", "#20a880", "#e04a2a" },
+    splat = "#b8d070",
+    tags = { "wasp", "flying", "support" },
+}

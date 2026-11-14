@@ -1,0 +1,21 @@
+-- Oriental hornet: soaks up sunlight, then blazes through you leaving burning ground.
+return {
+    name = "Oriental Hornet",
+    description = "Soaks up sunlight (glowing brighter, much faster by day than by night) and when it's full it blazes: a straight, very fast charge that leaves a trail of burning ground. Hit it while it winds up.",
+    lore = "The yellow stripe on Vespa orientalis holds a pigment that really does turn sunlight into electricity. They're busiest in the hottest part of the day.",
+    tip = "When it glows bright, get ready to sidestep. Don't stand in the fire trail.",
+    family = "hornet",
+    sprite = "oriental_hornet",
+    hp = 26,
+    speed = 56,
+    damage = 8,
+    radius = 5,
+    mass = 3,
+    behavior = "hornet_solar",
+    behaviorParams = { soak = 0.08, sun = 0.32, windup = 0.5, dash = 4.2, dashTime = 0.55, trail = 8, stagger = 0.9 },
+    light = { radius = 7, color = "#ffd040", intensity = 0.3 },
+    spawn = { weight = 8, minWave = 12, groupSize = 0.1 },
+    gibs = { "#3a1406", "#a8441a", "#f8d020" },
+    splat = "#d8c070",
+    tags = { "hornet", "flying", "fire" },
+}

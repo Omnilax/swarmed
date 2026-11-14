@@ -1,0 +1,20 @@
+-- Warrior wasp: rings you, drums in unison, then all dive at once.
+return {
+    name = "Warrior Wasp",
+    description = "They surround you in a ring and drum together, the beat getting faster, then every one of them dives at you at once. Break out of the ring while they drum.",
+    lore = "Synoeca colonies warn off intruders by drumming on their nest in unison, a loud rhythmic rasp you can hear from metres away. Then they attack together.",
+    tip = "When the drumming speeds up, get out through a gap in the ring.",
+    family = "wasp",
+    sprite = "warrior_wasp",
+    hp = 4,
+    speed = 62,
+    damage = 4,
+    radius = 3,
+    mass = 0.7,
+    behavior = "wasp_drumming",
+    behaviorParams = { ring = 70, drum = 1.8, strike = 0.55, rest = 1.6, dive = 3.4 },
+    spawn = { weight = 12, minWave = 8, groupSize = 0.55 },
+    gibs = { "#0a0c14", "#2a3a5a", "#c0c8e0" },
+    splat = "#c8b070",
+    tags = { "wasp", "flying", "formation" },
+}

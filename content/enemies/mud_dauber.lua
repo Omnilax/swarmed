@@ -1,0 +1,20 @@
+-- Mud dauber: builds a cage of mud pipes round you, then stings over the wall.
+return {
+    name = "Mud Dauber",
+    description = "Zips from spot to spot round you slapping down solid mud pipes, caging you in, then stings over the wall. Get out before the ring closes, smash a pipe, or dash through a gap.",
+    lore = "Organ-pipe mud daubers build rows of mud tubes and pack each one with paralysed spiders for their young to eat.",
+    tip = "Keep moving and it has to start the cage again. Pipes are weak; one hit opens a gap.",
+    family = "wasp",
+    sprite = "mud_dauber",
+    hp = 6,
+    speed = 64,
+    damage = 3,
+    radius = 3,
+    mass = 0.6,
+    behavior = "wasp_dauber",
+    behaviorParams = { ring = 30, pipes = 7, place = 0.45, pipe = "mud_pipe", attack = 4 },
+    spawn = { weight = 10, minWave = 7, groupSize = 0.2 },
+    gibs = { "#0a0a0c", "#2a2a30", "#5a5aa0" },
+    splat = "#b8b090",
+    tags = { "wasp", "flying", "builder" },
+}

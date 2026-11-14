@@ -1,0 +1,25 @@
+-- Termite soldier: shield head, snapping jaws, drums an alarm that sends nearby termites into a frenzy.
+return {
+    name = "Termite Soldier",
+    family = "termite",
+    description = "Its armoured head blocks hits meant for the termites behind it. Hurt it and it drums an alarm that whips the colony into a frenzy.",
+    lore = "Soldiers can't even feed themselves; they live to guard. When the nest is breached they bang their heads on the walls, and the whole colony feels the vibration.",
+    tip = "Hit it during its jaw wind-up to stagger it. Kill soldiers fast, before the drumming starts.",
+    sprite = "termite_soldier",
+    hp = 16,
+    speed = 30,
+    damage = 4,
+    radius = 4.5,
+    mass = 2.5,
+    behavior = "termite_alarm",
+    behaviorParams = { range = 14, windup = 0.3, snapDamage = 10, drum = 0.7, alarmRadius = 90, frenzy = 1.6, frenzyTime = 3.5, alarmCd = 6 },
+    shield = { block = 0.6, width = 1.8 },
+    swarmShade = 0.18,
+    spawn = { weight = 14, minWave = 8, groupSize = 0.3 },
+    gibs = { "#b65e1c", "#5a2408", "#cbbd9c", "#120806" },
+    splat = "#b8b090",
+    tags = { "termite", "elite" },
+    elites = {
+        aggressive = { params = { alarmRadius = 130, frenzy = 1.9, alarmCd = 4 }, note = "Its alarm carries further and the frenzy is wilder." },
+    },
+}

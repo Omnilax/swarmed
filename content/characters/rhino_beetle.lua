@@ -1,0 +1,14 @@
+return {
+    name = "Rhino Beetle",
+    description = "A tank with a horn. Sweeps wide arcs that send ants flying. Its charge scoops ants onto the horn and heaves them onto the crowd.",
+    sprite = "rhino_beetle",
+    model = { legs = "rhino_beetle_legs", body = "rhino_beetle_body", height = 5, lift = 2 },
+    order = 1,
+    radius = 9,
+    stats = { maxHp = 70, armor = 3, moveSpeed = 92, knockback = 40 },
+    attack = { type = "arc", damage = 9, cooldown = 0.75, radius = 46, arc = 2.6, knockback = 160, color = { 0.6, 0.95, 1 } },
+    secondary = { type = "pierce", damage = 26, cooldown = 2.5, range = 95, width = 7, knockback = 260, color = { 0.6, 0.95, 1 } },
+    dash = { type = "horncharge", distance = 75, carry = 3, ram = 10, knockback = 220, toss = 70, tossDamage = 12 },
+    startingItems = {},
+    tags = { "beetle", "insect" },
+}

@@ -1,0 +1,20 @@
+-- Indian jumping ant: never walks, only hops toward the player.
+return {
+    name = "Indian Jumping Ant",
+    description = "Never walks. Closes in with long leaps through the air.",
+    lore = "Harpegnathos can leap several times its body length, snapping prey out of the air with long jaws.",
+    tip = "It cannot change course mid-air: move as it lands.",
+    sprite = "jumping_ant",
+    hp = 5,
+    speed = 40,
+    damage = 3,
+    radius = 3.5,
+    mass = 1,
+    behavior = "hop",
+    behaviorParams = { distance = 55, airtime = 0.38, rest = { 0.25, 0.55 }, height = 14 },
+    swarmShade = 0.12,
+    spawn = { weight = 16, minWave = 6, groupSize = 0.4 },
+    gibs = { "#141010", "#a43c14", "#e0b070" },
+    splat = "#8a7432",
+    tags = { "ant", "jumper" },
+}

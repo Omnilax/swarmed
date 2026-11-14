@@ -1,0 +1,20 @@
+-- Leafcutter bee: circles at range and throws two leaf discs that curve in from both sides.
+return {
+    name = "Leafcutter Bee",
+    description = "Circles at a distance and flings two spinning leaf discs that curve in from both sides like a pincer. Step out of where they cross, or bat them back.",
+    lore = "She cuts neat circles out of rose leaves with her jaws and rolls them up into cigar-shaped cells for her eggs.",
+    tip = "The discs meet where you stand when she throws. Move forward or back, not sideways.",
+    family = "bee",
+    sprite = "leafcutter_bee",
+    hp = 5,
+    speed = 58,
+    damage = 3,
+    radius = 3,
+    mass = 0.7,
+    behavior = "bee_discs",
+    behaviorParams = { keep = 110, cooldown = 2.8, windup = 0.4, speed = 120, curve = 1.5, spread = 0.75, shotDamage = 5, life = 2 },
+    spawn = { weight = 14, minWave = 5, groupSize = 0.35 },
+    gibs = { "#1a1410", "#5a4a38", "#e0d0b0" },
+    splat = "#c8b070",
+    tags = { "bee", "flying", "ranged" },
+}

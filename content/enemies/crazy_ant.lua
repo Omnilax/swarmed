@@ -1,0 +1,22 @@
+-- Crazy ant: tiny, very fast, moves in mad zigzags.
+return {
+    name = "Crazy Ant",
+    description = "Tiny and frantic. Zigzags around at high speed, hard to pin down.",
+    lore = "Named for their erratic, twitchy running. Supercolonies of them can short out electrical equipment.",
+    tip = "Area attacks catch them better than aiming.",
+    sprite = "crazy_ant",
+    hp = 1,
+    speed = 95,
+    damage = 1,
+    radius = 2,
+    mass = 0.3,
+    behavior = "erratic",
+    behaviorParams = { jitter = 2.2, switch = { 0.08, 0.25 } },
+    biteRate = 0.6,
+    personalSpace = 0.8,
+    swarmShade = 0.1,
+    spawn = { weight = 35, minWave = 2, groupSize = 1.3 },
+    gibs = { "#1e1a16", "#463e34" },
+    splat = "#7a7036",
+    tags = { "ant", "fast", "swarm" },
+}

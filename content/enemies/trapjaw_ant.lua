@@ -1,0 +1,20 @@
+-- Trap-jaw ant: spring-loaded jaws. Big single snaps, then it leaps back out of reach.
+return {
+    name = "Trap-Jaw Ant",
+    description = "Snaps its spring-loaded jaws shut for huge damage, then flings itself backwards.",
+    lore = "Its jaws close faster than anything else in nature. The recoil is strong enough to launch it into the air.",
+    tip = "Hit it while it cocks its jaws (yellow ring), or dash out of reach.",
+    sprite = "trapjaw_ant",
+    hp = 6,
+    speed = 58,
+    damage = 1,
+    radius = 3.5,
+    mass = 1,
+    behavior = "snap",
+    behaviorParams = { range = 14, windup = 0.25, snapDamage = 10, leap = 60, cooldown = 1.0 },
+    swarmShade = 0.15,
+    spawn = { weight = 16, minWave = 3, groupSize = 0.35 },
+    gibs = { "#1a0806", "#4a1c0e", "#843818", "#e8c890" },
+    splat = "#8a7432",
+    tags = { "ant", "striker" },
+}

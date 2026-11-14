@@ -1,0 +1,20 @@
+-- Sand wasp: digs pits round you that drag you down, then dives in to sting.
+return {
+    name = "Sand Wasp",
+    description = "Digs sand pits round you. A pit drags you toward its middle (dash out), and while you're caught in one the wasp dives in to sting.",
+    lore = "Sand wasps dig burrows in loose sand, kicking it out behind them like a dog, and keep re-opening them to bring their young fresh flies.",
+    tip = "Keep moving between the pits; a dash pulls you clear of one.",
+    family = "wasp",
+    sprite = "sand_wasp",
+    hp = 5,
+    speed = 62,
+    damage = 3,
+    radius = 3,
+    mass = 0.7,
+    behavior = "wasp_sandpit",
+    behaviorParams = { pit = 24, pull = 50, life = 7, dig = 1.1, spot = { 25, 50 }, cooldown = 1.5 },
+    spawn = { weight = 12, minWave = 7, groupSize = 0.25 },
+    gibs = { "#141008", "#e0d060", "#f0f0d0" },
+    splat = "#d8c070",
+    tags = { "wasp", "flying", "terrain" },
+}

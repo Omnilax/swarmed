@@ -1,0 +1,15 @@
+return {
+    name = "Mantis",
+    description = "Strikes with two scything forelegs, left then right, faster than ants can react. Right click snatches ants: hold to munch them for health, let go to fling them.",
+    lore = "A mantis strike takes about a twentieth of a second. It can turn its head to look over its shoulder.",
+    sprite = "mantis",
+    model = { legs = "mantis_legs", body = "mantis_body", height = 3, lift = 4, kneeUp = 1.5 },
+    order = 12,
+    radius = 7,
+    stats = { maxHp = 40, moveSpeed = 108, critChance = 12, attackSpeed = 15 },
+    attack = { type = "slashes", damage = 8, cooldown = 0.65, radius = 44, arc = 1.8, gap = 0.09, knockback = 80, color = { 0.75, 1, 0.5 } },
+    secondary = { type = "snatch", damage = 16, cooldown = 3, reach = 52, grabs = 3, bite = 6, heal = 2, munch = 1.6, distance = 110 },
+    dash = { type = "leafsway", charges = 2, distance = 58, speed = 1.2, primed = 1.0 },
+    startingItems = {},
+    tags = { "insect" },
+}

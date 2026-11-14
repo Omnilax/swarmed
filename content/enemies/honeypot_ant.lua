@@ -1,0 +1,20 @@
+-- Honeypot ant: a living pantry. Hangs back and spreads healing honey that slows the player.
+return {
+    name = "Honeypot Ant",
+    description = "Stays behind the swarm and spreads honey that heals ants and slows you down.",
+    lore = "Repletes swell their gasters with nectar until they can barely walk, feeding the whole colony in lean times.",
+    tip = "Hunt them first; honey puddles fade after a while. Dash across the honey.",
+    sprite = "honeypot_ant",
+    hp = 8,
+    speed = 30,
+    damage = 1,
+    radius = 4,
+    mass = 1.5,
+    behavior = "healer",
+    behaviorParams = { keep = 150, cooldown = 4, radius = 26, life = 9, heal = 3, slow = 0.5 },
+    swarmShade = 0.15,
+    spawn = { weight = 10, minWave = 5, groupSize = 0.15 },
+    gibs = { "#2e1e10", "#c07818", "#ffc860" },
+    splat = "#e0a030",
+    tags = { "ant", "support" },
+}

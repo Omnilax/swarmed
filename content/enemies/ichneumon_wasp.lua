@@ -1,0 +1,20 @@
+-- Ichneumon wasp: stabs eggs into you that hatch into grubs a few seconds later.
+return {
+    name = "Ichneumon Wasp",
+    description = "Lines up its long needle (the line shows) and stabs. If it hits, a clutch of eggs is stuck in you, and a few seconds later they hatch into grubs right where you stand.",
+    lore = "Ichneumons lay their eggs inside other insects' larvae, even drilling through solid wood with an ovipositor longer than their body to reach them.",
+    tip = "Sidestep the line. If you've been hit, be somewhere you can fight three grubs when they hatch.",
+    family = "wasp",
+    sprite = "ichneumon_wasp",
+    hp = 5,
+    speed = 62,
+    damage = 3,
+    radius = 3,
+    mass = 0.6,
+    behavior = "wasp_ovipositor",
+    behaviorParams = { range = 30, windup = 0.6, hatch = 5, larvae = 3, larva = "ichneumon_larva", cooldown = 3 },
+    spawn = { weight = 12, minWave = 6, groupSize = 0.25 },
+    gibs = { "#0e0806", "#c86a1a", "#f0d8a0" },
+    splat = "#d0b060",
+    tags = { "wasp", "flying", "parasite" },
+}

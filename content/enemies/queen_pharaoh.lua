@@ -1,0 +1,21 @@
+-- Pharaoh Queen: boss. Appears on boss waves once Pharaoh Ants can spawn; lays Pharaoh Ant broods.
+return {
+    name = "Pharaoh Queen",
+    description = "Mother of the pharaoh ant colony. Keeps her distance and lays wave after wave of pharaoh ants.",
+    lore = "A queen can live for decades and lay millions of eggs. While she lives, the colony never runs out of soldiers.",
+    tip = "Fight through her brood and focus her down; her children keep coming until she falls.",
+    sprite = "queen_pharaoh",
+    hp = 260,
+    speed = 24,
+    damage = 8,
+    radius = 9,
+    mass = 14,
+    behavior = "queen",
+    behaviorParams = { brood = "pharaoh_ant", interval = 4, count = 10, keep = 170 },
+    swarmShade = 0.3,
+    spawn = { weight = 0, minWave = 5 },
+    boss = true,
+    gibs = { "#1a0e0a", "#4a2a1a", "#d8e4f0" },
+    splat = "#b8a040",
+    tags = { "queen", "boss" },
+}

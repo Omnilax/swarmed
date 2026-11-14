@@ -1,0 +1,20 @@
+-- Tarantula hawk: a giant spider wasp; its sting paralyses you and it drags you off.
+return {
+    name = "Tarantula Hawk",
+    description = "Stalks you, rears up (a big red ring) and lunges. If the sting lands you're paralysed and dragged off. Mash dash or attack to struggle free sooner, or hurt it to make it let go. Hit it while it rears to stagger it.",
+    lore = "A spider wasp as big as your thumb, with a sting rated among the most painful there is. It paralyses a tarantula and drags it to a burrow to feed its larva.",
+    tip = "Hit it while it rears. If it catches you, mash buttons.",
+    family = "wasp",
+    sprite = "tarantula_hawk",
+    hp = 50,
+    speed = 52,
+    damage = 8,
+    radius = 6,
+    mass = 5,
+    behavior = "wasp_tarantulahawk",
+    behaviorParams = { range = 34, windup = 0.7, stun = 1.4, drag = 55, cooldown = 4, stagger = 1 },
+    spawn = { weight = 6, minWave = 10, groupSize = 0.06 },
+    gibs = { "#0a0a1a", "#1a1a3a", "#e06020" },
+    splat = "#a8a070",
+    tags = { "wasp", "flying", "heavy" },
+}

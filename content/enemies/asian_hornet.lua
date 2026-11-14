@@ -1,0 +1,20 @@
+-- Asian hornet: hovers to your side and intercepts your dashes where they end.
+return {
+    name = "Asian Hornet",
+    description = "Hovers to your side and reads your dashes: dash near it and it shoots to where your dash ends, waiting there to sting. Walk away from it, or dash when it's busy.",
+    lore = "Vespa velutina hunts by hawking: hovering outside a beehive and snatching the bees out of the air as they come home.",
+    tip = "Don't dash toward it. After it intercepts it needs a moment before it can read you again.",
+    family = "hornet",
+    sprite = "asian_hornet",
+    hp = 22,
+    speed = 60,
+    damage = 7,
+    radius = 4.5,
+    mass = 2.5,
+    behavior = "hornet_hawker",
+    behaviorParams = { keep = 55, read = 2.5, strike = 4, mult = 1.6, cooldown = 3.5 },
+    spawn = { weight = 8, minWave = 11, groupSize = 0.12 },
+    gibs = { "#0a0806", "#2a1a10", "#e8a020" },
+    splat = "#d0b060",
+    tags = { "hornet", "flying", "fast" },
+}

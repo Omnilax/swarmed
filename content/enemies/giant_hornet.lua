@@ -1,0 +1,21 @@
+-- Asian giant hornet: marks you with scent; if it finishes, more giant hornets come for a raid.
+return {
+    name = "Asian Giant Hornet",
+    description = "Huge and brutal. It closes in and circles you while it marks you with scent; hit it to interrupt. If it finishes, more giant hornets fly in for a raid.",
+    lore = "Vespa mandarinia is the world's largest hornet. A few scouts can kill a whole hive of 30,000 honey bees in hours, tearing their heads off one by one.",
+    tip = "Interrupt the marking (the golden circle). Fight it with the crowd thinned out.",
+    family = "hornet",
+    sprite = "giant_hornet",
+    hp = 60,
+    speed = 50,
+    damage = 9,
+    radius = 6,
+    mass = 6,
+    behavior = "hornet_raider",
+    behaviorParams = { mark = 1.3, raid = 2, delay = 2.5, max = 4, stagger = 0.9 },
+    biteRate = 1.1,
+    spawn = { weight = 6, minWave = 10, groupSize = 0.06 },
+    gibs = { "#1a0c04", "#e08a1a", "#f8d040" },
+    splat = "#d8c070",
+    tags = { "hornet", "flying", "heavy" },
+}

@@ -1,0 +1,20 @@
+-- Japanese honey bee: mobs you in a ball and cooks you with body heat.
+return {
+    name = "Japanese Honey Bee",
+    description = "Doesn't sting. They mob you, cling all round you in a ball, and the more of them in it the faster the heat rises (the orange ring). At full heat you cook. Kill some to cool down, or dash to burst the ball.",
+    lore = "When a giant hornet raids their hive, hundreds of bees smother it in a ball and buzz their flight muscles until it's 46 C inside. The hornet dies; the bees don't.",
+    tip = "Watch the ring round your feet. One dash breaks the ball and halves the heat.",
+    family = "bee",
+    sprite = "japanese_honey_bee",
+    hp = 2,
+    speed = 70,
+    damage = 2,
+    radius = 2.5,
+    mass = 0.5,
+    behavior = "bee_heatball",
+    behaviorParams = { join = 34, minBall = 4, rate = 0.11, cool = 0.3, cook = 6 },
+    spawn = { weight = 14, minWave = 8, groupSize = 1.1 },
+    gibs = { "#141008", "#6a4a1a", "#e0d0b0" },
+    splat = "#d0b060",
+    tags = { "bee", "flying", "swarm" },
+}

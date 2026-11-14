@@ -1,0 +1,20 @@
+-- Sweat bee: lands on you while you run and drinks; slows your dash recharge.
+return {
+    name = "Sweat Bee",
+    description = "Ignores you while you stand still. Start running and they home in, land on you and drink your sweat, and while they do your dash recharges slower. Dash to fling them off, or stand still and they get bored.",
+    lore = "Tiny metallic green bees that land on people to lick salt from their skin. They only sting if you squash them.",
+    tip = "Standing still for a moment makes them leave. Dashing flings them off too.",
+    family = "bee",
+    sprite = "sweat_bee",
+    hp = 1,
+    speed = 80,
+    damage = 1,
+    radius = 2,
+    mass = 0.4,
+    behavior = "bee_sweat",
+    behaviorParams = { drain = 0.45, bored = 0.8, sip = 1.2, hold = 6 },
+    spawn = { weight = 22, minWave = 4, groupSize = 1.1 },
+    gibs = { "#0e2a1a", "#3aa060", "#d0f0c0" },
+    splat = "#b8c870",
+    tags = { "bee", "flying", "drain" },
+}

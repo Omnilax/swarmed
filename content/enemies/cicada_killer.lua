@@ -1,0 +1,20 @@
+-- Cicada killer: grabs an ant from the swarm, flies over you and drops it on your head.
+return {
+    name = "Cicada Killer",
+    description = "Grabs an ant from the swarm, carries it up high, flies over you and drops it on your head. The falling ant's shadow shows where. Hit the wasp and it lets go early.",
+    lore = "The female stings a cicada twice her weight, then flies it home, sometimes having to climb a tree first to get enough height to take off.",
+    tip = "Watch the ground for the ring, or hit the wasp while it's carrying.",
+    family = "wasp",
+    sprite = "cicada_killer",
+    hp = 12,
+    speed = 58,
+    damage = 4,
+    radius = 4.5,
+    mass = 2,
+    behavior = "wasp_cicadakiller",
+    behaviorParams = { search = 160, maxRadius = 7, height = 26, carry = 3.5, blast = 16, mult = 1.5, cooldown = 2.5 },
+    spawn = { weight = 10, minWave = 7, groupSize = 0.15 },
+    gibs = { "#1a0c06", "#b05a1a", "#f0c040" },
+    splat = "#d0b060",
+    tags = { "wasp", "flying", "carrier" },
+}

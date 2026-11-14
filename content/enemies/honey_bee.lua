@@ -1,0 +1,21 @@
+-- Honey bee: a buzzing cloud. Each one stings once, leaves its stinger in you and dies.
+return {
+    name = "Honey Bee",
+    description = "Drifts at you in a buzzing cloud. Each sting leaves a barbed stinger that keeps pumping venom, and the bee dies doing it. Stings set off alarm pheromone that speeds up the rest of the cloud.",
+    lore = "A worker's stinger is barbed, so it tears out of her body and keeps pumping venom on its own. The smell of it tells every other bee where to sting next.",
+    tip = "Venom from many stingers adds up. Sweep the cloud away before it reaches you rather than tanking it.",
+    family = "bee",
+    sprite = "honey_bee",
+    hp = 2,
+    speed = 72,
+    damage = 3,
+    radius = 2.5,
+    mass = 0.5,
+    behavior = "bee_sting",
+    behaviorParams = { jitter = 0.8, venom = { 2, 3 }, alarm = 110, alarmTime = 3, alarmSpeed = 1.7, height = 8 },
+    personalSpace = 1.2,
+    spawn = { weight = 30, minWave = 2, groupSize = 1.3 },
+    gibs = { "#2a1a0a", "#c88a24", "#e8dcc0" },
+    splat = "#d8c070",
+    tags = { "bee", "flying", "venom" },
+}

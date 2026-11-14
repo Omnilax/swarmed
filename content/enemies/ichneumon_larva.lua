@@ -1,0 +1,21 @@
+-- An ichneumon grub: hatched out of the eggs stabbed into you. Slow and hungry.
+return {
+    name = "Ichneumon Grub",
+    description = "Hatched from the eggs an ichneumon wasp stabbed into you. Slow, soft and hungry.",
+    lore = "Parasitoid larvae eat their host from the inside, saving the vital organs for last.",
+    tip = "Easy to kill, but they hatch right on top of you, so don't let them nibble while you fight.",
+    family = "wasp",
+    sprite = "ichneumon_larva",
+    hp = 3,
+    speed = 26,
+    damage = 2,
+    radius = 2.5,
+    mass = 0.6,
+    behavior = "chase",
+    behaviorParams = {},
+    noElites = true,
+    spawn = { weight = 0, minWave = 6 },
+    gibs = { "#d8d0b0", "#a09878" },
+    splat = "#d8d0a0",
+    tags = { "wasp", "larva" },
+}

@@ -1,0 +1,22 @@
+-- Africanized bee: every bee that dies near it makes it angrier, faster and quicker to bite.
+return {
+    name = "Africanized Bee",
+    description = "A honey bee with a short temper. Every bee that dies near it makes it angrier: faster and biting more often, up to six times over. Kill the swarm in big sweeps, not one by one.",
+    lore = "Called killer bees for how many of them answer a disturbance, and how far they'll chase. Their venom is no stronger than any other honey bee's; there is just far more of it.",
+    tip = "Their anger cools off slowly. Wipe out a whole clump at once instead of picking them off.",
+    family = "bee",
+    sprite = "africanized_bee",
+    hp = 3,
+    speed = 66,
+    damage = 2.5,
+    radius = 2.5,
+    mass = 0.5,
+    behavior = "bee_vengeful",
+    behaviorParams = { notice = 140, maxAnger = 6, perStack = 0.14, cool = 0.2, height = 7 },
+    biteRate = 0.8,
+    flock = 0.25,
+    spawn = { weight = 18, minWave = 5, groupSize = 1.5 },
+    gibs = { "#1e1408", "#a87420", "#e8dcc0" },
+    splat = "#d0b060",
+    tags = { "bee", "flying", "swarm" },
+}

@@ -1,0 +1,21 @@
+-- Termite king: arrives with the termite queen and guards her; rages if she dies.
+return {
+    name = "Termite King",
+    family = "termite",
+    description = "The queen's mate. Charges anyone who gets near her, and while he lives she slowly heals. If she dies, he goes berserk.",
+    lore = "Unlike ants, termite kings stay with their queen for life, mating again and again. Some royal pairs live for decades.",
+    tip = "Kill the king first to stop the queen healing, but expect her to start laying much faster.",
+    sprite = "termite_king",
+    hp = 90,
+    speed = 34,
+    damage = 6,
+    radius = 6,
+    mass = 6,
+    behavior = "termite_king",
+    behaviorParams = { guard = 90, orbit = 12, windup = 0.45, rush = 2.6, rushTime = 0.7, cooldown = 1.6 },
+    swarmShade = 0.25,
+    spawn = { weight = 0, minWave = 10 },
+    gibs = { "#341a0c", "#6a3c1e", "#a08868" },
+    splat = "#b8b090",
+    tags = { "termite", "royal" },
+}

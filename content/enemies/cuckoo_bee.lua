@@ -1,0 +1,20 @@
+-- Cuckoo bee: nearly invisible in the crowd; glints, then stings hard.
+return {
+    name = "Cuckoo Bee",
+    description = "Almost invisible: it drifts in the crowd as a faint shimmer and only shows itself with a glint a moment before it stings hard. Hit it while it sneaks to expose it.",
+    lore = "Cuckoo bees don't build nests. They slip into another bee's nest and lay their eggs there, looking enough like a wasp that nobody stops them.",
+    tip = "Watch for the white glint and step away. Wide attacks find it while it's hidden.",
+    family = "bee",
+    sprite = "cuckoo_bee",
+    hp = 4,
+    speed = 56,
+    damage = 6,
+    radius = 2.5,
+    mass = 0.5,
+    behavior = "bee_cuckoo",
+    behaviorParams = { strike = 34, reveal = 0.3, dash = 3.2, mult = 2, recloak = 2.5, faint = 0.12 },
+    spawn = { weight = 12, minWave = 6, groupSize = 0.3 },
+    gibs = { "#1a0a08", "#a03a1a", "#f0e0c0" },
+    splat = "#c8b070",
+    tags = { "bee", "flying", "stealth" },
+}

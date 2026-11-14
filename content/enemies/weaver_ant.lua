@@ -1,0 +1,20 @@
+-- Weaver ant: works in pairs with a silk strand between them that sticks to you.
+return {
+    name = "Weaver Ant",
+    description = "Pairs up and stretches a strand of sticky silk between them, then sweeps it across you. Stuck in the silk, you crawl.",
+    lore = "Weaver ants build nests by pulling leaves together in living chains, then gluing them with silk squeezed from their own larvae.",
+    tip = "Dash through a strand to snip it. Killing either ant of a pair frees you too.",
+    sprite = "weaver_ant",
+    hp = 5,
+    speed = 52,
+    damage = 3,
+    radius = 3.5,
+    mass = 0.9,
+    behavior = "weaver",
+    behaviorParams = { spread = 34, sweep = 26, maxLen = 130, slow = 0.45 },
+    swarmShade = 0.1,
+    spawn = { weight = 14, minWave = 4, groupSize = 0.45 },
+    gibs = { "#b8661a", "#f0aa48", "#fff0b0" },
+    splat = "#c8a040",
+    tags = { "ant", "trapper" },
+}

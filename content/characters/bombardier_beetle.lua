@@ -1,0 +1,15 @@
+return {
+    name = "Bombardier Beetle",
+    description = "Blasts a boiling chemical jet from its abdomen: a cone of scalding droplets that punch through whole lines of ants.",
+    lore = "It mixes two chemicals in a reaction chamber at the tip of its abdomen and fires them out at 100°C, in pulses, with an audible pop.",
+    sprite = "bombardier_beetle",
+    model = { legs = "bombardier_beetle_legs", body = "bombardier_beetle_body", height = 4, lift = 2 },
+    order = 3,
+    radius = 7,
+    stats = { maxHp = 55, armor = 2, moveSpeed = 100 },
+    attack = { type = "spray", damage = 4, cooldown = 0.55, range = 95, drops = 7, spread = 0.6, pierce = 2, color = { 1, 0.92, 0.6 } },
+    secondary = { type = "grenade", damage = 30, cooldown = 2.2, range = 150, radius = 42 },
+    dash = { type = "blast", damage = 18, radius = 38, distance = 110 },
+    startingItems = {},
+    tags = { "beetle", "insect", "ranged" },
+}

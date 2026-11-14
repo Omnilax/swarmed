@@ -1,0 +1,15 @@
+return {
+    name = "Jumping Spider",
+    description = "Tiny, sharp-eyed and bold. Pounces onto the nearest ant and lands with a splash that bowls over everything around it. Right click yanks an ant in on a silk dragline and bites it. Shift leaps to where you point on a safety line: press again to zip back.",
+    lore = "It sees in colour with four big front eyes and can leap many times its own length, trailing a safety line of silk.",
+    sprite = "jumping_spider",
+    model = { legs = "jumping_spider_legs", body = "jumping_spider_body", height = 4, lift = 3, kneeUp = 2 },
+    order = 9,
+    radius = 6,
+    stats = { maxHp = 55, moveSpeed = 120, critChance = 15, dodge = 8 },
+    attack = { type = "pounce", damage = 14, cooldown = 0.75, distance = 80, radius = 26, knockback = 130, color = { 0.6, 1, 0.9 } },
+    secondary = { type = "dragline", damage = 16, cooldown = 1.8, range = 140, poison = { 8, 4 }, color = { 0.6, 1, 0.9 } },
+    dash = { type = "safetyline", distance = 125, hop = 18, speed = 1.1, line = 2.5, zip = 1.7 },
+    startingItems = {},
+    tags = { "spider", "arachnid" },
+}

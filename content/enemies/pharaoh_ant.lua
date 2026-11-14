@@ -1,0 +1,22 @@
+-- Pharaoh ant: a tiny, enormous swarm that scatters and regroups when you strike.
+return {
+    name = "Pharaoh Ant",
+    description = "Tiny yellow ants in enormous numbers. Kill some and the rest scatter in every direction, then regroup into new swarms and come again.",
+    lore = "Disturb a pharaoh ant colony and it splits into several new ones, each with its own queens. Spraying them only spreads them further.",
+    tip = "Wide attacks that kill the whole cluster at once work best.",
+    sprite = "pharaoh_ant",
+    hp = 1,
+    speed = 60,
+    damage = 1,
+    radius = 2,
+    mass = 0.25,
+    behavior = "budding",
+    behaviorParams = { radius = 45, scatter = { 0.5, 1.0 }, wobble = 0.4 },
+    biteRate = 0.6,
+    personalSpace = 0.8,
+    swarmShade = 0.08,
+    spawn = { weight = 22, minWave = 2, groupSize = 2.0 },
+    gibs = { "#8a5a1c", "#e8b850" },
+    splat = "#b8a040",
+    tags = { "ant", "swarm", "tiny" },
+}

@@ -1,0 +1,21 @@
+-- European hornet: sluggish by day; at night it spirals into your light and strikes through you.
+return {
+    name = "European Hornet",
+    description = "By day it's sluggish and hangs back. After dark it spirals in on your light like a moth, tighter and tighter, then strikes straight through you and swings out to do it again.",
+    lore = "One of the few wasps that hunts at night. Hornets bang against lit windows on summer evenings for the same reason.",
+    tip = "At night, step aside as the spiral closes. By day, go and kill it while it's slow.",
+    family = "hornet",
+    sprite = "european_hornet",
+    hp = 28,
+    speed = 58,
+    damage = 7,
+    radius = 5,
+    mass = 3,
+    behavior = "hornet_nocturnal",
+    behaviorParams = { night = 0.45, spiral = 1.8, strike = 3.2, dayKeep = 130 },
+    light = { radius = 6, color = "#ffd890", intensity = 0.25 },
+    spawn = { weight = 8, minWave = 10, groupSize = 0.1 },
+    gibs = { "#2a0c06", "#a03a14", "#f0c030" },
+    splat = "#d8c070",
+    tags = { "hornet", "flying", "night" },
+}

@@ -1,0 +1,21 @@
+-- Bullet ant: winds up, then shoots forward like a bullet. Dies to anything.
+return {
+    name = "Bullet Ant",
+    description = "Aims, then rockets forward at terrifying speed. Fragile as glass.",
+    lore = "Its sting is said to be the most painful of any insect: like being shot.",
+    tip = "Watch for the red aiming line and sidestep. One hit kills it.",
+    sprite = "bullet_ant",
+    hp = 1,
+    speed = 80,
+    damage = 3.5,
+    radius = 3.5,
+    mass = 0.8,
+    behavior = "charge",
+    behaviorParams = { range = 130, windup = 0.35, dashSpeed = 430, dashTime = 0.45, cooldown = 1.2 },
+    biteRate = 0.7,
+    swarmShade = 0.12,
+    spawn = { weight = 18, minWave = 4, groupSize = 0.4 },
+    gibs = { "#1a0806", "#4a1a10", "#a06a40" },
+    splat = "#7a6a30",
+    tags = { "ant", "fast", "fragile" },
+}

@@ -1,0 +1,20 @@
+-- Giant honey bee: hangs in a curtain facing you; a 'shimmer' wave sends each bee at you in turn.
+return {
+    name = "Giant Honey Bee",
+    description = "They hang in a curtain facing you. Come close, or hit one, and a shimmering wave ripples along the curtain as bee after bee darts out to sting. Go round the end of it.",
+    lore = "Apis dorsata builds a single huge comb in the open, covered by a living curtain of bees. When a hornet comes near, waves ripple across the curtain to scare it off.",
+    tip = "Flank the sheet. The wave runs from one end to the other, so the far end stings last.",
+    family = "bee",
+    sprite = "giant_honey_bee",
+    hp = 7,
+    speed = 64,
+    damage = 3,
+    radius = 3.5,
+    mass = 0.9,
+    behavior = "bee_shimmer",
+    behaviorParams = { distance = 70, spacing = 7, trigger = 48, step = 0.05, lunge = 0.32, cooldown = 3 },
+    spawn = { weight = 10, minWave = 9, groupSize = 0.8 },
+    gibs = { "#1a0e06", "#c87a1a", "#f0e0c0" },
+    splat = "#d8c070",
+    tags = { "bee", "flying", "formation" },
+}

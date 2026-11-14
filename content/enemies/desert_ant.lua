@@ -1,0 +1,20 @@
+-- Desert ant (Saharan silver ant): zigzags, then sprints at blinding speed; faster by day.
+return {
+    name = "Desert Ant",
+    description = "A silver loner that zigzags around searching, then sprints straight at you at blinding speed. The brighter the day, the faster it runs.",
+    lore = "Saharan silver ants forage at midday, when the sand hits 70°C and their predators hide. Silver hairs reflect the heat, and they run over 100 body lengths a second.",
+    tip = "They overshoot and have to stop to cool off. That's your moment. Easier at night.",
+    sprite = "desert_ant",
+    hp = 5,
+    speed = 60,
+    damage = 3,
+    radius = 3.5,
+    mass = 0.8,
+    behavior = "forager",
+    behaviorParams = { sight = 150, sprint = 3.2, sprintTime = 0.7, rest = 0.6, zig = 0.45 },
+    biteRate = 0.6,
+    spawn = { weight = 14, minWave = 3, groupSize = 0.3 },
+    gibs = { "#70747e", "#c8ccd4", "#ffffff" },
+    splat = "#a09a6a",
+    tags = { "ant", "fast", "daytime" },
+}

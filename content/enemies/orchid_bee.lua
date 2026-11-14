@@ -1,0 +1,21 @@
+-- Orchid bee: leaves clouds of scent that send ants into a frenzy (faster).
+return {
+    name = "Orchid Bee",
+    description = "Hangs back over the swarm and leaves clouds of perfume behind it. Every ant that runs through a cloud is driven into a frenzy and moves faster. Kill it first.",
+    lore = "Male orchid bees gather perfumes from orchids and store them in pouches on their hind legs, mixing their own signature scent to impress females.",
+    tip = "It keeps out of reach: chase it down, use a ranged attack, or make it come to you near a wall.",
+    family = "bee",
+    sprite = "orchid_bee",
+    hp = 4,
+    speed = 62,
+    damage = 2,
+    radius = 3,
+    mass = 0.6,
+    behavior = "bee_perfume",
+    behaviorParams = { keep = 120, cooldown = 2.6, radius = 22, life = 5, haste = 1.5 },
+    light = { radius = 6, color = "#60ffb0", intensity = 0.2 },
+    spawn = { weight = 12, minWave = 7, groupSize = 0.2 },
+    gibs = { "#06301a", "#20c070", "#a0fff0" },
+    splat = "#b8d070",
+    tags = { "bee", "flying", "support" },
+}

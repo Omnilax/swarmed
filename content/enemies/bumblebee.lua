@@ -1,0 +1,20 @@
+-- Bumblebee: big and furry, bumbles along and body-slams you away like a pinball.
+return {
+    name = "Bumblebee",
+    description = "Big, furry and clumsy. Bumbles along a wobbly path and body-slams you, bouncing you away like a pinball, often straight into the swarm.",
+    lore = "Bumblebees shiver their flight muscles to warm up, so they fly on cold mornings when other bees can't. They're gentle unless you sit on one.",
+    tip = "Keep your back away from crowds when one comes near, or kill it before it bumps you.",
+    family = "bee",
+    sprite = "bumblebee",
+    hp = 14,
+    speed = 44,
+    damage = 4,
+    radius = 4.5,
+    mass = 3,
+    behavior = "bee_bumble",
+    behaviorParams = { knock = 260, bounce = 170, cooldown = 0.9, wobble = 1.0, height = 4 },
+    spawn = { weight = 14, minWave = 3, groupSize = 0.3 },
+    gibs = { "#141010", "#e0b030", "#f0e8d8" },
+    splat = "#d8c070",
+    tags = { "bee", "flying", "heavy" },
+}

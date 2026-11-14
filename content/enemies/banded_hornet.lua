@@ -1,0 +1,20 @@
+-- Lesser banded hornet: sprays a cone of venom mist that poisons you while you stand in it.
+return {
+    name = "Lesser Banded Hornet",
+    description = "Curls its abdomen forward (the cone shows where) and fills the air in front of it with clouds of venom mist that hang there and poison you while you stand in them.",
+    lore = "Vespa affinis can spray venom from its sting as a fine mist when its nest is attacked.",
+    tip = "Step out of the cone when it curls up, and fight away from the drifting clouds.",
+    family = "hornet",
+    sprite = "banded_hornet",
+    hp = 24,
+    speed = 58,
+    damage = 7,
+    radius = 4.5,
+    mass = 2.5,
+    behavior = "hornet_mist",
+    behaviorParams = { keep = 60, cooldown = 4, windup = 0.6, reach = 60, clouds = 4, radius = 13, life = 4, dps = 4 },
+    spawn = { weight = 8, minWave = 11, groupSize = 0.12 },
+    gibs = { "#0e0a08", "#2a1a10", "#f0a020" },
+    splat = "#d0b060",
+    tags = { "hornet", "flying", "venom" },
+}

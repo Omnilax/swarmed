@@ -1,0 +1,20 @@
+-- A clutch of termite eggs: hatches into termites unless destroyed. Laid by neotenics and the queen.
+return {
+    name = "Termite Eggs",
+    family = "termite",
+    description = "A clutch of eggs on the floor. Hatches into termites after a few seconds unless you break it.",
+    lore = "A termite queen can lay tens of thousands of eggs a day.",
+    tip = "One good hit pops a clutch. They twitch right before they hatch.",
+    sprite = "termite_eggs",
+    hp = 5,
+    speed = 0,
+    damage = 0,
+    radius = 4.5,
+    mass = 6,
+    behavior = "termite_egg",
+    behaviorParams = { hatch = { 5, 7 }, into = { "termite_worker", "termite_worker", "termite_worker", "termite_soldier", "termite_nasute" }, count = 3 },
+    spawn = { weight = 0, minWave = 8 },
+    gibs = { "#f6eedc", "#e4d8bc" },
+    splat = "#e8e0c8",
+    tags = { "termite", "egg" },
+}

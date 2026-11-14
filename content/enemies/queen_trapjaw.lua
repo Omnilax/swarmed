@@ -1,0 +1,21 @@
+-- Trap-Jaw Queen: boss. Appears on boss waves once Trap-Jaw Ants can spawn; lays Trap-Jaw Ant broods.
+return {
+    name = "Trap-Jaw Queen",
+    description = "Mother of the trap-jaw ant colony. Keeps her distance and lays wave after wave of trap-jaw ants.",
+    lore = "A queen can live for decades and lay millions of eggs. While she lives, the colony never runs out of soldiers.",
+    tip = "Fight through her brood and focus her down; her children keep coming until she falls.",
+    sprite = "queen_trapjaw",
+    hp = 260,
+    speed = 24,
+    damage = 8,
+    radius = 9,
+    mass = 14,
+    behavior = "queen",
+    behaviorParams = { brood = "trapjaw_ant", interval = 4, count = 10, keep = 170 },
+    swarmShade = 0.3,
+    spawn = { weight = 0, minWave = 5 },
+    boss = true,
+    gibs = { "#1a0e0a", "#4a2a1a", "#d8e4f0" },
+    splat = "#8a7432",
+    tags = { "queen", "boss" },
+}

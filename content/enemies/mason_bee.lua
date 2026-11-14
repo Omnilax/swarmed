@@ -1,0 +1,20 @@
+-- Mason bee: plasters wet mud where you're about to walk; stay in it and it sets.
+return {
+    name = "Mason Bee",
+    description = "Flies ahead of you and plasters wet mud where you're about to walk. Mud slows you, and stand in it too long and it sets: you're stuck fast for a moment.",
+    lore = "Mason bees build their nests in hollow stems and seal every egg cell behind a wall of mud.",
+    tip = "Change direction when one flies ahead of you, and don't fight standing in the mud.",
+    family = "bee",
+    sprite = "mason_bee",
+    hp = 5,
+    speed = 62,
+    damage = 3,
+    radius = 3,
+    mass = 0.7,
+    behavior = "bee_mason",
+    behaviorParams = { lead = 0.7, radius = 16, life = 8, slow = 0.55, set = 0.9, stuck = 0.7, cooldown = 3.5, keep = 90 },
+    spawn = { weight = 12, minWave = 6, groupSize = 0.3 },
+    gibs = { "#101828", "#2a3a5a", "#d0c8b8" },
+    splat = "#c8b070",
+    tags = { "bee", "flying", "terrain" },
+}

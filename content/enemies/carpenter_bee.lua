@@ -1,0 +1,21 @@
+-- Carpenter bee: hovers right in front of you, solid as a wall, and head-butts you.
+return {
+    name = "Carpenter Bee",
+    description = "Hovers right in front of you wherever you're heading, solid as a wall, and now and then rears back and head-butts you. Swat it out of the way or dash past.",
+    lore = "The males can't sting at all. They guard their nest holes by hovering face to face with any intruder, which works surprisingly well.",
+    tip = "It's a blocker, not a threat on its own. Kill it when it's boxing you in with a crowd behind you.",
+    family = "bee",
+    sprite = "carpenter_bee",
+    hp = 16,
+    speed = 70,
+    damage = 4,
+    radius = 4.5,
+    mass = 4,
+    behavior = "bee_hoverblock",
+    behaviorParams = { gap = 22, headbutt = 2.6, windup = 0.35, knock = 200 },
+    solid = true,
+    spawn = { weight = 12, minWave = 4, groupSize = 0.15 },
+    gibs = { "#0a0a12", "#2a2a3a", "#e8c040" },
+    splat = "#c8b070",
+    tags = { "bee", "flying", "blocker" },
+}

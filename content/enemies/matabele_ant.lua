@@ -1,0 +1,22 @@
+-- Matabele ant: raiders that carry their wounded out of the fight and heal them.
+return {
+    name = "Matabele Ant",
+    description = "Big black raiders that look after their own. A badly hurt one cries out, a nestmate carries it out of the fight, and it comes back at full health.",
+    lore = "Matabele ants raid termite mounds in columns of hundreds. They carry injured nestmates home and lick their wounds clean, saving most of them.",
+    tip = "Finish wounded ones off before they're rescued, or kill the medic and drop them both.",
+    sprite = "matabele_ant",
+    hp = 16,
+    speed = 40,
+    damage = 5,
+    radius = 5,
+    mass = 2.2,
+    behavior = "medic",
+    behaviorParams = { woundAt = 0.5, carryTime = 2.4 },
+    flock = 0.3,
+    personalSpace = 0.9,
+    swarmShade = 0.22,
+    spawn = { weight = 14, minWave = 5, groupSize = 0.55 },
+    gibs = { "#101010", "#2c2c30", "#9a9aa8" },
+    splat = "#6a6a3a",
+    tags = { "ant", "heavy", "support" },
+}

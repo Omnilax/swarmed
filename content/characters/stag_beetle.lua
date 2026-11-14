@@ -1,0 +1,15 @@
+return {
+    name = "Stag Beetle",
+    description = "Heavy and slow, with antler jaws. Each swing hits hard and tosses ants far. Right click grabs an ant, swings it round as a club and hurls it. Shift: a clumsy, steerable flight that crash-lands on the crowd.",
+    lore = "Males wrestle with their giant mandibles, trying to lift rivals and throw them off branches.",
+    sprite = "stag_beetle",
+    model = { legs = "stag_beetle_legs", body = "stag_beetle_body", height = 5, lift = 2 },
+    order = 5,
+    radius = 9,
+    stats = { maxHp = 75, armor = 4, moveSpeed = 85, knockback = 80, damage = 10 },
+    attack = { type = "arc", damage = 16, cooldown = 1.0, radius = 52, arc = 1.7, knockback = 280, color = { 1, 0.8, 0.55 } },
+    secondary = { type = "clubthrow", damage = 26, cooldown = 2.6, reach = 36, swing = 0.45, arm = 22, distance = 130, radius = 34 },
+    dash = { type = "clumsyflight", distance = 95, speed = 0.5, hop = 14, turn = 4, damage = 8, radius = 34, knockback = 240 },
+    startingItems = {},
+    tags = { "beetle", "insect", "heavy" },
+}

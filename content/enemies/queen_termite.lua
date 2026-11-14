@@ -1,0 +1,23 @@
+-- Termite Queen: boss. A giant immobile egg factory, guarded by her king.
+return {
+    name = "Termite Queen",
+    family = "termite",
+    description = "An enormous egg-swollen queen who barely moves. Lays rings of egg clutches and streams out broods of every caste, guarded by her king.",
+    lore = "A mature termite queen's abdomen can stretch to many times its original size. She is little more than a living egg factory, fed and cleaned by her workers.",
+    tip = "Kill the king to stop her healing, smash the egg rings, and don't stand next to her for long or soldiers pour out.",
+    sprite = "termite_queen",
+    hp = 320,
+    speed = 6,
+    damage = 6,
+    radius = 12,
+    mass = 30,
+    behavior = "termite_queen",
+    behaviorParams = { brood = "termite_worker", castes = { "termite_worker", "termite_soldier", "termite_nasute" },
+        interval = 4.5, clutches = 3, egg = "termite_eggs", king = "termite_king", heal = 0.012, keep = 140, guard = "termite_soldier" },
+    swarmShade = 0.3,
+    spawn = { weight = 0, minWave = 10 },
+    boss = true,
+    gibs = { "#f0e6d2", "#d8cba0", "#5a2e18" },
+    splat = "#e0d8b8",
+    tags = { "queen", "boss", "termite" },
+}

@@ -1,0 +1,20 @@
+-- Paper wasp: builds a paper nest at the edge of the fight that keeps releasing wasps.
+return {
+    name = "Paper Wasp",
+    description = "Flies off to the edge of the fight and builds a paper nest, which keeps releasing more wasps until you break it. After building it stays to guard the nest.",
+    lore = "Paper wasps chew wood into pulp and build open, umbrella-shaped combs under eaves, hanging from a single stalk.",
+    tip = "Catch it before the nest is finished, or go break the nest early.",
+    family = "wasp",
+    sprite = "paper_wasp",
+    hp = 4,
+    speed = 60,
+    damage = 3,
+    radius = 3,
+    mass = 0.7,
+    behavior = "wasp_nester",
+    behaviorParams = { site = 120, build = 2.2, nest = "paper_nest", guard = 110 },
+    spawn = { weight = 14, minWave = 4, groupSize = 0.25 },
+    gibs = { "#2a1408", "#a85a1a", "#e8c040" },
+    splat = "#d0b060",
+    tags = { "wasp", "flying", "builder" },
+}

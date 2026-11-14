@@ -1,0 +1,20 @@
+-- Big-headed ant (Pheidole major): head-butts you away; rushes in when the minors are attacked.
+return {
+    name = "Big-headed Ant",
+    description = "A major with a giant head, escorted by a column of small minors. Lowers its head and rams you away. Kill a minor and the majors come running.",
+    lore = "Pheidole colonies have two castes: small minors that do the work, and huge-headed majors that crack seeds and defend them.",
+    tip = "Hit it while it lowers its head to stagger it. Don't get rammed back into the crowd.",
+    sprite = "bigheaded_ant",
+    hp = 20,
+    speed = 34,
+    damage = 5,
+    radius = 5.5,
+    mass = 3,
+    behavior = "charge",
+    behaviorParams = { range = 50, windup = 0.5, dashSpeed = 230, dashTime = 0.28, cooldown = 1.6, knock = 330, rally = "bigheaded_minor" },
+    swarmShade = 0.22,
+    spawn = { weight = 12, minWave = 7, groupSize = 0.15, escort = { "bigheaded_minor", 14 } },
+    gibs = { "#5a2a16", "#b25222", "#e0a080" },
+    splat = "#8a6a30",
+    tags = { "ant", "heavy" },
+}

@@ -1,0 +1,20 @@
+-- Bald-faced hornet: squirts venom at your eyes; if it hits, you're blinded.
+return {
+    name = "Bald-faced Hornet",
+    description = "Keeps its distance, flashes white, then squirts a jet of venom at your eyes. If it hits, you're blinded: the light shrinks to just around you for a few seconds. A swing bats the jet back.",
+    lore = "Not a true hornet: it's a big black-and-white yellowjacket. It really can squirt venom from its sting into the eyes of anything raiding its nest.",
+    tip = "Sidestep when it flashes, or swat the jet back at it.",
+    family = "wasp",
+    sprite = "bald_faced_hornet",
+    hp = 6,
+    speed = 62,
+    damage = 3,
+    radius = 3.5,
+    mass = 0.9,
+    behavior = "wasp_blinder",
+    behaviorParams = { keep = 75, cooldown = 3.2, windup = 0.5, speed = 230, blind = 2.6, shotDamage = 3 },
+    spawn = { weight = 12, minWave = 8, groupSize = 0.25 },
+    gibs = { "#06060a", "#1a1a24", "#f0f0f0" },
+    splat = "#c8c8a0",
+    tags = { "wasp", "flying", "ranged" },
+}

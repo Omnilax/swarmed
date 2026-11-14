@@ -1,0 +1,20 @@
+-- Big-headed ant minor: the small caste. Only arrives escorting majors.
+return {
+    name = "Big-headed Ant (minor)",
+    description = "The small worker caste of the big-headed ant. Swarms in behind the majors, and calls them in when attacked.",
+    lore = "Minors outnumber majors many times over. When they find trouble they lay a trail that brings the majors.",
+    tip = "Every minor you kill near a major makes it charge. Take the majors out first if you can.",
+    sprite = "bigheaded_minor",
+    hp = 2,
+    speed = 58,
+    damage = 1,
+    radius = 2.5,
+    mass = 0.4,
+    behavior = "column",
+    behaviorParams = { engageRange = 100 },
+    swarmShade = 0.1,
+    spawn = { weight = 0, minWave = 7, groupSize = 1 },
+    gibs = { "#5a2a16", "#b25222" },
+    splat = "#8a6a30",
+    tags = { "ant", "escort" },
+}

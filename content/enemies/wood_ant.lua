@@ -1,0 +1,20 @@
+-- Wood ant: fast flanker that circles around to strike from behind.
+return {
+    name = "Wood Ant",
+    description = "Fast and sneaky. Circles around to attack you from behind.",
+    lore = "Wood ants build huge thatched mounds and hunt in coordinated groups on the forest floor.",
+    tip = "Turn to face them: they only rush in once they are behind you.",
+    sprite = "wood_ant",
+    hp = 4,
+    speed = 75,
+    damage = 2.5,
+    radius = 3.5,
+    mass = 1,
+    behavior = "flank",
+    behaviorParams = { behind = 40, rush = 1.6 },
+    swarmShade = 0.14,
+    spawn = { weight = 18, minWave = 7, groupSize = 0.5 },
+    gibs = { "#100c0c", "#943418", "#d4642e" },
+    splat = "#86743a",
+    tags = { "ant", "fast", "flanker" },
+}

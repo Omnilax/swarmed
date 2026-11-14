@@ -1,0 +1,20 @@
+-- Wool carder bee: patrols a lane back and forth at full speed, ramming whatever's in it.
+return {
+    name = "Wool Carder Bee",
+    description = "Claims a lane through where you're standing (faintly marked on the ground) and patrols it back and forth flat out, ramming you and shoving ants out of its way.",
+    lore = "Territorial males guard patches of flowers and dive-bomb other insects, crushing them with the spines on the tip of their abdomen.",
+    tip = "Step out of the lane. It picks a new one every few passes.",
+    family = "bee",
+    sprite = "wool_carder_bee",
+    hp = 10,
+    speed = 80,
+    damage = 4,
+    radius = 3.5,
+    mass = 2,
+    behavior = "bee_patrol",
+    behaviorParams = { length = 110, passes = 3, dash = 150, knock = 240, mult = 1.5 },
+    spawn = { weight = 10, minWave = 8, groupSize = 0.2 },
+    gibs = { "#141010", "#d8c030", "#f0f0e0" },
+    splat = "#d8c070",
+    tags = { "bee", "flying", "fast" },
+}

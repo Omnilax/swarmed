@@ -1,0 +1,21 @@
+-- Turtle ant: a living door. Its shield head blocks hits aimed at the ants behind it.
+return {
+    name = "Turtle Ant",
+    description = "Huge disc head that blocks most damage to the ants behind it. Tough, but bites softly.",
+    lore = "Turtle ants plug their nest entrances with their own flattened heads, like living doors.",
+    tip = "Get around it: hits from the side reach the ants it protects.",
+    sprite = "turtle_ant",
+    hp = 40,
+    speed = 22,
+    damage = 1,
+    radius = 5.5,
+    mass = 4,
+    behavior = "chase",
+    behaviorParams = { wobble = 0.1, wobbleSpeed = 2 },
+    shield = { block = 0.75, width = 2.4 },
+    swarmShade = 0.2,
+    spawn = { weight = 12, minWave = 7, groupSize = 0.3, escort = { "worker_ant", 10 } },
+    gibs = { "#0e0a08", "#2a221c", "#4e463c" },
+    splat = "#6e6630",
+    tags = { "ant", "tank", "shield" },
+}
