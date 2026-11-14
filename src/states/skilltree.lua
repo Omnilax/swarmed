@@ -3,7 +3,7 @@
 -- The game is paused while it is open.
 --
 -- Mouse/touch: click a node to learn it.  Keys/pad: arrows move, Enter / A learns, Tab / RB goes
--- back to the bag, E / B closes.
+-- back to the bag, I / B closes.
 local State = require("src.core.state")
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")

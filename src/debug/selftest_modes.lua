@@ -35,7 +35,7 @@ return function(wait, shot)
     wait(0.3)
     assert(g.world
  and g.world.gameMode == "endless", "loadout did not start an endless run")
-    local have = #g.world.pickups
+    local have = 0
     for id in pairs(ids) do have = have + g.world.player.inventory:count(id) end
 
     assert(have >= picked, ("starting items missing: %d of %d"):format(have, picked))

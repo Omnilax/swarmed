@@ -204,12 +204,10 @@ end
 function Cat:give(def, n)
     if not self.game or not def then return end
     local world = self.game.world
-    local before = #world.pickups
-    world:giveItem(def.id, n)
-    local dropped = #world.pickups - before
+    local eaten = world:giveItem(def.id, n)
     Audio.play("equip")
-    if dropped > 0 then
-        self:toast(("Bag full: %d %s on the floor"):format(dropped, def.name), Theme.colors.bad)
+    if eaten > 0 then
+        self:toast(("Bag full: ate %d %s"):format(eaten, def.name), Theme.colors.bad)
     else
         self:toast(("+%d %s"):format(n, def.name), InvState.rarityColor(def))
     end

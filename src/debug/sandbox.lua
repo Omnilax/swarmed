@@ -197,7 +197,7 @@ function Sandbox:itemsTab()
     return {
         { type = "header", label = "Items" },
         { type = "button", label = "Item catalogue", value = function() return "C" end, onActivate = function() self:openCatalogue() end },
-        { type = "button", label = "Open bag", value = function() return "E" end, onActivate = function()
+        { type = "button", label = "Open bag", value = function() return "I" end, onActivate = function()
             State.push(require("src.states.inventory").new(self.game))
         end },
         { type = "choice", label = "Item", options = itemOptions(), get = function() return self.item end, set = function(v) self.item = v end },
@@ -235,7 +235,7 @@ function Sandbox:playerTab()
             set = function(v) self:setCharacter(v) end },
         { type = "toggle", label = "God mode", get = function() return world.flags.god end, set = function(v) world.flags.god = v end },
         { type = "button", label = "Heal", onActivate = function() world.player.hp = world.player.stats:get("maxHp") end },
-        { type = "button", label = "+5 skill points", desc = "Grants XP up to 5 more levels (spend them in the bag: E, then Tab)", onActivate = function()
+        { type = "button", label = "+5 skill points", desc = "Grants XP up to 5 more levels (spend them in the bag: I, then Tab)", onActivate = function()
             local sk = world.player.skills
             for _ = 1, 5 do world:grantXP(sk.toNext - sk.into) end
         end },
@@ -420,7 +420,7 @@ function Sandbox:applyBag()
     inv.bag = {}
     inv:recount()
     for _, item in ipairs(items) do
-        if not inv:stow(item) then self.world:dropItem(item, p.x, p.y, true) end
+        if not inv:stow(item) then self.world:overflowItem(item) end
     end
 end
 

@@ -55,14 +55,15 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Attack (when Auto Attack is off) | Left mouse / J | RB / X |
 | Special attack | Right mouse / K | B |
 | Aim (when Aim Mode = Mouse) | Mouse | Right stick (always) |
-| Inventory | E / I | Y |
+| Inventory | I / B | Y |
+| Next wave now (or send the rest of a wave in early) | E / N | Back |
 | Pause | Esc / P | Start |
 
 All bindings can be changed in Settings > Controls.
 
 ## Inventory
 
-Press **E** for the inventory, modelled on FATE: a small 10x3 bag (one more row every 15 waves) where items come in shapes (bars,
+Press **I** (or **B**) for the inventory, modelled on FATE: a small 10x3 bag (one more row every 15 waves) where items come in shapes (bars,
 L's, T's, S's, crosses, blocks). There is nothing to equip: **everything in the bag affects your
 bug**, copies of an item stack, and the only limit is puzzling the shapes in, so bigger items are
 stronger for the room they take. Left click picks up and puts down (swapping with one item
@@ -161,7 +162,7 @@ can `draw`. `src/game/grab.lua` holds and throws ants for grab specials.
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
 engine `src/game/skills.lua`). Every kill is 1 XP (gilded elites give bonus XP); each level is a
 skill point, shown on the thin XP bar at the bottom of the screen. Spend points in the bag's
-**SKILLS** tab (E, then Tab / RB, or tap the tab). Each tree has three branches (attack, special,
+**SKILLS** tab (I, then Tab / RB, or tap the tab). Each tree has three branches (attack, special,
 dash/body) with five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger
 upgrade and a capstone that changes how a move plays (echoes, fans of extra copies, every-Nth
 empowered strikes, thrown ants that land as explosions, procs on kills and hits...). A whole tree

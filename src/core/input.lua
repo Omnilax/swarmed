@@ -15,8 +15,8 @@ Input.actions = {
     { id = "attack", label = "Attack (manual)", keys = { "j" }, mouse = { 1 }, pad = { "rightshoulder", "x" }, rebind = true },
     { id = "secondary", label = "Special Attack", keys = { "k" }, mouse = { 2 }, pad = { "b" }, rebind = true },
     { id = "pause", label = "Pause", keys = { "escape", "p" }, pad = { "start" }, rebind = true },
-    { id = "inventory", label = "Inventory", keys = { "e", "i" }, pad = { "y" }, rebind = true },
-    { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "n" }, pad = { "back" }, rebind = true },
+    { id = "inventory", label = "Inventory", keys = { "i", "b" }, pad = { "y" }, rebind = true },
+    { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "e", "n" }, pad = { "back" }, rebind = true },
     { id = "inventory_alt", label = "Drop Item (inventory)", keys = { "f" }, pad = { "x" }, rebind = true },
     { id = "inventory_rotate", label = "Turn Item (inventory)", keys = { "r" }, pad = { "leftshoulder" }, rebind = true },
 

@@ -48,7 +48,6 @@ function World.new(opts)
     Cosmetics.paintDecor(self.ground, self.stage)
     self.fx, self.texts, self.pendingSplats = {}, {}, {}
     self.corpses = {}
-    self.pickups = {}       -- items lying on the ground
     self.thrown = {}        -- ants flying through the air (src/game/grab.lua)
     self.hazards = Hazards.new(self)
     self.deferred = {}      -- death effects run next frame (so chain reactions can't recurse)
@@ -59,7 +58,6 @@ function World.new(opts)
     self.boss = nil
     -- kills of the last frame ({x, y, id}), so behaviours can react (scatter, rally...)
     self.recentDeaths, self.deathsNow = { n = 0 }, { n = 0 }
-    self.bagFullT = 0
     self.hitstop, self.killsThisFrame, self.hitstopCd, self.decalFadeT = 0, 0, 0, 0
     self.floorBudget = 40   -- bodies that may still leave pools and remains (refills over time)
     self.bonusPicks = 0     -- extra cards in the next item choice (queens slain)
@@ -281,7 +279,7 @@ function World:nearestEnemy(x, y, maxR)
 end
 
 ----------------------------------------------------------------------------------------------
--- Loot on the ground
+-- Items
 
 -- A random item instance, weighted by rarity (src/config/rarities.lua) and the current wave.
 function World:rollItem()
@@ -292,47 +290,19 @@ function World:rollItem()
     return Inventory.newItem(def.id)
 end
 
--- Items pop out with a little hop. byPlayer: wait until the player steps away before
--- picking it back up (so dropping from the inventory doesn't instantly re-grab it).
-function World:dropItem(item, x, y, byPlayer)
-    local a = love.math.random() * math.pi * 2
-    self.pickups[#self.pickups + 1] = { item = item, x = x, y = y, z = 4, vz = 90,
-        vx = math.cos(a) * 30, vy = math.sin(a) * 30, t = 0, waitLeave = byPlayer }
+-- Items never lie on the ground. Whatever does not fit in the bag is eaten on the spot
+-- (it heals, like eating it from the inventory).
+function World:overflowItem(item)
+    local p = self.player
+    local hp = p.inventory:eat(item)
+    self:floatText(p.x, p.y, "Bag full: ate " .. item.def.name .. (hp > 0 and (" +" .. hp .. " HP") or ""), { 1, 0.6, 0.4 }, false)
 end
 
--- Give items to the player (into the bag); whatever does not fit lands on the floor.
+-- Give items to the player (into the bag). Returns how many did not fit (and were eaten).
 function World:giveItem(id, n)
-    local p = self.player
-    for _, item in ipairs(p.inventory:add(id, n)) do self:dropItem(item, p.x, p.y, true) end
-end
-
-function World:updatePickups(dt)
-    local p = self.player
-    local reach = 10 + p.stats:get("pickupRange") * 0.25
-    if self.bagFullT > 0 then self.bagFullT = self.bagFullT - dt end
-    for i = #self.pickups, 1, -1 do
-        local k = self.pickups[i]
-        k.t = k.t + dt
-        k.vz = k.vz - 300 * dt
-        k.z = k.z + k.vz * dt
-        if k.z <= 0 then k.z, k.vz, k.vx, k.vy = 0, 0, 0, 0 end
-        k.x = util.clamp(k.x + k.vx * dt, 4, self.size - 4)
-        k.y = util.clamp(k.y + k.vy * dt, 4, self.size - 4)
-        local dx, dy = p.x - k.x, p.y - k.y
-        local d2 = dx * dx + dy * dy
-        if k.waitLeave and d2 > (reach + 14) ^ 2 then k.waitLeave = nil end
-        if not p.dead and not k.waitLeave and k.t > 0.5 and d2 < reach * reach then
-            if p.inventory:give(k.item) then
-                table.remove(self.pickups, i)
-                Audio.play("pickup")
-                local col = util.hex(require("src.config.rarities")[k.item.def.rarity].color)
-                self:floatText(k.x, k.y, k.item.def.name, col, false)
-            elseif self.bagFullT <= 0 then
-                self.bagFullT = 2
-                self:floatText(p.x, p.y, "Bag full! (E)", { 1, 0.5, 0.4 }, false)
-            end
-        end
-    end
+    local left = self.player.inventory:add(id, n)
+    for _, item in ipairs(left) do self:overflowItem(item) end
+    return #left
 end
 
 ----------------------------------------------------------------------------------------------
@@ -438,7 +408,6 @@ function World:update(dt)
         self.particles.landed = {}
     end
     self:updateCorpses(dt)
-    self:updatePickups(dt)
     if self.milestone then
         self.milestone.t = self.milestone.t + dt
         if self.milestone.t > 1.6 then self.milestone = nil end
@@ -857,24 +826,6 @@ function World:draw()
         lg.setColor(1, 1, 1, 1)
     end
 
-    -- Items on the ground: shadow, a soft rarity-coloured beam and the bobbing icon.
-    local Rarities = require("src.config.rarities")
-    for _, k in ipairs(self.pickups) do
-        local sx, sy = Iso.toScreen(k.x, k.y)
-        local r = Rarities[k.item.def.rarity]
-        r._c = r._c or util.hex(r.color)
-        local icon = Sprites.get(k.item.def.icon)
-        local s = math.min(1, 14 / math.max(icon.w, icon.h)) * 0.9
-        local bob = k.z + 3 + math.sin(k.t * 3) * 1.5
-        lg.setColor(0, 0, 0, 0.35)
-        lg.draw(atlas, glowQ, sx, sy + 1, 0, 0.7, 0.35, 8, 8)
-        lg.setColor(r._c[1], r._c[2], r._c[3], 0.25 + 0.1 * math.sin(k.t * 4))
-        lg.draw(atlas, Sprites.pixel, sx - 1, sy - 22, 0, 3, 22)
-        lg.setColor(1, 1, 1, 1)
-        Sprites.draw(icon, 1, sx, sy - bob, 0, false, s)
-    end
-    lg.setColor(1, 1, 1, 1)
-
     -- Knocked-away bodies (darkened, spinning, fading).
     for _, c in ipairs(self.corpses) do
         local sx, sy = Iso.toScreen(c.x, c.y, c.z)
@@ -1104,13 +1055,6 @@ function World:drawLighting(ox, oy, list, n)
     for _, l in ipairs(self.ground.decorLights or {}) do
         local tw = l.twinkle and (0.75 + 0.25 * math.sin(self.time * l.twinkle + l.x)) or 1
         light(l.x, l.y, l.radius, l.color[1], l.color[2], l.color[3], (l.intensity or 0.5) * tw)
-    end
-    for _, k in ipairs(self.pickups) do
-        local c = require("src.config.rarities")[k.item.def.rarity]._c
-        if c then
-            local x, y = Iso.toScreen(k.x, k.y)
-            light(x, y, 36, c[1], c[2], c[3], 0.5)
-        end
     end
     for _, fx in ipairs(self.fx) do
         local c = fx.color or { 1, 1, 1 }
