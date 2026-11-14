@@ -53,21 +53,49 @@ end
 -- group acts together (giant honey bee shimmer, warrior wasp drumming). Also returns a
 -- per-world state table for that species that persists between frames.
 local groups = setmetatable({}, { __mode = "k" })
+local function byUid(a, b) return a.uid < b.uid end
+local function fill(world, w, onlyId)
+    local enemies = world.enemies
+    for i = 1, world.enemyCount do
+        local e = enemies[i]
+        local id = e.def.id
+        if not e.dead and (onlyId == nil or id == onlyId) then
+            local g = w[id]
+            if g and g.time == world.time then g.n = g.n + 1 g.list[g.n] = e end
+        end
+    end
+end
+local function finish(g)
+    local list, n = g.list, g.n
+    for i = n + 1, #list do list[i] = nil end
+    table.sort(list, byUid)
+    for i = 1, n do list[i].st.rank = i end
+end
+-- (Every species that asked last frame is rebuilt in one shared pass over the enemies, instead
+-- of one pass per species.)
 function AI.group(world, id)
     local w = groups[world]
-    if not w then w = {} groups[world] = w end
+    if not w then w = { _time = false, _ids = {} } groups[world] = w end
     local g = w[id]
-    if not g then g = { list = {}, state = {} } w[id] = g end
-    if g.time ~= world.time then
-        g.time = world.time
-        local list, n = g.list, 0
-        for i = 1, world.enemyCount do
-            local e = world.enemies[i]
-            if not e.dead and e.def.id == id then n = n + 1 list[n] = e end
+    if not g then
+        g = { list = {}, state = {}, n = 0 }
+        w[id] = g
+        w._ids[#w._ids + 1] = id
+    end
+    if w._time ~= world.time then
+        -- first group asked for this frame: refresh every known species at once
+        w._time = world.time
+        for _, gid in ipairs(w._ids) do
+            local gg = w[gid]
+            gg.time, gg.n = world.time, 0
         end
-        for i = n + 1, #list do list[i] = nil end
-        table.sort(list, function(a, b) return a.uid < b.uid end)
-        for i = 1, n do list[i].st.rank = i end
+        fill(world, w)
+        for _, gid in ipairs(w._ids) do finish(w[gid]) end
+    elseif g.time ~= world.time then
+        -- a species seen for the first time mid-frame
+        g.time, g.n = world.time, 0
+        fill(world, w, id)
+        finish(g)
     end
     return g.list, g.state
 end

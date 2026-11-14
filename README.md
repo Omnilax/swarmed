@@ -20,6 +20,7 @@ love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --profile      # scripted massacre; prints where frame time goes, then quits
+love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
 ```
 
 The UI font is Pixelify Sans (SIL Open Font License, `assets/fonts`); Settings > Interface > Font

@@ -68,7 +68,7 @@ function love.load(args)
         State.switch(require("src.debug.roster").new({ shot = flags["--shot"], t = 0.3 }))
         return
     end
-    if flags["--profile"] then require("src.debug.profile").start() return end
+    if flags["--profile"] then require("src.debug.profile").start(flags) return end
     if flags["--balance"] then require("src.debug.balance").start() return end
     if flags["--selftest"] then
         selftest = require("src.debug.selftest")
