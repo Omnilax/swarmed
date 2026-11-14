@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Swarmed</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0f0c0b; overflow: hidden; overscroll-behavior: none; }
+  body { color: #f5ecdb; font: 16px/1.4 system-ui, sans-serif; touch-action: none;
+         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  #canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block;
+            visibility: hidden; image-rendering: pixelated; touch-action: none; outline: none; }
+  #start { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; gap: 14px; padding: 16px; text-align: center; cursor: pointer; }
+  #start h1 { margin: 0; font-size: 44px; letter-spacing: 3px; color: #f7bd45; }
+  #start .tap { padding: 12px 28px; border: 2px solid #dbbd8c; border-radius: 999px; font-size: 20px; }
+  #start .note { color: #9d928a; font-size: 14px; max-width: 420px; }
+  #rotate { display: none; color: #f7bd45; }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: block; } }
+</style>
+</head>
+<body>
+<canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div id="start">
+  <h1>SWARMED</h1>
+  <div class="tap" id="status">Loading...</div>
+  <div class="note" id="rotate">Turn your phone sideways for the best view.</div>
+  <div class="note">Left thumb moves, right thumb fires your Special and Dash. Your bug attacks on its own.</div>
+</div>
+<script>
+  var started = false, ready = false;
+  var status = document.getElementById('status');
+  var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  var Module = {
+    arguments: ['./game.love'].concat(coarse ? ['--mobile'] : []),
+    INITIAL_MEMORY: 134217728,
+    printErr: console.error.bind(console),
+    print: console.log.bind(console),
+    canvas: document.getElementById('canvas'),
+    setStatus: function (t) { if (!started && t) status.textContent = t; },
+    totalDependencies: 0, remainingDependencies: 0,
+    monitorRunDependencies: function (left) {
+      this.remainingDependencies = left;
+      this.totalDependencies = Math.max(this.totalDependencies, left);
+    }
+  };
+  Module.canvas.addEventListener('webglcontextlost', function (e) {
+    alert('The graphics context was lost. Reload the page.'); e.preventDefault();
+  }, false);
+  window.onerror = function () { status.textContent = 'Something went wrong. Reload the page.'; };
+  // keep the page itself from scrolling, zooming or opening menus
+  ['touchstart', 'touchmove', 'gesturestart', 'dblclick'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { if (started) e.preventDefault(); }, { passive: false });
+  });
+  window.addEventListener('keydown', function (e) {
+    if ([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) e.preventDefault();
+  });
+
+  function fit() { window.dispatchEvent(new Event('resize')); }
+  function start() {
+    if (started || !ready) return;
+    started = true;
+    var el = document.documentElement;
+    var fs = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (coarse && fs) {
+      try {
+        var p = fs.call(el);
+        if (p && p.then) p.then(function () {
+          if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {});
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    document.getElementById('start').style.display = 'none';
+    Module.canvas.style.visibility = 'visible';
+    Love(Module);
+    // the game window follows the page size (it is resizable); nudge it once it exists
+    [300, 1000, 2500].forEach(function (t) { setTimeout(fit, t); });
+  }
+  document.getElementById('start').addEventListener('click', start);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 400); });
+  function loaded() { ready = true; status.textContent = coarse ? 'Tap to play' : 'Click to play'; }
+</script>
+<script src="game.js"></script>
+<script async src="love.js" onload="loaded()"></script>
+</body>
+</html>

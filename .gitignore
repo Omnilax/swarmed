@@ -2,7 +2,7 @@
 # but keep them out of the repo if they ever land here)
 *.love
 *.zip
-web/
+/web/
 /swarmed-web/
 
 # Caches
