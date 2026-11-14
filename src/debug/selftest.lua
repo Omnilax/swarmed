@@ -79,15 +79,16 @@ local function inventoryScene(game, world)
     assert(math.abs(world.player.hp - math.min(world.player.stats:get("maxHp"), 10 + gain)) < 0.01, "eating did not heal")
     assert(Inventory.eatValue(Inventory.newItem("royal_jelly")) > Inventory.eatValue(Inventory.newItem("honeydew")), "rarer/bigger should heal more")
     world.player.hp = world.player.stats:get("maxHp")
-    -- a full bag: what doesn't fit lands on the ground
-    local left = inv:add("royal_jelly", 12)
-    assert(#left > 0 and inv:usedCells() <= 30, "bag should fill up")
-    for _, l in ipairs(left) do world:dropItem(l, world.player.x, world.player.y, true) end
+    -- a full bag: what doesn't fit is eaten (items never lie on the ground)
+    world.player.hp = 1
+    assert(world:giveItem("royal_jelly", 12) > 0 and inv:usedCells() <= 30, "bag should fill up")
+    assert(world.player.hp > 1 and world.pickups == nil, "overflow should be eaten, not dropped")
+    world.player.hp = world.player.stats:get("maxHp")
     -- a nice mix of shapes for the screenshot, with the cursor on the scarab shell
     inv:clear()
     for _, id in ipairs({ "silk_bundle", "scarab_shell", "dragonfly_wings", "mantis_forelimb", "royal_jelly", "termite_mandible",
                           "hornet_stinger", "four_leaf_clover", "honeydew", "ember_gland" }) do
-        for _, l in ipairs(inv:add(id)) do world:dropItem(l, world.player.x, world.player.y, true) end
+        world:giveItem(id)
     end
     print("[selftest] inventory OK (" .. #inv.bag .. " items, " .. inv:usedCells() .. "/30 cells)")
     local lastDev = Input.lastDevice
@@ -667,6 +668,7 @@ local function script(flags)
     if flags["--termites"] then termiteScene() love.event.quit() return end
     if flags["--finalwave"] then require("src.debug.selftest_finalwave")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end

@@ -1,4 +1,4 @@
--- Inventory screen (E), modelled on FATE: a small grid bag (10x3, +1 row per 15 waves) where items come in shapes
+-- Inventory screen (I / B), modelled on FATE: a small grid bag (10x3, +1 row per 15 waves) where items come in shapes
 -- (bars, L's, T's, blocks) and only fit if you can puzzle them in. There is nothing to equip:
 -- everything in the bag affects your bug and copies stack. The game is paused while it is open.
 --
@@ -451,7 +451,7 @@ function Inv:drawHints(x, y, w)
     local u = Theme.u
     local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "RB", "Skills" }, { "B", "Close" } }
         or Input.lastDevice == "touch" and { { "Tap", "Pick up / put down" }, { "TURN", "Turn held" }, { "EAT", "Eat held" } }
-        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Tab", "Skills" }, { "E", "Close" } }
+        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Tab", "Skills" }, { (Input.getKeys("inventory")[1] or "I"):upper(), "Close" } }
     local f = Theme.font(13)
     lg.setFont(f)
     local parts, total = {}, 0

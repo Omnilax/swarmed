@@ -201,7 +201,7 @@ function Inventory:recount()
 end
 
 ----------------------------------------------------------------------------------------------
--- Convenience used by pickups, the sandbox and the console
+-- Convenience used by the sandbox and the console
 
 -- Gives n copies. Returns the items that did not fit (so they can be dropped on the ground).
 function Inventory:add(id, n)

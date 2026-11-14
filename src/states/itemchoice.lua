@@ -4,6 +4,8 @@
 -- it so you can make room (or eat it). The game is paused while this is open.
 -- No accidental picks: input is ignored for a moment after it opens (space / A are also dash,
 -- the mouse is also attack), and taking a card needs two presses: one to pick it, one to confirm.
+-- SKIP (the button under the cards, Esc / Backspace, or pad B) passes on every card; it is
+-- two presses too. The skip slot is focus index #items + 1.
 local State = require("src.core.state")
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
@@ -78,13 +80,23 @@ function Choice:take(i)
     end
 end
 
+-- Pass on every card: nothing goes in the bag.
+function Choice:skip()
+    State.pop()
+    self.world.events:emit("item_skipped")
+    Audio.play("ui_back")
+    self.world:floatText(self.world.player.x, self.world.player.y, "Skipped", { 0.75, 0.7, 0.65 }, true)
+end
+
 function Choice:ready() return self.t >= Choice.ARM_TIME end
+
+function Choice:skipIndex() return #self.items + 1 end
 
 -- One press on card i: the first picks it, a second press on the same card takes it.
 function Choice:activate(i)
-    if not self:ready() or not self.items[i] then return end
+    if not self:ready() or not (self.items[i] or i == self:skipIndex()) then return end
     if self.armed == i then
-        self:take(i)
+        if i == self:skipIndex() then self:skip() else self:take(i) end
     else
         self.armed, self.focus = i, i
         Audio.play("ui_confirm", { pitch = 0.9 })
@@ -103,6 +115,8 @@ function Choice:layout()
     local y0 = math.floor((h - ch) / 2 + u(10))
     self.cards = {}
     for i = 1, n do self.cards[i] = { x = x0 + (i - 1) * (cw + gap), y = y0, w = cw, h = ch } end
+    local bw, bh = math.floor(u(150)), math.floor(u(34))
+    self.skipRect = { x = math.floor((w - bw) / 2), y = y0 + ch + u(76), w = bw, h = bh }
     return self.cards
 end
 
@@ -110,21 +124,37 @@ function Choice:cardAt(mx, my)
     for i, c in ipairs(self.cards or self:layout()) do
         if mx >= c.x and mx < c.x + c.w and my >= c.y and my < c.y + c.h then return i end
     end
+    local r = self.skipRect
+    if r and mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h then return self:skipIndex() end
 end
 
 function Choice:update(dt)
     self.t = self.t + dt
     if not self:ready() then return end
-    local f = self.focus
-    if Input.pressed("ui_left") then self.focus = (self.focus - 2) % #self.items + 1; Audio.play("ui_move") end
-    if Input.pressed("ui_right") then self.focus = self.focus % #self.items + 1; Audio.play("ui_move") end
+    local f, n, skipI = self.focus, #self.items, self:skipIndex()
+    if self.focus == skipI then
+        if Input.pressed("ui_up") or Input.pressed("ui_left") or Input.pressed("ui_right") then
+            self.focus = self.lastCard or 1; Audio.play("ui_move")
+        end
+    else
+        if Input.pressed("ui_left") then self.focus = (self.focus - 2) % n + 1; Audio.play("ui_move") end
+        if Input.pressed("ui_right") then self.focus = self.focus % n + 1; Audio.play("ui_move") end
+        if Input.pressed("ui_down") then self.lastCard = self.focus; self.focus = skipI; Audio.play("ui_move") end
+    end
     if self.focus ~= f then self.armed = nil end
-    if Input.pressed("ui_confirm") then self:activate(self.focus) end
+    if Input.pressed("ui_confirm") then self:activate(self.focus)
+    elseif Input.pressed("ui_back") then
+        if self.focus ~= skipI then self.lastCard = self.focus end
+        self:activate(skipI)
+    end
 end
 
 function Choice:mousemoved(x, y)
     local i = self:cardAt(x, y)
-    if i and i ~= self.focus and not self.armed then self.focus = i; Audio.play("ui_move") end
+    if i and i ~= self.focus and not self.armed then
+        if self.focus <= #self.items then self.lastCard = self.focus end
+        self.focus = i; Audio.play("ui_move")
+    end
 end
 
 function Choice:mousepressed(x, y, b)
@@ -148,7 +178,7 @@ function Choice:draw()
     Theme.printShadow(title, 0, cards[1].y - u(78), COL.label, "center", w)
     lg.setFont(Theme.font(16))
     lg.setColor(COL.dim)
-    lg.printf("Pick one item for your bag", 0, cards[1].y - u(40), w, "center")
+    lg.printf("Pick one item for your bag, or skip them all", 0, cards[1].y - u(40), w, "center")
 
     local inv = self.world.player.inventory
     local ready = self:ready()
@@ -209,6 +239,30 @@ function Choice:draw()
             lg.setColor(COL.label)
             lg.printf("You have " .. have .. " (stacks)", x, y + c.h - u(26), c.w, "center")
         end
+    end
+    -- SKIP button under the cards
+    local r = self.skipRect
+    local sf, sa = self.focus == self:skipIndex(), self.armed == self:skipIndex()
+    InvState.plate(r.x, r.y, r.w, r.h, sf and { 0.2, 0.15, 0.12 } or COL.frame, true)
+    if sf then
+        lg.setColor(COL.label)
+        lg.setLineWidth(2)
+        lg.rectangle("line", r.x - 3, r.y - 3, r.w + 6, r.h + 6)
+        lg.setLineWidth(1)
+    end
+    lg.setFont(Theme.font(16, "bold"))
+    local skipKey = Input.lastDevice == "gamepad" and "B" or Input.lastDevice == "touch" and nil or "Esc"
+    Theme.printShadow(skipKey and ("SKIP (" .. skipKey .. ")") or "SKIP", r.x, r.y + math.floor((r.h - lg.getFont():getHeight()) / 2),
+        sf and COL.label or COL.dim, "center", r.w)
+    if sa then
+        lg.setFont(Theme.font(14, "bold"))
+        local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
+        local again = Input.lastDevice == "touch" and "TAP AGAIN TO SKIP ALL" or "PRESS AGAIN TO SKIP ALL"
+        Theme.printShadow(again, 0, r.y + r.h + u(8), { 1, 0.75, 0.6, pulse }, "center", w)
+    end
+    if not ready then
+        lg.setColor(0.02, 0.015, 0.02, 0.55 * (1 - self.t / Choice.ARM_TIME))
+        lg.rectangle("fill", r.x, r.y, r.w, r.h)
     end
     lg.setFont(Theme.font(13))
     lg.setColor(COL.dim)
