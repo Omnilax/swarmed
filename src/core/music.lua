@@ -6,11 +6,22 @@
 --   menu   soft pad and music-box arp          break  between waves, calm
 --   wave   bass and drums come in              swarm  lots of enemies: the lead melody joins
 --   boss   a queen is out: toms and brass      dead   everything falls away, pitch sinks
+-- On top of the moods, the music follows the run (Music.drive's third argument, see below):
+--   danger  low health: a throbbing drone and a ticking clock come in, the tune gets muffled
+--           (a low-pass filter where the platform has one) and the tape wobbles
+--   frenzy  a big kill combo: claps, shakers and a sparkle run pile on
+--   night   the pad swells and the drums soften after dark
+-- and the bug you play (Music.setCharacter): each body plan has its own signature stem (spiders
+-- creep, beetles chug, crustaceans bubble, myriapods rattle, flyers whistle, other insects play a
+-- kalimba), and the whole loop is played a few semitones lower and slower for big slow bugs,
+-- higher and quicker for small fast ones. The final wave of a run lifts the key a semitone.
 -- Stems are rendered a little each frame (so start-up never stalls) and cached as .wav files in
--- the save folder, so later launches load them instantly. Bump CACHE when the score changes.
+-- the save folder, so later launches load them instantly. A signature stem renders the first
+-- time its bug is picked. Bump CACHE when the score changes.
 local Settings = require("src.core.settings")
 
-local Music = { stems = {}, ready = false, mood = "menu", gains = {}, pitch = 1, duck = 1 }
+local Music = { stems = {}, ready = false, mood = "menu", gains = {}, pitch = 1, duck = 1, key = 0,
+    extras = {}, filter = 1 }
 
 local RATE = 22050
 local BPM = 120
@@ -18,7 +29,9 @@ local STEP = 60 / BPM / 4                 -- one sixteenth note, seconds
 local BARS = 8
 local LEN = math.floor(BARS * 16 * STEP * RATE + 0.5)
 local CACHE = "music/v1_"
-local ORDER = { "pad", "arp", "bass", "drums", "lead", "boss" }
+local ORDER = { "pad", "arp", "bass", "drums", "lead", "boss", "danger", "frenzy" }
+-- signature stems, one per body plan (rendered on demand)
+local THEMES = { "creep", "chug", "bubble", "rattle", "flute", "kalimba" }
 
 -- How loud each stem is in each mood (0..1, before the music volume setting).
 local MIX = {
@@ -30,6 +43,9 @@ local MIX = {
     final = { pad = 0.3, bass = 1, drums = 1, lead = 0.4, boss = 1 },
     dead  = { pad = 0.5 },
 }
+-- how loud the bug's signature stem is in each mood
+local SIG = { menu = 0, brk = 0.55, wave = 0.6, swarm = 0.65, boss = 0.4, final = 0.55, dead = 0 }
+SIG["break"] = SIG.brk
 MIX["break"] = MIX.brk
 
 -- ---------------------------------------------------------------- score
@@ -69,7 +85,12 @@ local function note(buf, start, dur, f, vol, kind)
     elseif kind == "bass" then attack, decay, release = 0.004, 3.5, 0.03
     elseif kind == "pad" then attack, release, tail = 0.35, 0.45, 0.45
     elseif kind == "lead" then attack, decay, release = 0.02, 0.6, 0.08
-    elseif kind == "brass" then attack, decay, release, tail = 0.25, 0.15, 0.3, 0.3 end
+    elseif kind == "brass" then attack, decay, release, tail = 0.25, 0.15, 0.3, 0.3
+    elseif kind == "marimba" then attack, decay, tail = 0.002, 11, 0.18
+    elseif kind == "bubble" then attack, decay, tail = 0.002, 16, 0.12
+    elseif kind == "chug" then attack, decay, release = 0.003, 7, 0.02
+    elseif kind == "flute" then attack, release, tail = 0.07, 0.1, 0.1
+    elseif kind == "drone" then attack, release, tail = 0.5, 0.5, 0.5 end
     local n = math.floor((dur + tail) * RATE)
     local hold = dur * RATE
     local rel = release * RATE
@@ -98,6 +119,23 @@ local function note(buf, start, dur, f, vol, kind)
         elseif kind == "lead" then
             ph = ph + w * (1 + (t > 0.15 and 0.006 * sin(t * 34) or 0))
             v = sin(ph) + 0.3 * sin(ph * 3) + 0.12 * sin(ph * 5)
+        elseif kind == "marimba" then
+            ph = ph + w
+            v = sin(ph) + 0.4 * sin(ph * 4) * exp(-t * 45) + 0.1 * sin(ph * 10) * exp(-t * 90)
+        elseif kind == "bubble" then          -- a blip that glides upward
+            ph = ph + w * (1 + t * 6)
+            v = sin(ph) + 0.2 * sin(ph * 2)
+        elseif kind == "chug" then            -- palm-muted power chord, softly clipped
+            ph = ph + w
+            local x = (sin(ph) + 0.8 * sin(ph * 1.5) + 0.6 * sin(ph * 2) + 0.3 * sin(ph * 3)) * 2.2
+            v = x / (1 + (x < 0 and -x or x))
+        elseif kind == "flute" then
+            ph = ph + w * (1 + (t > 0.2 and 0.007 * sin(t * 31) or 0))
+            v = sin(ph) + 0.18 * sin(ph * 2) + 0.07 * sin(ph * 3) + 0.06 * (random() * 2 - 1)
+        elseif kind == "drone" then           -- throbs on the eighth notes (4 Hz at 120 bpm)
+            ph = ph + w
+            ph2 = ph2 + w * 2.006
+            v = (sin(ph) + 0.45 * sin(ph2) + 0.2 * sin(ph * 3)) * (0.55 + 0.45 * sin(t * TAU * 4 - 1.57))
         else -- brass
             ph = ph + w * (1 + 0.004 * sin(t * 30))
             v = sin(ph) + 0.6 * sin(ph * 2) + 0.4 * sin(ph * 3) + 0.25 * sin(ph * 4) + 0.12 * sin(ph * 5)
@@ -110,7 +148,8 @@ local function note(buf, start, dur, f, vol, kind)
 end
 
 local function drum(buf, start, kind, vol)
-    local n = math.floor((kind == "kick" and 0.3 or kind == "tom" and 0.4 or kind == "snare" and 0.2 or 0.05) * RATE)
+    local n = math.floor((kind == "kick" and 0.3 or kind == "tom" and 0.4 or kind == "snare" and 0.2
+        or kind == "clap" and 0.18 or kind == "shaker" and 0.07 or kind == "tick" and 0.025 or 0.05) * RATE)
     local ph, lp = 0, 0
     for i = 0, n - 1 do
         local t = i / RATE
@@ -126,6 +165,18 @@ local function drum(buf, start, kind, vol)
             local nz = random() * 2 - 1
             lp = lp + (nz - lp) * 0.5
             v = (sin(ph) * 0.5 * exp(-t * 30) + lp * 0.8) * exp(-t * 18)
+        elseif kind == "clap" then            -- three quick bursts, then a short tail
+            local nz = random() * 2 - 1
+            lp = lp + (nz - lp) * 0.6
+            local tb = t < 0.024 and (t % 0.008) or (t - 0.016)
+            v = (nz - lp) * exp(-tb * 120)
+        elseif kind == "shaker" then
+            local nz = random() * 2 - 1
+            lp = lp + (nz - lp) * 0.2
+            v = (nz - lp) * (t < 0.015 and t / 0.015 or exp(-(t - 0.015) * 60))
+        elseif kind == "tick" then            -- a dry clock tick
+            ph = ph + 2400 * TAU / RATE
+            v = sin(ph) * exp(-t * 260)
         else -- hat: noise minus its low part
             local nz = random() * 2 - 1
             lp = lp + (nz - lp) * 0.3
@@ -197,6 +248,103 @@ local SCORE = {
             for _, s in ipairs({ 0, 3, 6, 8, 11, 14 }) do drum(buf, at(bar, s), "tom", s == 0 and 0.8 or 0.5) end
         end
     end,
+    -- low health: a throbbing low D with a sour E-flat above, and a clock ticking the beats
+    danger = function(buf)
+        for bar = 1, BARS do
+            note(buf, at(bar, 0), 16 * STEP, freq(38), 0.5, "drone")
+            note(buf, at(bar, 0), 16 * STEP, freq(51), 0.22, "drone")
+            for s = 0, 15, 4 do drum(buf, at(bar, s), "tick", s == 0 and 0.5 or 0.35) end
+            for s = 2, 15, 4 do drum(buf, at(bar, s), "tick", 0.18) end
+        end
+    end,
+    -- a big combo: claps on the backbeat, a running shaker and a sparkle run every other bar
+    frenzy = function(buf)
+        for bar = 1, BARS do
+            drum(buf, at(bar, 4), "clap", 0.7)
+            drum(buf, at(bar, 12), "clap", 0.7)
+            if bar % 4 == 0 then drum(buf, at(bar, 14), "clap", 0.45); drum(buf, at(bar, 15), "clap", 0.55) end
+            for s = 0, 15 do drum(buf, at(bar, s), "shaker", s % 2 == 1 and 0.4 or 0.22) end
+            if bar % 2 == 0 then
+                local r, th, fi = tones(bar)
+                local run = { r + 36, th + 36, fi + 36, r + 48 }
+                for k = 1, 4 do note(buf, at(bar, 11 + k), STEP * 0.8, freq(run[k]), 0.16 + k * 0.03, "pluck") end
+            end
+        end
+    end,
+
+    -- ---- signature stems, one per body plan
+    -- spiders and other arachnids: a creeping, chromatically falling tremolo
+    creep = function(buf)
+        for bar = 1, BARS do
+            local r, _, fi = tones(bar)
+            for q = 0, 3 do
+                local m = fi + 12 - q
+                for k = 0, 3 do
+                    note(buf, at(bar, q * 4 + k), STEP * 0.7, freq(m), k == 0 and 0.32 or 0.18, "pluck")
+                end
+            end
+            if bar % 2 == 0 then note(buf, at(bar, 14), STEP * 2, freq(r + 1), 0.25, "marimba") end
+        end
+    end,
+    -- beetles: heavy palm-muted power chords
+    chug = function(buf)
+        local hits = { 0, 1, 3, 6, 8, 9, 11, 14 }
+        for bar = 1, BARS do
+            local r = CHORDS[bar][1] - 12
+            for i, s in ipairs(hits) do
+                note(buf, at(bar, s), STEP * (i % 2 == 1 and 0.9 or 0.6), freq(r), i % 2 == 1 and 0.6 or 0.4, "chug")
+            end
+        end
+    end,
+    -- crustaceans: off-beat marimba and rising bubbles
+    bubble = function(buf)
+        for bar = 1, BARS do
+            local r, th, fi = tones(bar)
+            local set = { r + 24, fi + 12, th + 24, fi + 24 }
+            for i, s in ipairs({ 2, 6, 10, 14 }) do note(buf, at(bar, s), STEP * 1.5, freq(set[i]), 0.4, "marimba") end
+            note(buf, at(bar, 7), STEP, freq(fi + 24), 0.22, "marimba")
+            for k = 0, (bar % 2 == 1 and 2 or 1) do
+                note(buf, at(bar, 12 + k), STEP * 0.6, freq(r + 36 + k * 5), 0.18, "bubble")
+            end
+        end
+    end,
+    -- centipedes and millipedes: a scuttle of clicks over a low marimba ostinato
+    rattle = function(buf)
+        for bar = 1, BARS do
+            local r, _, fi = tones(bar)
+            for s = 0, 15 do drum(buf, at(bar, s), "tick", (s % 4 == 0 and 0.55) or (s % 2 == 0 and 0.35) or 0.22) end
+            for _, s in ipairs({ 0, 3, 6, 10, 12 }) do
+                note(buf, at(bar, s), STEP * 1.5, freq((s == 6 or s == 12) and fi or r), 0.45, "marimba")
+            end
+        end
+    end,
+    -- flyers: a high, airy flute line with trills
+    flute = function(buf)
+        for bar = 1, BARS do
+            local r, th, fi = tones(bar)
+            if bar % 4 == 0 then
+                for s = 0, 7 do note(buf, at(bar, s), STEP * 0.95, freq((s % 2 == 0) and fi + 24 or fi + 26), 0.3, "flute") end
+                note(buf, at(bar, 8), STEP * 7.5, freq(th + 24), 0.32, "flute")
+            else
+                note(buf, at(bar, 0), STEP * 5.5, freq(th + 24), 0.32, "flute")
+                note(buf, at(bar, 6), STEP * 1.8, freq(fi + 24), 0.28, "flute")
+                note(buf, at(bar, 8), STEP * 7.5, freq(r + 36), 0.3, "flute")
+            end
+        end
+    end,
+    -- every other insect: a bright kalimba counter-melody
+    kalimba = function(buf)
+        local pat = { { 0, 3 }, { 3, 2 }, { 6, 1 }, { 10, 2 }, { 12, 3 }, { 14, 4 } }
+        for bar = 1, BARS do
+            local r, th, fi = tones(bar)
+            local set = { r + 24, th + 24, fi + 24, r + 36 }
+            for i, p in ipairs(pat) do
+                local k = p[2]
+                if bar % 2 == 0 then k = 5 - k end
+                note(buf, at(bar, p[1]), STEP * 1.8, freq(set[k]), i == 1 and 0.4 or 0.3, "marimba")
+            end
+        end
+    end,
 }
 
 -- ---------------------------------------------------------------- rendering and caching
@@ -245,21 +393,49 @@ local function load(name)
     return sd
 end
 
+-- Turns a stem's sound data into a looping source; joins in time with the others if they play.
+local function addSource(name, sd)
+    local src = love.audio.newSource(sd, "static")
+    src:setLooping(true)
+    src:setVolume(0)
+    src:setPitch(Music.pitch)
+    Music.stems[name] = src
+    Music.gains[name] = Music.gains[name] or 0
+    if Music.playing then
+        local lead = Music.stems.pad
+        if lead then pcall(src.seek, src, lead:tell("samples") % LEN, "samples") end
+        src:play()
+    end
+end
+
+-- Runs a render job a few milliseconds per frame; queued signature stems start when it ends.
+local function startJob(fn)
+    Music.job = coroutine.create(fn)
+end
+
+local function queueTheme(theme)
+    if not theme or not Music.data or Music.stems[theme] or Music.loading == theme or not SCORE[theme] then return end
+    if Music.job and coroutine.status(Music.job) ~= "dead" then
+        Music.queued = theme                 -- the core stems first; this one right after
+        return
+    end
+    Music.loading = theme
+    startJob(function()
+        local sd = load(theme)
+        Music.data[theme] = sd
+        addSource(theme, sd)
+        Music.loading = nil
+    end)
+end
+
 function Music.init(opts)
-    Music.job = coroutine.create(function()
-        local data = {}
+    Music.data = {}
+    startJob(function()
         for _, name in ipairs(ORDER) do
-            data[name] = load(name)
+            Music.data[name] = load(name)
             coroutine.yield()
         end
-        Music.data = data
-        for _, name in ipairs(ORDER) do
-            local src = love.audio.newSource(data[name], "static")
-            src:setLooping(true)
-            src:setVolume(0)
-            Music.stems[name] = src
-            Music.gains[name] = 0
-        end
+        for _, name in ipairs(ORDER) do addSource(name, Music.data[name]) end
         Music.ready = true
     end)
     if opts and opts.now then Music.finish() end
@@ -267,16 +443,94 @@ end
 
 -- Render everything right now (tests).
 function Music.finish()
-    while Music.job and coroutine.status(Music.job) ~= "dead" do
-        local ok, err = coroutine.resume(Music.job)
-        if not ok then error(err) end
-    end
+    repeat
+        while Music.job and coroutine.status(Music.job) ~= "dead" do
+            local ok, err = coroutine.resume(Music.job)
+            if not ok then error(err) end
+        end
+        local q = Music.queued
+        Music.queued = nil
+        if q then queueTheme(q) end
+    until not (Music.job and coroutine.status(Music.job) ~= "dead")
 end
+
+-- ---------------------------------------------------------------- the bug you play
+
+-- Which signature stem and key a character gets. A character file can choose with
+-- `music = "chug"` or `music = { theme = "chug", key = -2 }`; otherwise it follows its tags,
+-- and the key follows its size and speed (big and slow: lower and slower, small and fast: higher).
+local TAG_THEME = {
+    { "flying", "flute" }, { "spider", "creep" }, { "arachnid", "creep" }, { "beetle", "chug" },
+    { "crustacean", "bubble" }, { "myriapod", "rattle" },
+}
+function Music.themeFor(def, radius, speed)
+    if not def then return nil, 0 end
+    local m = def.music
+    local theme = type(m) == "string" and m or type(m) == "table" and m.theme or nil
+    if not theme then
+        local tags = {}
+        for _, t in ipairs(def.tags or {}) do tags[t] = true end
+        for _, tt in ipairs(TAG_THEME) do
+            if tags[tt[1]] then theme = tt[2]; break end
+        end
+        theme = theme or "kalimba"
+    end
+    local key = type(m) == "table" and m.key
+    if not key then
+        local r = radius or def.radius or 8
+        local v = speed or (def.stats and def.stats.moveSpeed) or 105
+        key = math.floor(-(r - 8) * 0.7 + (v - 105) / 25 + 0.5)
+        key = math.max(-3, math.min(3, key))
+    end
+    return theme, key
+end
+
+-- The bug on screen (a run, or the one highlighted in the character select). nil: none.
+function Music.setCharacter(def, radius, speed)
+    local theme, key = Music.themeFor(def, radius, speed)
+    Music.theme, Music.key = theme, key or 0
+    queueTheme(theme)
+end
+
+Music.THEMES = THEMES
 
 -- Called by the game every frame while a run is on screen.
 -- mood: "break" | "wave" | "swarm" | "boss" | "final" | "dead"; duck: 0..1 (menus on top).
-function Music.drive(mood, duck)
+-- extras (optional): danger 0..1 (low health), frenzy 0..1 (kill combo), night 0..1.
+function Music.drive(mood, duck, extras)
     Music.mood, Music.duck, Music.driven = mood, duck or 1, true
+    Music.extras = extras or {}
+end
+
+-- The character select previews a bug's signature stem over the menu music.
+function Music.preview(def)
+    Music.previewing = def
+    if def then Music.setCharacter(def) end
+end
+
+local filterOK
+local function canFilter()
+    if filterOK == nil then
+        filterOK = love.system.getOS() ~= "Web" and love.audio.isEffectsSupported
+            and love.audio.isEffectsSupported() or false
+    end
+    return filterOK
+end
+
+-- muffles the tune at low health (desktop only; the web build skips it)
+local function setFilter(amount)
+    if not canFilter() then return end
+    if amount >= 0.99 then amount = 1 end
+    if amount == Music.filter or (amount < 1 and math.abs(amount - Music.filter) < 0.03) then return end
+    Music.filter = amount
+    for name, src in pairs(Music.stems) do
+        if name ~= "danger" then
+            local ok = pcall(function()
+                if amount == 1 then src:setFilter() else src:setFilter({ type = "lowpass", volume = 1, highgain = amount }) end
+            end)
+            if not ok then filterOK = false; return end
+        end
+    end
 end
 
 function Music.update(dt)
@@ -288,40 +542,73 @@ function Music.update(dt)
             if not ok then
                 print("music: " .. tostring(err))
                 Music.job = nil
+                Music.loading = nil
                 break
             end
         until coroutine.status(job) == "dead" or love.timer.getTime() - t0 > 0.005
-        if not Music.ready then return end
+    elseif Music.queued then
+        local q = Music.queued
+        Music.queued = nil
+        queueTheme(q)
     end
     if not Music.ready then return end
     if not Music.playing then
-        local list = {}
-        for _, name in ipairs(ORDER) do list[#list + 1] = Music.stems[name] end
         -- all in the same frame, so the stems stay locked together. Not love.audio.play(list):
         -- love.js (the web build) crashes in alSourcePlayv when given several sources.
-        for _, src in ipairs(list) do src:play() end
+        for _, name in ipairs(ORDER) do Music.stems[name]:play() end
+        for _, name in ipairs(THEMES) do if Music.stems[name] then Music.stems[name]:play() end end
         Music.playing = true
     end
     -- nothing drove it this frame: we are in the menus
-    local mood, duck = Music.mood, Music.duck
-    if not Music.driven then mood, duck = "menu", 1 end
+    local mood, duck, ex = Music.mood, Music.duck, Music.extras
+    local inRun = Music.driven
+    if not inRun then mood, duck, ex = "menu", 1, {} end
     Music.driven = false
     Music.current = mood
+    local preview = not inRun and Music.previewing
+    Music.previewing = nil                   -- the character select sets it again every frame
+    if not inRun and not preview then Music.theme, Music.key = nil, 0 end
+
+    local danger = mood == "dead" and 0 or (ex.danger or 0)
+    local frenzy = ex.frenzy or 0
+    local night = ex.night or 0
+    Music.danger, Music.frenzy = danger, frenzy
 
     local vol = Settings.get("masterVolume") / 100 * Settings.get("musicVolume") / 100 * 0.4
     if Music.focused == false and Settings.get("muteUnfocused") then vol = 0 end
     local mix = MIX[mood] or MIX.menu
     local fade = math.min(1, dt * (mood == "dead" and 0.8 or 1.6))
-    for _, name in ipairs(ORDER) do
-        local g = Music.gains[name]
-        g = g + ((mix[name] or 0) * duck - g) * fade
-        Music.gains[name] = g
-        Music.stems[name]:setVolume(g * vol)
+    local function target(name)
+        local g
+        if name == "danger" then g = danger * 0.85
+        elseif name == "frenzy" then g = frenzy * 0.75
+        elseif name == Music.theme then
+            g = preview and 0.6 or (SIG[mood] or 0)
+            g = g * (1 - 0.4 * danger)
+        else
+            g = mix[name] or 0
+            if name == "pad" then g = g * (1 + 0.3 * night) * (1 - 0.35 * danger)
+            elseif name == "arp" or name == "lead" then g = g * (1 - 0.55 * danger)
+            elseif name == "drums" then g = g * (1 - 0.25 * night) end
+        end
+        return math.min(1, g) * duck
     end
-    -- when the player falls, the tape slows down a little
-    local want = mood == "dead" and 0.82 or 1
+    for name, src in pairs(Music.stems) do
+        local g = Music.gains[name] or 0
+        g = g + (target(name) - g) * fade
+        Music.gains[name] = g
+        src:setVolume(g * vol)
+    end
+    setFilter(1 - 0.8 * Music.gains.danger / 0.85)
+
+    -- the key: the bug's size, a lift for the final wave; the tape slows when the player falls
+    -- and wobbles when they are nearly dead
+    local semis = (Music.key or 0) + (mood == "final" and 1 or 0)
+    local want = 2 ^ (semis / 12) * (mood == "dead" and 0.82 or 1)
     Music.pitch = Music.pitch + (want - Music.pitch) * math.min(1, dt * 1.2)
-    for _, name in ipairs(ORDER) do Music.stems[name]:setPitch(Music.pitch) end
+    Music.wobbleT = (Music.wobbleT or 0) + dt
+    local p = Music.pitch * (1 + 0.01 * Music.gains.danger * math.sin(Music.wobbleT * 4.5))
+    for _, src in pairs(Music.stems) do src:setPitch(p) end
 end
 
 function Music.setFocused(f) Music.focused = f end

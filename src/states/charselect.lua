@@ -1,6 +1,7 @@
 -- Character select, generated from content/characters.
 local State = require("src.core.state")
 local Content = require("src.content")
+local Music = require("src.core.music")
 local Theme = require("src.ui.theme")
 local Menu = require("src.ui.menu")
 local Sprites = require("src.gfx.sprites")
@@ -55,6 +56,9 @@ end
 function CharSelect:update(dt)
     self.t = self.t + dt
     self.menu:update(dt)
+    -- the menu music picks up the highlighted bug's signature tune (src/core/music.lua)
+    local it = self.menu:focused()
+    Music.preview(it and it.character)
 end
 
 function CharSelect:draw()
