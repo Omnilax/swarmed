@@ -117,7 +117,13 @@ return function(wait, shot)
     pl:hurt(10, world:spawnEnemy("worker_ant", pl.x + 5, pl.y))
     pl:hurt(10, "acid")
     assert(pl.hp == hp, "a ground ant hurt the flying dragonfly")
-    pl:hurt(5, world:spawnEnemy("honey_bee", pl.x + 40, pl.y))
+    -- (a few tries: the dragonfly's dodge chance can make any single bite miss)
+    local bee = world:spawnEnemy("honey_bee", pl.x + 40, pl.y)
+    for _ = 1, 20 do
+        if pl.hp < hp then break end
+        pl.iframes = 0
+        pl:hurt(5, bee)
+    end
     assert(pl.hp < hp, "a bee should still reach the flying dragonfly")
     for _ = 1, 60 do if pl.airborne then run(0.1) end end
     assert(not pl.airborne, "flight should run out")
