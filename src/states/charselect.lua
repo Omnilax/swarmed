@@ -80,13 +80,15 @@ function CharSelect:draw()
     if def.model then
         -- slowly turning 3D model on a soft shadow
         local cx, cy = px + pw / 2, Theme.u(120) + Theme.u(small and 6 or 30) + spr.size * s * (small and 0.45 or 0.6)
+        -- drawn at the bug's in-game size so tiny and huge bugs look it next to each other
+        local ds = s * (def.scale or 1)
         lg.setColor(0, 0, 0, 0.35)
-        lg.ellipse("fill", cx, cy + s * 2, spr.w * s * 0.55, spr.w * s * 0.25)
+        lg.ellipse("fill", cx, cy + s * 2, spr.w * ds * 0.55, spr.w * ds * 0.25)
         -- in the skin picked in Cosmetics
         local skin = require("src.game.cosmetics").skinFor(def.id)
         local skinShader = require("src.game.cosmetics").shader(skin)
         if skinShader then love.graphics.setShader(skinShader) end
-        Sprites.drawModel((skin and skin.model) or def.model, math.floor(self.t * spr.fps) + 1, cx, cy, math.pi * 0.25 + math.sin(self.t * 0.7) * 1.4, false, s, s)
+        Sprites.drawModel((skin and skin.model) or def.model, math.floor(self.t * spr.fps) + 1, cx, cy, math.pi * 0.25 + math.sin(self.t * 0.7) * 1.4, false, ds, ds)
         love.graphics.setShader()
     else
         Sprites.draw(spr, math.floor(self.t * spr.fps) + 1, px + pw / 2, Theme.u(120) + Theme.u(30) + spr.size * s / 2, -math.pi / 2, false, s)
@@ -126,6 +128,14 @@ function CharSelect:draw()
     local col = 0
     local sy = ty + Theme.u(124) + extra
     lg.setFont(Theme.font(16))
+    -- body size first: it sets the hitbox and how far the bug gets shoved
+    local sc = def.scale or 1
+    local sizeName = sc < 0.86 and "Tiny" or sc < 0.98 and "Small" or sc < 1.12 and "Medium" or sc < 1.32 and "Large" or "Huge"
+    lg.setColor(Theme.colors.dim)
+    lg.print("Size", px + Theme.u(40), sy)
+    lg.setColor(Theme.colors.text)
+    lg.print(sizeName, px + Theme.u(40) + Theme.u(150), sy)
+    col = 1
     for _, sd in ipairs(Stats.defs) do
         local v = stats:get(sd.id)
         if def.stats and def.stats[sd.id] then
@@ -133,7 +143,7 @@ function CharSelect:draw()
             local cy = sy + math.floor(col / 2) * Theme.u(24)
             lg.setColor(Theme.colors.dim)
             lg.print(sd.label, cx, cy)
-            lg.setColor(v >= sd.default and Theme.colors.good or Theme.colors.bad)
+            lg.setColor(((v >= sd.default) ~= (sd.lowerIsBetter == true)) and Theme.colors.good or Theme.colors.bad)
             lg.print(Stats.format(sd.id, v), cx + Theme.u(150), cy)
             col = col + 1
         end

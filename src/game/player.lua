@@ -86,7 +86,7 @@ function Player:setCharacter(def)
     Stamina.state(self)
     self.blocking, self.blockFxT, self.dashHop, self.z, self.dashHit, self.grapple = false, 0, 0, 0, nil, nil
     self.sprite = Sprites.get(def.sprite)
-    self.shadow = Sprites.shadowFor(self.sprite.w * 0.9)
+    self.shadow = Sprites.shadowFor(self.sprite.w * 0.9 * (def.scale or 1))
     self.angle, self.anim, self.wangle = 0, 0, 0
     self.model = def.model
     -- chain bodies (centipede): each segment's world position, trailing behind the head
@@ -569,9 +569,11 @@ function Player:hurt(amount, source)
     end
 end
 
--- Shove the player (trap-jaw snaps, explosions).
+-- Shove the player (trap-jaw snaps, explosions). Big bugs are heavier and get pushed less,
+-- tiny ones get flung further (def.scale 1.45 takes ~57% of the shove, 0.8 takes ~140%).
 function Player:knock(dx, dy, force)
     local l = math.sqrt(dx * dx + dy * dy) + 0.0001
+    force = force / (self.def.scale or 1) ^ 1.5
     self.kvx, self.kvy = self.kvx + dx / l * force, self.kvy + dy / l * force
 end
 

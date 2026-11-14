@@ -11,7 +11,8 @@ return {
     model = { legs = "crab_legs", body = "crab_body", height = 4, lift = 2, stride = 1.2 },
     order = 15,
     radius = 9,
-    stats = { maxHp = 70, armor = 4, moveSpeed = 95 },
+    scale = 1.1,
+    stats = { maxHp = 80, armor = 6, moveSpeed = 95 },
     -- walks fastest side-on: forward and back are slower (Player:update, Player:walkFacing)
     sideways = { forward = 0.6, side = 1.15 },
     attack = { type = "clawsnip", damage = 7, cooldown = 0.32, radius = 21, offset = 24, spread = 9, color = { 1, 0.6, 0.45 } },

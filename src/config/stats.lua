@@ -15,5 +15,5 @@ return {
     { id = "luck", label = "Luck", default = 0, percent = true },
     { id = "lifesteal", label = "Life Steal", default = 0, min = 0, max = 100, percent = true },
     { id = "pickupRange", label = "Pickup Range", default = 40, min = 0 },
-    { id = "dashCooldown", label = "Dash Cooldown", default = 1.2, min = 0.2 },
+    { id = "dashCooldown", label = "Dash Cooldown", default = 1.2, min = 0.2, lowerIsBetter = true },
 }
