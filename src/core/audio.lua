@@ -52,6 +52,17 @@ local defs = {
                 return lp * 2.5 * (1 - p) ^ 2
             end)
         end },
+    -- ground heaving before ants burst out of it (src/game/entries.lua)
+    rumble = { bus = "sfx", voices = 2, gap = 0.25, volume = 0.45, pitchVar = 0.2,
+        data = function()
+            local lp, lp2 = 0, 0
+            return synth(0.6, function(t, p)
+                lp = lp + (noise() - lp) * 0.04
+                lp2 = lp2 + (lp - lp2) * 0.1
+                local tremble = 0.6 + 0.4 * math.sin(t * 38 * math.pi * 2)
+                return lp2 * 9 * math.sin(p * math.pi) * tremble
+            end)
+        end },
     pickup = { bus = "sfx", voices = 3, gap = 0.05, volume = 0.4,
         data = function()
             return synth(0.18, function(t, p)
