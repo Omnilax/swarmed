@@ -59,6 +59,7 @@ function Enemy.spawn(world, def, x, y, elite)
     e.hurtTimer = 0
     e.spawnT = 0.2
     e.z, e.held, e.heldBy = 0, nil, nil
+    e.dropH = nil
     e.hidden, e.alpha = nil, nil      -- burrowed (untargetable, undrawn) / see-through (camouflage)
     e.slowT, e.slowMul = 0, 1
     e.stunT, e.corrodeT, e.corrodeMul = 0, 0, 1   -- stunned (hiss), corroded by acid (takes more damage)

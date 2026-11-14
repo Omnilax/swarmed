@@ -29,6 +29,8 @@ return {
         weight = 10,                -- relative spawn chance (0 = never spawns naturally)
         minWave = 1,                -- first wave it can appear in
         groupSize = 1,              -- multiplier on horde size
+        -- entries = { "burrow", "edge" },  -- ways it may arrive (edge, burrow, drop), first = most
+                                            -- likely; default: "flying" tag drops, "burrower" digs
     },
     gibs = { "#6b2f2a", "#a04b38" },-- body-bit colours on death (they land and stay on the floor)
     splat = "#c9b45a",              -- hemolymph colour: the pool, spray and droplets

@@ -18,6 +18,7 @@ love . --roster       # model viewer: every bug walking in place
 love . --anims        # attack animation viewer (--shot saves anims_<id>.png contact sheets)
 love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
+love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 ```
 

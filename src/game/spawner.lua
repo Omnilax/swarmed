@@ -5,7 +5,8 @@
 -- the last one is the final boss wave, where crowned queens come one after another, and clearing
 -- it wins the run (the player may keep going; every finalWave waves after that is another). Ants pour in from several points
 -- around the arena at once (more as the waves go on), and small packs keep slipping in from
--- other sides while the wave runs, so it always feels like being surrounded.
+-- other sides while the wave runs, so it always feels like being surrounded. Some groups take
+-- other ways in: burrowing up, dropping from the sky, nest holes, burrow rings (src/game/entries.lua).
 -- Clear the wave (every ant dead), pick an item, then a short breather (Settings "waveBreak":
 -- a countdown, none, or wait for the Next Wave key). Next Wave also sends a wave's remaining
 -- groups in at once, and the last few ants left in a wave hurry towards the player.
@@ -14,6 +15,7 @@
 local Content = require("src.content")
 local Elites = require("src.game.elites")
 local Settings = require("src.core.settings")
+local Entries = require("src.game.entries")
 
 local Spawner = {}
 Spawner.__index = Spawner
@@ -28,7 +30,10 @@ local DEFAULTS = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap =
     finalWave = 15,             -- waves in a run; a mode's finalWave overrides it (false = never ends)
     -- the final boss wave: `queens` crowned queens, one after another, each with hpMul x health
     -- (+chapterHp per extra 15 waves survived, and one more queen per chapter), regular groups x groups
-    finalBoss = { queens = 2, hpMul = 1.6, scale = 1.25, chapterHp = 0.6, groups = 0.6, gap = 3 } }
+    finalBoss = { queens = 2, hpMul = 1.6, scale = 1.25, chapterHp = 0.6, groups = 0.6, gap = 3 },
+    -- other ways in (burrows, flyers dropping, nest holes, burrow rings): per-way overrides of
+    -- src/game/entries.lua DEFAULTS, e.g. { nest = { chance = 1 }, ring = false }; false = edge only
+    entryStyles = nil }
 
 function Spawner.new(world, stage)
     local cfg = {}
@@ -39,7 +44,7 @@ function Spawner.new(world, stage)
     for k, v in pairs(mode.spawn or {}) do cfg[k] = v end
     local self = setmetatable({ world = world, cfg = cfg, wave = 0, phase = "break", timer = cfg.firstBreak,
         enabled = true, streams = {}, queue = {}, waveTime = 0, usedQueens = {}, known = {}, knownList = {},
-        trickleT = 0, mode = mode, endless = mode.endless }, Spawner)
+        trickleT = 0, mode = mode, endless = mode.endless, portals = {}, holes = {} }, Spawner)
     -- every species that spawns on its own (and that the mode lets in), in the order the player meets them
     local order = {}
     for _, d in ipairs(Content.enemies:all()) do
@@ -67,7 +72,7 @@ function Spawner:remaining()
     local n = self.world.enemyCount
     for _, g in ipairs(self.queue) do n = n + g.count end
     for _, st in ipairs(self.streams) do n = n + st.left end
-    return n
+    return n + Entries.pending(self)
 end
 
 function Spawner:learn(def)
@@ -139,6 +144,7 @@ function Spawner:startWave(n)
     local nEntries = math.min(cfg.entries[2], cfg.entries[1] + math.floor((self.wave - 1) / 2))
     local entries = self:spreadPoints(nEntries)
     self.entries = entries
+    Entries.openNests(self)     -- some waves also open nest holes in the floor
     local groups = cfg.groups + math.floor((self.wave - 1) * cfg.groupsPerWave)
     local gap = math.max(1, cfg.groupGap * 0.95 ^ (self.wave - 1))
     local start = 0
@@ -184,7 +190,10 @@ function Spawner:startWave(n)
         if def then
             local at = start + (i - 1) * gap
             local e = entries[(i - 1) % #entries + 1]
-            self.queue[#self.queue + 1] = { def = def, count = self:groupSize(def), x = e[1], y = e[2], at = at }
+            local hole = Entries.holeFor(self)
+            local g = { def = def, count = self:groupSize(def), x = e[1], y = e[2], at = at, hole = hole }
+            if hole then g.x, g.y = hole.x, hole.y end
+            self.queue[#self.queue + 1] = g
             if self.wave >= 4 and i % 3 == 0 then
                 local o = entries[(i - 1 + math.floor(#entries / 2)) % #entries + 1]
                 local d2 = self:pickEnemy()
@@ -198,6 +207,7 @@ end
 
 function Spawner:update(dt)
     self:updateStreams(dt)
+    Entries.update(self, dt)
     if not self.enabled then return end
     if self.endless then return self:updateEndless(dt) end
     local cfg = self.cfg
@@ -210,9 +220,25 @@ function Spawner:update(dt)
     for i = #self.queue, 1, -1 do
         local g = self.queue[i]
         if self.waveTime >= g.at and self.world.enemyCount < cfg.maxAlive then
-            local st = self:spawnGroup(g.def, g.count, g.x, g.y, g.crown and { noElites = true })
-            if st then st.crown = g.crown end
-            table.remove(self.queue, i)
+            if g.crown then
+                local st = self:spawnGroup(g.def, g.count, g.x, g.y, { noElites = true })
+                if st then st.crown = g.crown end
+                table.remove(self.queue, i)
+            elseif g.hole then
+                -- out of a nest hole, once it has opened (and the player isn't standing on it)
+                if Entries.holeReady(self, g.hole, self.waveTime - g.at) then
+                    local st = self:spawnGroup(g.def, g.count, g.x, g.y)
+                    if st then st.style = "nest" end
+                    g.hole.puff = 1
+                    table.remove(self.queue, i)
+                end
+            elseif g.def.boss then
+                self:spawnGroup(g.def, g.count, g.x, g.y)
+                table.remove(self.queue, i)
+            else
+                Entries.send(self, g.def, g.count, g.x, g.y)
+                table.remove(self.queue, i)
+            end
         end
     end
     -- Stray packs keep slipping in from other sides while the main groups are still coming.
@@ -221,9 +247,9 @@ function Spawner:update(dt)
         if self.trickleT <= 0 then
             self.trickleT = math.max(2, cfg.trickle - self.wave * 0.3) * (0.7 + love.math.random() * 0.6)
             local def = self:pickEnemy()
-            if def then
+            if def and not Entries.ring(self, def) then
                 local e = self:edgePoint()
-                self:spawnGroup(def, self:groupSize(def, 0.35), e[1], e[2])
+                Entries.send(self, def, self:groupSize(def, 0.35), e[1], e[2])
             end
         end
     end
@@ -237,7 +263,7 @@ function Spawner:update(dt)
     end
     -- the last few ants stop dawdling and come for the player (no hunting down stragglers)
     local w0 = self.world
-    if #self.queue == 0 and #self.streams == 0 and w0.enemyCount > 0 and w0.enemyCount <= cfg.rushAt then
+    if #self.queue == 0 and #self.streams == 0 and #self.portals == 0 and w0.enemyCount > 0 and w0.enemyCount <= cfg.rushAt then
         for i = 1, w0.enemyCount do
             local e = w0.enemies[i]
             if e and not e.dead and not e.rushed and not e.boss then
@@ -247,8 +273,9 @@ function Spawner:update(dt)
         end
     end
     -- the wave only ends once everything in it (and anything it hatched) is dead
-    if #self.queue == 0 and #self.streams == 0 and self.world.enemyCount == 0 and not self.crownE then
+    if #self.queue == 0 and #self.streams == 0 and #self.portals == 0 and self.world.enemyCount == 0 and not self.crownE then
         self.phase, self.timer = "break", self:breakLength()
+        Entries.closeNests(self)
         self.world.events:emit("wave_cleared", self.wave)
         -- reward: choose one of three items (one more for each queen slain, a rare one after a queen)
         local w = self.world
@@ -324,7 +351,7 @@ function Spawner:updateEndless(dt)
     for i = #self.queue, 1, -1 do
         local g = self.queue[i]
         if self.waveTime >= g.at then
-            self:spawnGroup(g.def, g.count, g.x, g.y)
+            if g.def.boss then self:spawnGroup(g.def, g.count, g.x, g.y) else Entries.send(self, g.def, g.count, g.x, g.y) end
             table.remove(self.queue, i)
         end
     end
@@ -332,9 +359,9 @@ function Spawner:updateEndless(dt)
     if self.packT <= 0 and world.enemyCount < self.cfg.maxAlive then
         self.packT = math.max(en.minGap or 0.5, (en.packGap or 2.4) * 0.93 ^ (self.wave - 1)) * (0.7 + love.math.random() * 0.6)
         local def = self:pickEnemy()
-        if def then
+        if def and not Entries.ring(self, def) then
             local e = self:edgePoint()
-            self:spawnGroup(def, self:groupSize(def, en.packSize or 0.6), e[1], e[2])
+            Entries.send(self, def, self:groupSize(def, en.packSize or 0.6), e[1], e[2])
         end
     end
 end
@@ -477,6 +504,7 @@ function Spawner:updateStreams(dt)
  or nil
             local e = world:spawnEnemy(st.def, st.x + (love.math.random() - 0.5) * 4, st.y + (love.math.random() - 0.5) * 4, elite)
             -- Link into a follow-the-leader column (used by the "column" behaviour).
+            if e and st.style then Entries.arrive(world, e, st.style, st) end
             if e then
                 if st.prev and st.prev.uid == st.prevUid then e.leader, e.leaderUid = st.prev, st.prevUid end
                 st.prev, st.prevUid = e, e.uid

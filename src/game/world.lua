@@ -15,6 +15,7 @@ local Camera = require("src.game.camera")
 local Player = require("src.game.player")
 local Enemy = require("src.game.enemy")
 local Spawner = require("src.game.spawner")
+local Entries = require("src.game.entries")
 local Inventory = require("src.game.inventory")
 local Hazards = require("src.game.hazards")
 local Elites = require("src.game.elites")
@@ -243,6 +244,7 @@ function World:clearEnemies()
     self.hash:clear()
     self.shieldCount = 0
     self.hazards:clear()
+    if self.spawner then require("src.game.entries").clear(self.spawner) end
     self.thrown = {}
     for i = 1, self.enemyCount do
         Enemy.release(self.enemies[i])
@@ -547,6 +549,11 @@ function World:updateEnemies(dt)
             else -- (no goto: the web build runs plain Lua 5.1)
             if freeze then
                 e.mx, e.my = 0, 0
+            elseif e.dropH then
+                -- coming down from the sky (Entries "drop"): falls into the fight, then flies on
+                e.dropH = e.dropH - dt * (40 + e.dropH * 3)
+                if e.dropH <= 0 then e.dropH = nil end
+                e.mx, e.my = 0, 0
             elseif e.stunT > 0 then
                 -- stunned (hissing roach): stands reeling, can't move or bite
                 e.stunT = e.stunT - dt
@@ -644,7 +651,7 @@ function World:updateEnemies(dt)
             -- size of the crowd on you (and armour reduces every single bite).
             local dx, dy = p.x - e.x, p.y - e.y
             local rr = p.radius + r0 + 1
-            if dx * dx + dy * dy < rr * rr and e.damage > 0 and e.z < 3 and (p.z < 4 or p.airborne) and not e.hidden and e.stunT <= 0 and not unseen then
+            if dx * dx + dy * dy < rr * rr and e.damage > 0 and e.z < 3 and not e.dropH and (p.z < 4 or p.airborne) and not e.hidden and e.stunT <= 0 and not unseen then
                 attackers = attackers + 1
                 if e.biteCd <= 0 then
                     e.biteCd = (def.biteRate or 0.9) * (0.85 + love.math.random() * 0.3)
@@ -739,6 +746,7 @@ function World:draw()
 
     self.ground:draw()
     self.hazards:drawGround()
+    Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
 
     -- View culling bounds in projected space.
     local cx0, cy0, cx1, cy1 = ox - 40, oy - 40, ox + vw + 40, oy + vh + 60
@@ -933,7 +941,7 @@ function World:draw()
             local facing = o.reversed and o.wangle + math.pi or o.wangle
             Anim.applyTo(pose, Anim.sample(o), facing, sxs, sys)    -- attack clips (src/gfx/anim.lua)
             if o.lungeT > 0.09 then sxs, sys = sxs * 1.06, sys * 0.94 end
-            Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z, facing, flash, sxs, sys, a, pose)
+            Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, flash, sxs, sys, a, pose)
         elseif not o.hidden then
             local el = o.elite
             local alpha = o.alpha or 1
@@ -944,7 +952,7 @@ function World:draw()
             elseif alpha < 1 then
                 lg.setColor(1, 1, 1, alpha)
             end
-            local fy = o._sy - (o.z or 0)
+            local fy = o._sy - (o.z or 0) - (o.dropH or 0)
             Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, flash, sxs, sys)
             if el then
                 local c = Elites.color(el)

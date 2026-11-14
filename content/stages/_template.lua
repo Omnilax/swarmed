@@ -26,5 +26,10 @@ return {
         maxAlive = 900, growth = 0.15,
         -- a new species every introEvery waves; ants enter from entries[1] points in wave 1,
         -- up to entries[2]; stray packs slip in from other sides every ~trickle s
-        introEvery = 1, entries = { 2, 6 }, trickle = 6 },
+        introEvery = 1, entries = { 2, 6 }, trickle = 6,
+        -- other ways in (src/game/entries.lua): burrows near the player, flyers dropping from the
+        -- sky, nest holes in the floor, burrow rings. Override any way's minWave / chance / warn,
+        -- switch one off (ring = false), or entryStyles = false for edge-only waves.
+        -- entryStyles = { nest = { chance = 0.8 }, ring = false },
+    },
 }
