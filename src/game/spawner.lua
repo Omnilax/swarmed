@@ -107,7 +107,8 @@ function Spawner:groupSize(def, mul)
     local route = self.world.route         -- a route gate taken into this wave (src/game/routes.lua)
     local early = Pacing.early(self)
     return math.max(1, math.floor(love.math.random(g[1], g[2]) * (def.spawn.groupSize or 1) * (1 + (self.wave - 1) * cfg.growth)
-        * (mul or 1) * early * (self.mod.groupSize or 1) * (route and route.groupMul or 1)))
+        * (mul or 1) * early * (self.mod.groupSize or 1) * (route and route.groupMul or 1)
+        * (self.world.danger and self.world.danger.groupMul or 1)))
 end
 
 -- The modifiers (content/wavemods) of wave n, rolled ahead from the run's seed.
@@ -175,7 +176,7 @@ function Spawner:startWave(n)
     if self:isFinal() then
         local fb = cfg.finalBoss
         self.finalThisWave = true
-        self.crownLeft = fb.queens + math.floor(self.wave / self:finalWave()) - 1
+        self.crownLeft = fb.queens + math.floor(self.wave / self:finalWave()) - 1 + (world.danger and world.danger.extraQueens or 0)
         if self:queueCrowned(2) then
             self.bossWave = true
             groups = math.ceil(groups * fb.groups)
@@ -320,7 +321,7 @@ function Spawner:update(dt)
         local w = self.world
         local pl = w.player
         if not pl.dead then
-            local heal = (self.bossWave and cfg.bossHeal or cfg.waveHeal) * pl.stats:get("maxHp")
+            local heal = (self.bossWave and cfg.bossHeal or cfg.waveHeal) * pl.stats:get("maxHp") * (w.danger and w.danger.healMul or 1)
             if heal > 0 and pl.hp < pl.stats:get("maxHp") then
                 local before = pl.hp
                 pl:heal(heal)
@@ -555,8 +556,9 @@ end
 function Spawner:eliteMode()
     -- the wave's elite chances (wave modifiers, src/game/pacing.lua), scaled by a route gate
     local m, route = self.eliteCfg or self.mode.elites, self.world.route
-    if not route or route.eliteMul == 1 then return m end
-    local k = route.eliteMul
+    local dk = self.world.danger and self.world.danger.eliteMul or 1     -- danger levels (src/config/danger.lua)
+    if (not route or route.eliteMul == 1) and dk == 1 then return m end
+    local k = (route and route.eliteMul or 1) * dk
     self._eliteMode = self._eliteMode or {}
     local out = self._eliteMode
     out.mul = (m and m.mul or 1) * k

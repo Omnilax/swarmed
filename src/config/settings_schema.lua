@@ -116,6 +116,10 @@ add { key = "speciesOrder", category = "Gameplay", label = "Species Order", type
 add { key = "eliteFrequency", category = "Gameplay", label = "Elite Ants", type = "choice", default = 1,
     options = { { value = 0, label = "Off" }, { value = 0.5, label = "Rare" }, { value = 1, label = "Normal" }, { value = 2, label = "Lots" } },
     desc = "How often tougher elite ants (Aggressive, Gilded, Armored...) show up. They start appearing from wave 2." }
+add { key = "unlockAll", category = "Gameplay", label = "Unlock Everything", type = "toggle", default = false,
+    desc = "Open every bug, item and danger level now, without meeting their goals. Goals still count in Records." }
+add { key = "dashTech", category = "Gameplay", label = "Dash Tech", type = "toggle", default = true,
+    desc = "A kill during a dash refunds half its stamina, and dashing again right after one ends is faster (up to 3 in a chain)." }
 add { key = "autoAttack", category = "Gameplay", label = "Auto Attack", type = "toggle", default = true,
     desc = "Attack automatically. When off, hold the Attack button." }
 add { key = "aimMode", category = "Gameplay", label = "Aim Mode", type = "choice", default = "nearest",

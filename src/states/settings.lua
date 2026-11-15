@@ -40,6 +40,10 @@ function SettingsState:build()
             }
         end
     end
+    if cat == "Gameplay" then
+        items[#items + 1] = { type = "button", label = "Item Pool...", desc = "Switch items in or out of the item choices.",
+            onActivate = function() State.push(require("src.states.itempool").new()) end }
+    end
     if cat == "Controls" then
         items[#items + 1] = { type = "header", label = "Key bindings  (Enter to rebind, Backspace to clear)" }
         for _, a in ipairs(Input.actions) do

@@ -274,6 +274,33 @@ achievements on their own. Unlocks slide in at the top right. Run events it list
 `enemy_died`, `player_hurt`, `wave_started`, `wave_cleared`, `run_won`, `item_taken`,
 `item_eaten`, `player_died`. `love . --selftest --records` checks it all without touching the save.
 
+## Unlocks, danger levels and mastery
+
+- **Unlocks.** Eight bugs are open from the start (`src/config/unlocks.lua` `starters`); the other
+  18 each open through an in-run goal ("Clear wave 5 as the Rhino Beetle", "Kill 25 ants mid-dash
+  in one run"...). A few items are locked the same way and stay out of item choices until then.
+  Goals are achievements in the Records screen's **Unlocks** category (`content/achievements/unlocks.lua`),
+  so progress shows there and an "Unlocked" card pops up mid-run. Bugs already played before
+  unlocks existed stay open. Settings > Gameplay > **Unlock Everything** opens it all.
+- **Item pool.** Settings > Gameplay > **Item Pool...** switches items in or out of the item
+  choices (at least 12 stay in). Saved in `prefs.lua`.
+- **Bug rules.** Some bugs bend how items work for them (`src/config/bugrules.lua`, run by
+  `src/game/bugrules.lua`): Dung Beetle gets stronger from eaten items, Hermit Crab starts with an
+  extra bag row but slows per filled cell, Orb Weaver's procs fire twice on webbed ants, Hissing
+  Roach heals double from eating, Scorpion's poison items proc more. Shown on bug select.
+- **Danger levels.** Left/Right on a bug in bug select picks Danger 0-5 (`src/config/danger.lua`):
+  each level adds one rule (more elites, less healing, faster ants, tougher ants, bigger groups and
+  an extra crowned queen). Winning at a level opens the next one for that bug; the highest level
+  won shows as mastery stars and is kept in Records (`characters[id].danger`).
+- **Dash tech.** A kill during a pressed dash (or just after) refunds half its stamina; dashing
+  again within 0.45 s of the last one ending is 15% faster per link, up to 3 (`src/game/dashtech.lua`,
+  Settings > Gameplay > Dash Tech).
+- **Final Swarm.** After the wave-15 win, the victory screen offers a last stand: 60 seconds of
+  every species met pouring in from every side, lots of elites and a crowned queen halfway
+  (`src/game/finalswarm.lua`). Live through it and the run ends with "Swarm survived".
+- Test: `love . --selftest --mastery` (also in the full run). `--locked` keeps the locks on for a
+  selftest or `--balance` run (they normally open everything).
+
 ## Run info, summary and accessibility
 
 - **Enemies left**: a counter under the KO count with everything still to beat this wave

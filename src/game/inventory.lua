@@ -306,6 +306,10 @@ function Inventory:trigger(name, ctx)
     -- luck, and the proc snowball: chances grow with every wave (src/config/rewards.lua procs)
     local rw = self.player.world.rewards
     local luck = (1 + self.player.stats:get("luck") / 100) * (rw and rw:procMul() or 1)
+    -- the bug's own rule (src/config/bugrules.lua) sees every trigger and can bend procs
+    local BugRules = require("src.game.bugrules")
+    BugRules.trigger(self.player, name, ctx)
+    local ruled = BugRules.of(self.player) ~= nil
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]
         local stacks = self.counts[id]
@@ -313,12 +317,14 @@ function Inventory:trigger(name, ctx)
             if proc.trigger == name then
                 local chance = proc.chance
                 if type(chance) == "function" then chance = chance(stacks) end
-                if chance == nil or love.math.random() < chance * luck then
+                local cmul, reps = 1, 1
+                if ruled then cmul, reps = BugRules.proc(self.player, def, name, ctx) end
+                if chance == nil or love.math.random() < chance * luck * cmul then
                     -- the damage it does counts for this item in the run summary
                     local w = ctx.world
                     local prev = w and w.dmgSrc
                     if w then w.dmgSrc = def.name end
-                    proc.effect(ctx, stacks)
+                    for _ = 1, reps do proc.effect(ctx, stacks) end
                     if w then w.dmgSrc = prev end
                     -- the sandbox's proc log listens here (every-frame ticks are left out)
                     if self.onProc and name ~= "onTick" then self.onProc(def, name) end

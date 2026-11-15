@@ -12,6 +12,8 @@ local function blank()
         sort = "default",        -- character select sort (src/config/playstyles.lua sorts)
         filter = "all",          -- character select filter
         practice = {},           -- practice screen choices
+        poolOff = {},            -- item id -> true: switched off in the item pool (src/states/itempool.lua)
+        danger = {},             -- character id -> the danger level last picked for it
     }
 end
 
