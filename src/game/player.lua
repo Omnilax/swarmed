@@ -145,6 +145,7 @@ function Player:releaseAttack(ax, ay, extra)
     if atk.timer > 0 then return false end
     local params = self.skills:before("attack", atk.params)
     atk.type.fire(self, self.world, ax, ay, params, extra)
+    if self.world.director then self.world.director:playerAttacked(ax, ay) end
     self.skills:after("attack", ax, ay, nil, nil, params)
     Anim.move(self, "attack", atk.params)
     Player.swingSound(atk.params, false)
@@ -161,6 +162,7 @@ function Player:releaseSecondary(ax, ay, px, py, extra)
     if not sec or sec.timer > 0 then return false end
     local params = self.skills:before("secondary", sec.params)
     sec.type.fire(self, self.world, ax, ay, params, px, py, extra)
+    if self.world.director then self.world.director:playerAttacked(ax, ay) end
     self.skills:after("secondary", ax, ay, px, py, params)
     Anim.move(self, "secondary", sec.params)
     Player.swingSound(sec.params, true)
@@ -278,6 +280,12 @@ function Player:update(dt)
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
             * (self.moveMul or 1) * (self.runMul or 1)
+        -- the arena (src/game/director.lua): weather, water, sun and shade
+        local env = world.env
+        if env and not self.def.immune then
+            speed = speed * env.playerSpeed
+            if env.field then speed = speed * env.field(self.x, self.y, "player") end
+        end
         local mvx, mvy = wx * mag, wy * mag
         -- sideways walkers (crab): quick to the side of where they face, slow forward and back
         local sw = self.def.sideways
@@ -290,10 +298,16 @@ function Player:update(dt)
         vx, vy = mvx * speed + self.kvx + self.momX, mvy * speed + self.kvy + self.momY
     end
     if self.ropeVX then vx, vy = self.ropeVX, self.ropeVY end    -- swinging on a grapple line
+    local env = world.env
+    if env and (self.z or 0) < 6 then
+        local wk = 1 / (self.def.scale or 1) ^ 1.5      -- big bugs lean into the wind
+        vx, vy = vx + env.driftX * wk, vy + env.driftY * wk
+    end
     self.vx, self.vy = vx, vy      -- for enemies that lead their shots
     local S, r = world.size, self.radius
-    self.x = util.clamp(self.x + vx * dt, r, S - r)
-    self.y = util.clamp(self.y + vy * dt, r, S - r)
+    local inset = env and env.inset or 0       -- a shrinking lawn keeps the player further in
+    self.x = util.clamp(self.x + vx * dt, r + inset, S - r - inset)
+    self.y = util.clamp(self.y + vy * dt, r + inset, S - r - inset)
 
     -- Aim
     local range = self:attackRange()
@@ -343,6 +357,7 @@ function Player:update(dt)
             self.aimX, self.aimY = ax, ay
             local params = self.skills:before("secondary", sec.params)
             sec.type.fire(self, world, ax, ay, params, px, py)
+            if world.director then world.director:playerAttacked(ax, ay) end
             self.skills:after("secondary", ax, ay, px, py, params)
             Anim.move(self, "secondary", sec.params)
             Player.swingSound(sec.params, true)
@@ -374,6 +389,7 @@ function Player:update(dt)
         if want then
             local params = self.skills:before("attack", atk.params)
             atk.type.fire(self, world, self.aimX, self.aimY, params)
+            if world.director then world.director:playerAttacked(self.aimX, self.aimY) end
             self.skills:after("attack", self.aimX, self.aimY, nil, nil, params)
             Anim.move(self, "attack", atk.params)
             Player.swingSound(atk.params, false)

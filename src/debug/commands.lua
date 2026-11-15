@@ -143,4 +143,32 @@ add { name = "weather", usage = "[id]", help = "Show the weather, or switch to a
     out("Weather: " .. def.name)
 end }
 
+add { name = "event", usage = "[id]", help = "Start a mid-wave event now (honeydew_rain, boot_stomp, flood, lawnmower...)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.events:get(args[1] or "")
+    if not def then out("Events: " .. table.concat(Content.events:ids(), ", ")) return end
+    game.world.director:start(def)
+    out("Event: " .. def.name)
+end }
+
+add { name = "encounter", usage = "[id]", help = "Bring in a boss encounter now (anteater, antlion, sparrow)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.bosses:get(args[1] or "")
+    if not def then out("Encounters: " .. table.concat(Content.bosses:ids(), ", ")) return end
+    game.world.director:startBoss(def)
+    out("Encounter: " .. def.name)
+end }
+
+add { name = "prop", usage = "<id> [n]", help = "Drop props near you (pebble, twig, acorn, cocoon, merchant)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.props:get(args[1] or "")
+    if not def then out("Props: " .. table.concat(Content.props:ids(), ", ")) return end
+    local w, p = game.world, game.world.player
+    for _ = 1, tonumber(args[2]) or 1 do
+        local x, y = require("src.game.envfx").pointNear(w, p.x, p.y, 60)
+        w.props:spawn(def.id, x, y)
+    end
+    out("Placed " .. def.name)
+end }
+
 return commands

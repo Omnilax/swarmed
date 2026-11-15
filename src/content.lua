@@ -97,8 +97,14 @@ Content.stages = Registry.new("stage", {
 })
 
 -- Planned registries, ready for content: bosses and run events (swarm surges, hazards, ...).
-Content.bosses = Registry.new("boss", { required = { "name", "enemy" } })
-Content.events = Registry.new("event", { required = { "name" } })
+-- Boss encounters (content/bosses): a big predator that joins boss waves (src/game/director.lua).
+Content.bosses = Registry.new("boss", { required = { "name", "enemy" }, defaults = { description = "", weight = 10, minWave = 1 } })
+-- Mid-wave events and moving hazards (content/events/_template.lua).
+Content.events = Registry.new("event", { required = { "name" }, defaults = { description = "", weight = 10, minWave = 2 } })
+-- Props: pebbles, twigs, cocoons, allies, the merchant (content/props/_template.lua, src/game/props.lua).
+Content.props = Registry.new("prop", { required = { "name" }, defaults = { radius = 5 } })
+-- Stage mechanics: a stage's `mechanic = { type = id, ... }` (content/mechanics/_template.lua).
+Content.mechanics = Registry.new("mechanic", { required = { "name" } })
 -- Wave modifiers (Swarm, Ambush, Shield Wall...): content/wavemods/_template.lua, src/game/pacing.lua.
 Content.wavemods = Registry.new("wavemod", { required = { "name" },
     defaults = { description = "", color = { 1, 0.8, 0.4 }, weight = 10, minWave = 3 } })
@@ -117,7 +123,7 @@ Content.achievements = Registry.new("achievement", {
     defaults = { description = "", category = "Misc", goal = 1 },
 })
 
-Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skilltrees", "items", "stages", "bosses", "events", "wavemods", "modes", "achievements" }
+Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skilltrees", "items", "stages", "bosses", "events", "props", "mechanics", "wavemods", "modes", "achievements" }
 
 -- Weather spells (visual only): see content/weather/_template.lua and src/game/weather.lua.
 Content.weather = Registry.new("weather", { required = { "name" }, defaults = { weight = 10 } })
@@ -164,6 +170,10 @@ local function crossCheck()
     for _, t in ipairs(Content.skilltrees:all()) do need(Content.characters, t.character, "skill tree '" .. t.id .. "'") end
     for _, it in ipairs(Content.items:all()) do need(Content.sprites, it.icon, "item '" .. it.id .. "' icon") end
     for _, b in ipairs(Content.bosses:all()) do need(Content.enemies, b.enemy, "boss '" .. b.id .. "'") end
+    for _, st in ipairs(Content.stages:all()) do
+        if st.mechanic then need(Content.mechanics, st.mechanic.type, "stage '" .. st.id .. "' mechanic") end
+        for id in pairs(st.props or {}) do need(Content.props, id, "stage '" .. st.id .. "' props") end
+    end
     for _, sk in ipairs(Content.skins:all()) do
         if sk.character then need(Content.characters, sk.character, "skin '" .. sk.id .. "'") end
     end

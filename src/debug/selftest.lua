@@ -668,6 +668,7 @@ local function script(flags)
     if flags["--termites"] then termiteScene() love.event.quit() return end
     if flags["--finalwave"] then require("src.debug.selftest_finalwave")(wait, shot) love.event.quit() return end
     if flags["--entries"] then require("src.debug.selftest_entries")(wait, shot) love.event.quit() return end
+    if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
     if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
     if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end

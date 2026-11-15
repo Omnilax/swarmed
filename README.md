@@ -20,6 +20,7 @@ love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
+love . --selftest --happenings  # just mid-wave events, boss encounters, stages, weather effects, props
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
 ```
@@ -299,9 +300,47 @@ queens and elites out of view (setting **Off-screen Markers**), and runs the fir
 shows once; setting **Tutorial Hints**, and turning it back on shows them all again).
 `love . --selftest --polish` checks it all.
 
+## Events, hazards, encounters and stages
+
+`src/game/director.lua` runs everything in a wave besides the ants walking in. It never holds a
+wave up: a wave still ends only when every enemy is dead, and events still going end with it.
+
+- **Mid-wave events** (`content/events`, setting **Mid-Wave Events**: Often / Normal / Off): from
+  wave 2, a wave gets 0-2 (more on Often), 6-24 s in. Honeydew rain (sweet puddles: ants stop to
+  feed, you heal), an anteater's tongue licking down a red lane, a boot stomp (a shadow that
+  follows you, then flattens everything under it), a flood (water from one side: wading, a current,
+  small ants drown), colony war (a red rival colony fights yours), dew drops rolling across in
+  lines, falling acorns (they stay as things to roll), a lawnmower lane, web cocoons (break one to
+  free a bug that fights beside you for 20 s) and the merchant beetle (its prices are KOs made while
+  it is around; walk into it to buy, the item goes straight into the bag). A stage's
+  `events = { id = weight }` and a mode's `eventWeights` / `events = false` change the odds.
+- **Boss encounters** (`content/bosses`, setting **Boss Encounters**): every 5th wave except the
+  final one, a predator joins the queen: the anteater (licks lanes), the antlion (a sand pit that
+  drags everything to its jaws, throws sand) or the sparrow (a shadow overhead, swoops down a line,
+  lands to peck, which is when it can be hit). They are real enemies (`content/enemies/predators.lua`,
+  `encounter = true`, drawn by `drawBody`), so the wave lasts until they fall; hazards don't hurt
+  them. A mode can say `encounters = false`.
+- **Stage mechanics** (`content/mechanics`): Puddled Patio (a puddle that rises through each wave),
+  Overgrown Lawn (the long grass closes in during a wave), Dappled Garden (drifting sun patches
+  speed everyone up, shade slows ants). Pick them in Cosmetics > Location like the other stages.
+- **Weather effects** (setting **Weather Effects**): a spell's `effects` in `content/weather`.
+  Wind and storms push everyone downwind (lighter bugs more), rain slows the fight (ants most),
+  the new heatwave speeds it up. A banner says what changed when a spell settles in.
+- **Props** (`content/props`, `src/game/props.lua`): pebbles and twigs lie about every stage
+  (`props = { pebble = 6, twig = 3 }`). Walk into one to roll it, dash or attack to launch it; while
+  it moves fast it flattens every ant it rolls over. Props are not enemies.
+- **Nest holes** can be sealed: hit one three times or dash over it, and the groups still waiting
+  in it never come out.
+
+Everything that changes movement goes through `world.env` (player / enemy speed, drift, the
+player's inset from the walls, and a per-spot speed `field`). Raw hazard damage that skips player
+stats and procs is in `src/game/envfx.lua`, with the shared warning-lane and shadow drawing.
+Dev console: `event <id>`, `encounter <id>`, `prop <id> [n]`. `love . --selftest --happenings`
+checks it all.
+
 ## Enemies and damage
 
-Every enemy has a `family` (`src/config/families.lua`: ants, bees, wasps, hornets, termites).
+Every enemy has a `family` (`src/config/families.lua`: ants, bees, wasps, hornets, termites, predators).
 The catalogue and sandbox group enemies by family.
 
 Bees, wasps and hornets (33 species, each with its own behaviour in `content/behaviors/bee_*`,
@@ -419,8 +458,11 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/streaks` | kill-streak buffs (stats for a few seconds) | 50-kill combos |
 | `content/goals` | optional mini-goals for a wave (`start`, `update`, `on` events, `finish`, `reward`) | runs |
 | `content/routes` | safe / hard route gates between waves (ant, elite, health multipliers, `reward`) | runs |
-| `content/bosses`, `content/events` | registries ready for step 3 | |
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
+| `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |
+| `content/bosses` | boss encounters: a predator from content/enemies joins every 5th wave | src/game/director.lua |
+| `content/mechanics` | stage rules a stage turns on with `mechanic = { type = ... }` | src/game/director.lua |
+| `content/props` | pebbles, twigs, acorns, cocoons, freed allies, the merchant | src/game/props.lua |
 
 Other single places to extend:
 

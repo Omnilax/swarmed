@@ -130,7 +130,7 @@ function Balance.runOne(charId, maxWave)
     world.mouseWorld = function() return bot.aimX, bot.aimY end
     world.events:on("player_hurt", function(ctx)
         local s = ctx.source
-        local id = type(s) == "table" and s.def and s.def.id or tostring(s)
+        local id = type(s) == "table" and (s.def and s.def.id or s.hazard and ("hazard:" .. tostring(s.hazard))) or tostring(s)
         hurtBy[id] = (hurtBy[id] or 0) + (ctx.damage or 0)
     end)
     -- enemy shots: credit the hit to the species that fired it (the nearest enemy when it was shot)

@@ -298,7 +298,7 @@ function Spawner:update(dt)
     if #self.queue == 0 and #self.streams == 0 and #self.portals == 0 and w0.enemyCount > 0 and w0.enemyCount <= cfg.rushAt then
         for i = 1, w0.enemyCount do
             local e = w0.enemies[i]
-            if e and not e.dead and not e.rushed and not e.boss then
+            if e and not e.dead and not e.rushed and not e.def.boss and not e.def.encounter then
                 e.rushed = true
                 e.speed = (e.speed or 0) * cfg.rushSpeed
             end

@@ -1,5 +1,6 @@
 return {
-    name = "Thunderstorm", weight = 4, duration = { 40, 80 }, order = 4, dim = 0.62, wind = { 70, 6 },
+    effects = { playerSpeed = 0.88, enemySpeed = 0.78, drift = 0.22, note = "Wind and rain: everything slows and gets blown about." },
+    name = "Thunderstorm", weight = 4, duration = { 30, 60 }, order = 4, dim = 0.62, wind = { 70, 6 },
     lightning = true,
     fog = { color = "#6e7890", alpha = 0.16, count = 6, size = { 150, 240 } },
     particles = { kind = "rain", count = 460, max = 1000, colors = { "#c0d0ea", "#e2ecf8" }, alpha = 0.6,
