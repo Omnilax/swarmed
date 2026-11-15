@@ -837,12 +837,17 @@ local function script(flags)
         for i = 1, n do world:spawnEnemy("worker_ant", pl.x + math.cos(i) * 4, pl.y + math.sin(i) * 4) end
         world.flags.freezeAI = true
         local lost = 0
+        -- (weather can slow the fight down, and a big moment freezes it: keep both out of the count)
+        local weather = Settings.get("weatherEffects")
+        Settings.set("weatherEffects", false)
         for _ = 1, 120 do
             local full = pl.stats:get("maxHp")
             pl.hp = full           -- keep it alive and measure what each frame takes
+            world.hitstop = 0
             world:update(1 / 60)
             lost = lost + math.max(0, full - pl.hp)
         end
+        Settings.set("weatherEffects", weather)
         world.flags.freezeAI = false
         world.flags.god = true
         pl.attack.timer = 0
@@ -962,11 +967,13 @@ local function script(flags)
     for _, cdef in ipairs(Content.characters:all()) do
         world.player:setCharacter(cdef)
         world.player.attack.timer = 0
-        world:spawnRing("worker_ant", 40, world.player.x, world.player.y, 30)
+        -- (a ring a little out, so the ants walk in through ranged puffs such as stink clouds,
+        -- which land about 50 out and would miss a crowd already hugging the bug)
+        world:spawnRing("worker_ant", 40, world.player.x, world.player.y, 50)
         world:spawnRing("green_ant", 4, world.player.x, world.player.y, 90)
         local before = world.kos
         -- slow killers (stink clouds, a small dung ball) need longer on a slow test machine
-        for _ = 1, 20 do
+        for _ = 1, 40 do
             wait(0.2)
             if world.kos > before then break end
         end

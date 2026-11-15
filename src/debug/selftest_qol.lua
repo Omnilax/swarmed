@@ -121,6 +121,8 @@ return function(wait, shot)
     if bought then assert(w2.player.skills:rank(bought) == 1, "skill node") end
     assert(w2.player.skills.xp == w.player.skills.xp, "skill xp")
     assert(math.abs(w2.player.stats:get("armor") - w.player.stats:get("armor")) < 0.01, "stats from items + skills")
+    assert(w2.seed == w.seed, "the run's seed should survive a save (" .. tostring(w2.seed) .. " vs " .. tostring(w.seed) .. ")")
+    assert(w2.choice == nil or w.choice == nil or w2.choice.rerolls == w.choice.rerolls, "item choice rerolls")
     -- restart from a resumed run starts over
     g2:restart()
     assert(State.top().world.spawner.wave == 0 and State.top().world.kos == 0, "restart starts fresh")

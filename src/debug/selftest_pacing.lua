@@ -13,6 +13,11 @@ return function(wait, shot)
     for _, k in ipairs({ "waveOverlap", "waveModifiers", "adaptiveWaves" }) do Settings.set(k, true) end
     Settings.set("speciesOrder", "random")
     Settings.set("waveBreak", "auto")
+    -- (other things that add ants mid-wave stay out of these counts: events, boss encounters,
+    -- mini-goals, route gates, slow motion; the treasure ant is held back in step)
+    local others = { midWaveEvents = "off", bossEncounters = false, miniGoals = false, routeGates = false, slowMotion = false }
+    local saved = {}
+    for k, v in pairs(others) do saved[k] = Settings.get(k) Settings.set(k, v) end
     local Game = require("src.states.game")
     local step
     local function newRun(params)
@@ -21,7 +26,15 @@ return function(wait, shot)
         local world = game.world
         world.flags.god = true
         world:clearEnemies()
-        step = function(n) for _ = 1, n do world:update(1 / 60) end end
+        -- (big moments freeze the action for a few frames, src/game/rewards.lua; these checks step
+        -- only a frame or two, so leave the freeze out)
+        step = function(n)
+            for _ = 1, n do
+                world.hitstop = 0
+                if world.rewards then world.rewards.treasureAt = nil end
+                world:update(1 / 60)
+            end
+        end
         return game, world, world.spawner, world.player
     end
     local function killAll(world)
@@ -140,7 +153,11 @@ return function(wait, shot)
     local d = math.sqrt((far.x - pl.x) ^ 2 + (far.y - pl.y) ^ 2)
     assert(not far.hidden and d < 140, "the called straggler should pop up near the player (" .. math.floor(d) .. ")")
     killAll(world)
-    step(2)
+    -- (death effects run a frame late, and a kill can leave a short-lived drop behind)
+    for _ = 1, 30 do
+        step(1)
+        if sp.phase == "break" then break end
+    end
     assert(sp.phase == "break", "the wave should end once the straggler is dead")
     world.pendingChoice = nil
 
@@ -228,5 +245,6 @@ return function(wait, shot)
     local _, dw = newRun(a)
     assert(dw.seed == a.seed and dw.daily == a.daily and dw.player.def.id == a.character, "the daily run params should reach the world")
     print("[selftest] daily run " .. a.daily .. ": " .. a.character .. " on " .. a.stage)
+    for k, v in pairs(saved) do Settings.set(k, v) end
     print("[selftest] pacing OK")
 end

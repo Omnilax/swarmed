@@ -41,6 +41,11 @@ function RunSave.snapshot(game)
         bag = {}, known = {}, usedQueens = {},
         skills = { xp = p.skills and p.skills.xp or 0, ranks = util.deepcopy(p.skills and p.skills.ranks or {}) },
         saved = os.time(),
+        -- the run's seed and daily run (src/game/daily.lua), and the item choice's rerolls,
+        -- bans and locked cards (src/game/choices.lua)
+        -- (the seed as text: the save file keeps numbers to 14 digits, a seed has up to 16)
+        seed = w.seed and ("%.0f"):format(w.seed), daily = util.deepcopy(w.daily),
+        choice = util.deepcopy(w.choice),
     }
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
@@ -48,7 +53,7 @@ function RunSave.snapshot(game)
     for _, d in ipairs(sp.knownList) do snap.known[#snap.known + 1] = d.id end
     for id in pairs(sp.usedQueens) do snap.usedQueens[#snap.usedQueens + 1] = id end
     local pc = w.pendingChoice
-    if pc then snap.pendingChoice = { count = pc.count, boss = pc.boss, wave = pc.wave, endless = pc.endless } end
+    if pc then snap.pendingChoice = { count = pc.count, boss = pc.boss, wave = pc.wave, endless = pc.endless, minRarity = pc.minRarity } end
     local Records = require("src.game.records")
     local run = Records.run
     if run and run.world == w then
@@ -102,7 +107,7 @@ end
 -- Game params that start the saved run (Game.new calls RunSave.restore with the snapshot).
 function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
-        startItems = snap.startItems, resume = snap }
+        startItems = snap.startItems, seed = tonumber(snap.seed), daily = snap.daily, resume = snap }
 end
 
 -- Put a fresh world into the saved run's state.
@@ -112,6 +117,7 @@ function RunSave.restore(world, snap)
     world.kos, world.bestCombo, world.xp = snap.kos or 0, snap.bestCombo or 0, snap.xp or 0
     world.won, world.continued, world.bonusPicks = snap.won, snap.continued, snap.bonusPicks or 0
     world.resumed = true
+    if snap.choice then world.choice = util.deepcopy(snap.choice) end
     -- the bag, exactly as it was (anything that no longer fits, or no longer exists, is stowed or skipped)
     local inv = p.inventory
     inv:clear()
