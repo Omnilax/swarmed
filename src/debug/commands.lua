@@ -57,6 +57,22 @@ add { name = "killall", help = "Kill all enemies (counts KOs, triggers procs)", 
     for i = 1, w.enemyCount do w:killEnemy(w.enemies[i]) end
 end }
 
+add { name = "nectar", usage = "[n]", help = "Show the nectar balance, or add n nectar", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local w = game.world
+    local n = tonumber(args[1])
+    if n and n > 0 then w:addNectar(math.floor(n)) end
+    out(("Nectar %d (earned %d, spent %d, %d on the ground)"):format(w.nectar, w.nectarEarned, w.nectarSpent, w.beads:pending()))
+end }
+
+add { name = "pickup", usage = "<id>", help = "Drop a ground pickup next to you (magnet, freeze, frenzy)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.pickups:get(args[1] or "")
+    if not def then out("Unknown pickup. " .. table.concat(Content.pickups:ids(), ", ")) return end
+    local p = game.world.player
+    if game.world:dropPickup(def.id, p.x + 40, p.y) then out("Dropped " .. def.name) else out("Too many pickups on the ground") end
+end }
+
 add { name = "god", help = "Toggle invulnerability", run = function(args, game, out)
     if not needGame(game, out) then return end
     game.world.flags.god = not game.world.flags.god

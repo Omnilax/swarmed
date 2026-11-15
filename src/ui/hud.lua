@@ -80,6 +80,25 @@ function Hud.draw(game, covered)
     lg.setFont(Theme.font(16))
     lg.setColor(1, 1, 1, alpha)
     lg.print(math.ceil(p.hp) .. " / " .. math.floor(maxHp), u(28), u(21))
+    -- Nectar: the run's currency (src/game/nectar.lua); the bead swells for a moment on a pickup
+    do
+        local nx, ny = u(20) + bw + u(18), u(31)
+        local amount = math.floor(world.nectar or 0)
+        if amount ~= Hud.lastNectar then
+            if Hud.lastNectar and amount > Hud.lastNectar then Hud.nectarPop = 0.15 end
+            Hud.lastNectar = amount
+        end
+        Hud.nectarPop = math.max(0, (Hud.nectarPop or 0) - love.timer.getDelta())
+        local r = u(7) * (1 + Hud.nectarPop * 2)
+        lg.setColor(0.72, 0.42, 0.08, alpha)
+        lg.circle("fill", nx, ny, r + math.max(1, u(1.5)), 16)
+        lg.setColor(1, 0.78, 0.22, alpha)
+        lg.circle("fill", nx, ny, r, 16)
+        lg.setColor(1, 0.98, 0.85, alpha)
+        lg.circle("fill", nx - r * 0.35, ny - r * 0.35, r * 0.3, 8)
+        lg.setFont(Theme.font(20, "bold"))
+        Theme.printShadow(tostring(amount), nx + u(12), ny - u(12), { 1, 0.85, 0.4, alpha })
+    end
     -- Stamina: one bar for every dash, hold mode and block (src/game/stamina.lua)
     local st = p.stamina
     if st then
