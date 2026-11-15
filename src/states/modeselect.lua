@@ -22,6 +22,13 @@ local function percent(v) return math.floor(v * 100 + 0.5) .. "%" end
 
 -- The handful of facts that tell modes apart, worked out from the mode's own data.
 function ModeSelect.facts(m)
+    if m.daily then
+        local f = {}
+        for _, x in ipairs(m.dailyFacts) do f[#f + 1] = x end
+        local b = require("src.game.daily").best(m.daily.key)
+        f[#f + 1] = { "Today's best", b and (("Wave %d, %d KOs%s"):format(b.wave, b.kos, b.won and ", won" or "")) or "Not played yet" }
+        return f
+    end
     local f = {}
     if m.endless then
         f[#f + 1] = { "Length", "No waves, no end" }
@@ -53,6 +60,17 @@ function ModeSelect.new()
         end }
         if m.id == lastMode then focus = #items end
     end
+    -- the daily run: today's seed picks the bug, stage, species order and wave modifiers
+    local Daily = require("src.game.daily")
+    local d = Daily.info()
+    local dc, ds = Content.characters:get(d.character), Content.stages:get(d.stage)
+    local dailyMode = { name = "Daily Run", daily = d,
+        tagline = "Same bug, same waves, for everyone today.",
+        description = "Today's seed picks your bug, the stage, the order the species arrive in and every wave modifier. Colony rules. A new run every day.",
+        dailyFacts = { { "Date", d.key }, { "Bug", dc and dc.name or d.character }, { "Stage", ds and ds.name or d.stage } } }
+    items[#items + 1] = { type = "button", label = "Daily Run", mode = dailyMode, onActivate = function()
+        State.switch(require("src.states.game").new(Daily.params()))
+    end }
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() State.pop() end }
     self.menu = Menu.new({
         items = items,

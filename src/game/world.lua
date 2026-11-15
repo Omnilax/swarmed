@@ -35,6 +35,10 @@ World.ENEMY_CAP = 2000
 function World.new(opts)
     local self = setmetatable({}, World)
     self.mode = opts.mode or "run"
+    -- the run's seed: the daily run passes a fixed one, so its waves are the same for everyone
+    self.seed = opts.seed or (os.time() * 1000 + love.math.random(0, 999))
+    self.daily = opts.daily
+    love.math.setRandomSeed(self.seed)
     self.modeDef = Content.modes:get(opts.gameMode or "colony") or Content.modes:all()[1]
     self.gameMode = self.modeDef.id
     -- no stage given: the location picked in Cosmetics
@@ -98,7 +102,9 @@ end
 
 function World:hpScale()
     local m = self.modeDef
-    return m.enemyHp * (1 + (self.spawner and math.max(0, self.spawner.wave - 1) * (m.hpPerWave or 0.12) or 0))
+    local sp = self.spawner
+    return m.enemyHp * (1 + (sp and math.max(0, sp.wave - 1) * (m.hpPerWave or 0.12) or 0))
+        * (sp and require("src.game.pacing").hpMul(sp) or 1)
 
 end
 
@@ -114,6 +120,7 @@ function World:spawnEnemy(def, x, y, elite)
     local e = Enemy.spawn(self, def, util.clamp(x, def.radius, S - def.radius), util.clamp(y, def.radius, S - def.radius), elite)
     self.enemyCount = self.enemyCount + 1
     self.enemies[self.enemyCount] = e
+    if self.spawner then require("src.game.pacing").onSpawn(self.spawner, e) end
     return e
 end
 
@@ -783,6 +790,7 @@ function World:draw()
     self.ground:draw()
     self.hazards:drawGround()
     Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
+    require("src.game.pacing").drawGuard(self, self.time)   -- a guarded queen's gold ring
 
     -- View culling bounds in projected space.
     local cx0, cy0, cx1, cy1 = ox - 40, oy - 40, ox + vw + 40, oy + vh + 60

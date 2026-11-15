@@ -11,12 +11,12 @@ local Game = { touchControls = "game" }
 Game.__index = Game
 
 -- params: mode ("run" | "sandbox"), character (id), stage (id), gameMode (content/modes id),
--- startItems (item ids, from the starting items screen)
+-- startItems (item ids, from the starting items screen), seed / daily (the daily run, src/game/daily.lua)
 function Game.new(params)
     local self = setmetatable({ params = params }, Game)
     self.mode = params.mode or "run"
     self.world = World.new({ mode = self.mode, character = params.character, stage = params.stage,
-        gameMode = params.gameMode, startItems = params.startItems })
+        gameMode = params.gameMode, startItems = params.startItems, seed = params.seed, daily = params.daily })
 
     if self.mode == "sandbox" then
         self.world.flags.god = true

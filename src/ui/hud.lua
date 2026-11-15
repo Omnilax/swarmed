@@ -20,6 +20,23 @@ local function bar(x, y, w, h, t, color)
     lg.rectangle("fill", x, y, w * util.clamp(t, 0, 1), h, 3, 3)
 end
 
+-- The wave line's extras: modifiers, par time (counting down) or heat, and the early-call streak.
+function Hud.paceText(sp, sub)
+    local parts = {}
+    for _, d in ipairs(sp.mods or {}) do parts[#parts + 1] = d.name:upper() end
+    parts[#parts + 1] = sub
+    if sp.par and sp.par < math.huge then
+        if sp.waveTime <= sp.par then
+            local left = math.ceil(sp.par - sp.waveTime)
+            parts[#parts + 1] = ("par %d:%02d"):format(math.floor(left / 60), left % 60)
+        elseif (sp.heat or 0) > 0 then
+            parts[#parts + 1] = ("HEAT +%d%%"):format(math.floor(sp.heat * ((sp.cfg.heat or {}).speed or 0.35) * 100 + 0.5))
+        end
+    end
+    if (sp.earlyStreak or 0) > 0 then parts[#parts + 1] = "early x" .. sp.earlyStreak end
+    return table.concat(parts, "  ·  ")
+end
+
 -- "WAVE 7 / 15" during a run, "FINAL WAVE" on the boss wave that ends it, plain "WAVE 23" after.
 function Hud.waveLabel(sp)
     if sp.endless then return "LEVEL " .. sp.wave end
@@ -140,6 +157,7 @@ function Hud.draw(game, covered)
             Theme.printShadow(Hud.waveLabel(sp), 0, u(16), { c.text[1], c.text[2], c.text[3], alpha }, "center", w)
             sub = sp.endless and ("next level in " .. math.max(1, math.ceil(sp.levelT)))
                 or (sp:remaining() .. (sp.mode.families and not require("src.core.util").contains(sp.mode.families, "ant") and " left" or " ants left"))
+            if not sp.endless then sub = Hud.paceText(sp, sub) end
         else
             Theme.printShadow(sp.wave > 0 and ("WAVE " .. sp.wave .. " CLEARED") or "GET READY", 0, u(16), { c.focus[1], c.focus[2], c.focus[3], alpha }, "center", w)
             local key = (require("src.core.input").getKeys("next_wave")[1] or "N"):upper()
@@ -159,6 +177,31 @@ function Hud.draw(game, covered)
             lg.setFont(Theme.font(56))
             Theme.printShadow(sp.finalThisWave and "FINAL WAVE" or (sp.endless and "LEVEL " or "WAVE ") .. sp.wave, 0, h * 0.3
 , { 1, 0.86, 0.5, k * alpha }, "center", w)
+            -- this wave's modifiers (content/wavemods) under it, each in its colour
+            local mods = sp.mods or {}
+            if #mods > 0 then
+                lg.setFont(Theme.font(26, "bold"))
+                local f = lg.getFont()
+                local parts, total = {}, 0
+                for i, d in ipairs(mods) do
+                    parts[i] = d.name:upper()
+                    total = total + f:getWidth(parts[i]) + (i > 1 and f:getWidth("  ·  ") or 0)
+                end
+                local x0 = math.floor((w - total) / 2)
+                for i, d in ipairs(mods) do
+                    if i > 1 then
+                        Theme.printShadow("  ·  ", x0, h * 0.3 + u(66), { 1, 1, 1, k * alpha * 0.6 })
+                        x0 = x0 + f:getWidth("  ·  ")
+                    end
+                    local col = d.color or { 1, 0.8, 0.4 }
+                    Theme.printShadow(parts[i], x0, h * 0.3 + u(66), { col[1], col[2], col[3], k * alpha })
+                    x0 = x0 + f:getWidth(parts[i])
+                end
+                lg.setFont(Theme.font(15))
+                local desc = {}
+                for i, d in ipairs(mods) do desc[i] = d.description end
+                Theme.printShadow(table.concat(desc, "  "), 0, h * 0.3 + u(100), { 1, 0.95, 0.85, k * alpha * 0.9 }, "center", w)
+            end
         end
         -- A new species this wave: what it is and how to deal with it, while it walks in alone
         local def = sp.newSpecies

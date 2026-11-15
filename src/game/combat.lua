@@ -38,6 +38,8 @@ function Combat.damage(world, e, base, opts)
     if e.elite and e.elite.armor then dmg = dmg * (1 - e.elite.armor) end
     -- acid (vinegaroon) eats the shell: corroded ants take more from every hit
     if e.corrodeT > 0 then dmg = dmg * e.corrodeMul end
+    -- a queen behind her royal guard (src/game/pacing.lua) shrugs off most of every hit
+    if e.guards and e.guards > 0 then dmg = dmg * (e.guardMul or 0.3) end
     -- onHit(e, world, opts, dmg) returns a damage multiplier (dmg is the hit before it)
     if e.behavior.onHit and not opts.dot then dmg = dmg * (e.behavior.onHit(e, world, opts, dmg) or 1) end
     dmg = math.max(1, util.round(dmg))

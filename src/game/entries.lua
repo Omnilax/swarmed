@@ -35,10 +35,13 @@ function Entries.cfg(spawner, kind)
     local base = Entries.DEFAULTS[kind]
     local o = over and over[kind]
     if o == false then return nil end
-    if not o then return base end
+    -- this wave's modifiers (content/wavemods entryStyles) on top
+    local mo = spawner.mod and spawner.mod.entryStyles and spawner.mod.entryStyles[kind]
+    if not o and not mo then return base end
     local c = {}
     for k, v in pairs(base) do c[k] = v end
-    for k, v in pairs(o) do c[k] = v end
+    for k, v in pairs(o or {}) do c[k] = v end
+    for k, v in pairs(mo or {}) do c[k] = v end
     return c
 end
 

@@ -16,6 +16,7 @@ local Content = require("src.content")
 local Elites = require("src.game.elites")
 local Settings = require("src.core.settings")
 local Entries = require("src.game.entries")
+local Pacing = require("src.game.pacing")
 
 local Spawner = {}
 Spawner.__index = Spawner
@@ -33,7 +34,18 @@ local DEFAULTS = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap =
     finalBoss = { queens = 2, hpMul = 1.6, scale = 1.25, chapterHp = 0.6, groups = 0.6, gap = 3 },
     -- other ways in (burrows, flyers dropping, nest holes, burrow rings): per-way overrides of
     -- src/game/entries.lua DEFAULTS, e.g. { nest = { chance = 1 }, ring = false }; false = edge only
-    entryStyles = nil }
+    entryStyles = nil,
+    -- pacing (src/game/pacing.lua); set any of these to false in a stage / mode to switch it off
+    earlyBoost = { size = { 2.2, 1.8, 1.4 }, hp = { 0.45, 0.6, 0.8 } },  -- waves 1-3: more, frailer ants
+    orderJitter = { scale = 0.6, spread = 5 },      -- species order: minWave x scale + random spread
+    modifiers = { from = 3, chance = 0.55, doubleFrom = 9, double = 0.3 },
+    overlap = { share = 0.15, min = 3, minTime = 6 },   -- next wave comes when this share is left
+    call = { at = 5, far = 170, time = 0.9, near = { 70, 110 } },   -- last `at` ants burrow up near you
+    par = { base = 10, perAnt = 0.25, boss = 25, xp = 5, xpPerWave = 1.5 },
+    heat = { ramp = 40, speed = 0.35, damage = 0.25 },  -- past par: up to +35% speed, +25% damage
+    live = { calm = 5, hp = 0.8, build = 25, ease = 3, speed = 0.12, size = 0.4, trickle = 1, keep = 0.7 },
+    early = { perKill = 0.08, max = 6 },            -- early-call XP: kills x perKill x streak
+    royalGuard = { count = 6, perChapter = 2, radius = 16, shield = 0.3, elite = "armored" } }
 
 function Spawner.new(world, stage)
     local cfg = {}
@@ -45,6 +57,7 @@ function Spawner.new(world, stage)
     local self = setmetatable({ world = world, cfg = cfg, wave = 0, phase = "break", timer = cfg.firstBreak,
         enabled = true, streams = {}, queue = {}, waveTime = 0, usedQueens = {}, known = {}, knownList = {},
         trickleT = 0, mode = mode, endless = mode.endless, portals = {}, holes = {} }, Spawner)
+    Pacing.init(self)
     -- every species that spawns on its own (and that the mode lets in), in the order the player meets them
     local order = {}
     for _, d in ipairs(Content.enemies:all()) do
@@ -55,7 +68,7 @@ function Spawner.new(world, stage)
         if x.spawn.weight ~= y.spawn.weight then return x.spawn.weight > y.spawn.weight end
         return x.id < y.id
     end)
-    self.introOrder = order
+    self.introOrder = Pacing.shuffleOrder(self, order)
     return self
 end
 
@@ -90,8 +103,13 @@ end
 
 function Spawner:groupSize(def, mul)
     local g, cfg = self.cfg.group, self.cfg
-    return math.max(1, math.floor(love.math.random(g[1], g[2]) * (def.spawn.groupSize or 1) * (1 + (self.wave - 1) * cfg.growth) * (mul or 1)))
+    local early = Pacing.early(self)
+    return math.max(1, math.floor(love.math.random(g[1], g[2]) * (def.spawn.groupSize or 1) * (1 + (self.wave - 1) * cfg.growth)
+        * (mul or 1) * early * (self.mod.groupSize or 1)))
 end
+
+-- The modifiers (content/wavemods) of wave n, rolled ahead from the run's seed.
+function Spawner:modifiersFor(n) return Pacing.modifiersFor(self, n) end
 
 -- Jumping ahead (dev "wave" command, the menu demo): meet everything earlier waves would have
 -- introduced.
@@ -140,6 +158,7 @@ function Spawner:startWave(n)
     self.phase, self.waveTime, self.trickleT = "wave", 0, 3
     self.queue = {}
     self.newSpecies = nil
+    Pacing.startWave(self)
     -- Entry points spread around the arena, more each wave.
     local nEntries = math.min(cfg.entries[2], cfg.entries[1] + math.floor((self.wave - 1) / 2))
     local entries = self:spreadPoints(nEntries)
@@ -201,6 +220,7 @@ function Spawner:startWave(n)
             end
         end
     end
+    Pacing.shapeGroups(self)
     world.events:emit("wave_started", self.wave)
     world.player.inventory:trigger("onWaveStart", { world = world, player = world.player, wave = self.wave, procDepth = 0 })
 end
@@ -209,11 +229,13 @@ function Spawner:update(dt)
     self:updateStreams(dt)
     Entries.update(self, dt)
     if not self.enabled then return end
+    Pacing.update(self, dt)
     if self.endless then return self:updateEndless(dt) end
     local cfg = self.cfg
     if self.phase == "break" then
         self.timer = self.timer - dt
-        if self.timer <= 0 then self:startWave() end
+        -- an overlapped wave marches in as soon as the item is picked
+        if self.timer <= 0 and not (self.overlapped and self.world.pendingChoice) then self:startWave() end
         return
     end
     self.waveTime = self.waveTime + dt
@@ -235,8 +257,15 @@ function Spawner:update(dt)
             elseif g.def.boss then
                 self:spawnGroup(g.def, g.count, g.x, g.y)
                 table.remove(self.queue, i)
+            elseif g.ambush then
+                Pacing.ambush(self, g.def, Pacing.groupCount(self, g.count))
+                table.remove(self.queue, i)
+            elseif g.formation == "wall" then
+                local st = self:spawnGroup(g.def, Pacing.groupCount(self, g.count), g.x, g.y)
+                if st then st.formation = "wall" end
+                table.remove(self.queue, i)
             else
-                Entries.send(self, g.def, g.count, g.x, g.y)
+                Entries.send(self, g.def, Pacing.groupCount(self, g.count), g.x, g.y)
                 table.remove(self.queue, i)
             end
         end
@@ -246,6 +275,7 @@ function Spawner:update(dt)
         self.trickleT = self.trickleT - dt
         if self.trickleT <= 0 then
             self.trickleT = math.max(2, cfg.trickle - self.wave * 0.3) * (0.7 + love.math.random() * 0.6)
+                / (1 + (cfg.live and cfg.live.trickle or 0) * self.pressure)
             local def = self:pickEnemy()
             if def and not Entries.ring(self, def) then
                 local e = self:edgePoint()
@@ -272,9 +302,16 @@ function Spawner:update(dt)
             end
         end
     end
+    -- the last few, far away: they dig up next to the player
+    local idle = #self.queue == 0 and #self.streams == 0 and #self.portals == 0
+    if idle and cfg.call and w0.enemyCount > 0 and w0.enemyCount <= cfg.call.at then Pacing.callStragglers(self) end
+    -- overlapping waves: the last ~15% of a normal wave are left to mingle with the next one
+    local overlap = idle and Pacing.overlapReady(self)
     -- the wave only ends once everything in it (and anything it hatched) is dead
-    if #self.queue == 0 and #self.streams == 0 and #self.portals == 0 and self.world.enemyCount == 0 and not self.crownE then
+    if overlap or (idle and self.world.enemyCount == 0 and not self.crownE) then
         self.phase, self.timer = "break", self:breakLength()
+        if overlap then self.overlapped, self.timer = true, 0 end
+        Pacing.cleared(self)
         Entries.closeNests(self)
         self.world.events:emit("wave_cleared", self.wave)
         -- reward: choose one of three items (one more for each queen slain, a rare one after a queen)
@@ -314,6 +351,7 @@ end
 function Spawner:nextWave()
     if self.endless or not self.enabled or self.world.pendingChoice then return false end
     if self.phase == "break" then
+        Pacing.noteCall(self, false)
         self:startWave()
         return true
     end
@@ -321,6 +359,7 @@ function Spawner:nextWave()
     for _, g in ipairs(self.queue) do
         if not g.crown and g.at > self.waveTime then g.at, sent = self.waveTime, true end
     end
+    if sent then Pacing.noteCall(self, true) end
     return sent
 end
 
@@ -497,14 +536,16 @@ function Spawner:updateStreams(dt)
     for i = #self.streams, 1, -1 do
         local st = self.streams[i]
         st.timer = st.timer - dt
+        if st.formation == "wall" and st.left > 0 then Pacing.spawnWall(self, st) end
         while st.timer <= 0 and st.left > 0 do
             st.timer = st.timer + st.rate
             st.left = st.left - 1
-            local elite = not st.noElites and Elites.roll(st.def, math.max(1, self.wave), self.mode.elites)
+            local elite = not st.noElites and Elites.roll(st.def, math.max(1, self.wave), self.eliteCfg or self.mode.elites)
  or nil
             local e = world:spawnEnemy(st.def, st.x + (love.math.random() - 0.5) * 4, st.y + (love.math.random() - 0.5) * 4, elite)
             -- Link into a follow-the-leader column (used by the "column" behaviour).
             if e and st.style then Entries.arrive(world, e, st.style, st) end
+            if e and e.def.boss then Pacing.royalGuard(self, e) end
             if e then
                 if st.prev and st.prev.uid == st.prevUid then e.leader, e.leaderUid = st.prev, st.prevUid end
                 st.prev, st.prevUid = e, e.uid
