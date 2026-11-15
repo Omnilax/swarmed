@@ -120,6 +120,24 @@ the numbers in `src/config/rewards.lua` (a game mode can override them with `rew
 
 Test: `love . --selftest --combat`.
 
+## Nectar beads and pickups
+
+- **Nectar beads**: every kill spills golden beads worth the ant's XP (a gilded elite's holds its
+  bonus too). Walk near them: inside your **Pickup Range** they drift in faster and faster, and
+  each one gives skill XP and **nectar**, the run's currency (the gold counter next to your HP).
+  Beads that land close together merge into a bigger bead, so a massacre stays readable and fast.
+- **Wave-end magnet**: when a wave is cleared every bead left on the floor flies to you, with a
+  chime that climbs note by note. Nothing is ever lost.
+- **Pickups** (glowing tokens, never items): a rare **Nectar Magnet** from any ant pulls in the
+  whole floor; elites sometimes drop **Frost Dew** (the swarm freezes solid for 3 s: no moving,
+  no biting) or **Royal Jelly** (frenzy meter full). Uncollected pickups blink, then fade.
+- Settings > Gameplay > **Auto Collect Nectar**: beads and pickups fly to you from anywhere.
+- Console: `nectar [n]`, `pickup <id>`. Numbers: `src/config/nectar.lua`.
+- For code that spends nectar (shop, shrines), the API is at the top of `src/game/nectar.lua`:
+  `world.nectar`, `World:addNectar`, `World:spendNectar`, `World:canAffordNectar`, event `nectar_changed`.
+
+Test: `love . --selftest --nectar`.
+
 ## Inventory
 
 Press **I** (or **B**) for the inventory, modelled on FATE: a small 10x3 bag (one more row every 15 waves) where items come in shapes (bars,
@@ -469,6 +487,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/streaks` | kill-streak buffs (stats for a few seconds) | 50-kill combos |
 | `content/goals` | optional mini-goals for a wave (`start`, `update`, `on` events, `finish`, `reward`) | runs |
 | `content/routes` | safe / hard route gates between waves (ant, elite, health multipliers, `reward`) | runs |
+| `content/pickups` | ground pickups (`source` elite / kill, `weight`, `allowed`, `collect`) | nectar beads |
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
 | `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |
 | `content/bosses` | boss encounters: a predator from content/enemies joins every 5th wave | src/game/director.lua |
