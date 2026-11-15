@@ -55,6 +55,14 @@ return function(wait, shot)
     -- the game opens the victory screen, then the item choice
     world.time = world.time + 2
     game:update(1 / 60)
+    -- the queens' brood cell chests (and the level-up cards they give) open first
+    for _ = 1, 40 do
+        local t = State.top()
+        if t == game then game:update(1 / 60)
+        elseif t.lu then t.t = 10; t:activate(1); t:activate(1)
+        elseif t.landed then t.t = 99; t:close()
+        else break end
+    end
     local top = State.top()
     assert(top and top.info and top.info.first, "victory screen should open")
     wait(1.2)
