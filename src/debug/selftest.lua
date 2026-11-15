@@ -678,6 +678,7 @@ local function script(flags)
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
+    if flags["--levelups"] then require("src.debug.selftest_levelups")(wait, shot) love.event.quit() return end
     if flags["--skills"] then require("src.debug.selftest_skills")(wait, shot) love.event.quit() return end
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
     if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
@@ -1106,6 +1107,7 @@ local function script(flags)
     termiteScene()
     hymenopteraScene()
     require("src.debug.selftest_skills")(wait, shot)
+    require("src.debug.selftest_levelups")(wait, shot)
     require("src.debug.selftest_records")(wait, shot)
     require("src.debug.selftest_polish")(wait, shot)
     require("src.debug.selftest_pacing")(wait, shot)

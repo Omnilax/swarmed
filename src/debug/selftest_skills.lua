@@ -60,6 +60,7 @@ return function(wait, shot)
     local world = game.world
     local pl = world.player
     world.spawner.enabled = false
+    world.levelups.disabled = true      -- the classic way: levels give skill points (--levelups tests cards)
 
     -- XP: one per kill, levels give points, the curve climbs
     local sk = pl.skills

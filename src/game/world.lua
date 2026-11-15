@@ -76,6 +76,8 @@ function World.new(opts)
     -- damage by source, kills by species, hits taken (src/game/runstats.lua)
     self.runStats = RunStats.new(self)
 
+    -- level-up card picks (src/game/levelups.lua); made before the player, whose skills ask it
+    self.levelups = require("src.game.levelups").new(self)
     local charId = opts.character or Content.characters:all()[1].id
     self.player = Player.new(self, Content.characters:require(charId), self.size / 2, self.size / 2)
     self.spawner = Spawner.new(self, self.stage)

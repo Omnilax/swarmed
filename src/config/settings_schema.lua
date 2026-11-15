@@ -101,6 +101,12 @@ add { key = "difficulty", category = "Gameplay", label = "Difficulty", type = "c
 add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "choice", default = "auto",
     options = { { value = "auto", label = "After 3 s" }, { value = "instant", label = "Right Away" }, { value = "manual", label = "When I Press" } },
     desc = "When the next wave starts after you pick an item. The Next Wave key (N) always starts it at once, and during a wave sends the rest of its ants in early." }
+add { key = "levelUps", category = "Gameplay", label = "Level-Ups", type = "choice", default = "cards",
+    options = { { value = "cards", label = "Pick a Card" }, { value = "points", label = "Skill Points" } },
+    desc = "Pick a Card: every level offers 3 cards (skill tree nodes of your bug, or stat boosts that roll a rarity; Luck makes rare ones likelier). Skill Points: every level gives a point to spend in the bag's SKILLS tab." }
+add { key = "levelUpTiming", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "wave",
+    options = { { value = "wave", label = "At Wave End" }, { value = "instant", label = "Right Away" } },
+    desc = "At Wave End: level-ups wait and come just before the item choice, so a fight is never interrupted. Right Away: the cards pause the game as soon as you level up." }
 add { key = "waveOverlap", category = "Gameplay", label = "Overlapping Waves", type = "toggle", default = true,
     desc = "When a wave is down to its last few ants, you pick your item and the next wave marches in while they are still about. Off: every ant must die first. (Never with Next Wave set to When I Press.)" }
 add { key = "waveModifiers", category = "Gameplay", label = "Wave Modifiers", type = "toggle", default = true,

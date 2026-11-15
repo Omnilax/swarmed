@@ -136,11 +136,14 @@ Content.frenzies = Registry.new("frenzy", { required = { "name", "start" }, defa
 Content.streaks = Registry.new("streak", { required = { "name" }, defaults = { description = "", stats = {}, statsMult = {}, time = 5, weight = 10, color = "#ffb050" } })
 Content.goals = Registry.new("goal", { required = { "name", "text" }, defaults = { description = "", weight = 10, minWave = 2, reward = { xp = 20, frenzy = 0.25 } } })
 Content.routes = Registry.new("route", { required = { "name", "kind" }, defaults = { description = "", weight = 10, minWave = 2, color = "#c0a070", groupMul = 1, eliteMul = 1, hpMul = 1, reward = {} } })
+-- Level-up cards anyone can take (src/game/levelups.lua, content/levelcards/_template.lua).
+Content.levelcards = Registry.new("levelcard", { required = { "name" },
+    defaults = { stats = {}, statsMult = {}, weight = 10, minLevel = 1 }, validate = statsValid })
 -- (they load before achievements, which stay last)
 do
     local at = #Content.order + 1
     for i, kind in ipairs(Content.order) do if kind == "achievements" then at = i end end
-    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes" }) do table.insert(Content.order, at + i - 1, kind) end
+    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes", "levelcards" }) do table.insert(Content.order, at + i - 1, kind) end
 end
 
 -- Cross-references are checked after everything is loaded so content can live in any order.
