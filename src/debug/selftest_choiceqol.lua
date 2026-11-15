@@ -38,6 +38,8 @@ return function(wait, shot)
     local c = State.push(Choice.new(game, { count = 3, wave = 3 }))
     wait(1.0)
     shot("choice_qol")
+    -- window focus changes on a screen that keeps a numeric `focus` row must not crash
+    love.focus(false); love.focus(true); love.visible(false); love.visible(true)
     local lockedId = c.items[2].id
     c:toggleLock(2)
     assert(c.items[2].locked, "lock did not lock")
