@@ -81,6 +81,8 @@ end
 function RunStats:hurt(ctx)
     local world = self.world
     local d = ctx.damage or 0
+    -- a killing blow counts only the health that was left (not 99999)
+    if ctx.player then d = math.min(d, math.max(0, ctx.player.hp + d)) end
     self.totalTaken = self.totalTaken + d
     local w = self:wave()
     if w then w.taken = w.taken + d end
@@ -91,12 +93,10 @@ function RunStats:hurt(ctx)
     if last and last.name == name and world.time - last.time < 0.6 then
         last.amount, last.count, last.time = last.amount + d, last.count + 1, world.time
     else
-        self.hits[#self.hits + 1] = { name = name, amount = d, count = 1, time = world.time, wave = world.spawner and world.spawner.wave or 0,
-            hp = ctx.player and ctx.player.hp or 0 }
+        self.hits[#self.hits + 1] = { name = name, amount = d, count = 1, time = world.time, wave = world.spawner and world.spawner.wave or 0 }
         if #self.hits > RunStats.HITS then table.remove(self.hits, 1) end
     end
-    local h = self.hits[#self.hits]
-    h.hp = ctx.player and math.max(0, ctx.player.hp) or 0
+    self.hits[#self.hits].hp = ctx.player and math.max(0, ctx.player.hp) or 0
 end
 
 -- Display names of the player's own moves (attack, special, dash), cached per player.

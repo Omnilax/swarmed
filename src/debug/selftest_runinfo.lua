@@ -90,11 +90,11 @@ return function(wait, shot)
     Settings.set("speciesPopups", "run")
     local st = world._runHud
     assert(st, "run hud not attached")
+    st.queue, st.cur = {}, nil
     world:spawnEnemy("bullet_ant", pl.x + 120, pl.y)
-    assert(#st.queue >= 1 or st.cur, "no sighting card")
+    assert(#st.queue == 1, "no sighting card")
     world:spawnEnemy("bullet_ant", pl.x + 120, pl.y)
-    local q = #st.queue
-    assert(q <= 1, "same species queued twice")
+    assert(#st.queue == 1, "same species queued twice")
     sp:startWave()
     wait(1.2)
     shot("runinfo_sighting")

@@ -93,7 +93,7 @@ function GameOver.drawRecap(world, y, w)
     lg.setColor(c.dim)
     lg.printf("LAST HITS TAKEN", x, y, bw, "center")
     y = y + u(20)
-    local now = world.time
+    local now = (k and k.time) or hits[#hits].time     -- seconds counted back from the last hit
     for i = #hits, 1, -1 do
         local h = hits[i]
         local fade = i == #hits and 1 or 0.75
@@ -102,7 +102,7 @@ function GameOver.drawRecap(world, y, w)
         lg.print(name, x, y)
         local dmg = ("-%d"):format(math.max(1, math.floor(h.amount + 0.5)))
         local ago = now - h.time
-        local tail = ago < 0.05 and "  final blow" or ("  %.1fs before"):format(ago)
+        local tail = i == #hits and (k and "  final blow" or "  last hit") or ("  %.1fs before"):format(ago)
         lg.setColor(c.dim[1], c.dim[2], c.dim[3], fade)
         local tw = lg.getFont():getWidth(tail)
         lg.print(tail, x + bw - tw, y)
