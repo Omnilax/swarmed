@@ -966,6 +966,9 @@ local function script(flags)
     world.flags.god = true
     for _, cdef in ipairs(Content.characters:all()) do
         world.player:setCharacter(cdef)
+        -- (let the last bug's moves wind down first: a held mode or a block left over from it
+        -- can hold back the first attack until the crowd is already hugging the new bug)
+        wait(0.5)
         world.player.attack.timer = 0
         -- (a ring a little out, so the ants walk in through ranged puffs such as stink clouds,
         -- which land about 50 out and would miss a crowd already hugging the bug)

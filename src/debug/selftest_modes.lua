@@ -52,7 +52,11 @@ return function(wait, shot)
             local e = spawn(w, def, x, y, elite)
             if e then
                 local d = e.def
-                seen.families[d.family] = true
+                -- (reward critters, the treasure ant and a mini-goal's courier, src/game/rewards.lua,
+                -- visit every mode, like the boss encounter predators)
+                local critter = false
+                for _, t in ipairs(d.tags or {}) do if t == "treasure" or t == "goal" then critter = true end end
+                if not critter then seen.families[d.family] = true end
                 seen.ids[d.id] = true
                 if d.boss then seen.bosses = seen.bosses + 1 end
                 if not d.boss and d.spawn.weight > 0 then
