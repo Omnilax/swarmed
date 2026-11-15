@@ -243,22 +243,36 @@ function Props:drawAir()
     lg.setColor(1, 1, 1, 1)
 end
 
--- Text labels over props (the merchant's price), drawn in window space by the HUD.
+local function printLabel(world, fontFn, text, color, x, y, z, align)
+    local lg = love.graphics
+    local wx, wy = world:toWindow(x, y, z)
+    local f = fontFn()
+    lg.setFont(f)
+    local w = f:getWidth(text)
+    -- align: "center" (default), "left" (text starts at the point), "right" (text ends there)
+    if align == "left" then wx = wx + w / 2 + 8 elseif align == "right" then wx = wx - w / 2 - 8 end
+    if align then wy = wy - f:getHeight() / 2 end
+    lg.setColor(0, 0, 0, 0.75)
+    lg.print(text, math.floor(wx - w / 2) + 1, math.floor(wy) + 1)
+    local c = color or { 1, 1, 1 }
+    lg.setColor(c[1], c[2], c[3], 1)
+    lg.print(text, math.floor(wx - w / 2), math.floor(wy))
+end
+
+-- Text labels over props (the merchant's price), drawn in window space by the HUD. A prop's
+-- `label` returns one text and colour; `labels` returns a list of { text, color, x, y, z, align }
+-- (x, y, z default to the prop and its labelZ), for props with several things to read (a shrine's
+-- blessings).
 function Props:drawLabels(fontFn)
     local world, lg = self.world, love.graphics
     for _, o in ipairs(self.list) do
         if not o.dead and o.def.label then
             local text, color = o.def.label(world, o)
-            if text then
-                local wx, wy = world:toWindow(o.x, o.y, (o.def.labelZ or 24) + o.z)
-                local f = fontFn()
-                lg.setFont(f)
-                local w = f:getWidth(text)
-                lg.setColor(0, 0, 0, 0.75)
-                lg.print(text, math.floor(wx - w / 2) + 1, math.floor(wy) + 1)
-                local c = color or { 1, 1, 1 }
-                lg.setColor(c[1], c[2], c[3], 1)
-                lg.print(text, math.floor(wx - w / 2), math.floor(wy))
+            if text then printLabel(world, fontFn, text, color, o.x, o.y, (o.def.labelZ or 24) + o.z) end
+        end
+        if not o.dead and o.def.labels then
+            for _, l in ipairs(o.def.labels(world, o) or {}) do
+                printLabel(world, fontFn, l.text, l.color, l.x or o.x, l.y or o.y, (l.z or o.def.labelZ or 24) + o.z, l.align)
             end
         end
     end
