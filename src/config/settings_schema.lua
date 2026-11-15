@@ -122,6 +122,10 @@ add { key = "speciesOrder", category = "Gameplay", label = "Species Order", type
 add { key = "eliteFrequency", category = "Gameplay", label = "Elite Ants", type = "choice", default = 1,
     options = { { value = 0, label = "Off" }, { value = 0.5, label = "Rare" }, { value = 1, label = "Normal" }, { value = 2, label = "Lots" } },
     desc = "How often tougher elite ants (Aggressive, Gilded, Armored...) show up. They start appearing from wave 2." }
+add { key = "unlockAll", category = "Gameplay", label = "Unlock Everything", type = "toggle", default = false,
+    desc = "Open every bug, item and danger level now, without meeting their goals. Goals still count in Records." }
+add { key = "dashTech", category = "Gameplay", label = "Dash Tech", type = "toggle", default = true,
+    desc = "A kill during a dash refunds half its stamina, and dashing again right after one ends is faster (up to 3 in a chain)." }
 add { key = "autoAttack", category = "Gameplay", label = "Auto Attack", type = "toggle", default = true,
     desc = "Attack automatically. When off, hold the Attack button." }
 add { key = "aimMode", category = "Gameplay", label = "Aim Mode", type = "choice", default = "nearest",
@@ -136,6 +140,8 @@ add { key = "slowMotion", category = "Gameplay", label = "Slow Motion", type = "
     desc = "A moment of slow motion on huge multi-kills, a queen falling and the frenzy move." }
 add { key = "frenzyAuto", category = "Gameplay", label = "Auto Frenzy", type = "toggle", default = false,
     desc = "Unleash the frenzy move by itself as soon as the meter is full (and ants are around). Otherwise press Q." }
+add { key = "autoCollect", category = "Gameplay", label = "Auto Collect Nectar", type = "toggle", default = false,
+    desc = "Nectar beads and pickups fly to you wherever they drop, without walking near them. Off: they drift in once inside your Pickup Range (and everything is swept up at the end of a wave)." }
 add { key = "miniGoals", category = "Gameplay", label = "Mini-Goals", type = "toggle", default = true,
     desc = "Some waves come with an optional side task (catch the courier, guard the aphid...) for bonus XP and frenzy." }
 add { key = "routeGates", category = "Gameplay", label = "Route Gates", type = "toggle", default = true,

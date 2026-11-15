@@ -12,19 +12,32 @@ Victory.__index = Victory
 
 Victory.ARM_TIME = 1.0      -- the last kill is usually a held attack: ignore input for a moment
 
+-- info.swarm: the Final Swarm just ended (src/game/finalswarm.lua): { survived, kills, time }.
 function Victory.new(game, info)
     local self = setmetatable({ game = game, info = info or {}, t = 0 }, Victory)
     local world = game.world
+    local items = {}
+    if not self.info.swarm then
+        items[#items + 1] = { type = "button", label = "Keep Going", onActivate = function()
+            if not self:ready() then return end
+            world.continued = true
+            State.pop()
+        end }
+        -- the last stand: once per run, after the first win
+        if self.info.first ~= false and not world.swarmTried then
+            items[#items + 1] = { type = "button", label = "Final Swarm", onActivate = function()
+                if not self:ready() then return end
+                world.swarmTried = true
+                require("src.game.finalswarm").start(world)
+                State.pop()
+            end }
+        end
+    end
     self.menu = Menu.new({
         align = "center",
         fontSize = 24,
         rowHeight = 46,
         items = {
-            { type = "button", label = "Keep Going", onActivate = function()
-                if not self:ready() then return end
-                world.continued = true
-                State.pop()
-            end },
             { type = "button", label = "Run Summary", onActivate = function()
                 if not self:ready() then return end
                 State.push(require("src.states.runsummary").new(game))
@@ -38,9 +51,13 @@ function Victory.new(game, info)
         rect = function()
             local w, h = love.graphics.getDimensions()
             local mw = Theme.u(300)
-            return math.floor((w - mw) / 2), math.floor(h * 0.6), mw, Theme.u(46) * 3
+            local n = #self.menu.items
+            return math.floor((w - mw) / 2), math.floor(math.min(h * 0.6, h - Theme.u(46) * n - Theme.u(20))), mw, Theme.u(46) * n
         end,
     })
+    -- Keep Going / Final Swarm first, then Run Summary / End Run
+    for i = #items, 1, -1 do table.insert(self.menu.items, 1, items[i]) end
+    self.menu:setItems(self.menu.items)
     return self
 end
 
@@ -64,7 +81,9 @@ function Victory:draw()
     lg.setColor(0.04, 0.03, 0.02, 0.78 * k)
     lg.rectangle("fill", 0, 0, w, h)
     lg.setFont(Theme.font(56))
-    Theme.printShadow(self.info.first ~= false and "COLONY BROKEN" or "STILL STANDING", 0, h * 0.17, { 1, 0.84, 0.4, k }, "center", w)
+    local sw = self.info.swarm
+    local title = sw and "SWARM SURVIVED" or (self.info.first ~= false and "COLONY BROKEN" or "STILL STANDING")
+    Theme.printShadow(title, 0, h * 0.17, { 1, 0.84, 0.4, k }, "center", w)
     lg.setFont(Theme.font(22))
     local t = math.floor(world.time)
     local lines = {
@@ -75,8 +94,13 @@ function Victory:draw()
         Theme.printShadow(s, 0, h * 0.34 + (i - 1) * Theme.u(34), { 0.92, 0.9, 0.85, k }, "center", w)
     end
     lg.setFont(Theme.font(18))
-    Theme.printShadow("Your bag grew a row. The swarm will keep getting stronger.", 0, h * 0.34 + Theme.u(88),
-        { 0.62, 0.85, 1, k }, "center", w)
+    local note = "Your bag grew a row. The swarm will keep getting stronger."
+    if sw then
+        note = ("%d ants fell in the Final Swarm. The colony is broken for good."):format(sw.kills or 0)
+    elseif world.danger and world.danger.level > 0 then
+        note = note .. "  Danger " .. world.danger.level .. " beaten."
+    end
+    Theme.printShadow(note, 0, h * 0.34 + Theme.u(88), { 0.62, 0.85, 1, k }, "center", w)
     if self:ready() then self.menu:draw() end
 end
 

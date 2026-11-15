@@ -70,6 +70,14 @@ local defs = {
                 return (math.sin(t * f * math.pi * 2) + math.sin(t * f * 2 * math.pi * 2) * 0.3) * (1 - p) ^ 1.5 * 0.5
             end)
         end },
+    -- a nectar bead collected (src/game/nectar.lua plays it with a rising pitch along a chain)
+    nectar = { bus = "sfx", voices = 4, gap = 0.035, volume = 0.28,
+        data = function()
+            return synth(0.11, function(t, p)
+                local f = 1046
+                return (math.sin(t * f * math.pi * 2) + math.sin(t * f * 3 * math.pi * 2) * 0.15) * math.exp(-p * 5) * 0.6
+            end)
+        end },
     equip = { bus = "ui", voices = 2, gap = 0.03, volume = 0.45,
         data = function()
             return synth(0.09, function(t, p) return (noise() * 0.5 + math.sin(t * 300 * math.pi * 2) * 0.6) * (1 - p) ^ 3 end)

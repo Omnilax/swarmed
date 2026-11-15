@@ -43,6 +43,8 @@ function love.load(args)
     require("src.game.tutorial").load()
     require("src.game.prefs").noSave = Records.noSave or flags["--balance"] or false
     require("src.game.runsave").noSave = Records.noSave or flags["--balance"] or false
+    -- tests and the balance bot see every bug and item (src/game/unlocks.lua); --locked keeps the locks
+    require("src.game.unlocks").free = (Records.noSave or flags["--balance"] or false) and not flags["--locked"]
     -- tests and the balance bot run without hints (the polish selftest turns them on itself)
     require("src.game.tutorial").noSave = Records.noSave
     require("src.game.tutorial").off = Records.noSave or flags["--balance"] or false

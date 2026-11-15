@@ -37,7 +37,9 @@ local function wave(world) return world.spawner and math.max(1, world.spawner.wa
 -- pred narrows it further. Falls back to ignoring rarity unlock waves if nothing is left.
 function Choices.pickDef(world, taken, pred)
     local banned, w = Choices.state(world).banned, wave(world)
-    local function ok(d) return not taken[d.id] and not banned[d.id] and (not pred or pred(d)) end
+    -- locked items and ones switched off in the item pool never show (src/game/unlocks.lua)
+    local inPool = require("src.game.unlocks").inPool
+    local function ok(d) return not taken[d.id] and not banned[d.id] and inPool(d.id) and (not pred or pred(d)) end
     return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
         function(d) return ok(d) and Rarities[d.rarity].minWave <= w end)
         or Content.items:pickWeighted(function() return 1 end, ok)

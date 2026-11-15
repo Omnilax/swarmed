@@ -26,6 +26,7 @@ local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
 local RunStats = require("src.game.runstats")
 local Director = require("src.game.director")
+local Nectar = require("src.game.nectar")
 
 local World = {}
 World.__index = World
@@ -43,6 +44,8 @@ function World.new(opts)
     love.math.setRandomSeed(self.seed)
     self.modeDef = Content.modes:get(opts.gameMode or "colony") or Content.modes:all()[1]
     self.gameMode = self.modeDef.id
+    -- danger level of this run (src/config/danger.lua): every level adds one rule
+    self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)
     -- no stage given: the location picked in Cosmetics
     self.stage = Content.stages:require(opts.stage or Cosmetics.location())
     self.size = self.stage.size
@@ -69,6 +72,12 @@ function World.new(opts)
     self.floorBudget = 40   -- bodies that may still leave pools and remains (refills over time)
     self.bonusPicks = 0     -- extra cards in the next item choice (queens slain)
     self.xp = 0             -- XP earned this run (see World:grantXP)
+    -- nectar: the run's currency (src/game/nectar.lua has the API); beads and ground pickups
+    self.nectar, self.nectarEarned, self.nectarSpent = 0, 0, 0
+    self.freezeT = 0        -- frost pickup: every enemy frozen while > 0
+    self.beads = Nectar.new(self)
+    -- a cleared wave sweeps every bead left on the floor to the player
+    self.events:on("wave_cleared", function() self.beads:magnet() end)
     self.milestone = nil
     self.drawList = {}
     self.flags = { god = false, freezeAI = false }
@@ -92,6 +101,9 @@ function World.new(opts)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
+    require("src.game.dashtech").attach(self)
+    require("src.game.bugrules").attach(self)
     -- skin: recoloured in drawing (Cosmetics.shader), or a whole other model
     local skin = Cosmetics.skinFor(charId)
     self.player.skin = skin
@@ -117,6 +129,7 @@ function World:hpScale()
     return m.enemyHp * (1 + (sp and math.max(0, sp.wave - 1) * (m.hpPerWave or 0.12) or 0))
         * (sp and require("src.game.pacing").hpMul(sp) or 1)
         * (self.route and self.route.hpMul or 1)
+        * (self.danger and self.danger.hpMul or 1)
 
 end
 
@@ -158,7 +171,9 @@ function World:killEnemy(e)
     local def = e.def
     self.kos = self.kos + 1
     self.killsThisFrame = self.killsThisFrame + 1
-    self:grantXP(def.xp or 1, e.x, e.y)     -- skill tree XP: 1 per kill (enemy `xp` field)
+    -- nectar beads worth the enemy's `xp` (plus a gilded elite's bonusXP): skill XP and
+    -- nectar once collected; maybe a ground pickup (src/game/nectar.lua)
+    if not e.noBeads then self.beads:onKill(e) end
     if self.kos % 100 == 0 then
         self.milestone = { text = self.kos .. " KO!", t = 0 }
         Audio.play("ui_confirm", { pitch = 0.8 })
@@ -235,8 +250,7 @@ function World:killEnemy(e)
     if elite then
         local c = Elites.color(elite)
         self.particles:burst(e.x, e.y, 10, { c, { 1, 1, 1 } }, 90, 70, { glow = true, grav = 120 })
-        -- gilded elites: a burst of bonus XP
-        if elite.bonusXP then self:grantXP(elite.bonusXP, e.x, e.y) end
+        -- gilded elites: a big bead of bonus XP (added in Nectar:onKill)
         if elite.onDeath then
             local x, y = e.x, e.y
             self.deferred[#self.deferred + 1] = function() elite.onDeath(self, x, y, e) end
@@ -378,14 +392,55 @@ function World:damageNumber(x, y, value, crit, e)
     self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
 end
 
--- XP for the skill tree: every kill and bonus sources (gilded elites) go through here. Only
--- bonus amounts (more than 1) float a number, so ordinary kills don't spam the swarm.
-function World:grantXP(amount, x, y)
+-- XP for the skill tree: collected nectar beads (kills) and bonus sources (goals, treasure)
+-- go through here. Only bonus amounts (more than 1) float a number, and `quiet` (bead pickups)
+-- floats none, so sweeping up a trail doesn't spam the screen.
+function World:grantXP(amount, x, y, quiet)
     if not amount or amount <= 0 then return end
     self.xp = (self.xp or 0) + amount
     if self.player and self.player.skills then self.player.skills:gainXP(amount) end
     self.events:emit("xp_gained", amount, x, y)
-    if amount > 1 and x then self:floatText(x, y, "+" .. amount .. " XP", { 0.55, 0.9, 1 }, true) end
+    if amount > 1 and x and not quiet then self:floatText(x, y, "+" .. amount .. " XP", { 0.55, 0.9, 1 }, true) end
+end
+
+----------------------------------------------------------------------------------------------
+-- Nectar (the run's currency; see src/game/nectar.lua for the whole API)
+
+function World:addNectar(amount, x, y)
+    if not amount or amount <= 0 then return end
+    self.nectar = self.nectar + amount
+    self.nectarEarned = self.nectarEarned + amount
+    self.events:emit("nectar_changed", self.nectar, amount)
+    if x and amount > 1 then self:floatText(x, y, "+" .. amount .. " nectar", { 1, 0.8, 0.3 }, true) end
+end
+
+function World:canAffordNectar(amount) return self.nectar >= (amount or 0) end
+
+-- Pay `amount`. Returns false (and changes nothing) when the balance is short.
+function World:spendNectar(amount)
+    amount = amount or 0
+    if amount < 0 or self.nectar < amount then return false end
+    if amount == 0 then return true end
+    self.nectar = self.nectar - amount
+    self.nectarSpent = self.nectarSpent + amount
+    self.events:emit("nectar_changed", self.nectar, -amount)
+    return true
+end
+
+function World:dropNectar(x, y, value) return self.beads:drop(x, y, value) end
+function World:magnetNectar() self.beads:magnet() end
+function World:dropPickup(id, x, y) return self.beads:dropPickup(id, x, y) end
+
+-- Every enemy freezes stiff for `t` seconds (no moving, no biting).
+function World:freezeEnemies(t)
+    local was = self.freezeT > 0
+    self.freezeT = math.max(self.freezeT, t or 3)
+    if not was then
+        local p = self.player
+        self:addFx({ kind = "ring", x = p.x, y = p.y, r = 160, life = 0.5, color = { 0.6, 0.9, 1 } })
+        Audio.play("zap", { pitch = 0.6 })
+        self.events:emit("enemies_frozen", self.freezeT)
+    end
 end
 
 function World:floatText(x, y, text, color, big)
@@ -439,9 +494,12 @@ function World:update(dt)
     self.player:update(dt)
     self.spawner:update(dt)
     self:updateEnemies(dt)
+    if self.freezeT > 0 then self.freezeT = math.max(0, self.freezeT - dt) end
+    self.beads:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
     self:pushPlayerOutOfSolids()
 
     -- Remove the dead, keeping the array packed.
@@ -590,7 +648,8 @@ function World:updateEnemies(dt)
             end })
     end
     local S = self.size
-    local freeze = self.flags.freezeAI
+    local iced = self.freezeT > 0       -- the frost pickup: frozen solid, no bites
+    local freeze = self.flags.freezeAI or iced
     local kDamp = 1 - util.damp(8, dt)
     local attackers, shields = 0, 0
     local env = self.env
@@ -764,7 +823,7 @@ function World:updateEnemies(dt)
             -- size of the crowd on you (and armour reduces every single bite).
             local dx, dy = p.x - e.x, p.y - e.y
             local rr = p.radius + r0 + 1
-            if dx * dx + dy * dy < rr * rr and e.damage > 0 and e.z < 3 and not e.dropH and (p.z < 4 or p.airborne) and not e.hidden and e.stunT <= 0 and not unseen then
+            if dx * dx + dy * dy < rr * rr and e.damage > 0 and e.z < 3 and not e.dropH and (p.z < 4 or p.airborne) and not e.hidden and e.stunT <= 0 and not unseen and not iced then
                 attackers = attackers + 1
                 if e.biteCd <= 0 then
                     e.biteCd = (def.biteRate or 0.9) * (0.85 + love.math.random() * 0.3)
@@ -888,8 +947,12 @@ function World:draw()
     for i = n + 1, #list do list[i] = nil end
     sortByDepth(list, n)
 
+    -- nectar beads and ground pickups (one sprite batch)
+    self.beads:draw(cx0, cy0, cx1, cy1)
+
     -- Swarm underlay: soft dark blobs that merge dense crowds into one flowing mass.
     local glowQ = Sprites.glow
+    local iced = self.freezeT > 0
     for i = 1, n do
         local o = list[i]
         local sw = o.def and not o.hidden and o.def.swarmShade
@@ -901,6 +964,11 @@ function World:draw()
             -- a rival colony's ant (colony war): a red mark under it
             lg.setColor(1, 0.25, 0.15, 0.45)
             lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.45 + 1, o.radius * 0.25 + 0.5, 8, 8)
+        end
+        if iced and o ~= p and not o.hidden then
+            -- frozen by the frost pickup: an icy patch under every enemy
+            lg.setColor(0.55, 0.85, 1, 0.55)
+            lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.5 + 1, o.radius * 0.3 + 0.5, 8, 8)
         end
         if o.elite and not o.hidden then
             -- a coloured aura on the ground marks elites even in a dense swarm
@@ -1161,6 +1229,12 @@ function World:draw()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
     self.weather:drawGlow(ox, oy, vw, vh)
+    if self.freezeT > 0 then
+        -- frost pickup: a cold blue wash over the arena while the swarm is frozen
+        lg.setColor(0.55, 0.85, 1, 0.12 * math.min(1, self.freezeT * 2))
+        lg.rectangle("fill", ox, oy, vw, vh)
+        lg.setColor(1, 1, 1, 1)
+    end
     if (p.blindT or 0) > 0 and not Settings.get("lighting") then
         lg.setColor(0, 0, 0, 0.75 * math.min(1, p.blindT / 0.6))
         lg.rectangle("fill", ox, oy, vw, vh)

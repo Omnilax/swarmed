@@ -139,11 +139,13 @@ Content.routes = Registry.new("route", { required = { "name", "kind" }, defaults
 -- Level-up cards anyone can take (src/game/levelups.lua, content/levelcards/_template.lua).
 Content.levelcards = Registry.new("levelcard", { required = { "name" },
     defaults = { stats = {}, statsMult = {}, weight = 10, minLevel = 1 }, validate = statsValid })
+-- Ground pickups (src/game/nectar.lua, content/pickups/_template.lua): magnet, freeze, frenzy fill.
+Content.pickups = Registry.new("pickup", { required = { "name", "collect" }, defaults = { description = "", color = "#ffffff", icon = "star", weight = 10, minWave = 1 } })
 -- (they load before achievements, which stay last)
 do
     local at = #Content.order + 1
     for i, kind in ipairs(Content.order) do if kind == "achievements" then at = i end end
-    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes", "levelcards" }) do table.insert(Content.order, at + i - 1, kind) end
+    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes", "levelcards", "pickups" }) do table.insert(Content.order, at + i - 1, kind) end
 end
 
 -- Cross-references are checked after everything is loaded so content can live in any order.

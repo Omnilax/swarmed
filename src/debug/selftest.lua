@@ -672,6 +672,7 @@ local function script(flags)
     if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
     if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
+    if flags["--nectar"] then require("src.debug.selftest_nectar")(wait, shot) love.event.quit() return end
     if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
@@ -684,6 +685,7 @@ local function script(flags)
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
     if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
+    if flags["--mastery"] then require("src.debug.selftest_mastery")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
     if flags["--runinfo"] then require("src.debug.selftest_runinfo")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end
@@ -1119,6 +1121,7 @@ local function script(flags)
     require("src.debug.selftest_skills")(wait, shot)
     require("src.debug.selftest_levelups")(wait, shot)
     require("src.debug.selftest_records")(wait, shot)
+    require("src.debug.selftest_mastery")(wait, shot)
     require("src.debug.selftest_polish")(wait, shot)
     require("src.debug.selftest_pacing")(wait, shot)
     require("src.debug.selftest_anims")(wait, shot)
