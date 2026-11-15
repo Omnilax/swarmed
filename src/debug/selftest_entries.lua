@@ -95,7 +95,12 @@ return function(wait, shot)
     end
     assert(sp.phase == "break", "the wave with nest holes never ended")
     assert(sawRing, "no burrow ring showed up during the wave")
-    step(60)
+    -- (holes take 0.8 s of game time to close; a level-up's slow motion can stretch that, so
+    -- give it up to 4 s of frames)
+    for _ = 1, 240 do
+        if #sp.holes == 0 then break end
+        step(1)
+    end
     assert(#sp.holes == 0, "nest holes should close after the wave")
 
     -- switched off: edge only
