@@ -159,6 +159,21 @@ add { name = "encounter", usage = "[id]", help = "Bring in a boss encounter now 
     out("Encounter: " .. def.name)
 end }
 
+add { name = "gamble", usage = "[id]", help = "Put a map gamble next to you (dewdrop_shrine, challenge_bell, gamble_flower)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local w = game.world
+    local def = Content.props:get(args[1] or "")
+    if not def or not def.gamble then
+        local ids = {}
+        for _, k in ipairs(w.gambles:kinds()) do ids[#ids + 1] = k.id end
+        out("Gambles: " .. table.concat(ids, ", "))
+        return
+    end
+    local x, y = require("src.game.envfx").pointNear(w, w.player.x, w.player.y, 70)
+    w.gambles:place(def.id, x, y)
+    out("Placed " .. def.name)
+end }
+
 add { name = "prop", usage = "<id> [n]", help = "Drop props near you (pebble, twig, acorn, cocoon, merchant)", run = function(args, game, out)
     if not needGame(game, out) then return end
     local def = Content.props:get(args[1] or "")
