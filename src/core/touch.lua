@@ -122,6 +122,7 @@ function Touch.buttons()
         add { id = "close", x = x, y = h * 0.3, r = r, label = "CLOSE", action = "inventory", kind = "tap" }
         add { id = "turn", x = x, y = h - pad - r * 3.6, r = r, label = "TURN", action = "inventory_rotate", kind = "tap" }
         add { id = "eat", x = x, y = h - pad - r, r = r, label = "EAT", action = "inventory_alt", kind = "tap" }
+        add { id = "scrap", x = x, y = h - pad - r * 6.2, r = r, label = "SCRAP", action = "inventory_scrap", kind = "tap" }
     end
     if lefty() then
         for _, b in ipairs(list) do if b.id ~= "panel" then b.x = w - b.x end end

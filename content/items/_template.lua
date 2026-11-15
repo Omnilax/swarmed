@@ -18,7 +18,9 @@ return {
     -- Multiplier changes per stack: 0.1 = +10% of the final value.
     statsMult = {},
     -- Procs. trigger: onHit | onKill | onHurt | onDash | onWaveStart
-    -- chance: number (0..1) or function(stacks) -> number; omitted = always. Luck scales it.
+    -- chance: number (0..1) or function(stacks) -> number; omitted = always. Luck scales it on a
+    -- hyperbolic curve (never 100%, see Inventory.stackChance). chanceStack = 0.5: each extra copy
+    -- rolls the chance half a time more (for procs whose effect does not grow with copies).
     -- ctx: world, player, target, damage, crit, x, y, procDepth
     -- Pass procDepth = ctx.procDepth + 1 to any damage you deal so chains stay bounded.
     procs = {

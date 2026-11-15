@@ -48,6 +48,10 @@ function RunSave.snapshot(game)
         -- (the seed as text: the save file keeps numbers to 14 digits, a seed has up to 16)
         seed = w.seed and ("%.0f"):format(w.seed), daily = util.deepcopy(w.daily),
         choice = util.deepcopy(w.choice),
+        -- the nectar economy: shop boosts bought, locked offers, curse growth (src/game/economy.lua)
+        economy = w.economy and util.deepcopy({ boosts = w.economy.boosts, locked = w.economy.locked,
+            interestPaid = w.economy.interestPaid, scrapped = w.economy.scrapped, growth = w.economy.growth,
+            interestWave = w.economy.interestWave }),
         -- danger level (src/config/danger.lua) and the bug rule's state (src/game/bugrules.lua)
         danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
         -- blessings and curses from map gambles (src/game/gambles.lua)
@@ -135,6 +139,12 @@ function RunSave.restore(world, snap)
     world.nectar = snap.nectar or 0
     world.nectarEarned, world.nectarSpent = snap.nectarEarned or world.nectar, snap.nectarSpent or 0
     if snap.choice then world.choice = util.deepcopy(snap.choice) end
+    if snap.economy then
+        local Economy = require("src.game.economy")
+        local e = Economy.state(world)
+        for k, v in pairs(util.deepcopy(snap.economy)) do e[k] = v end
+        Economy.applyBoosts(p)
+    end
     if type(snap.ruleState) == "table" then world.ruleState = util.deepcopy(snap.ruleState) end
     -- the bag, exactly as it was (anything that no longer fits, or no longer exists, is stowed or skipped)
     local inv = p.inventory

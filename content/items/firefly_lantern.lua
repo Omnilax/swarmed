@@ -1,7 +1,7 @@
 return {
     name = "Firefly Lantern",
-    description = "+10% Area. Kills have a 10% chance to flash, slowing every ant nearby for 1.5 seconds.",
-    effect = "Kills have a 10% chance to flash, slowing every ant nearby for 1.5 seconds.",
+    description = "+10% Area. Kills have a 10% chance (more per stack) to flash, slowing every ant nearby for 1.5 seconds.",
+    effect = "Kills have a 10% chance (more per stack) to flash, slowing every ant nearby for 1.5 seconds.",
     rarity = "uncommon",
     size = { 1, 2 },
     stats = { area = 10 },
@@ -9,6 +9,7 @@ return {
         {
             trigger = "onKill",
             chance = 0.1,
+            chanceStack = 0.5,   -- the flash barely grows, so copies make it fire more often
             effect = function(ctx, stacks)
                 local Combat = require("src.game.combat")
                 for _, e in ipairs(Combat.collect(ctx.world, ctx.x, ctx.y, 40 + 10 * stacks)) do

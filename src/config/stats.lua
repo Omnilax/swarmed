@@ -20,8 +20,9 @@ return {
             if v >= 0 then return ("Every hit on you does %d%% less damage (a 10 damage bite does %s)."):format(pct((1 - m) * 100), r1(10 * m)) end
             return ("Every hit on you does %d%% more damage (a 10 damage bite does %s)."):format(pct((m - 1) * 100), r1(10 * m))
         end },
-    { id = "dodge", label = "Dodge", default = 0, min = 0, max = 60, percent = true,
-        info = function(v) return ("%d%% chance that a hit misses you completely (60%% at most)."):format(pct(v)) end },
+    -- soft = { knee, cap }: past the knee each point counts for less (src/game/stats.lua Stats.soften)
+    { id = "dodge", label = "Dodge", default = 0, min = 0, max = 100, percent = true, soft = { 30, 60 },
+        info = function(v) return ("%d%% chance that a hit misses you completely. Past 30%% each point counts for less, and it never reaches 60%%."):format(pct(v)) end },
     { id = "moveSpeed", label = "Speed", default = 100, min = 20,
         info = function(v) return ("Walks %d pixels a second (%d%% of a standard bug)."):format(pct(v), pct(v)) end },
     { id = "damage", label = "Damage", default = 0, min = -90, percent = true,
@@ -37,7 +38,12 @@ return {
     { id = "critDamage", label = "Crit Damage", default = 150, min = 100, percent = true,
         info = function(v) return ("Critical hits do %sx damage (a 10 damage bite crits for %s)."):format(r1(v / 100), r1(v / 10)) end },
     { id = "luck", label = "Luck", default = 0, percent = true,
-        info = function(v) return ("Item effects trigger %sx as often (a 10%% chance becomes %s%%)."):format(r1(1 + v / 100), r1(10 * (1 + v / 100))) end },
+        info = function(v)
+            -- matches Inventory.stackChance in src/game/inventory.lua
+            local m = math.max(0, 1 + v / 100)
+            local function at(c) return r1(100 * (1 - (1 - c) ^ m)) end
+            return ("Item effects roll %sx as often (a 10%% chance becomes %s%%, a 50%% chance %s%%). It never reaches 100%%."):format(r1(m), at(0.1), at(0.5))
+        end },
     { id = "lifesteal", label = "Life Steal", default = 0, min = 0, max = 100, percent = true,
         info = function(v)
             if v <= 0 then return "Hits don't heal you." end

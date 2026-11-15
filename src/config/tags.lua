@@ -21,4 +21,5 @@ return {
     fungus = { label = "Fungus", color = "#d8a77f", set = { name = "Fairy Ring", stats = { area = 6, maxHp = 8 } } },
     bug = { label = "Bug", color = "#e0b46f", set = { name = "Exoskeleton", stats = { attackSpeed = 8 } } },
     orbital = { label = "Orbital", color = "#b8a6ff", set = { name = "Swarm Cloud", stats = { attackSpeed = 5, area = 5 } } },
+    cursed = { label = "Cursed", color = "#c071ff" },   -- no set bonus: curses are their own reward
 }

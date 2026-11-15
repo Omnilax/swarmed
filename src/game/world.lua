@@ -376,7 +376,7 @@ function World:rollItem()
     local Rarities = require("src.config.rarities")
     local wave = self.spawner and math.max(1, self.spawner.wave) or 1
     local def = Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
-        function(d) return Rarities[d.rarity].minWave <= wave end) or Content.items:all()[1]
+        function(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed end) or Content.items:all()[1]
     return Inventory.newItem(def.id)
 end
 
@@ -691,6 +691,9 @@ function World:updateEnemies(dt)
     local attackers, shields = 0, 0
     local env = self.env
     local envK, envField = env.enemySpeed, env.field
+    -- a curse in the bag (Queen's Pheromone) speeds every ant up
+    local curseK = self.player and self.player.inventory and self.player.inventory:sum("enemySpeed") or 0
+    if curseK ~= 0 then envK = envK * math.max(0.2, 1 + curseK) end
     local driftX, driftY = env.driftX, env.driftY
     if freeze then envK, driftX, driftY, envField = 1, 0, 0, nil end
     local sqrt = math.sqrt

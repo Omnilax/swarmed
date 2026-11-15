@@ -13,6 +13,12 @@
 --   BAN (X / Del / pad Y) two presses: the item never shows up again this run; a few per run
 -- Cards also show the item's tags (lit when your bag shares them) and what it does to your
 -- stats ("Speed 120 » 138").
+--
+-- SHOP tab (Tab / H / pad LB, or the tabs above the cards; src/game/economy.lua): 2 items and
+-- a stat boost for nectar, two presses to buy, LOCK carries an offer to the next shop, a reroll
+-- that costs more each time. Savings interest is paid as the screen opens. Taking (or skipping)
+-- the free pick closes the screen, unless the shop still has something you can afford: then it
+-- moves to the SHOP tab and DONE closes it.
 local State = require("src.core.state")
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
@@ -21,6 +27,7 @@ local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
 local Choices = require("src.game.choices")
 local InvState = require("src.states.inventory")
+local Economy = require("src.game.economy")
 
 local Choice = { transparent = true }
 Choice.__index = Choice
@@ -30,6 +37,8 @@ local lg = love.graphics
 Choice.ARM_TIME = 0.8     -- seconds before the cards accept any input
 local LOCK_COL = { 1, 0.82, 0.35 }
 local BAN_COL = { 1, 0.45, 0.4 }
+local NECTAR_COL = { 1, 0.8, 0.3 }
+local CURSE_COL = { 0.8, 0.5, 1 }
 
 -- opts: count (cards), boss (true after a boss wave: one is rare or better), wave
 function Choice.new(game, opts)
@@ -39,8 +48,19 @@ function Choice.new(game, opts)
     if opts.boss and (not minR or require("src.config.rarities")[minR].order < 3) then minR = "rare" end
     self.minRarity = minR
     self.run = Choices.state(game.world)
-    self.items = Choices.deal(game.world, opts.count or 3, self.minRarity)
+    -- curses and blessings in the bag change how many cards there are (Fool's Gold Scarab...)
+    local count = opts.count or 3
+    local delta = game.world.player.inventory:sum("cardsDelta")
+    if delta ~= 0 then count = math.max(2, math.min(6, count + delta)) end
+    self.items = Choices.deal(game.world, count, self.minRarity)
     self.tags = Choices.bagTags(game.world.player.inventory)
+    self.tab = "pick"
+    -- the nectar shop (off in modes with `shop = false`, and in the sandbox's test choices)
+    self.hasShop = Economy.enabled(game.world) and not opts.noShop
+    if self.hasShop then
+        self.interest = Economy.payInterest(game.world)
+        self.shop = Economy.shop(game.world, self:cardIds())
+    end
     self:refresh()
     self.focus = 1
     self.armed = nil          -- the card (or skip) picked once, waiting for its confirm
@@ -49,11 +69,53 @@ function Choice.new(game, opts)
     return self
 end
 
+-- Item ids on the free pick's cards (the shop doesn't offer them too).
+function Choice:cardIds()
+    local ids = {}
+    for _, it in ipairs(self.items) do ids[it.id] = true end
+    return ids
+end
+
+-- What the cards show on this tab: free pick items, or shop offers ({ def, item?, price... }).
+function Choice:entries()
+    if self.tab == "shop" then return self.shop.offers end
+    return self.items
+end
+
 -- Stat previews per card (after a reroll or ban too).
 function Choice:refresh()
     local stats = self.world.player.stats
     self.previews = {}
-    for i, it in ipairs(self.items) do self.previews[i] = Choices.preview(stats, it.def) end
+    for i, it in ipairs(self:entries()) do self.previews[i] = Choices.preview(stats, it.def) end
+    self.cards = nil
+end
+
+-- Switch between the free pick and the shop.
+function Choice:setTab(tab)
+    if tab == self.tab or (tab == "shop" and not self.hasShop) or (tab == "pick" and self.picked) then return end
+    self.tab = tab
+    self.armed, self.armedBan, self.focus = nil, nil, 1
+    self.flashT = {}
+    self:refresh()
+    Audio.play("ui_move", { pitch = 1.2 })
+end
+
+-- Close the screen for good (the shop's DONE, or a pick with nothing left to buy).
+function Choice:close()
+    if self.hasShop then Economy.remember(self.world) end
+    if State.top() == self then State.pop() end
+end
+
+-- After the free pick: stay on the shop if there is still something to buy, else close.
+function Choice:afterPick()
+    self.picked = true
+    if self.hasShop and Economy.anyAffordable(self.world) then
+        self.tab = "pick"
+        self:setTab("shop")
+        return true
+    end
+    self:close()
+    return false
 end
 
 function Choice:enter()
@@ -61,14 +123,10 @@ function Choice:enter()
     Audio.play("ui_confirm", { pitch = 1.2 })
 end
 
-function Choice:take(i)
-    local item = self.items[i]
-    if not item then return end
-    item.locked = nil
-    Choices.remember(self.world, self.items, item)
-    State.pop()
+-- Put an item in the bag (the free pick, or one bought). No room: the bag opens holding it,
+-- on top of this screen if it stays open.
+function Choice:stowItem(item)
     local inv = self.world.player.inventory
-    self.world.events:emit("item_taken", item)
     if inv:give(item) then
         Audio.play("equip")
         self.world:floatText(self.world.player.x, self.world.player.y, item.def.name, InvState.rarityColor(item.def), true)
@@ -78,18 +136,68 @@ function Choice:take(i)
     end
 end
 
+function Choice:take(i)
+    local item = self.items[i]
+    if not item then return end
+    item.locked = nil
+    Choices.remember(self.world, self.items, item)
+    self.world.events:emit("item_taken", item)
+    self:afterPick()
+    self:stowItem(item)
+end
+
 -- Pass on every card: nothing goes in the bag (locked cards still come back next time).
 function Choice:skip()
     Choices.remember(self.world, self.items, nil)
-    State.pop()
+    self:afterPick()
     self.world.events:emit("item_skipped")
     Audio.play("ui_back")
     self.world:floatText(self.world.player.x, self.world.player.y, "Skipped", { 0.75, 0.7, 0.65 }, true)
 end
 
+-- The shop's reroll: new offers for every one that isn't locked or sold, for nectar.
+function Choice:rerollShop()
+    self.armed = nil
+    local old = {}
+    for i, o in ipairs(self.shop.offers) do old[i] = o end
+    local ok, why = Economy.rerollShop(self.world, self:cardIds())
+    if not ok then
+        Audio.play("ui_back")
+        self.note = { text = why == "locked" and "Nothing left to reroll" or "Not enough nectar", t = 0 }
+        return false
+    end
+    for i, o in ipairs(self.shop.offers) do if o ~= old[i] then self.flashT[i] = self.t end end
+    self:refresh()
+    Audio.play("ui_confirm", { pitch = 1.4 })
+    return true
+end
+
+-- Buy shop offer i (an item goes in the bag, a boost counts at once).
+function Choice:buy(i)
+    local o = self.shop.offers[i]
+    local ok, item = Economy.buy(self.world, i)
+    if not ok then
+        Audio.play("ui_back")
+        self.note = { text = item == "sold" and "Already bought" or "Not enough nectar", t = 0 }
+        return false
+    end
+    self.armed = nil
+    Audio.play("pickup", { pitch = 1.2 })
+    if item then
+        self:stowItem(item)
+    else
+        Audio.play("equip", { pitch = 1.3 })
+        self.world:floatText(self.world.player.x, self.world.player.y, o.text, NECTAR_COL, true)
+    end
+    self.tags = Choices.bagTags(self.world.player.inventory)
+    self:refresh()
+    return true
+end
+
 -- New cards for every card that isn't locked.
 function Choice:reroll()
     if not self:ready() then return false end
+    if self.tab == "shop" then return self:rerollShop() end
     self.armed, self.armedBan = nil, nil
     local old = self.items
     local items, why = Choices.reroll(self.world, self.items, self.minRarity)
@@ -108,8 +216,8 @@ end
 
 -- Lock / unlock card i (it comes back in the next item choice).
 function Choice:toggleLock(i)
-    local it = self.items[i]
-    if not self:ready() or not it then return end
+    local it = self:entries()[i]
+    if not self:ready() or not it or it.sold then return end
     it.locked = not it.locked or nil
     self.armedBan = nil
     Audio.play(it.locked and "equip" or "ui_move", { pitch = it.locked and 1.3 or 1 })
@@ -117,7 +225,7 @@ end
 
 -- BAN on card i: the first press arms it, a second press bans the item for the run.
 function Choice:ban(i)
-    if not self:ready() or not self.items[i] then return false end
+    if self.tab == "shop" or not self:ready() or not self.items[i] then return false end
     if self.run.banishes <= 0 then
         Audio.play("ui_back")
         self.note = { text = "No bans left", t = 0 }
@@ -140,14 +248,34 @@ end
 
 function Choice:ready() return self.t >= Choice.ARM_TIME end
 
-function Choice:skipIndex() return #self.items + 1 end
-function Choice:rerollIndex() return #self.items + 2 end
+function Choice:skipIndex() return #self:entries() + 1 end
+function Choice:rerollIndex() return #self:entries() + 2 end
+
+-- The shop's BACK (to the free pick) or DONE (after the pick: close).
+function Choice:shopBack()
+    if self.picked then self:close() else self:setTab("pick") end
+end
 
 -- One press on card i: the first picks it, a second press on the same card takes it.
 -- (The skip slot works the same way; the reroll slot rerolls at once.)
 function Choice:activate(i)
     if not self:ready() then return end
     if i == self:rerollIndex() then self:reroll() return end
+    if self.tab == "shop" then
+        if i == self:skipIndex() then self:shopBack() return end
+        local o = self.shop.offers[i]
+        if not o then return end
+        if o.sold then Audio.play("ui_back") return end
+        if self.armed == i then self:buy(i)
+        elseif not Economy.canAfford(self.world, o.price) then
+            Audio.play("ui_back")
+            self.note = { text = "Not enough nectar", t = 0 }
+        else
+            self.armed, self.focus = i, i
+            Audio.play("ui_confirm", { pitch = 0.9 })
+        end
+        return
+    end
     if not (self.items[i] or i == self:skipIndex()) then return end
     self.armedBan = nil
     if self.armed == i then
@@ -161,7 +289,7 @@ end
 function Choice:layout()
     local w, h = lg.getDimensions()
     local u = Theme.u
-    local n = #self.items
+    local n = math.max(1, #self:entries())
     local cw = math.floor(math.min(u(240), (w - u(60)) / n - u(16)))
     local ch = math.floor(u(372))
     local gap = u(16)
@@ -180,16 +308,33 @@ function Choice:layout()
     local by = y0 + ch + u(58)
     self.rerollRect = { x = math.floor(w / 2 - bw - u(8)), y = by, w = bw, h = bh }
     self.skipRect = { x = math.floor(w / 2 + u(8)), y = by, w = bw, h = bh }
+    -- FREE PICK / SHOP tabs, top right of the cards
+    self.tabRects = nil
+    if self.hasShop then
+        local tf = Theme.font(15, "bold")
+        local th = math.floor(u(28))
+        local w1 = tf:getWidth("FREE PICK") + u(24)
+        local w2 = tf:getWidth("SHOP  999 nectar") + u(24)
+        local tx = math.floor(w / 2 - (w1 + w2 + u(8)) / 2)
+        local ty = math.floor(y0 - u(70) - th - u(10))
+        if ty < u(4) then ty = math.floor(u(4)) end
+        self.tabRects = { pick = { x = tx, y = ty, w = w1, h = th }, shop = { x = tx + w1 + u(8), y = ty, w = w2, h = th } }
+    end
     return self.cards
 end
 
 local function inside(r, x, y) return r and x >= r.x and x < r.x + r.w and y >= r.y and y < r.y + r.h end
 
--- What is under a point: "card" | "ban" | "lock" | "skip" | "reroll", and the card slot.
+-- What is under a point: "card" | "ban" | "lock" | "skip" | "reroll" | "tab", and the card
+-- slot (or the tab's name).
 function Choice:hitAt(mx, my)
-    for i, c in ipairs(self.cards or self:layout()) do
+    local cards = self.cards or self:layout()
+    for name, r in pairs(self.tabRects or {}) do
+        if inside(r, mx, my) then return "tab", name end
+    end
+    for i, c in ipairs(cards) do
         if inside(c, mx, my) then
-            if inside(c.ban, mx, my) then return "ban", i end
+            if inside(c.ban, mx, my) and self.tab ~= "shop" then return "ban", i end
             if inside(c.lock, mx, my) then return "lock", i end
             return "card", i
         end
@@ -200,7 +345,8 @@ end
 
 -- Focus slot under a point (cards, skip, reroll), as before.
 function Choice:cardAt(mx, my)
-    local _, i = self:hitAt(mx, my)
+    local what, i = self:hitAt(mx, my)
+    if what == "tab" then return nil end
     return i
 end
 
@@ -211,7 +357,8 @@ function Choice:update(dt)
         if self.note.t > 2 then self.note = nil end
     end
     if not self:ready() then return end
-    local f, n, skipI, rerollI = self.focus, #self.items, self:skipIndex(), self:rerollIndex()
+    if Input.pressed("choice_shop") then self:setTab(self.tab == "shop" and "pick" or "shop") end
+    local f, n, skipI, rerollI = self.focus, #self:entries(), self:skipIndex(), self:rerollIndex()
     if self.focus == skipI or self.focus == rerollI then
         if Input.pressed("ui_up") then self.focus = self.lastCard or 1; Audio.play("ui_move")
         elseif Input.pressed("ui_left") or Input.pressed("ui_right") then
@@ -227,7 +374,7 @@ function Choice:update(dt)
     if Input.pressed("ui_confirm") then self:activate(self.focus)
     elseif Input.pressed("ui_back") then
         if self.focus <= n then self.lastCard = self.focus end
-        self:activate(skipI)
+        if self.tab == "shop" then self:shopBack() else self:activate(skipI) end
     elseif Input.pressed("choice_reroll") then self:reroll()
     elseif Input.pressed("choice_lock") and card then self:toggleLock(card)
     elseif Input.pressed("choice_ban") and card then self:ban(card)
@@ -237,7 +384,7 @@ end
 function Choice:mousemoved(x, y)
     local i = self:cardAt(x, y)
     if i and i ~= self.focus and not self.armed and not self.armedBan then
-        if self.focus <= #self.items then self.lastCard = self.focus end
+        if self.focus <= #self:entries() then self.lastCard = self.focus end
         self.focus = i; Audio.play("ui_move")
     end
 end
@@ -245,7 +392,8 @@ end
 function Choice:mousepressed(x, y, b)
     if b ~= 1 then return end
     local what, i = self:hitAt(x, y)
-    if what == "ban" then self:ban(i)
+    if what == "tab" then self:setTab(i)
+    elseif what == "ban" then self:ban(i)
     elseif what == "lock" then self:toggleLock(i)
     elseif what == "reroll" then self:reroll()
     elseif i then self:activate(i)
@@ -280,15 +428,38 @@ function Choice:draw()
     lg.setColor(0.02, 0.015, 0.02, 0.75)
     lg.rectangle("fill", 0, 0, w, h)
     local cards = self:layout()
+    local shopTab = self.tab == "shop"
+    local nectar = self.hasShop and Economy.nectar(self.world) or 0
     lg.setFont(Theme.font(30, "bold"))
-    local title = self.opts.boss and "THE QUEEN FELL. CHOOSE A PRIZE"
+    local title = shopTab and "NECTAR SHOP"
+        or self.opts.boss and "THE QUEEN FELL. CHOOSE A PRIZE"
         or self.opts.endless and ("LEVEL " .. (self.opts.wave or "") .. " SURVIVED")
         or ("WAVE " .. (self.opts.wave or "") .. " CLEARED")
 
-    Theme.printShadow(title, 0, cards[1].y - u(70), COL.label, "center", w)
+    local cardsY = cards[1] and cards[1].y or h / 2
+    Theme.printShadow(title, 0, cardsY - u(70), shopTab and NECTAR_COL or COL.label, "center", w)
     lg.setFont(Theme.font(16))
     lg.setColor(COL.dim)
-    lg.printf("Pick one item for your bag, or skip them all", 0, cards[1].y - u(34), w, "center")
+    local sub = "Pick one item for your bag, or skip them all"
+    if shopTab then
+        sub = ("%d nectar  ·  savings earn +%d at the next wave clear (max %d)"):format(nectar,
+            Economy.interestPreview(self.world), Economy.interestCap(self.world))
+        if self.picked then sub = sub .. "  ·  free pick done" end
+    elseif self.hasShop and (self.interest or 0) > 0 then
+        sub = sub .. ("  ·  +%d nectar interest"):format(self.interest)
+    end
+    lg.printf(sub, 0, cardsY - u(34), w, "center")
+    -- FREE PICK / SHOP tabs
+    if self.tabRects then
+        local tf = Theme.font(15, "bold")
+        local mx0, my0 = love.mouse.getPosition()
+        local pr, sr0 = self.tabRects.pick, self.tabRects.shop
+        local afford = Economy.anyAffordable(self.world)
+        button(pr, self.picked and "PICK DONE" or "FREE PICK", tf,
+            { color = COL.label, lit = not shopTab, hover = inside(pr, mx0, my0), disabled = self.picked })
+        button(sr0, "SHOP  " .. nectar .. " nectar", tf,
+            { color = NECTAR_COL, lit = shopTab, hover = inside(sr0, mx0, my0) or (afford and not shopTab and math.sin(self.t * 5) > 0.3) })
+    end
 
     local inv = self.world.player.inventory
     local ready = self:ready()
@@ -297,17 +468,25 @@ function Choice:draw()
     local touch = Input.lastDevice == "touch"
     local pad = Input.lastDevice == "gamepad"
     local chipFont = Theme.font(13, "bold")
-    for i, item in ipairs(self.items) do
+    for i, entry in ipairs(self:entries()) do
         local c = cards[i]
-        local def = item.def
+        local item = shopTab and entry.item or (not shopTab and entry) or nil
+        local offer = shopTab and entry or nil
+        local def = entry.def
         local rc = InvState.rarityColor(def)
+        if offer and offer.kind == "boost" then rc = NECTAR_COL end
+        local cursed = def.curse ~= nil or def.rarity == "cursed"
         local focus = i == self.focus
         local lift = focus and math.floor(u(8) * math.min(1, self.t * 6)) or 0
         local x, y = c.x, c.y - lift
         InvState.plate(x, y, c.w, c.h, focus and { 0.2, 0.15, 0.12 } or COL.frame, true)
         lg.setColor(rc)
         lg.rectangle("fill", x + 2, y + 2, c.w - 4, 3)
-        if item.locked then
+        if cursed then
+            lg.setColor(CURSE_COL[1], CURSE_COL[2], CURSE_COL[3], 0.5 + 0.2 * math.sin(self.t * 3))
+            lg.rectangle("line", x + 3.5, y + 3.5, c.w - 7, c.h - 7)
+        end
+        if entry.locked then
             lg.setColor(LOCK_COL[1], LOCK_COL[2], LOCK_COL[3], 0.9)
             lg.setLineWidth(2)
             lg.rectangle("line", x - 1, y - 1, c.w + 2, c.h + 2)
@@ -328,26 +507,42 @@ function Choice:draw()
         -- BAN / LOCK chips
         local ban = { x = c.ban.x, y = c.ban.y - lift, w = c.ban.w, h = c.ban.h }
         local lock = { x = c.lock.x, y = c.lock.y - lift, w = c.lock.w, h = c.lock.h }
-        local banLeft = self.run.banishes
-        button(ban, self.armedBan == i and "BAN?" or ("BAN " .. banLeft), chipFont,
-            { color = BAN_COL, lit = self.armedBan == i, hover = hoverWhat == "ban" and hoverI == i, disabled = banLeft <= 0 })
-        button(lock, item.locked and "LOCKED" or "LOCK", chipFont,
-            { color = LOCK_COL, lit = item.locked, hover = hoverWhat == "lock" and hoverI == i })
-        -- the item drawn on its own little grid, so you can see its shape
-        local bw, bh = Inventory.size(item)
+        if offer then
+            if offer.sale and not offer.sold then button(ban, "SALE", chipFont, { color = NECTAR_COL, lit = true }) end
+        else
+            local banLeft = self.run.banishes
+            button(ban, self.armedBan == i and "BAN?" or ("BAN " .. banLeft), chipFont,
+                { color = BAN_COL, lit = self.armedBan == i, hover = hoverWhat == "ban" and hoverI == i, disabled = banLeft <= 0 })
+        end
+        if not (offer and offer.sold) then
+            button(lock, entry.locked and "LOCKED" or "LOCK", chipFont,
+                { color = LOCK_COL, lit = entry.locked, hover = hoverWhat == "lock" and hoverI == i })
+        end
         local areaH = u(96)
-        local cell = math.floor(math.min(u(52), (c.w - u(40)) / math.max(bw, 1), areaH / math.max(bh, 1)))
-        local gx = math.floor(x + (c.w - bw * cell) / 2)
-        local gy = math.floor(y + u(34) + (areaH - bh * cell) / 2)
-        InvState.shapeCells(item, gx, gy, cell, { rc[1] * 0.3, rc[2] * 0.3, rc[3] * 0.3, 0.9 }, { rc[1], rc[2], rc[3], 0.8 })
-        InvState.itemIcon(item, gx + 3, gy + 3, bw * cell - 6, bh * cell - 6)
+        if item then
+            -- the item drawn on its own little grid, so you can see its shape
+            local bw, bh = Inventory.size(item)
+            local cell = math.floor(math.min(u(52), (c.w - u(40)) / math.max(bw, 1), areaH / math.max(bh, 1)))
+            local gx = math.floor(x + (c.w - bw * cell) / 2)
+            local gy = math.floor(y + u(34) + (areaH - bh * cell) / 2)
+            InvState.shapeCells(item, gx, gy, cell, { rc[1] * 0.3, rc[2] * 0.3, rc[3] * 0.3, 0.9 }, { rc[1], rc[2], rc[3], 0.8 })
+            InvState.itemIcon(item, gx + 3, gy + 3, bw * cell - 6, bh * cell - 6)
+        else
+            -- a stat boost: the amount, big
+            local bf0 = Theme.font(22, "bold")
+            local _, bl = bf0:getWrap(offer.text, c.w - u(16))
+            lg.setFont(bf0)
+            Theme.printShadow(offer.text, x + u(8), math.floor(y + u(34) + (areaH - #bl * bf0:getHeight()) / 2), rc, "center", c.w - u(16))
+        end
         local ty = y + u(138)
         lg.setFont(Theme.font(19, "bold"))
         Theme.printShadow(def.name, x, ty, rc, "center", c.w)
         ty = ty + u(26)
         lg.setFont(Theme.font(14))
-        lg.setColor(COL.dim)
-        lg.printf(Rarities[def.rarity].label .. "  ·  " .. #def.cells .. (#def.cells == 1 and " cell" or " cells"), x, ty, c.w, "center")
+        lg.setColor(cursed and CURSE_COL or COL.dim)
+        local meta = item and (Rarities[def.rarity].label .. "  ·  " .. #def.cells .. (#def.cells == 1 and " cell" or " cells"))
+            or "Stat boost  ·  no bag space"
+        lg.printf(meta, x, ty, c.w, "center")
         ty = ty + u(24)
         -- tags: lit ones are shared with items already in your bag
         local th = Choices.drawTags(def, self.tags, x + u(8), ty, c.w - u(16), Theme.font(13), u)
@@ -360,9 +555,20 @@ function Choice:draw()
             ty = ty + u(18)
         end
         local effect = def.effect or (#def.procs > 0 and #(self.previews[i] or {}) == 0 and def.description)
+        local bottom = y + c.h - u(30)
+        if def.curse then
+            -- the curse's cost, in purple, just above the footer
+            local cf = Theme.font(14, "bold")
+            local _, cl = cf:getWrap("Curse: " .. def.curse, c.w - u(20))
+            bottom = bottom - #cl * cf:getHeight()
+            lg.setFont(cf)
+            lg.setColor(CURSE_COL)
+            for k, l in ipairs(cl) do lg.printf(l, x + u(10), bottom + (k - 1) * cf:getHeight(), c.w - u(20), "center") end
+            bottom = bottom - u(4)
+        end
         if effect then
             -- fit the words above the card's footer: smaller text, then cut with "..."
-            local room = y + c.h - u(30) - (ty + u(4))
+            local room = bottom - (ty + u(4))
             local ef = Theme.font(14)
             local _, lines = ef:getWrap(effect, c.w - u(24))
             if #lines * ef:getHeight() > room then
@@ -386,6 +592,8 @@ function Choice:draw()
             local text, col
             if self.armedBan == i then
                 text, col = pad and "PRESS {pad:y} AGAIN TO BAN" or touch and "TAP BAN AGAIN TO BAN" or "PRESS BAN AGAIN TO BAN", BAN_COL
+            elseif offer then
+                text, col = pad and "PRESS {pad:a} AGAIN TO BUY" or touch and "TAP AGAIN TO BUY" or "CLICK AGAIN TO BUY", NECTAR_COL
             else
                 text, col = pad and "PRESS {pad:a} AGAIN TO TAKE" or touch and "TAP AGAIN TO TAKE" or "CLICK AGAIN TO TAKE", rc
             end
@@ -395,8 +603,23 @@ function Choice:draw()
             lg.setColor(0.02, 0.015, 0.02, 0.55 * (1 - self.t / Choice.ARM_TIME))
             lg.rectangle("fill", x, y, c.w, c.h)
         end
-        local have = inv:count(item.id)
-        if have > 0 or item.locked then
+        if offer then
+            -- price (or SOLD) in the footer
+            lg.setFont(Theme.font(15, "bold"))
+            if offer.sold then
+                lg.setColor(0.02, 0.015, 0.02, 0.6)
+                lg.rectangle("fill", x, y, c.w, c.h)
+                Theme.printShadow("SOLD", x, y + c.h / 2 - u(12), COL.label, "center", c.w)
+            else
+                local ok = nectar >= offer.price
+                lg.setColor(ok and NECTAR_COL or Theme.colors.bad)
+                local have = item and inv:count(item.id) or 0
+                lg.printf((offer.sale and "SALE  " or "") .. offer.price .. " nectar" .. (have > 0 and ("  ·  have " .. have) or ""),
+                    x, y + c.h - u(26), c.w, "center")
+            end
+        end
+        local have = (not offer) and inv:count(item.id) or 0
+        if not offer and (have > 0 or item.locked) then
             lg.setFont(Theme.font(13))
             lg.setColor(item.locked and LOCK_COL or COL.label)
             local s = have > 0 and ("You have " .. have .. " (stacks)") or ""
@@ -411,12 +634,21 @@ function Choice:draw()
     local rf, sf = self.focus == self:rerollIndex(), self.focus == self:skipIndex()
     local key = function(k, p) return pad and p or touch and nil or k end
     local rk = key("R", "X")
-    button(rr, "REROLL" .. (rk and (" (" .. rk .. ")") or "") .. "  " .. self.run.rerolls, bf,
-        { color = { 0.55, 0.85, 1 }, lit = rf, hover = hoverWhat == "reroll", disabled = self.run.rerolls <= 0 })
     local skipKey = key("Esc", "B")
-    button(sr, skipKey and ("SKIP (" .. skipKey .. ")") or "SKIP", bf,
-        { color = COL.label, lit = sf, hover = hoverWhat == "skip" })
-    if self.armed == self:skipIndex() then
+    if shopTab then
+        local price = Economy.rerollPrice(self.world)
+        button(rr, "REROLL" .. (rk and (" (" .. rk .. ")") or "") .. "  " .. price, bf,
+            { color = NECTAR_COL, lit = rf, hover = hoverWhat == "reroll", disabled = nectar < price })
+        local word = self.picked and "DONE" or "BACK"
+        button(sr, skipKey and (word .. " (" .. skipKey .. ")") or word, bf,
+            { color = COL.label, lit = sf, hover = hoverWhat == "skip" })
+    else
+        button(rr, "REROLL" .. (rk and (" (" .. rk .. ")") or "") .. "  " .. self.run.rerolls, bf,
+            { color = { 0.55, 0.85, 1 }, lit = rf, hover = hoverWhat == "reroll", disabled = self.run.rerolls <= 0 })
+        button(sr, skipKey and ("SKIP (" .. skipKey .. ")") or "SKIP", bf,
+            { color = COL.label, lit = sf, hover = hoverWhat == "skip" })
+    end
+    if self.armed == self:skipIndex() and not shopTab then
         lg.setFont(Theme.font(14, "bold"))
         local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
         local again = touch and "TAP AGAIN TO SKIP ALL" or "PRESS AGAIN TO SKIP ALL"
@@ -431,10 +663,18 @@ function Choice:draw()
     end
     lg.setFont(Theme.font(13))
     lg.setColor(COL.dim)
-    Theme.rich(pad and "{pad:dpad} to look, {pad:a} to pick, {pad:a} again to take  ·  {pad:rightshoulder} lock  ·  {pad:y} ban"
-        or touch and "Tap an item to pick it, tap it again to take it"
-        or "Click an item to pick it, click it again to take it  ·  {key:L} lock  ·  {key:X} ban",
-        0, cards[1].y + cards[1].h + u(34), w, "center", COL.dim)
+    local shopHint = self.hasShop and (pad and "  ·  {pad:leftshoulder} shop" or touch and "" or "  ·  {key:Tab} shop") or ""
+    local hint
+    if shopTab then
+        hint = pad and "{pad:a} to pick, {pad:a} again to buy  ·  {pad:rightshoulder} lock  ·  {pad:leftshoulder} free pick"
+            or touch and "Tap an offer to pick it, tap it again to buy it"
+            or "Click an offer to pick it, click it again to buy it  ·  {key:L} lock  ·  {key:Tab} free pick"
+    else
+        hint = (pad and "{pad:dpad} to look, {pad:a} to pick, {pad:a} again to take  ·  {pad:rightshoulder} lock  ·  {pad:y} ban"
+            or touch and "Tap an item to pick it, tap it again to take it"
+            or "Click an item to pick it, click it again to take it  ·  {key:L} lock  ·  {key:X} ban") .. shopHint
+    end
+    Theme.rich(hint, 0, cardsY + (cards[1] and cards[1].h or 0) + u(34), w, "center", COL.dim)
     lg.setColor(1, 1, 1, 1)
 end
 

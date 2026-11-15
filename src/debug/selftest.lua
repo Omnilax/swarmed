@@ -214,6 +214,9 @@ local function itemsScene()
         if world.enemyCount < 20 then world:spawnRing("worker_ant", 30, pl.x, pl.y, 60) end
     end
     local meal = Inventory.newItem("honeydew")
+    -- the Hungry Tapeworm curse stops meals healing at all: take it out for the gut flora check
+    inv.counts.hungry_tapeworm, inv.sums = nil, nil
+    for i = #inv.order, 1, -1 do if inv.order[i] == "hungry_tapeworm" then table.remove(inv.order, i) end end
     pl.hp = 1
     local healed = inv:eat(meal)
     assert(healed > Inventory.eatValue(meal), "gut flora should make meals heal more")
@@ -671,6 +674,7 @@ local function script(flags)
     if flags["--gambles"] then require("src.debug.selftest_gambles")(wait, shot) love.event.quit() return end
     if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--economy"] then require("src.debug.selftest_economy")(wait, shot) love.event.quit() return end
     if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
     if flags["--molts"] then require("src.debug.selftest_molts")(wait, shot) love.event.quit() return end
     if flags["--nectar"] then require("src.debug.selftest_nectar")(wait, shot) love.event.quit() return end
@@ -800,6 +804,11 @@ local function script(flags)
     assert(State.top() == choice and choice.armed == 1, "first press should only pick the card")
     shot("item_choice")
     choice:activate(1)
+    -- with nectar to spend, the screen moves on to the shop; DONE closes it
+    if State.top() == choice then
+        assert(choice.tab == "shop" and choice.picked, "item choice stayed open but not on the shop")
+        choice:shopBack()
+    end
     assert(State.top() == game and #game.world.player.inventory.bag == before + 1, "taking an item failed")
     print("[selftest] item choice OK")
     wait(sp.timer + 0.6)

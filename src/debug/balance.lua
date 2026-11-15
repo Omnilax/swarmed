@@ -40,11 +40,28 @@ end
 local function pickItem(world)
     local wave = math.max(1, world.spawner.wave)
     local def = Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
-        function(d) return Rarities[d.rarity].minWave <= wave end)
+        function(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed end)
     if def then
         local item = Inventory.newItem(def.id)
         if not world.player.inventory:give(item) then world.player.inventory:eat(item) end
     end
+end
+
+-- The bot's shopping (src/game/economy.lua): interest, then buy what it can afford, left to
+-- right, skipping cursed items. Returns what it spent.
+local function shop(world)
+    local Economy = require("src.game.economy")
+    if not Economy.enabled(world) then return 0 end
+    Economy.payInterest(world)
+    local before = Economy.nectar(world)
+    local s = Economy.shop(world)
+    for i, o in ipairs(s.offers) do
+        if not o.sold and o.def.rarity ~= "cursed" and Economy.canAfford(world, o.price) then
+            local ok, item = Economy.buy(world, i)
+            if ok and item and not world.player.inventory:give(item) then world.player.inventory:eat(item) end
+        end
+    end
+    return before - Economy.nectar(world)
 end
 
 local function spendSkills(p)
@@ -183,6 +200,8 @@ function Balance.runOne(charId, maxWave)
             waveStart, kosAt, nectarAt = world.time, world.kos, world.nectarEarned
             if world.levelups then world.levelups:autoPickAll() end
             pickItem(world)
+            local spent = shop(world)
+            if spent > 0 then log[#log] = log[#log] .. ("  shop -%d"):format(spent) end
             spendSkills(p)
             if c.wave >= maxWave then result = "WON" break end
         end
