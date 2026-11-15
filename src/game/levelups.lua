@@ -151,13 +151,25 @@ local function tidy(v)
 end
 local function tidyMult(v) return math.floor(v * 100 + 0.5) / 100 end
 
+-- "+12% Speed, +1 Armor" for a stat card without its own text.
+function LevelUps.describe(c)
+    local Stats = require("src.game.stats")
+    local parts = {}
+    for _, d in ipairs(Stats.defs) do
+        local a, m = c.stats[d.id], c.statsMult[d.id]
+        if a then parts[#parts + 1] = (a >= 0 and "+" or "") .. Stats.format(d.id, a) .. " " .. d.label end
+        if m then parts[#parts + 1] = (m >= 0 and "+" or "") .. math.floor(m * 100 + 0.5) .. "% " .. d.label end
+    end
+    return table.concat(parts, ", ")
+end
+
 -- A stat card with its numbers scaled by its rarity.
 function LevelUps:statCard(def, rarity)
     local c = { kind = "stat", def = def, id = def.id, name = def.name, rarity = rarity.id, mult = rarity.mult,
         stats = {}, statsMult = {} }
     for k, v in pairs(def.stats or EMPTY) do c.stats[k] = tidy(v * rarity.mult) end
     for k, v in pairs(def.statsMult or EMPTY) do c.statsMult[k] = tidyMult(v * rarity.mult) end
-    c.description = def.scaledText and def.scaledText(rarity.mult) or def.description
+    c.description = def.scaledText and def.scaledText(rarity.mult) or def.description or LevelUps.describe(c)
     return c
 end
 

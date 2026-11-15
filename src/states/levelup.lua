@@ -97,7 +97,7 @@ function LevelUp:layout()
     local u = Theme.u
     local n = math.max(1, #self.cards)
     local cw = math.floor(math.min(u(230), (w - u(60)) / n - u(16)))
-    local ch = math.floor(u(300))
+    local ch = math.floor(u(250))
     local gap = u(16)
     local total = n * cw + (n - 1) * gap
     local x0 = math.floor((w - total) / 2)
