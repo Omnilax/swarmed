@@ -102,6 +102,10 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
 - **Endless**: pick starting items on a point budget (`src/states/loadout.lua`), then no waves and no
   breaks; the level climbs every 40 s with a new species, a queen every 5 levels, an item choice every 3.
 
+- **Daily Run** (bottom of the mode list): today's date seeds the bug, the stage, the species order
+  and every wave modifier, so everyone gets the same run that day (Colony rules). The best result
+  per day is kept in the records save (`src/game/daily.lua`).
+
 A mode can override any stage wave setting (`spawn`), restrict enemies (`families`, `enemies`,
 `exclude`), scale enemy health and damage, change elite odds, and set `finalWave` (false = no end).
 `love . --selftest --modes` plays six waves of each mode and checks who came.
@@ -321,6 +325,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/stages` | arena size, yard palette, path/fence/dirt look, spawn pacing | runs |
 | `content/sprites` | text-grid pixel art | everything |
 | `content/bosses`, `content/events` | registries ready for step 3 | |
+| `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
 
 Other single places to extend:
 
@@ -348,6 +353,27 @@ comes instead. Ants pour in from several points around the arena at once (2 in w
 later waves send pincer pairs from opposite sides, and stray packs keep slipping in from other
 edges while the wave runs. Clear it, choose an item, short breather, next wave. Tune per stage in
 `stage.spawn` (`introEvery`, `entries`, `trickle`, ...; see `content/stages/_template.lua`).
+
+Pacing (`src/game/pacing.lua`, tuning in the Spawner `DEFAULTS`, switches in Settings > Gameplay):
+- **Species order** is shuffled each run (workers stay first): roughly by `minWave`, with a random
+  spread, so bees, wasps and termites can turn up early. "Species Order: Always the Same" restores it.
+- **Big early waves**: waves 1-3 send 2.2x / 1.8x / 1.4x the ants at 45% / 60% / 80% health.
+- **Wave modifiers** (`content/wavemods`, from wave 3, never on queen or final waves): Swarm,
+  Armored, Frenzied, Elite Pack, Ambush (half the wave bursts up in a ring around you), Shield Wall
+  (groups step out in ranks at once), Pincer (every column splits to opposite sides), Undermined.
+  They are rolled ahead from the run's seed (`Spawner:modifiersFor(n)`), shown on the wave banner.
+- **Overlapping waves**: when a normal wave is down to its last 15% you pick your item and the next
+  wave marches straight in while the stragglers are still about (not with Next Wave = When I Press).
+- **Straggler call**: with 5 or fewer ants left, any far away burrow and pop up near you.
+- **Par time and heat**: each wave has a par time from its size (shown counting down). Under par
+  pays bonus XP; past it the ants speed up and hit harder (up to +35% / +25% after 40 s).
+- **Live pressure**: while you stay healthy and untouched, packs come quicker and bigger and ants a
+  little faster; taking damage eases it off.
+- **Early call**: starting a wave before its countdown ends, or sending a wave's rest in with E,
+  pays bonus XP at the clear, more for each wave in a row you call early.
+- **Royal guard**: every queen arrives ringed by guards (her brood, armored); she takes 30% damage
+  until they are dead ("BREAK THE ROYAL GUARD").
+`love . --selftest --pacing` checks all of these.
 
 Player 3D look: characters can have a `model` (isometric legs + body parts made by
 `tools/make_bug_sprites.py`). Legs walk on the ground and the body is drawn as a stack of layers,

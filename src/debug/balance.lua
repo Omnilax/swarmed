@@ -174,8 +174,12 @@ function Balance.runOne(charId, maxWave)
         if world.pendingChoice and world.time >= (world.pendingChoice.at or 0) then
             local c = world.pendingChoice
             world.pendingChoice = nil
-            log[#log + 1] = ("  w%-2d %4.0fs  hp %3.0f/%-3.0f  kos %5d  items %2d%s"):format(c.wave, world.time - waveStart,
-                p.hp, p.stats:get("maxHp"), world.kos - kosAt, #p.inventory.bag, c.boss and "  (boss)" or "")
+            local sp = world.spawner
+            local mods = {}
+            for _, d in ipairs(sp.mods or {}) do mods[#mods + 1] = d.id end
+            log[#log + 1] = ("  w%-2d %4.0fs  par %3.0f  hp %3.0f/%-3.0f  kos %5d  items %2d%s%s%s"):format(c.wave, world.time - waveStart,
+                sp.par or 0, p.hp, p.stats:get("maxHp"), world.kos - kosAt, #p.inventory.bag, c.boss and "  (boss)" or "",
+                sp.overlapped and "  overlap" or "", #mods > 0 and ("  " .. table.concat(mods, "+")) or "")
             waveStart, kosAt = world.time, world.kos
             pickItem(world)
             spendSkills(p)

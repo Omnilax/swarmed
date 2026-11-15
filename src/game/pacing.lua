@@ -46,7 +46,7 @@ end
 -- stays first. Setting "speciesOrder" = "classic" keeps the fixed order.
 function Pacing.shuffleOrder(sp, order)
     local jit = sp.cfg.orderJitter
-    if Settings.get("speciesOrder") == "classic" or not jit or jit <= 0 or #order < 3 then return order end
+    if Settings.get("speciesOrder") == "classic" or not jit or #order < 3 then return order end
     local key = {}
     for i, d in ipairs(order) do
         key[d] = i == 1 and -math.huge or d.spawn.minWave * (jit.scale or 0.6) + sp.rng:random() * (jit.spread or 5)
@@ -195,10 +195,15 @@ function Pacing.shapeGroups(sp)
     end
     -- par time for the wave, from how many ants are coming
     local pc = sp.cfg.par
-    local planned = 0
-    for _, g in ipairs(sp.queue) do planned = planned + g.count end
+    -- (the last group's arrival, plus time to deal with the crowd)
+    local planned, last = 0, 0
+    for _, g in ipairs(sp.queue) do
+        planned = planned + g.count
+        last = math.max(last, g.at)
+    end
     sp.planned = planned
-    sp.par = pc and math.floor(pc.base + planned * pc.perAnt + (sp.bossWave and pc.boss or 0) + 0.5) or math.huge
+    sp.par = pc and math.floor(last + pc.base + math.min(pc.crowdMax or 30, planned * pc.perAnt)
+        + (sp.bossWave and pc.boss or 0) + 0.5) or math.huge
 end
 
 -- Every ant the spawner (or a behaviour) brings in: this wave's modifiers and the current pace.
@@ -409,8 +414,8 @@ function Pacing.cleared(sp)
     local y = p.y - 26
     if pc and sp.waveTime <= sp.par then
         local xp = math.floor((pc.xp or 5) + sp.wave * (pc.xpPerWave or 1.5))
-        w:floatText(p.x, y, "UNDER PAR", { 1, 0.86, 0.4 }, true)
-        w:grantXP(xp, p.x, y + 10)
+        w:floatText(p.x, y, "UNDER PAR  +" .. xp .. " XP", { 1, 0.86, 0.4 }, true)
+        w:grantXP(xp)
         w.events:emit("wave_par", sp.wave, sp.waveTime, sp.par)
         y = y - 14
     end
@@ -418,8 +423,8 @@ function Pacing.cleared(sp)
     if ec and sp.calledEarly then
         sp.earlyStreak = math.min(ec.max or 6, sp.earlyStreak + 1)
         local xp = math.max(1, math.floor(sp.waveKills * (ec.perKill or 0.08) * sp.earlyStreak + 0.5))
-        w:floatText(p.x, y, "EARLY CALL x" .. sp.earlyStreak, { 1, 0.6, 0.3 }, true)
-        w:grantXP(xp, p.x, y + 10)
+        w:floatText(p.x, y, "EARLY CALL x" .. sp.earlyStreak .. "  +" .. xp .. " XP", { 1, 0.6, 0.3 }, true)
+        w:grantXP(xp)
     else
         sp.earlyStreak = 0
     end
@@ -451,7 +456,10 @@ function Pacing.royalGuard(sp, q)
     end
     if not def then return end
     local n = (gc.count or 6) + math.floor(sp.wave / 5) * (gc.perChapter or 2)
-    local elite = gc.elite and Content.elites:get(gc.elite)
+    -- armored guards, unless this mode or the settings keep elites out
+    local me = sp.mode.elites
+    local elitesOk = not (me and me.chance == 0) and (Settings.get("eliteFrequency") or 1) > 0
+    local elite = elitesOk and gc.elite and Content.elites:get(gc.elite) or nil
     local guards = 0
     local r = q.radius + (gc.radius or 16)
     for i = 1, n do

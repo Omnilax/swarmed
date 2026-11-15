@@ -680,6 +680,7 @@ local function script(flags)
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end
+    if flags["--pacing"] then require("src.debug.selftest_pacing")(wait, shot) love.event.quit() return end
     if flags["--hymenoptera"] then hymenopteraScene() love.event.quit() return end
     if flags["--animtest"] then require("src.debug.selftest_anims")(wait, shot) love.event.quit() return end
     if flags["--specials"] then specialsScene() love.event.quit() return end
@@ -1092,6 +1093,7 @@ local function script(flags)
     require("src.debug.selftest_skills")(wait, shot)
     require("src.debug.selftest_records")(wait, shot)
     require("src.debug.selftest_polish")(wait, shot)
+    require("src.debug.selftest_pacing")(wait, shot)
     require("src.debug.selftest_anims")(wait, shot)
     print("[selftest] save dir: " .. love.filesystem.getSaveDirectory())
     print("[selftest] OK")

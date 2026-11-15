@@ -41,7 +41,7 @@ local DEFAULTS = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap =
     modifiers = { from = 3, chance = 0.55, doubleFrom = 9, double = 0.3 },
     overlap = { share = 0.15, min = 3, minTime = 6 },   -- next wave comes when this share is left
     call = { at = 5, far = 170, time = 0.9, near = { 70, 110 } },   -- last `at` ants burrow up near you
-    par = { base = 10, perAnt = 0.25, boss = 25, xp = 5, xpPerWave = 1.5 },
+    par = { base = 14, perAnt = 0.02, crowdMax = 30, boss = 25, xp = 5, xpPerWave = 1.5 },   -- last group's arrival + base + crowd
     heat = { ramp = 40, speed = 0.35, damage = 0.25 },  -- past par: up to +35% speed, +25% damage
     live = { calm = 5, hp = 0.8, build = 25, ease = 3, speed = 0.12, size = 0.4, trickle = 1, keep = 0.7 },
     early = { perKill = 0.08, max = 6 },            -- early-call XP: kills x perKill x streak

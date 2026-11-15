@@ -14,6 +14,8 @@ return function(wait, shot)
     local sp, pl = world.spawner, world.player
     world.flags.god = true
     world:clearEnemies()
+    -- (wave pacing would get in the way here: no overlapping waves or wave modifiers)
+    sp.cfg.overlap, sp.cfg.modifiers = false, false
     local always = { minWave = 1, chance = 1 }
     sp.cfg.entryStyles = { burrow = always, drop = always, ring = always,
         nest = { minWave = 1, chance = 1, use = 1, holes = { 2, 2 } } }
