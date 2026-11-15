@@ -46,6 +46,8 @@ function RunSave.snapshot(game)
         -- (the seed as text: the save file keeps numbers to 14 digits, a seed has up to 16)
         seed = w.seed and ("%.0f"):format(w.seed), daily = util.deepcopy(w.daily),
         choice = util.deepcopy(w.choice),
+        -- blessings and curses from map gambles (src/game/gambles.lua)
+        blessings = util.deepcopy(w.blessings),
     }
     -- nectar: the balance, plus any beads still on the floor (as if swept up)
     local beads = w.beads and w.beads:pending() or 0
@@ -162,6 +164,7 @@ function RunSave.restore(world, snap)
         p.skills = sk
         sk:apply()
     end
+    if snap.blessings then require("src.game.gambles").restore(world, snap.blessings) end
     p.hp = math.max(1, math.min(snap.hp or p.stats:get("maxHp"), p.stats:get("maxHp")))
     -- the waves: species met and queens fought, then a breather before the next wave
     for _, id in ipairs(snap.known or {}) do
