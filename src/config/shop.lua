@@ -2,23 +2,25 @@
 -- interest, the scrapper in the bag. A game mode can change any of these with
 -- `shop = { offers = 4, ... }` in its file under content/modes (`shop = false` turns the shop,
 -- interest and scrap pay off; the scrap bin still throws items away for nothing).
--- Nectar comes from beads (about 1 per kill, more for big ants and gilded elites).
+-- Nectar comes from beads (about 1 per kill, more for big ants and gilded elites). The balance
+-- bot earns roughly 135 in wave 1, 530 in wave 5, 770 in wave 10 and 1650 in wave 15, so a
+-- shop buys about 1 thing early and 2 to 4 later.
 return {
     enabled = true,
     items = 2,             -- item offers in each shop
     boosts = 1,            -- stat boost offers in each shop
     -- Item prices by rarity, before the wave scaling. Bigger items cost a bit more per extra cell.
-    price = { common = 14, uncommon = 24, rare = 42, legendary = 75, cursed = 20 },
+    price = { common = 60, uncommon = 100, rare = 170, legendary = 300, cursed = 90 },
     perCell = 0.12,        -- +12% per cell past the first
-    perWave = 0.10,        -- every price is x(1 + perWave * (wave - 1))
+    perWave = 0.25,        -- every price is x(1 + perWave * (wave - 1)): x2 at wave 5, x4.5 at wave 15
     sale = 0.25,           -- chance one item offer is on sale
     saleOff = 0.4,         -- ...for 40% off
-    boostPrice = 10,       -- a stat boost, before the wave scaling
+    boostPrice = 45,       -- a stat boost, before the wave scaling
     -- Shop reroll: base + step for every reroll already bought in this shop (+ waveStep per wave).
-    reroll = { base = 3, step = 3, waveStep = 0.5 },
+    reroll = { base = 15, step = 15, waveStep = 5 },
     -- Savings interest, paid when the wave-clear screen opens: rate of the banked nectar,
     -- at most cap (+ capPerWave per wave), rounded down.
-    interest = { rate = 0.10, cap = 6, capPerWave = 1.5 },
+    interest = { rate = 0.10, cap = 20, capPerWave = 15 },
     -- Scrapper: an item scraps for this share of its shop price. Cursed items scrap for nothing.
     -- Rare or better items also give back a free-pick reroll.
     scrap = { share = 0.4, rerollFrom = "rare" },

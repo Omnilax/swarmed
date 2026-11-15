@@ -46,7 +46,7 @@ function Inventory:sum(field)
     v = 0
     for _, id in ipairs(self.order) do
         local f = Content.items.byId[id] and Content.items.byId[id][field]
-        if f then v = v + (f == true and 1 or f) * self.counts[id] end
+        if f then v = v + (f == true and 1 or f) * (self.counts[id] or 0) end
     end
     cache[field] = v
     return v

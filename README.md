@@ -138,6 +138,29 @@ Test: `love . --selftest --combat`.
 
 Test: `love . --selftest --nectar`.
 
+## Nectar shop, interest, scrapper and cursed items
+
+- **Shop**: the wave-clear screen has FREE PICK and SHOP tabs (Tab / H / pad LB, or click them).
+  The shop has 2 items and 1 stat boost for nectar, two presses to buy. LOCK keeps an offer for the
+  next shop; REROLL costs nectar and gets dearer each time in the same shop. Prices rise every wave.
+  Taking (or skipping) the free pick closes the screen, unless you can still afford something:
+  then it moves to the shop and DONE closes it.
+- **Savings interest**: when the screen opens, banked nectar earns 10% (capped, the cap grows each wave).
+- **Scrapper**: SCRAP in the bag's header (drop or click a held item on it, G, pad right stick
+  click, or the SCRAP touch button) turns an item into nectar. Rare or better items also give back a
+  free-pick reroll.
+- **Cursed items** (purple, from wave 3): a big upside with a real cost, written in purple on the
+  card. They can't be eaten, only scrapped (for nothing). Hungry Tapeworm, Glass Wings, Fool's Gold
+  Scarab, Queen's Pheromone, Bullet Ant Venom, Parasitoid Egg.
+- **Hyperbolic stacking**: Luck, the proc snowball and extra copies never push a chance to 100%
+  (`Inventory.stackChance`). A proc whose effect doesn't grow with copies can set `chanceStack` to
+  fire more often per copy instead. The bag tooltip shows each item's chance right now. Dodge has a
+  soft cap: past 30% each point counts for less and it never reaches 60% (stat `soft = { knee, cap }`).
+- Numbers: `src/config/shop.lua` (a mode can override with `shop = { ... }`, or `shop = false`).
+  Code: `src/game/economy.lua`. The balance bot pays interest and shops too.
+
+Test: `love . --selftest --economy`.
+
 ## Inventory
 
 Press **I** (or **B**) for the inventory, modelled on FATE: a small 10x3 bag (one more row every 15 waves) where items come in shapes (bars,

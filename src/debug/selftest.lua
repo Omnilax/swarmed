@@ -214,6 +214,9 @@ local function itemsScene()
         if world.enemyCount < 20 then world:spawnRing("worker_ant", 30, pl.x, pl.y, 60) end
     end
     local meal = Inventory.newItem("honeydew")
+    -- the Hungry Tapeworm curse stops meals healing at all: take it out for the gut flora check
+    inv.counts.hungry_tapeworm, inv.sums = nil, nil
+    for i = #inv.order, 1, -1 do if inv.order[i] == "hungry_tapeworm" then table.remove(inv.order, i) end end
     pl.hp = 1
     local healed = inv:eat(meal)
     assert(healed > Inventory.eatValue(meal), "gut flora should make meals heal more")

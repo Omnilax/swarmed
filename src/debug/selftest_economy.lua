@@ -135,19 +135,19 @@ return function(wait, shot)
     ------------------------------------------------------------------------------------------
     -- Interest
     world.spawner.wave = 4
-    world.nectar = 100
+    world.nectar = 300
     local want = Economy.interestPreview(world)
-    assert(want == math.min(Economy.interestCap(world), 10), "interest preview wrong")
+    assert(want == math.min(Economy.interestCap(world), 30), "interest preview wrong")
     world.nectar = 0
     assert(Economy.interestPreview(world) == 0, "no savings, no interest")
 
     ------------------------------------------------------------------------------------------
     -- Shop
     inv:clear()
-    world.nectar = 400
+    world.nectar = 2000
     world.economy.shop = nil
     local c = State.push(Choice.new(game, { count = 3, wave = 4 }))
-    assert(Economy.nectar(world) == 400 + want or Economy.nectar(world) > 400, "interest was not paid on open")
+    assert(Economy.nectar(world) > 2000, "interest was not paid on open")
     wait(1.0)
     assert(c.hasShop and c.shop and #c.shop.offers == 3, "shop should have 3 offers")
     for _, o in ipairs(c.shop.offers) do
@@ -203,7 +203,7 @@ return function(wait, shot)
     assert(found, "locked shop offer did not come back")
     -- with nectar left, the free pick moves on to the shop
     world.spawner.wave = 6
-    world.nectar = 500
+    world.nectar = 5000
     local c2 = State.push(Choice.new(game, { count = 3, wave = 6 }))
     wait(1.0)
     c2:activate(1); c2:activate(1)
