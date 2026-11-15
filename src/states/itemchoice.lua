@@ -54,7 +54,10 @@ end
 -- opts: count (cards), boss (true after a boss wave: one is rare or better), wave
 function Choice.new(game, opts)
     local self = setmetatable({ game = game, world = game.world, t = 0, opts = opts }, Choice)
-    self.items = roll(game.world, opts.count or 3, opts.boss and "rare" or nil)
+    -- minRarity: a hard route's prize (src/game/routes.lua); a queen's wave: rare at least
+    local minR = opts.minRarity
+    if opts.boss and (not minR or require("src.config.rarities")[minR].order < 3) then minR = "rare" end
+    self.items = roll(game.world, opts.count or 3, minR)
     self.focus = 1
     self.armed = nil          -- the card picked once, waiting for its confirm
     return self

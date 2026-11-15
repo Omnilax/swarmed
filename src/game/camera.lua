@@ -11,7 +11,7 @@ local ZOOM_MIN, ZOOM_MAX, ZOOM_STEP = 0.6, 2, 1.12
 
 function Camera.new(x, y)
     return setmetatable({ x = x or 0, y = y or 0, tx = x or 0, ty = y or 0, trauma = 0, t = 0, sx = 0, sy = 0,
-        zoom = Camera.lastZoom, targetZoom = Camera.lastZoom }, Camera)
+        zoom = Camera.lastZoom, targetZoom = Camera.lastZoom, kick = 0 }, Camera)
 end
 
 -- Scroll-wheel notches (positive zooms in) or a pinch's scale factor (`factor`).
@@ -38,6 +38,17 @@ function Camera:shake(amount)
     self.trauma = math.min(1, self.trauma + amount * Settings.get("screenShake") / 100)
 end
 
+-- A quick zoom-in that springs back (big multi-kills, a queen falling, the frenzy move).
+function Camera:punch(amount)
+    if Settings.get("screenShake") <= 0 then return end
+    self.kick = math.min(0.3, math.max(self.kick, amount))
+end
+
+-- The zoom to draw with this frame: the chosen zoom plus any punch.
+function Camera:viewZoom()
+    return self.zoom * (1 + self.kick)
+end
+
 function Camera:update(dt)
     local smooth = Settings.get("cameraSmoothing") / 100
     if smooth <= 0 then
@@ -49,6 +60,7 @@ function Camera:update(dt)
     end
     self.zoom = self.zoom + (self.targetZoom - self.zoom) * util.damp(14, dt)
     if math.abs(self.zoom - self.targetZoom) < 0.002 then self.zoom = self.targetZoom end
+    self.kick = math.max(0, self.kick - dt * (0.6 + self.kick * 6))
     self.t = self.t + dt
     self.trauma = math.max(0, self.trauma - dt * 1.8)
     local s = self.trauma * self.trauma * 8

@@ -513,7 +513,7 @@ local function termiteScene()
     king = q.st.king
     q.hp = 1
     Combat.damage(world, q, 5, { noCrit = true })
-    for _ = 1, 10 do world:update(1 / 30) end     -- (a queen's death freezes the action briefly)
+    for _ = 1, 40 do world:update(1 / 30) end     -- (a queen's death freezes the action, then slow motion)
     assert(king.st.widowed, "king did not notice the queen dying")
     world:clearEnemies()
     world.hazards:clear()
@@ -669,6 +669,7 @@ local function script(flags)
     if flags["--finalwave"] then require("src.debug.selftest_finalwave")(wait, shot) love.event.quit() return end
     if flags["--entries"] then require("src.debug.selftest_entries")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end

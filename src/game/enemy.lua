@@ -67,6 +67,7 @@ function Enemy.spawn(world, def, x, y, elite)
     e.hitPad = 0     -- extra reach for the player's attacks (charging ants are easier to hit)
     e.biteCd = love.math.random() * 0.4
     e.dead = false
+    e.lure, e.lureUid, e.lureRolled, e.escaped, e.rushed = nil, nil, nil, nil, nil   -- (pooled tables keep old fields)
     if e.behavior.init then e.behavior.init(e, world, e.params) end
     return e
 end

@@ -105,6 +105,14 @@ add { key = "enemyHealthBars", category = "Gameplay", label = "Enemy Health Bars
     options = { { value = "off", label = "Off" }, { value = "damaged", label = "When Damaged" }, { value = "always", label = "Always" } } }
 add { key = "hitstop", category = "Gameplay", label = "Hit Stop", type = "toggle", default = true,
     desc = "Freeze the action for a split second when you wipe out a crowd. Pure crunch." }
+add { key = "slowMotion", category = "Gameplay", label = "Slow Motion", type = "toggle", default = true,
+    desc = "A moment of slow motion on huge multi-kills, a queen falling and the frenzy move." }
+add { key = "frenzyAuto", category = "Gameplay", label = "Auto Frenzy", type = "toggle", default = false,
+    desc = "Unleash the frenzy move by itself as soon as the meter is full (and ants are around). Otherwise press Q." }
+add { key = "miniGoals", category = "Gameplay", label = "Mini-Goals", type = "toggle", default = true,
+    desc = "Some waves come with an optional side task (catch the courier, guard the aphid...) for bonus XP and frenzy." }
+add { key = "routeGates", category = "Gameplay", label = "Route Gates", type = "toggle", default = true,
+    desc = "After a wave, walk into one of two tunnels: a safer next wave, or a harder one with a better prize. Needs a break between waves." }
 add { key = "damageNumbers", category = "Gameplay", label = "Damage Numbers", type = "choice", default = "crits",
     options = { { value = "off", label = "Off" }, { value = "crits", label = "Crits Only" }, { value = "all", label = "All" } } }
 add { key = "showKoCounter", category = "Gameplay", label = "KO Counter", type = "toggle", default = true,

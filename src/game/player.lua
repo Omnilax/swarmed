@@ -533,6 +533,7 @@ function Player:hurt(amount, source)
     local world = self.world
     if self.dead or self.iframes > 0 or world.flags.god then return end
     if self.ward and self.ward(self, amount, source) then return end
+    if world.rewards and world.rewards.frenzy:shielded() then return end     -- mid frenzy move
     if self.blocking then
         self.dashDef.blocked(self, world, source, self.dashParams)
         Stamina.blockHit(self, self.dashParams)

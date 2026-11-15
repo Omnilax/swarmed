@@ -99,6 +99,10 @@ function Touch.buttons()
         local x3, y3 = w - pad - r3, h * 0.3
         add { id = "pause", x = x3, y = y3, r = r3, label = "II", action = "pause", kind = "tap" }
         add { id = "bag", x = x3, y = y3 + r3 * 2.6, r = r3, label = "BAG", action = "inventory", kind = "tap" }
+        -- the frenzy meter is full: a big button over the special to set it off
+        if st.frenzyReady then
+            add { id = "frenzy", x = cx - r1 * 0.2, y = cy - r1 - r2 * 2.6 - s * 0.3, r = r2, label = "FRENZY", action = "frenzy", kind = "tap" }
+        end
     elseif mode == "inventory" then
         local r = s * 0.42
         local x = w - pad - r

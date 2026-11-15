@@ -239,6 +239,9 @@ function Hud.draw(game, covered)
         end
     end
 
+    -- frenzy meter, streak buffs, mini-goal, route tunnels (src/game/rewards.lua)
+    require("src.game.rewards").drawHud(game, covered)
+
     -- arrows to queens and elites off screen, first-run hints (src/game/feedback.lua)
     require("src.game.feedback").drawHud(game, covered)
 

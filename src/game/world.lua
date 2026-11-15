@@ -77,6 +77,9 @@ function World.new(opts)
     local sx, sy = Iso.toScreen(self.player.x, self.player.y)
     self.camera = Camera.new(sx, sy)
     self.weather = Weather.new(self)
+    -- frenzy meter, streak buffs, mini-goals, treasure ant, route gates (src/game/rewards.lua)
+    self.rewards = require("src.game.rewards").new(self)
+    self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- skin: recoloured in drawing (Cosmetics.shader), or a whole other model
     local skin = Cosmetics.skinFor(charId)
     self.player.skin = skin
@@ -99,6 +102,7 @@ end
 function World:hpScale()
     local m = self.modeDef
     return m.enemyHp * (1 + (self.spawner and math.max(0, self.spawner.wave - 1) * (m.hpPerWave or 0.12) or 0))
+        * (self.route and self.route.hpMul or 1)
 
 end
 
@@ -239,6 +243,17 @@ function World:killEnemy(e)
     end
 end
 
+-- An enemy leaves the arena without being killed (a courier gets home, a treasure ant burrows
+-- away): no KO, no XP, no death effects.
+function World:escapeEnemy(e, text)
+    if e.dead then return end
+    e.dead, e.escaped = true, true
+    if self.boss == e then self.boss = nil end
+    self.particles:burst(e.x, e.y, 10, { { 0.55, 0.42, 0.3 }, { 0.4, 0.3, 0.22 } }, 60, 50, { grav = 300 })
+    if text then self:floatText(e.x, e.y, text, { 1, 0.6, 0.4 }, true) end
+    self.events:emit("enemy_escaped", e)
+end
+
 function World:clearEnemies()
     self.boss = nil
     self.hash:clear()
@@ -353,6 +368,7 @@ end
 
 function World:update(dt)
     dt = dt * self.timeScale * (Settings.get("gameSpeed") / 100)
+    dt = dt * self.rewards:timeScale(dt)       -- slow motion on big moments
     if self.queryPool then self.queryPool.n = 0 end
 
     -- Hitstop: freeze the action for a few frames after a big multi-kill.
@@ -440,6 +456,8 @@ function World:update(dt)
         self.comboTimer = self.comboTimer - dt
         if self.comboTimer <= 0 then self.combo = 0 end
     end
+
+    self.rewards:update(dt)
 
     local p = self.player
     local px, py = Iso.toScreen(p.x, p.y)
@@ -566,6 +584,11 @@ function World:updateEnemies(dt)
                 -- stunned (hissing roach): stands reeling, can't move or bite
                 e.stunT = e.stunT - dt
                 e.mx, e.my = 0, 0
+            elseif e.lure and not unseen then
+                -- going for something else (a critter a mini-goal has you guard)
+                self.player = e.lure
+                e.behavior.update(e, self, dt, e.params)
+                self.player = p
             elseif unseen then
                 self.player = decoyFor(self, e, p, decoy)
                 e.behavior.update(e, self, dt, e.params)
@@ -783,6 +806,7 @@ function World:draw()
     self.ground:draw()
     self.hazards:drawGround()
     Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
+    self.rewards:drawGround()                       -- route tunnels, guarded critters
 
     -- View culling bounds in projected space.
     local cx0, cy0, cx1, cy1 = ox - 40, oy - 40, ox + vw + 40, oy + vh + 60
