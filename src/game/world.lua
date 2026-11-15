@@ -44,6 +44,8 @@ function World.new(opts)
     love.math.setRandomSeed(self.seed)
     self.modeDef = Content.modes:get(opts.gameMode or "colony") or Content.modes:all()[1]
     self.gameMode = self.modeDef.id
+    -- danger level of this run (src/config/danger.lua): every level adds one rule
+    self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)
     -- no stage given: the location picked in Cosmetics
     self.stage = Content.stages:require(opts.stage or Cosmetics.location())
     self.size = self.stage.size
@@ -83,6 +85,8 @@ function World.new(opts)
     -- damage by source, kills by species, hits taken (src/game/runstats.lua)
     self.runStats = RunStats.new(self)
 
+    -- level-up card picks (src/game/levelups.lua); made before the player, whose skills ask it
+    self.levelups = require("src.game.levelups").new(self)
     local charId = opts.character or Content.characters:all()[1].id
     self.player = Player.new(self, Content.characters:require(charId), self.size / 2, self.size / 2)
     self.spawner = Spawner.new(self, self.stage)
@@ -94,9 +98,15 @@ function World.new(opts)
     self.weather = Weather.new(self)
     -- frenzy meter, streak buffs, mini-goals, treasure ant, route gates (src/game/rewards.lua)
     self.rewards = require("src.game.rewards").new(self)
+    -- molting after a queen wave, brood cell chests opening by themselves when the wave ends
+    self.molts = 0
+    self.events:on("wave_cleared", function() self:onWaveClearedMolting() end)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
+    require("src.game.dashtech").attach(self)
+    require("src.game.bugrules").attach(self)
     -- skin: recoloured in drawing (Cosmetics.shader), or a whole other model
     local skin = Cosmetics.skinFor(charId)
     self.player.skin = skin
@@ -122,6 +132,7 @@ function World:hpScale()
     return m.enemyHp * (1 + (sp and math.max(0, sp.wave - 1) * (m.hpPerWave or 0.12) or 0))
         * (sp and require("src.game.pacing").hpMul(sp) or 1)
         * (self.route and self.route.hpMul or 1)
+        * (self.danger and self.danger.hpMul or 1)
 
 end
 
@@ -252,6 +263,13 @@ function World:killEnemy(e)
         local x, y, info = e.x, e.y, { selfDestruct = e.st.exploded }
         self.deferred[#self.deferred + 1] = function() def.onDeath(self, x, y, def, info) end
     end
+    if def.boss then
+        -- a queen: whatever touches in the bag molts once this wave is cleared, and she leaves a
+        -- brood cell chest behind (src/game/molting.lua, content/props/brood_cell.lua)
+        self.queenThisWave = true
+        local x, y = e.x, e.y
+        self.deferred[#self.deferred + 1] = function() self:dropChest(x, y, "queen") end
+    end
     if self.boss == e then
         self.boss = nil
         -- a slain queen adds one more card to the item choice after the wave
@@ -268,6 +286,33 @@ function World:killEnemy(e)
             end
         end
         self.events:emit("boss_killed", e)
+    end
+end
+
+-- A brood cell chest at (x, y): kind "queen" or "treasure" (odds in src/config/molting.lua).
+-- Walk into it to open it; one still shut when the wave ends opens by itself.
+function World:dropChest(x, y, kind)
+    if not self.props then return nil end
+    local o = self.props:spawn("brood_cell", x, y, { kind = kind or "queen" })
+    self.events:emit("chest_dropped", o)
+    return o
+end
+
+-- Queue a chest's fanfare (src/states/broodcell.lua, opened by Game:update before the item choice).
+function World:openChest(kind, x, y)
+    self.pendingChests = self.pendingChests or {}
+    local list = self.pendingChests
+    list[#list + 1] = { kind = kind or "queen", x = x, y = y }
+end
+
+function World:onWaveClearedMolting()
+    if self.queenThisWave then
+        self.queenThisWave = nil
+        require("src.game.molting").afterQueenWave(self)
+    end
+    -- chests nobody opened pop open now
+    if self.props then
+        for _, o in ipairs(self.props:find("brood_cell")) do o.def.open(self, o) end
     end
 end
 
@@ -491,6 +536,7 @@ function World:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
     self:pushPlayerOutOfSolids()
 
     -- Remove the dead, keeping the array packed.

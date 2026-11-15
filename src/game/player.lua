@@ -85,6 +85,8 @@ function Player:setCharacter(def)
     -- skill tree: rebuilds the params above from the def plus bought nodes (XP kept on a swap)
     self.skills = Skills.new(self, self.skills and self.skills.xp)
     self.skills:apply()
+    -- stat cards from level-ups survive a swap too
+    if self.world and self.world.levelups and self.world.player == self then self.world.levelups:applyStats() end
     self.dashCharges = self.dashParams.charges or 1
     Stamina.state(self)
     self.blocking, self.blockFxT, self.dashHop, self.z, self.dashHit, self.grapple = false, 0, 0, 0, nil, nil
@@ -255,9 +257,11 @@ function Player:update(dt)
         if guard and self.dashT > 0 then self.iframes = math.max(self.iframes, self.dashT * guard + 0.05) end
         Anim.move(self, "dash", dp)
         self.dashT0 = self.dashT
+        require("src.game.dashtech").onStart(self)      -- chained dashes go faster (src/game/dashtech.lua)
         Audio.play("dash")
         self.inventory:trigger("onDash", { world = world, player = self, procDepth = 0 })
     end
+    require("src.game.dashtech").update(self)
     local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
     if (self.dashT > 0 or self.grapple) and dd.update and not dd.hold then dd.update(self, world, dt, dp) end
     if dd.tick then dd.tick(self, world, dt, dp) end      -- dashes with lasting effects (stink shield)
@@ -580,6 +584,7 @@ function Player:hurt(amount, source)
     if self.ward and self.ward(self, amount, source) then return end
     if world.rewards and world.rewards.frenzy:shielded() then return end     -- mid frenzy move
     if self.blocking then
+        world.events:emit("player_blocked", amount)
         self.dashDef.blocked(self, world, source, self.dashParams)
         Stamina.blockHit(self, self.dashParams)
         self.inventory:trigger("onBlock", { world = world, player = self, damage = amount, source = source, procDepth = 0 })

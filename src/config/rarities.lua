@@ -8,4 +8,7 @@ return {
     -- Cursed: a big upside with a real cost (the item's `curse` says what). Order 0, so it never
     -- counts as "rare or better". Cursed items can't be eaten: only the scrapper takes them.
     cursed = { label = "Cursed", color = "#c071ff", weight = 9, minWave = 3, order = 0, eat = 0, cursed = true },
+    -- molted: never dealt in item choices (weight 0); you only get one by molting items together
+    -- in the bag after a queen wave (content/molts, src/game/molting.lua)
+    molted = { label = "Molted", color = "#7ff0d8", weight = 0, minWave = 999, order = 5, eat = 50 },
 }

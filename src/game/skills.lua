@@ -20,10 +20,11 @@ Skills.__index = Skills
 Skills.MOVES = { "attack", "secondary", "dash" }
 Skills.TIER_COST = { 1, 1, 2, 2, 3, 3 }    -- default point cost per rank, by tier
 
--- XP to go from level-1 to level (every level is a skill point). Wave sizes grow with the run,
--- so this grows too: ~1 point a wave early on, ~11 by wave 10, ~20 by wave 20.
+-- XP to go from level-1 to level. Every level is a level-up card pick (src/game/levelups.lua),
+-- or a skill point with the "levelUps" setting on "points". The curve is in
+-- src/config/levelups.lua: the first level takes ~10 kills, a 15-wave run reaches ~level 35.
 function Skills.xpFor(level)
-    return math.floor(25 + 12 * level ^ 1.5)
+    return require("src.game.levelups").xpFor(level)
 end
 
 local EMPTY = {}
@@ -180,20 +181,33 @@ function Skills.new(player, xp)
     return self
 end
 
+-- Level-up cards instead of points? (Real runs, unless the "levelUps" setting says points.)
+function Skills:cardsMode()
+    local w = self.player.world
+    return w and w.levelups and w.levelups:enabled() or false
+end
+
+-- silent: XP handed back quietly (resumed runs, practice, sandbox swaps). Silent levels always
+-- give skill points, so nothing is lost when no card pick can be shown.
 function Skills:gainXP(n, silent)
     self.xp = self.xp + n
     self.into = self.into + n
     while self.into >= self.toNext do
         self.into = self.into - self.toNext
         self.level = self.level + 1
-        self.points = self.points + 1
         self.toNext = Skills.xpFor(self.level + 1)
-        if not silent then
-            local p = self.player
+        local p = self.player
+        local lu = p.world and p.world.levelups
+        if not silent and self:cardsMode() then
+            lu:onLevel(self.level)
             self.flashT = 2.5
-            if p.world and not p.world.flags.demo then
-                p.world:floatText(p.x, p.y - 6, "SKILL POINT!", { 0.55, 0.9, 1 }, true)
-                Audio.play("ui_confirm", { pitch = 1.35 })
+            lu:fanfare(p, "LEVEL UP!")
+        else
+            self.points = self.points + 1
+            if not silent then
+                self.flashT = 2.5
+                if lu then lu:fanfare(p, "SKILL POINT!")
+                elseif p.world and not p.world.flags.demo then Audio.play("ui_confirm", { pitch = 1.35 }) end
             end
         end
     end

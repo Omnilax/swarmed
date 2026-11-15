@@ -158,11 +158,22 @@ function Hud.draw(game, covered)
         bar(xx, xy, xw, u(5), sk.into / sk.toNext, { 0.35, 0.75, 1, alpha })
         lg.setFont(Theme.font(13))
         Theme.printShadow("LV " .. sk.level, xx - u(48), xy - u(5), { 0.55, 0.85, 1, alpha })
+        -- level-up cards waiting for the end of the wave
+        local lu = world.levelups
+        local waiting = lu and #lu.queue or 0
+        local nudgeY = xy - u(22) - u(3)
+        if waiting > 0 then
+            local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 6)
+            lg.setFont(Theme.font(15, "bold"))
+            Theme.printShadow((waiting == 1 and "LEVEL UP!" or ("LEVEL UP x" .. waiting)) .. "  ·  cards at wave end", 0, nudgeY, { 1, 0.88, 0.45, alpha * pulse }, "center", w)
+            nudgeY = nudgeY - u(20)
+            lg.setFont(Theme.font(13))
+        end
         if sk.points > 0 then
             local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 5)
             local key = require("src.core.input").lastDevice == "gamepad" and "{inventory}, then {pad:rightshoulder}" or "{inventory}, then {key:Tab}"
             if require("src.core.touch").enabled() then key = "BAG" end
-            Theme.rich(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, xy - u(22) - u(3), w, "center",
+            Theme.rich(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, nudgeY, w, "center",
                 { 0.55, 0.9, 1 }, alpha * (sk.flashT > 0 and 1 or pulse))
         end
     end
@@ -172,7 +183,15 @@ function Hud.draw(game, covered)
         local sp = world.spawner
         lg.setFont(Theme.font(24))
         local sub
-        if sp.phase == "wave" then
+        local swarm = world.finalSwarm
+        if swarm and not swarm.done then
+            -- the Final Swarm (src/game/finalswarm.lua): the clock to survive, and its KOs
+            local left = math.ceil(swarm:left())
+            local pulse = 0.75 + 0.25 * math.sin(world.time * 6)
+            Theme.printShadow(("FINAL SWARM  %d:%02d"):format(math.floor(left / 60), left % 60), 0, u(16),
+                { 1, 0.45 * pulse + 0.2, 0.35, alpha }, "center", w)
+            sub = swarm.kills .. " swarm KOs  ·  survive!"
+        elseif sp.phase == "wave" then
             Theme.printShadow(Hud.waveLabel(sp), 0, u(16), { c.text[1], c.text[2], c.text[3], alpha }, "center", w)
             sub = sp.endless and ("next level in " .. math.max(1, math.ceil(sp.levelT)))
                 or (sp:remaining() .. (sp.mode.families and not require("src.core.util").contains(sp.mode.families, "ant") and " left" or " ants left"))

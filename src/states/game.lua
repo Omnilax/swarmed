@@ -13,14 +13,14 @@ Game.__index = Game
 -- params: mode ("run" | "sandbox"), character (id), stage (id), gameMode (content/modes id),
 -- startItems (item ids, from the starting items screen), seed (replays a run; nil = a fresh one),
 -- daily (the daily run, src/game/daily.lua), resume (a saved run, src/game/runsave.lua),
--- practice ({ wave, species, items, god }: src/states/practice.lua)
+-- practice ({ wave, species, items, god }: src/states/practice.lua), danger (0-5, src/config/danger.lua)
 function Game.new(params)
     local self = setmetatable({ params = params }, Game)
     self.mode = params.mode or "run"
     local RunSave = require("src.game.runsave")
     self.world = World.new({ mode = self.mode, character = params.character, stage = params.stage,
         gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil,
-        seed = params.seed, daily = params.daily })
+        seed = params.seed, daily = params.daily, danger = params.danger })
     if params.resume then RunSave.restore(self.world, params.resume) end
     if params.practice then require("src.states.practice").apply(self.world, params.practice) end
 
@@ -110,17 +110,42 @@ function Game:update(dt)
         self.saveSoon = nil
         require("src.game.runsave").save(self)
     end
+    -- a brood cell chest was cracked open: its fanfare first (src/states/broodcell.lua)
+    local chests = self.world.pendingChests
+    if chests and #chests > 0 and not self.world.player.dead then
+        local c = table.remove(chests, 1)
+        State.push(require("src.states.broodcell").new(self, c))
+        return
+    end
+    -- walked into the aphid matriarch: the cloning screen (src/states/duplicate.lua)
+    local dup = self.world.pendingDuplicate
+    if dup then
+        self.world.pendingDuplicate = nil
+        if not dup.dead and not dup.leaving and not self.world.player.dead then
+            State.push(require("src.states.duplicate").new(self, dup))
+            return
+        end
+    end
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
-    if won and self.world.time >= ((self.world.pendingChoice or {}).at or 0) then
+    if won and self.world.time >= (won.at or (self.world.pendingChoice or {}).at or 0) then
         self.world.pendingVictory = nil
         if not self.world.player.dead then
             State.push(require("src.states.victory").new(self, won))
             return
         end
     end
-    -- wave cleared: choose an item (a beat after the last kill)
+    -- level-up cards: queued ones come at the end of the wave, right before the item choice
     local choice = self.world.pendingChoice
+    local lu = self.world.levelups
+    if lu and #lu.queue > 0 and not self.world.player.dead then
+        local e = lu:nextToShow(choice and self.world.time >= (choice.at or 0))
+        if e then
+            State.push(require("src.states.levelup").new(self, e))
+            return
+        end
+    end
+    -- wave cleared: choose an item (a beat after the last kill)
     if choice and self.world.time >= (choice.at or 0) then
         self.world.pendingChoice = nil
         if not self.world.player.dead then

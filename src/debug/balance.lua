@@ -2,7 +2,7 @@
 -- A simple bot plays real runs (no drawing, fixed 60 Hz steps) with each character and reports
 -- how far it gets: per wave the time taken, HP left and KOs. The bot is much worse than a person
 -- (it kites crudely, dashes when crowded, fires its special whenever ready, takes a random item
--- card and spends skill points on whatever is available), so "the bot clears wave 15" means a
+-- card, a random level-up card and spends skill points on whatever is available), so "the bot clears wave 15" means a
 -- run is comfortably winnable. Environment variables:
 --   SWARMED_BAL_CHARS = "rhino_beetle,mantis"   characters to test (default: a spread of them)
 --   SWARMED_BAL_RUNS  = 2                       runs per character
@@ -194,10 +194,11 @@ function Balance.runOne(charId, maxWave)
             local sp = world.spawner
             local mods = {}
             for _, d in ipairs(sp.mods or {}) do mods[#mods + 1] = d.id end
-            log[#log + 1] = ("  w%-2d %4.0fs  par %3.0f  hp %3.0f/%-3.0f  kos %5d  nectar %4d  items %2d%s%s%s"):format(c.wave, world.time - waveStart,
-                sp.par or 0, p.hp, p.stats:get("maxHp"), world.kos - kosAt, world.nectarEarned - nectarAt, #p.inventory.bag, c.boss and "  (boss)" or "",
+            log[#log + 1] = ("  w%-2d %4.0fs  par %3.0f  hp %3.0f/%-3.0f  kos %5d  nectar %4d  items %2d  xp %5d lv %2d%s%s%s"):format(c.wave, world.time - waveStart,
+                sp.par or 0, p.hp, p.stats:get("maxHp"), world.kos - kosAt, world.nectarEarned - nectarAt, #p.inventory.bag, world.xp or 0, p.skills and p.skills.level or 0, c.boss and "  (boss)" or "",
                 sp.overlapped and "  overlap" or "", #mods > 0 and ("  " .. table.concat(mods, "+")) or "")
             waveStart, kosAt, nectarAt = world.time, world.kos, world.nectarEarned
+            if world.levelups then world.levelups:autoPickAll() end
             pickItem(world)
             local spent = shop(world)
             if spent > 0 then log[#log] = log[#log] .. ("  shop -%d"):format(spent) end

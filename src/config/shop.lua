@@ -10,7 +10,7 @@ return {
     items = 2,             -- item offers in each shop
     boosts = 1,            -- stat boost offers in each shop
     -- Item prices by rarity, before the wave scaling. Bigger items cost a bit more per extra cell.
-    price = { common = 60, uncommon = 100, rare = 170, legendary = 300, cursed = 90 },
+    price = { common = 60, uncommon = 100, rare = 170, legendary = 300, cursed = 90, molted = 400 },
     perCell = 0.12,        -- +12% per cell past the first
     perWave = 0.25,        -- every price is x(1 + perWave * (wave - 1)): x2 at wave 5, x4.5 at wave 15
     sale = 0.25,           -- chance one item offer is on sale

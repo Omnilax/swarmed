@@ -194,6 +194,36 @@ fulgurite, trilobite fossil, honeycomb, snail shell). Proc triggers: `onHit`, `o
 timers, timed buffs, poison patches on the ground, orbiting critters and per-item state.
 `love . --selftest --items` fires every item's procs in a live fight.
 
+## Molting, tag sets, brood cells and the aphid matriarch
+
+**Molting.** Some items molt into a stronger one when they **touch in the bag** (sides, not
+corners): Ember Gland + Bombardier Gland become a Magma Gland, Dew Drop + Honeydew a Nectar Pearl,
+and so on (13 recipes in `content/molts`, a few take three pieces). Nothing happens straight
+away: the molt comes when a **queen wave is cleared**, and the new item takes the old ones' place.
+Molted items (rarity "Molted", `src/config/rarities.lua`) are never dealt in item choices. In the
+bag, the seams between pieces that will molt **glow** (pulsing teal; dim for two pieces of a
+three-piece recipe), a line over the case says what molts after the next queen, and an item's
+tooltip lists what it molts with. **Records > Recipes** is the recipe book: every recipe's pieces,
+with the result shown once you have molted it.
+
+**Tag sets.** Three items sharing a tag, all touching in one group, give the tag's set bonus
+(Warpath +8% Damage for offense, Bulwark +5 Armor for defense...); five give it twice. The bag
+draws the group's seams in the tag's colour and lists active sets over the case. Bonuses are the
+`set` field of each tag in `src/config/tags.lua`; thresholds in `src/config/molting.lua`.
+
+**Brood cell chests.** A slain queen drops a royal brood cell, a caught treasure ant a plain one.
+Walk into it (or clear the wave: it opens by itself) and a fanfare rolls **1, 3 or 5 level-up
+cards** (queen odds 50/38/12, treasure 74/22/4; Luck shifts them up). The cards go to the level-up
+card picks (`src/game/levelups.lua` `grant`); without that system each card is 25 XP.
+
+**The aphid matriarch** (`content/events/aphid_matriarch.lua`) is a rare map event from wave 5
+(only when your bag has two items of one rarity). Walk into her, pick an item to clone, then feed
+her another item of the same rarity (press it twice): she gives birth to a copy and leaves.
+
+Numbers: `src/config/molting.lua`. Code: `src/game/molting.lua`, `src/game/duplicate.lua`,
+`src/states/broodcell.lua`, `src/states/duplicate.lua`. Molted item icons:
+`tools/make_molt_icons.py` (writes `content/sprites/molts.lua`). Test: `love . --selftest --molts`.
+
 ## Game modes
 
 Play opens the mode select, then the bug select. Modes are files in `content/modes/` (schema in
@@ -282,6 +312,20 @@ costs more points than a long run earns, so every run builds the bug differently
 Player tab has **+5 skill points** and **Reset skill tree**; `love . --selftest --skills` buys every
 node of every tree (both fork sides) and fights with it.
 
+## Level-up cards
+
+Each level is a pick of 3 cards (`src/game/levelups.lua`, screen `src/states/levelup.lua`, numbers
+in `src/config/levelups.lua`): nodes from your bug's skill tree (bought outright, no points) and
+global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
+common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
+The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
+Levels play a chime, half a second of slow motion and a ring of light; the picks wait for the end
+of the wave and come right before the item choice (setting **Level-Up Cards: Right Away** opens
+them at once). Instead of a card you can bank a skill point for the SKILLS tab. Setting
+**Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
+picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
+Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):
@@ -296,6 +340,33 @@ from other content (one per bug, family, elite affix and game mode), so new bugs
 achievements on their own. Unlocks slide in at the top right. Run events it listens to:
 `enemy_died`, `player_hurt`, `wave_started`, `wave_cleared`, `run_won`, `item_taken`,
 `item_eaten`, `player_died`. `love . --selftest --records` checks it all without touching the save.
+
+## Unlocks, danger levels and mastery
+
+- **Unlocks.** Eight bugs are open from the start (`src/config/unlocks.lua` `starters`); the other
+  18 each open through an in-run goal ("Clear wave 5 as the Rhino Beetle", "Kill 25 ants mid-dash
+  in one run"...). A few items are locked the same way and stay out of item choices until then.
+  Goals are achievements in the Records screen's **Unlocks** category (`content/achievements/unlocks.lua`),
+  so progress shows there and an "Unlocked" card pops up mid-run. Bugs already played before
+  unlocks existed stay open. Settings > Gameplay > **Unlock Everything** opens it all.
+- **Item pool.** Settings > Gameplay > **Item Pool...** switches items in or out of the item
+  choices (at least 12 stay in). Saved in `prefs.lua`.
+- **Bug rules.** Some bugs bend how items work for them (`src/config/bugrules.lua`, run by
+  `src/game/bugrules.lua`): Dung Beetle gets stronger from eaten items, Hermit Crab starts with an
+  extra bag row but slows per filled cell, Orb Weaver's procs fire twice on webbed ants, Hissing
+  Roach heals double from eating, Scorpion's poison items proc more. Shown on bug select.
+- **Danger levels.** Left/Right on a bug in bug select picks Danger 0-5 (`src/config/danger.lua`):
+  each level adds one rule (more elites, less healing, faster ants, tougher ants, bigger groups and
+  an extra crowned queen). Winning at a level opens the next one for that bug; the highest level
+  won shows as mastery stars and is kept in Records (`characters[id].danger`).
+- **Dash tech.** A kill during a pressed dash (or just after) refunds half its stamina; dashing
+  again within 0.45 s of the last one ending is 15% faster per link, up to 3 (`src/game/dashtech.lua`,
+  Settings > Gameplay > Dash Tech).
+- **Final Swarm.** After the wave-15 win, the victory screen offers a last stand: 60 seconds of
+  every species met pouring in from every side, lots of elites and a crowned queen halfway
+  (`src/game/finalswarm.lua`). Live through it and the run ends with "Swarm survived".
+- Test: `love . --selftest --mastery` (also in the full run). `--locked` keeps the locks on for a
+  selftest or `--balance` run (they normally open everything).
 
 ## Run info, summary and accessibility
 
@@ -512,6 +583,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/routes` | safe / hard route gates between waves (ant, elite, health multipliers, `reward`) | runs |
 | `content/pickups` | ground pickups (`source` elite / kill, `weight`, `allowed`, `collect`) | nectar beads |
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
+| `content/molts` | molting recipes: `from` (2-3 item ids that must touch), `into` (a molted item), `hint` | bag after a queen wave, Records > Recipes |
 | `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |
 | `content/bosses` | boss encounters: a predator from content/enemies joins every 5th wave | src/game/director.lua |
 | `content/mechanics` | stage rules a stage turns on with `mechanic = { type = ... }` | src/game/director.lua |

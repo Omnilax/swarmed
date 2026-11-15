@@ -18,7 +18,7 @@ local RunSave = { FILE = "run.lua", VERSION = 1 }
 
 -- Record counters carried over so the run's stats line in Records stays whole.
 local RECORD_FIELDS = { "kills", "elites", "queens", "killsBy", "killsByFamily", "wavesCleared", "flawlessWaves",
-    "damageTaken", "itemsTaken", "itemsEaten", "started", "won" }
+    "damageTaken", "itemsTaken", "itemsEaten", "started", "won", "blocked", "dashKills" }
 
 -- Can this game be saved? (a real run that's still going)
 function RunSave.allowed(game)
@@ -39,7 +39,9 @@ function RunSave.snapshot(game)
         continued = w.continued or nil, bonusPicks = w.bonusPicks,
         hp = p.hp, rows = p.inventory.rows,
         bag = {}, known = {}, usedQueens = {},
-        skills = { xp = p.skills and p.skills.xp or 0, ranks = util.deepcopy(p.skills and p.skills.ranks or {}) },
+        skills = { xp = p.skills and p.skills.xp or 0, ranks = util.deepcopy(p.skills and p.skills.ranks or {}),
+            points = p.skills and p.skills.points or 0, carded = p.skills and p.skills.carded or 0 },
+        levelups = w.levelups and w.levelups:snapshot() or nil,
         saved = os.time(),
         -- the run's seed and daily run (src/game/daily.lua), and the item choice's rerolls,
         -- bans and locked cards (src/game/choices.lua)
@@ -50,6 +52,8 @@ function RunSave.snapshot(game)
         economy = w.economy and util.deepcopy({ boosts = w.economy.boosts, locked = w.economy.locked,
             interestPaid = w.economy.interestPaid, scrapped = w.economy.scrapped, growth = w.economy.growth,
             interestWave = w.economy.interestWave }),
+        -- danger level (src/config/danger.lua) and the bug rule's state (src/game/bugrules.lua)
+        danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
         -- blessings and curses from map gambles (src/game/gambles.lua)
         blessings = util.deepcopy(w.blessings),
     }
@@ -121,7 +125,8 @@ end
 -- Game params that start the saved run (Game.new calls RunSave.restore with the snapshot).
 function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
-        startItems = snap.startItems, seed = tonumber(snap.seed), daily = snap.daily, resume = snap }
+        startItems = snap.startItems, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
+        danger = tonumber(snap.danger) or 0 }
 end
 
 -- Put a fresh world into the saved run's state.
@@ -140,6 +145,7 @@ function RunSave.restore(world, snap)
         for k, v in pairs(util.deepcopy(snap.economy)) do e[k] = v end
         Economy.applyBoosts(p)
     end
+    if type(snap.ruleState) == "table" then world.ruleState = util.deepcopy(snap.ruleState) end
     -- the bag, exactly as it was (anything that no longer fits, or no longer exists, is stowed or skipped)
     local inv = p.inventory
     inv:clear()
@@ -171,9 +177,13 @@ function RunSave.restore(world, snap)
                 sk.spent = sk.spent + node.cost * r
             end
         end
+        -- level-up cards bought nodes without points: the saved count wins (old saves: as before)
+        if snap.skills.points then sk.points, sk.carded = snap.skills.points, snap.skills.carded or 0 end
         p.skills = sk
         sk:apply()
     end
+    -- level-up cards: stat cards taken and picks still waiting
+    if world.levelups and snap.levelups then world.levelups:restore(snap.levelups) end
     if snap.blessings then require("src.game.gambles").restore(world, snap.blessings) end
     p.hp = math.max(1, math.min(snap.hp or p.stats:get("maxHp"), p.stats:get("maxHp")))
     -- the waves: species met and queens fought, then a breather before the next wave

@@ -676,6 +676,7 @@ local function script(flags)
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
     if flags["--economy"] then require("src.debug.selftest_economy")(wait, shot) love.event.quit() return end
     if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
+    if flags["--molts"] then require("src.debug.selftest_molts")(wait, shot) love.event.quit() return end
     if flags["--nectar"] then require("src.debug.selftest_nectar")(wait, shot) love.event.quit() return end
     if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
@@ -684,10 +685,12 @@ local function script(flags)
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
+    if flags["--levelups"] then require("src.debug.selftest_levelups")(wait, shot) love.event.quit() return end
     if flags["--skills"] then require("src.debug.selftest_skills")(wait, shot) love.event.quit() return end
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
     if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
+    if flags["--mastery"] then require("src.debug.selftest_mastery")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
     if flags["--runinfo"] then require("src.debug.selftest_runinfo")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end
@@ -778,6 +781,15 @@ local function script(flags)
     shot("wave_break")
     -- the item choice pops up a moment later; take the first card
     wait(1.2)
+    -- level-up cards earned in the wave come first, right before the item choice
+    for _ = 1, 20 do
+        local top = State.top()
+        if not top.lu then break end
+        top.t = 10
+        top:activate(1); top:activate(1)
+        wait(0.05)
+    end
+    assert(#game.world.levelups.queue == 0, "level-up picks left over")
     local choice = State.top()
     assert(choice.items and #choice.items >= 3, "no item choice after the wave")
     local ids = {}
@@ -1117,7 +1129,9 @@ local function script(flags)
     termiteScene()
     hymenopteraScene()
     require("src.debug.selftest_skills")(wait, shot)
+    require("src.debug.selftest_levelups")(wait, shot)
     require("src.debug.selftest_records")(wait, shot)
+    require("src.debug.selftest_mastery")(wait, shot)
     require("src.debug.selftest_polish")(wait, shot)
     require("src.debug.selftest_pacing")(wait, shot)
     require("src.debug.selftest_anims")(wait, shot)

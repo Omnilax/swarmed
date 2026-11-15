@@ -228,6 +228,22 @@ local defs = {
                 return math.sin(t * f * math.pi * 2) * math.exp(-t * 10) * 0.6
             end)
         end },
+    -- a level-up: a bright rising arpeggio (C E G C) with a shimmer on top
+    level_up = { bus = "sfx", voices = 2, gap = 0.2, volume = 0.5,
+        data = function()
+            return synth(1.0, function(t)
+                local v = 0
+                for i, f in ipairs({ 523, 659, 784, 1047 }) do
+                    local d = t - (i - 1) * 0.07
+                    if d >= 0 then
+                        v = v + (math.sin(d * f * math.pi * 2) + 0.35 * math.sin(d * f * 2 * math.pi * 2)) * math.exp(-d * (i == 4 and 3 or 6))
+                    end
+                end
+                local sd = t - 0.2
+                if sd > 0 then v = v + math.sin(sd * 2093 * math.pi * 2) * math.sin(sd * 31) * math.exp(-sd * 5) * 0.25 end
+                return v * 0.3
+            end)
+        end },
     ui_move = { bus = "ui", voices = 3, gap = 0.02, volume = 0.3,
         data = function() return synth(0.04, function(t, p) return math.sin(t * 880 * math.pi * 2) * (1 - p) * 0.6 end) end },
     ui_confirm = { bus = "ui", voices = 2, gap = 0.03, volume = 0.35,

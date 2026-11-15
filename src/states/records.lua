@@ -14,7 +14,7 @@ local lg = love.graphics
 local RecordsState = {}
 RecordsState.__index = RecordsState
 
-local TABS = { "Bugs", "Runs", "Kills", "Achievements" }
+local TABS = { "Bugs", "Runs", "Kills", "Recipes", "Achievements" }
 
 local function num(n)
     n = math.floor(n or 0)
@@ -119,6 +119,25 @@ function RecordsState:build()
                 items[#items + 1] = { type = "button", label = d.name, enemy = d, onActivate = function() end,
                     value = function() return n > 0 and num(n) or "-" end }
             end
+        end
+    elseif tab == "Recipes" then
+        -- the recipe book: molting recipes (result hidden until molted once) and tag set bonuses
+        items[#items + 1] = { type = "header", label = "Molting" }
+        for _, r in ipairs(Content.molts:all()) do
+            local known = Records.moltKnown(r.id)
+            local into = Content.items:get(r.into)
+            local names = {}
+            for _, id in ipairs(r.from) do local d = Content.items:get(id) names[#names + 1] = d and d.name or id end
+            items[#items + 1] = { type = "button", label = known and into and into.name or table.concat(names, " + "), recipe = r, onActivate = function() end,
+                done = known, value = function() return known and ("x" .. num(p.molts[r.id])) or "" end }
+        end
+        items[#items + 1] = { type = "header", label = "Tag sets" }
+        local tags = {}
+        for id, t in pairs(require("src.config.tags")) do if t.set then tags[#tags + 1] = { id = id, def = t } end end
+        table.sort(tags, function(a, b) return a.def.set.name < b.def.set.name end)
+        for _, t in ipairs(tags) do
+            items[#items + 1] = { type = "button", label = t.def.set.name, tagSet = t, onActivate = function() end,
+                value = function() return t.def.label end }
         end
     else
         local cats, byCat = {}, {}
@@ -407,6 +426,91 @@ function RecordsState:drawAchievement(a, done, px, py, pw)
     end
 end
 
+-- One molting recipe: the pieces, an arrow, and what they become (a dark shape until molted once).
+function RecordsState:drawRecipe(r, px, py, pw)
+    local u = Theme.u
+    local c = Theme.colors
+    local p = Records.get()
+    local InvState = require("src.states.inventory")
+    local known = Records.moltKnown(r.id)
+    local into = Content.items:get(r.into)
+    local T = math.floor(u(64))
+    local gap = u(34)
+    local n = #r.from
+    local total = (n + 1) * T + n * gap
+    local x = px + (pw - total) / 2
+    local y = py + u(60)
+    lg.setFont(Theme.font(28, "bold"))
+    for i, id in ipairs(r.from) do
+        local d = Content.items:get(id)
+        lg.setColor(0, 0, 0, 0.35)
+        lg.rectangle("fill", x, y, T, T, 6, 6)
+        if d then InvState.itemIcon({ def = d }, x + 4, y + 4, T - 8, T - 8) end
+        lg.setFont(Theme.font(13))
+        lg.setColor(c.dim)
+        lg.printf(d and d.name or id, x - u(20), y + T + u(6), T + u(40), "center")
+        lg.setFont(Theme.font(28, "bold"))
+        x = x + T
+        Theme.printShadow(i < n and "+" or ">", x, y + T / 2 - u(18), c.focus, "center", gap)
+        x = x + gap
+    end
+    lg.setColor(0.5, 1, 0.85, 0.25 + 0.15 * math.sin(self.t * 3))
+    lg.rectangle("fill", x - 3, y - 3, T + 6, T + 6, 8, 8)
+    lg.setColor(0, 0, 0, 0.5)
+    lg.rectangle("fill", x, y, T, T, 6, 6)
+    if into then
+        if known then InvState.itemIcon({ def = into }, x + 4, y + 4, T - 8, T - 8)
+        else InvState.itemIcon({ def = into }, x + 4, y + 4, T - 8, T - 8, 0.08) end
+    end
+    y = y + T + u(56)
+    lg.setFont(Theme.font(28))
+    Theme.printShadow(known and into and into.name or "???", px, y, known and { 0.5, 1, 0.85 } or c.text, "center", pw)
+    y = y + u(46)
+    lg.setFont(Theme.font(16))
+    lg.setColor(c.dim)
+    if r.hint then
+        lg.printf(r.hint, px + u(30), y, pw - u(60), "center")
+        y = y + u(30)
+    end
+    lg.setColor(c.text)
+    if known and into then
+        lg.printf(into.description, px + u(30), y, pw - u(60), "center")
+        y = y + u(70)
+        lg.setColor(c.dim)
+        lg.printf(("Molted %s time%s"):format(num(p.molts[r.id]), p.molts[r.id] == 1 and "" or "s"), px, y, pw, "center")
+    else
+        lg.printf("Put these in your bag touching each other (side to side). After the next queen wave they molt into something new.",
+            px + u(30), y, pw - u(60), "center")
+    end
+end
+
+-- A tag set bonus: what three and five touching items with the tag give.
+function RecordsState:drawTagSet(t, px, py, pw)
+    local u = Theme.u
+    local c = Theme.colors
+    local Molting = require("src.game.molting")
+    local Cfg = require("src.config.molting")
+    local col = require("src.core.util").hex(t.def.color)
+    local y = py + u(50)
+    lg.setFont(Theme.font(32, "bold"))
+    Theme.printShadow(t.def.set.name, px, y, col, "center", pw)
+    y = y + u(50)
+    lg.setFont(Theme.font(16))
+    lg.setColor(c.dim)
+    lg.printf(t.def.label .. " items", px, y, pw, "center")
+    y = y + u(50)
+    lg.setFont(Theme.font(18))
+    lg.setColor(c.text)
+    lg.printf(("%d touching:  %s"):format(Cfg.set.tier1, Molting.setText(t.def.set, 1)), px, y, pw, "center")
+    y = y + u(32)
+    lg.printf(("%d touching:  %s"):format(Cfg.set.tier2, Molting.setText(t.def.set, 2)), px, y, pw, "center")
+    y = y + u(60)
+    lg.setFont(Theme.font(15))
+    lg.setColor(c.dim)
+    lg.printf("Items sharing a tag count when they all touch in one group in your bag. The bag draws their seams in the tag's colour.",
+        px + u(30), y, pw - u(60), "center")
+end
+
 ----------------------------------------------------------------------------------------------
 
 function RecordsState:update(dt)
@@ -459,6 +563,8 @@ function RecordsState:draw()
     elseif it.run then self:drawRun(it.run, px, py, pw)
     elseif it.enemy then self:drawEnemy(it.enemy, px, py, pw)
     elseif it.achievement then self:drawAchievement(it.achievement, it.done, px, py, pw)
+    elseif it.recipe then self:drawRecipe(it.recipe, px, py, pw)
+    elseif it.tagSet then self:drawTagSet(it.tagSet, px, py, pw)
     end
 end
 

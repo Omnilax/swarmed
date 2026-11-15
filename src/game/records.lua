@@ -27,7 +27,12 @@ local function blankProfile()
         daily = {},          -- daily run date "YYYY-MM-DD" -> best { wave, kos, won, character }
         history = {},        -- newest first, see Records.endRun
         achievements = {},   -- achievement id -> os.time() it unlocked
+        molts = {},          -- molt recipe id -> times molted (the recipe book, Records > Recipes)
+        moltCount = 0, chestsOpened = 0, duplicated = 0,
         seen = {},           -- enemy id -> true once met (first-sighting popups, src/ui/runhud.lua)
+        swarmsSurvived = 0,  -- Final Swarms lived through (src/game/finalswarm.lua)
+        -- characters[id] also gets `danger` (highest danger level won, src/config/danger.lua)
+        -- and `swarmKills` (most kills in a Final Swarm) once they happen
     }
 end
 
@@ -61,6 +66,12 @@ function Records.load()
 end
 
 function Records.get() return Records.profile or Records.load() end
+
+-- Has this molt recipe ever been molted? (the recipe book shows its result once it has)
+function Records.moltKnown(id)
+    local p = Records.get()
+    return (p.molts[id] or 0) > 0
+end
 
 function Records.save()
     if not Records.profile or Records.noSave then return end
@@ -111,6 +122,7 @@ function Records.track(world, info)
         wave = 0, wavesCleared = 0, flawlessWaves = 0, waveDamage = 0,
         damageTaken = 0, itemsTaken = 0, itemsEaten = 0, time = 0,
         won = false, started = os.time(), checkT = 0, daily = world.daily, time0 = world.time,
+        blocked = 0, dashKills = 0, danger = world.danger and world.danger.level or 0,
     }
     Records.run = run
     sub(p.characters, charId, CHAR_FIELDS)
@@ -146,11 +158,24 @@ function Records.track(world, info)
         Records.check()
         Records.save()
     end)
+    ev:on("player_blocked", function(amount) run.blocked = run.blocked + (amount or 0) end)
+    ev:on("dash_kill", function() run.dashKills = run.dashKills + 1 end)
+    ev:on("final_swarm_over", function(info)
+        if not info.survived then return end
+        p.swarmsSurvived = (p.swarmsSurvived or 0) + 1
+        local c = p.characters[charId]
+        c.swarmKills = math.max(c.swarmKills or 0, info.kills or 0)
+        Records.check()
+        Records.save()
+    end)
     ev:on("run_won", function()
         if run.won then return end
         run.won = true
         p.wins = p.wins + 1
         p.characters[charId].wins = p.characters[charId].wins + 1
+        -- mastery: the highest danger level won with this bug
+        local c = p.characters[charId]
+        c.danger = math.max(c.danger or -1, run.danger or 0)
         p.modes[run.mode].wins = p.modes[run.mode].wins + 1
         Records.check()
         Records.save()
@@ -161,6 +186,17 @@ function Records.track(world, info)
     ev:on("item_eaten", function()
         run.itemsEaten, p.itemsEaten = run.itemsEaten + 1, p.itemsEaten + 1
     end)
+    ev:on("item_molted", function(recipe)
+        p.molts[recipe.id] = (p.molts[recipe.id] or 0) + 1
+        p.moltCount = p.moltCount + 1
+        run.molts = (run.molts or 0) + 1
+        Records.check()
+    end)
+    ev:on("chest_opened", function(kind, n)
+        p.chestsOpened = p.chestsOpened + 1
+        run.chests = (run.chests or 0) + 1
+    end)
+    ev:on("item_duplicated", function() p.duplicated = p.duplicated + 1 end)
     ev:on("player_died", function() Records.endRun("died") end)
     return run
 end
@@ -243,7 +279,7 @@ function Records.endRun(outcome)
             wave = run.wave, cleared = run.wavesCleared, won = run.won, outcome = outcome,
             time = math.floor(run.time), kills = run.kills, elites = run.elites, queens = run.queens,
             combo = w.bestCombo or 0, level = level, damage = math.floor(run.damageTaken),
-            top = top, topN = topN, items = items,
+            top = top, topN = topN, items = items, danger = run.danger,
         })
         while #p.history > HISTORY do table.remove(p.history) end
     end
@@ -343,7 +379,7 @@ function Records.drawToast(t, i)
     lg.rectangle("fill", x, y + u(8), u(4), bh - u(16))
     lg.setFont(Theme.font(14))
     lg.setColor(Theme.colors.dim)
-    lg.print("Achievement", x + u(16), y + u(9))
+    lg.print(t.def.unlockKind and "Unlocked" or "Achievement", x + u(16), y + u(9))
     lg.setFont(Theme.font(20, "bold"))
     Theme.printShadow(t.def.name, x + u(16), y + u(28), c)
     lg.setColor(1, 1, 1, 1)

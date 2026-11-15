@@ -284,6 +284,13 @@ function Inventory:recount()
     for _, id in ipairs(old) do
         if not self.counts[id] then stats:removeSource("fx:" .. id) end
     end
+    -- tag set bonuses: 3+ touching items sharing a tag (src/game/molting.lua, src/config/tags.lua)
+    for _, s in ipairs(self.sets or {}) do stats:removeSource("set:" .. s.tag) end
+    self.sets = require("src.game.molting").sets(self)
+    for _, s in ipairs(self.sets) do
+        for stat, v in pairs(s.def.set.stats or {}) do stats:addModifier("set:" .. s.tag, stat, v * s.tier, 0) end
+        for stat, v in pairs(s.def.set.statsMult or {}) do stats:addModifier("set:" .. s.tag, stat, 0, v * s.tier) end
+    end
 end
 
 ----------------------------------------------------------------------------------------------
@@ -356,18 +363,25 @@ end
 function Inventory:trigger(name, ctx)
     -- luck, and the proc snowball: chances grow with every wave (src/config/rewards.lua procs)
     local luck = self:luckMul()
+    -- the bug's own rule (src/config/bugrules.lua) sees every trigger and can bend procs
+    local BugRules = require("src.game.bugrules")
+    BugRules.trigger(self.player, name, ctx)
+    local ruled = BugRules.of(self.player) ~= nil
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]
         local stacks = self.counts[id]
         for _, proc in ipairs(def.procs) do
             if proc.trigger == name then
-                local chance = proc.chance and self:procChance(proc, stacks, luck)
+                local cmul, reps = 1, 1
+                if ruled then cmul, reps = BugRules.proc(self.player, def, name, ctx) end
+                -- a bug rule's chance multiplier rolls on the same hyperbolic curve as luck
+                local chance = proc.chance and self:procChance(proc, stacks, luck * cmul)
                 if chance == nil or love.math.random() < chance then
                     -- the damage it does counts for this item in the run summary
                     local w = ctx.world
                     local prev = w and w.dmgSrc
                     if w then w.dmgSrc = def.name end
-                    proc.effect(ctx, stacks)
+                    for _ = 1, reps do proc.effect(ctx, stacks) end
                     if w then w.dmgSrc = prev end
                     -- the sandbox's proc log listens here (every-frame ticks are left out)
                     if self.onProc and name ~= "onTick" then self.onProc(def, name) end

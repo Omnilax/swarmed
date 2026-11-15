@@ -162,7 +162,7 @@ end
 function RunHud.drawPreview(world, covered, y, alpha)
     if covered or world.mode ~= "run" or world.flags.demo or not Settings.get("nextWavePreview") then return end
     local sp = world.spawner
-    if not sp or sp.phase == "wave" or not sp.preview then return end
+    if not sp or sp.phase == "wave" or not sp.preview or world.finalSwarm then return end
     local pv = sp:preview()
     if not pv then return end
     local lg = love.graphics
