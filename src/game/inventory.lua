@@ -36,6 +36,28 @@ end
 -- Copies of an item id in the bag (used as "stacks" by procs and stats).
 function Inventory:count(id) return self.counts[id] or 0 end
 
+-- A number field summed over every item in the bag, copies counted (true counts as 1):
+-- the curses' `cardsDelta`, `enemySpeed`, `noEatHeal`... Cached until the bag changes.
+function Inventory:sum(field)
+    local cache = self.sums
+    if not cache then cache = {}; self.sums = cache end
+    local v = cache[field]
+    if v then return v end
+    v = 0
+    for _, id in ipairs(self.order) do
+        local f = Content.items.byId[id] and Content.items.byId[id][field]
+        if f then v = v + (f == true and 1 or f) * self.counts[id] end
+    end
+    cache[field] = v
+    return v
+end
+
+-- Whether an item can be eaten (cursed ones can't: only the scrapper takes them).
+function Inventory.edible(item)
+    local r = require("src.config.rarities")[item.def.rarity]
+    return not (r and r.cursed)
+end
+
 -- Shapes. An item's cells come from its def (`shape` rows like { "XX", "X." }, or a plain
 -- `size` rectangle; see src/content.lua). rot = 0..3 quarter turns clockwise.
 local function turned(def, rot)
@@ -216,6 +238,8 @@ function Inventory:eat(item)
     local ctx = { world = p.world, player = p, item = item, hp = Inventory.eatValue(item), procDepth = 0 }
     self:trigger("onEat", ctx)
     p.world.events:emit("item_eaten", item)
+    -- a curse (Hungry Tapeworm) can take the meal: ctx.noHeal, or `noEatHeal` on any item in the bag
+    if ctx.noHeal or self:sum("noEatHeal") > 0 then ctx.hp = 0 end
     local hp = math.floor(ctx.hp + 0.5)
     p:heal(hp)
     return hp
@@ -241,6 +265,7 @@ end
 -- Rebuild the grid, stack counts and the stat modifiers they give.
 function Inventory:recount()
     self:rebuildGrid()
+    self.sums = nil
     local stats = self.player.stats
     local old = self.order
     for _, id in ipairs(old) do stats:removeSource("item:" .. id) end
@@ -300,20 +325,44 @@ function Inventory:transferTo(other)
     other:recount()
 end
 
--- proc.chance may be a number or function(stacks) -> chance (0..1). Luck scales it.
--- proc.effect(ctx, stacks) does the work.
+-- Hyperbolic chance stacking: luck, the proc snowball and extra copies never push a chance to
+-- 100%. A chance c "rolled m times" is 1 - (1 - c)^m: with m = 1 it is exactly c, for small
+-- chances it is about c * m, and each extra bit of m adds a little less than the one before.
+-- m = luck multiplier * (1 + chanceStack * (copies - 1)); proc.chanceStack (default 0) is for
+-- procs whose effect doesn't grow with copies, so extra copies make them fire more often.
+function Inventory.stackChance(c, mul)
+    if c >= 1 then return 1 end
+    if c <= 0 or mul <= 0 then return 0 end
+    return 1 - (1 - c) ^ mul
+end
+
+-- The luck multiplier procs roll with right now (Luck stat times the proc snowball).
+function Inventory:luckMul()
+    local rw = self.player.world and self.player.world.rewards
+    return math.max(0, 1 + self.player.stats:get("luck") / 100) * (rw and rw:procMul() or 1)
+end
+
+-- The chance (0..1) a proc fires with right now, or nil for "always".
+function Inventory:procChance(proc, stacks, luck)
+    local chance = proc.chance
+    if type(chance) == "function" then chance = chance(stacks) end
+    if chance == nil then return nil end
+    local mul = (luck or self:luckMul()) * (1 + (proc.chanceStack or 0) * math.max(0, (stacks or 1) - 1))
+    return Inventory.stackChance(chance, mul)
+end
+
+-- proc.chance may be a number or function(stacks) -> chance (0..1). Luck scales it (see
+-- Inventory.stackChance). proc.effect(ctx, stacks) does the work.
 function Inventory:trigger(name, ctx)
     -- luck, and the proc snowball: chances grow with every wave (src/config/rewards.lua procs)
-    local rw = self.player.world.rewards
-    local luck = (1 + self.player.stats:get("luck") / 100) * (rw and rw:procMul() or 1)
+    local luck = self:luckMul()
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]
         local stacks = self.counts[id]
         for _, proc in ipairs(def.procs) do
             if proc.trigger == name then
-                local chance = proc.chance
-                if type(chance) == "function" then chance = chance(stacks) end
-                if chance == nil or love.math.random() < chance * luck then
+                local chance = proc.chance and self:procChance(proc, stacks, luck)
+                if chance == nil or love.math.random() < chance then
                     -- the damage it does counts for this item in the run summary
                     local w = ctx.world
                     local prev = w and w.dmgSrc

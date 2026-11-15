@@ -21,6 +21,8 @@ Input.actions = {
     { id = "inventory_alt", label = "Drop Item (inventory)", keys = { "f" }, pad = { "x" }, rebind = true },
     { id = "inventory_rotate", label = "Turn Item (inventory)", keys = { "r" }, pad = { "leftshoulder" }, rebind = true },
     { id = "inventory_sort", label = "Sort Bag (inventory)", keys = { "t" }, pad = { "leftstick" }, rebind = true },
+    { id = "inventory_scrap", label = "Scrap Item (inventory)", keys = { "g" }, pad = { "rightstick" }, rebind = true },
+    { id = "choice_shop", label = "Shop Tab (item choice)", keys = { "tab", "h" }, pad = { "leftshoulder" }, rebind = true },
     { id = "choice_reroll", label = "Reroll (item choice)", keys = { "r" }, pad = { "x" }, rebind = true },
     { id = "choice_lock", label = "Lock Card (item choice)", keys = { "l" }, pad = { "rightshoulder" }, rebind = true },
     { id = "choice_ban", label = "Ban Card (item choice)", keys = { "x", "delete" }, pad = { "y" }, rebind = true },

@@ -17,4 +17,5 @@ return {
     fungus = { label = "Fungus", color = "#d8a77f" },
     bug = { label = "Bug", color = "#e0b46f" },
     orbital = { label = "Orbital", color = "#b8a6ff" },
+    cursed = { label = "Cursed", color = "#c071ff" },
 }
