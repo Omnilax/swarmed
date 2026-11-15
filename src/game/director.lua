@@ -13,6 +13,8 @@
 --   * Weather effects: a spell's `effects` (content/weather) push and slow or speed things up.
 --   * Props (src/game/props.lua): pebbles and twigs to shove into ants, cocoons, allies, the
 --     merchant.
+--   * Map gambles (src/game/gambles.lua): a dewdrop shrine, a challenge bell or a gamble flower
+--     may pop up in a wave (Settings "Map Gambles").
 --   * Nest holes (src/game/entries.lua) can be collapsed: hit one three times (or dash over it)
 --     and the groups still waiting in it never come out.
 --
@@ -27,6 +29,7 @@ local Iso = require("src.core.iso")
 local util = require("src.core.util")
 local Env = require("src.game.envfx")
 local Props = require("src.game.props")
+local Gambles = require("src.game.gambles")
 
 local Director = {}
 Director.__index = Director
@@ -56,6 +59,9 @@ function Director.new(world)
     self.cfg = cfg
     world.env = envReset({})
     world.props = Props.new(world)
+    -- map gambles: dewdrop shrines, challenge bells, gamble flowers (src/game/gambles.lua)
+    self.gambles = Gambles.new(world)
+    world.gambles = self.gambles
     -- the stage's own rule (a rising puddle, a shrinking lawn...)
     local m = world.stage.mechanic
     if m then
@@ -134,6 +140,7 @@ function Director:onWaveStart(n)
     local world = self.world
     local sp = world.spawner
     if self.mechanic and self.mechanic.def.onWaveStart then self.mechanic.def.onWaveStart(world, self.mechanic, n) end
+    self.gambles:onWaveStart(n)
     if self:eventsOn() then
         local count = self:eventCount(n)
         local at = self.cfg.eventAt
@@ -344,6 +351,7 @@ function Director:update(dt)
         end
     end
     self:updateHoles(dt)
+    self.gambles:update(dt)
     world.props:update(dt)
     world.props:dashHits()
     for i = #self.banners, 1, -1 do
