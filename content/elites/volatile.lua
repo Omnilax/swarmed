@@ -3,6 +3,7 @@ return {
     name = "Volatile",
     description = "Swollen with boiling acid. When it dies it bursts into a ring of burning globs, so don't stand next to it when it pops.",
     color = "#ff9a1e",
+    safeColor = "#e69f00",
     hp = 1.5, damage = 1.2, speed = 1.05, scale = 1.25,
     weight = 6, minWave = 7,
     onDeath = function(world, x, y, e)

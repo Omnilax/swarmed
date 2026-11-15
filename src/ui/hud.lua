@@ -232,8 +232,12 @@ function Hud.draw(game, covered)
         end
     end
 
-    -- KO counter, Warriors style
+    -- KO counter, Warriors style (then the enemies-left chip under it, src/ui/runhud.lua)
+    local RunHud = require("src.ui.runhud")
+    RunHud.attach(world)
+    local countY = u(16)
     if Settings.get("showKoCounter") then
+        countY = u(100)
         lg.setFont(Theme.font(44))
         local ko = tostring(world.kos)
         Theme.printShadow(ko, w - u(40) - lg.getFont():getWidth(ko), u(12), { c.focus[1], c.focus[2], c.focus[3], alpha })
@@ -246,6 +250,11 @@ function Hud.draw(game, covered)
             Theme.printShadow(s, w - u(40) - lg.getFont():getWidth(s), u(72), { 1, 0.55, 0.3, alpha * math.min(1, world.comboTimer) })
         end
     end
+
+    RunHud.drawEnemyCount(world, w - u(16), countY, alpha)
+    -- during a break: what the next wave brings; and first sightings of a species
+    RunHud.drawPreview(world, covered, u(72), alpha)
+    RunHud.drawSighting(world, covered, alpha)
 
     -- KO milestone popup (every 100 KOs)
     local m = world.milestone

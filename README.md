@@ -19,6 +19,7 @@ love . --anims        # attack animation viewer (--shot saves anims_<id>.png con
 love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
+love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
 ```
@@ -227,6 +228,34 @@ from other content (one per bug, family, elite affix and game mode), so new bugs
 achievements on their own. Unlocks slide in at the top right. Run events it listens to:
 `enemy_died`, `player_hurt`, `wave_started`, `wave_cleared`, `run_won`, `item_taken`,
 `item_eaten`, `player_died`. `love . --selftest --records` checks it all without touching the save.
+
+## Run info, summary and accessibility
+
+- **Enemies left**: a counter under the KO count with everything still to beat this wave
+  (alive + on the way) and a bar of how much of the wave is done (Interface > Enemies Left).
+- **Next wave preview**: during a break, a card under the banner names the next wave: queen or
+  final wave, the new species and the wave's modifiers. It reads `Spawner:preview()`, which takes
+  modifiers from `Spawner:modifiersFor(n)` or `spawner.nextModifiers` (anything with `name`,
+  optional `description` and `color`).
+- **First sightings**: the first time a species shows up that the wave banner didn't introduce
+  (queens, broods, escorts, hatchlings), a card on the left gives its name and its `tip` (else the
+  first sentence of its `description`). Interface > First Sighting Popups: first time ever (kept
+  in the save as `seen`), every run, or off.
+- **Death recap**: the results screen names what killed you and lists your last 5 hits taken
+  (quick bites from one kind of ant fold into one line). Hazards remember the enemy that made them.
+- **Run summary** (results, victory and pause screens): damage by source, kills by species, a
+  damage dealt / taken graph per wave, the achievements closest to unlocking, and the run's seed
+  (`world.seed`; `Game.new{ seed = n }` replays it). Damage sources are worked out in
+  `src/game/runstats.lua`: item procs count for the item, attacks, specials and dashes for their
+  names, and projectiles, pools, thrown ants and poison for whatever made them. Content can name
+  its own with `source = "..."` in `Combat.damage` opts.
+- **Numbers and bars**: Gameplay > Combine Damage Numbers adds quick hits on one enemy into one
+  counting number; Enemy Health Bars has Off / Elites & Queens / When Damaged / Always.
+- **Colourblind-Safe Colours** (Accessibility): elites use their `safeColor` (Okabe-Ito, set in
+  content/elites) and enemy ground hazards are coloured by what they do (harmful orange, slowing
+  blue, healing yellow). **High-Contrast Warnings**: mounds, nest holes, drop shadows, landing
+  rings and attack wind-ups get dark outlines and bright, thicker rings (`src/ui/palette.lua`).
+- The Records screen shows a progress bar under every achievement still to do.
 
 ## Music, sounds and hints
 

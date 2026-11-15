@@ -35,7 +35,7 @@ function Grab.fling(world, h, vx, vy, time, opts)
     local sk = world.player and world.player.skills
     if sk then opts = sk:throwOpts(opts or {}) end   -- skill nodes: bigger landings
     world.thrown[#world.thrown + 1] = { h = h, vx = vx, vy = vy, t = 0, time = math.max(0.05, time), hit = { [h.e] = true },
-        opts = opts or {}, z0 = h.e.z or 0 }
+        opts = opts or {}, z0 = h.e.z or 0, _src = require("src.game.runstats").label(world) }
     Audio.play("dash", { pitch = 0.6 + love.math.random() * 0.2 })
 end
 
@@ -44,6 +44,8 @@ function Grab.update(world, dt)
     for i = #list, 1, -1 do
         local f = list[i]
         local h, o = f.h, f.opts
+        local prevSrc = world.dmgSrc
+        world.dmgSrc = f._src       -- what threw it gets the credit (run summary)
         f.t = f.t + dt
         if not Grab.valid(h) then
             table.remove(list, i)
@@ -81,6 +83,7 @@ function Grab.update(world, dt)
                 if o.onLand then o.onLand(world, e.x, e.y) end
             end
         end
+        world.dmgSrc = prevSrc
     end
 end
 

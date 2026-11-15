@@ -681,6 +681,7 @@ local function script(flags)
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
+    if flags["--runinfo"] then require("src.debug.selftest_runinfo")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end
     if flags["--pacing"] then require("src.debug.selftest_pacing")(wait, shot) love.event.quit() return end
     if flags["--hymenoptera"] then hymenopteraScene() love.event.quit() return end

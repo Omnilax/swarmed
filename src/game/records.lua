@@ -27,6 +27,7 @@ local function blankProfile()
         daily = {},          -- daily run date "YYYY-MM-DD" -> best { wave, kos, won, character }
         history = {},        -- newest first, see Records.endRun
         achievements = {},   -- achievement id -> os.time() it unlocked
+        seen = {},           -- enemy id -> true once met (first-sighting popups, src/ui/runhud.lua)
     }
 end
 
@@ -317,7 +318,7 @@ function Records.drawToast(t, i)
     local slide = math.max(0, math.min(1, t.t * 5, (4 - t.t) * 5))
     slide = 1 - (1 - slide) ^ 3
     local bw, bh = u(320), u(64)
-    local x, y = w - (bw + u(16)) * slide, u(124) + (i - 1) * (bh + u(8))      -- below the combo counter
+    local x, y = w - (bw + u(16)) * slide, u(140) + (i - 1) * (bh + u(8))      -- below the combo counter and enemies left
     Theme.panel(x, y, bw, bh)
     local c = Theme.colors.focus
     lg.setColor(c)

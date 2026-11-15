@@ -7,7 +7,8 @@
 --   { type = "choice", label, get, set, options = { {value, label}, ... } }
 --   { type = "keybind", label, action, slot }
 --   { type = "header", label }   -- not selectable
--- Any item may have: desc (help text), disabled, value (function returning display text).
+-- Any item may have: desc (help text), disabled, value (function returning display text),
+-- progress (function returning 0..1 or nil: a thin bar along the bottom of the row).
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
@@ -262,6 +263,15 @@ function Menu:draw()
                         lg.setColor(focused and c.focus or c.accent)
                         lg.rectangle("fill", bx, by, bw * t, bh, 3, 3)
                         lg.circle("fill", bx + bw * t, by + bh / 2, Theme.u(6))
+                    end
+                    local pr = it.progress and it.progress()
+                    if pr then
+                        local bx, bw = x + pad, w - pad * 2
+                        local by = ry + rh - math.max(3, Theme.u(5))
+                        lg.setColor(1, 1, 1, 0.08)
+                        lg.rectangle("fill", bx, by, bw, math.max(2, Theme.u(3)))
+                        lg.setColor(focused and c.focus or c.accent)
+                        lg.rectangle("fill", bx, by, bw * math.max(0, math.min(1, pr)), math.max(2, Theme.u(3)))
                     end
                     if v then
                         lg.setColor(focused and c.focus or c.text)

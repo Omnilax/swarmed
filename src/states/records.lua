@@ -141,7 +141,13 @@ function RecordsState:build()
                         local v, goal = Records.progress(a, p)
                         if goal <= 1 or a.hidden then return "" end
                         return math.floor(v * 100 / goal) .. "%"
-                    end }
+                    end,
+                    -- a progress bar under each one still to do
+                    progress = (not done and not a.hidden) and function()
+                        local v, goal = Records.progress(a, p)
+                        if goal <= 1 then return nil end
+                        return v / goal
+                    end or nil }
             end
         end
     end

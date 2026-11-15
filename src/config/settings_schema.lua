@@ -111,7 +111,8 @@ add { key = "aimMode", category = "Gameplay", label = "Aim Mode", type = "choice
     options = { { value = "nearest", label = "Nearest Enemy" }, { value = "mouse", label = "Mouse" }, { value = "move", label = "Move Direction" } },
     desc = "Where attacks are pointed. A controller's right stick always overrides this." }
 add { key = "enemyHealthBars", category = "Gameplay", label = "Enemy Health Bars", type = "choice", default = "damaged",
-    options = { { value = "off", label = "Off" }, { value = "damaged", label = "When Damaged" }, { value = "always", label = "Always" } } }
+    options = { { value = "off", label = "Off" }, { value = "elites", label = "Elites & Queens" }, { value = "damaged", label = "When Damaged" }, { value = "always", label = "Always" } },
+    desc = "Health bars over enemies. Elites & Queens shows them only on the tough ones; Always also shows full bars." }
 add { key = "hitstop", category = "Gameplay", label = "Hit Stop", type = "toggle", default = true,
     desc = "Freeze the action for a split second when you wipe out a crowd. Pure crunch." }
 add { key = "slowMotion", category = "Gameplay", label = "Slow Motion", type = "toggle", default = true,
@@ -123,7 +124,10 @@ add { key = "miniGoals", category = "Gameplay", label = "Mini-Goals", type = "to
 add { key = "routeGates", category = "Gameplay", label = "Route Gates", type = "toggle", default = true,
     desc = "After a wave, walk into one of two tunnels: a safer next wave, or a harder one with a better prize. Needs a break between waves." }
 add { key = "damageNumbers", category = "Gameplay", label = "Damage Numbers", type = "choice", default = "crits",
-    options = { { value = "off", label = "Off" }, { value = "crits", label = "Crits Only" }, { value = "all", label = "All" } } }
+    options = { { value = "off", label = "Off" }, { value = "crits", label = "Crits Only" }, { value = "all", label = "All" } },
+    desc = "Numbers that pop off enemies when you hit them." }
+add { key = "combineDamageNumbers", category = "Gameplay", label = "Combine Damage Numbers", type = "toggle", default = false,
+    desc = "Quick hits on the same enemy add up into one number that keeps counting, instead of a spray of small ones." }
 add { key = "showKoCounter", category = "Gameplay", label = "KO Counter", type = "toggle", default = true,
     desc = "Show the running KO count and combo." }
 add { key = "tutorialHints", category = "Gameplay", label = "Tutorial Hints", type = "toggle", default = true,
@@ -139,6 +143,13 @@ add { key = "uiFont", category = "Interface", label = "Font", type = "choice", d
 add { key = "uiScale", category = "Interface", label = "Interface Scale", type = "slider", default = 100, min = 75, max = 150, step = 5, format = percent }
 add { key = "hudOpacity", category = "Interface", label = "HUD Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent }
 add { key = "showTimer", category = "Interface", label = "Show Run Timer", type = "toggle", default = true }
+add { key = "showEnemyCount", category = "Interface", label = "Enemies Left", type = "toggle", default = true,
+    desc = "A counter under the KO count with how many enemies are still to beat this wave, and a bar of how much of it is done." }
+add { key = "nextWavePreview", category = "Interface", label = "Next Wave Preview", type = "toggle", default = true,
+    desc = "During the break, show what the next wave brings: a queen, a new species, wave modifiers." }
+add { key = "speciesPopups", category = "Interface", label = "First Sighting Popups", type = "choice", default = "new",
+    options = { { value = "new", label = "First Time Ever" }, { value = "run", label = "Every Run" }, { value = "off", label = "Off" } },
+    desc = "A card with a species' name and what it does the first time it shows up (species introduced by a wave already get the big card)." }
 add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Markers", type = "toggle", default = true,
     desc = "Arrows at the screen edge pointing at queens and elites you cannot see." }
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }
@@ -154,6 +165,10 @@ add { key = "colorblindMode", category = "Accessibility", label = "Colour Filter
         { value = "deuteranopia", label = "Deuteranopia" }, { value = "tritanopia", label = "Tritanopia" },
     },
     desc = "Shifts game colours to be easier to tell apart." }
+add { key = "safePalette", category = "Accessibility", label = "Colourblind-Safe Colours", type = "toggle", default = false,
+    desc = "Elites and hazards use a palette that stays distinct with any colour vision (Okabe-Ito): harmful ground is orange, slowing ground blue, healing ground yellow." }
+add { key = "telegraphContrast", category = "Accessibility", label = "High-Contrast Warnings", type = "toggle", default = false,
+    desc = "Mounds, nest holes, drop shadows, landing rings and attack warnings get a dark outline and bright, thicker rings so they stand out on any ground." }
 add { key = "playerOutline", category = "Accessibility", label = "Highlight Player", type = "toggle", default = false,
     desc = "Draw a ring under your bug so you never lose it in a swarm." }
 add { key = "gameSpeed", category = "Accessibility", label = "Game Speed", type = "slider", default = 100, min = 50, max = 150, step = 5, format = percent,

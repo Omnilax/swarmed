@@ -25,6 +25,10 @@ function Victory.new(game, info)
                 world.continued = true
                 State.pop()
             end },
+            { type = "button", label = "Run Summary", onActivate = function()
+                if not self:ready() then return end
+                State.push(require("src.states.runsummary").new(game))
+            end },
             { type = "button", label = "End Run", onActivate = function()
                 if not self:ready() then return end
                 world.events:emit("run_finished", world.spawner.wave)
@@ -34,7 +38,7 @@ function Victory.new(game, info)
         rect = function()
             local w, h = love.graphics.getDimensions()
             local mw = Theme.u(300)
-            return math.floor((w - mw) / 2), math.floor(h * 0.64), mw, Theme.u(46) * 2
+            return math.floor((w - mw) / 2), math.floor(h * 0.6), mw, Theme.u(46) * 3
         end,
     })
     return self

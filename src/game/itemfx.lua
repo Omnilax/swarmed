@@ -57,6 +57,7 @@ function ItemFx.patch(world, z)
         list[1].zone.t = list[1].zone.maxLife
         table.remove(list, 1)
     end
+    require("src.game.runstats").tag(world, z)
     z.zone = world.hazards:addZone({ kind = "item", x = z.x, y = z.y, r = z.r, life = z.life, color = z.color })
     z.t, z.tick = 0, 0
     list[#list + 1] = z
@@ -88,6 +89,7 @@ function ItemFx.update(world, player, dt)
                     if z.dps then
                         e.poisonT = math.max(e.poisonT, 1)
                         e.poisonDps = math.max(e.poisonDps, z.dps)
+                        e.poisonSrc = z._src or e.poisonSrc
                     end
                     if z.slow then e.slowT, e.slowMul = math.max(e.slowT, 0.4), math.min(e.slowT > 0 and e.slowMul or 1, z.slow) end
                 end

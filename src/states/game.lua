@@ -11,7 +11,8 @@ local Game = { touchControls = "game" }
 Game.__index = Game
 
 -- params: mode ("run" | "sandbox"), character (id), stage (id), gameMode (content/modes id),
--- startItems (item ids, from the starting items screen), seed / daily (the daily run, src/game/daily.lua)
+-- startItems (item ids, from the starting items screen), seed (replays a run; nil = a fresh one),
+-- daily (the daily run, src/game/daily.lua)
 function Game.new(params)
     local self = setmetatable({ params = params }, Game)
     self.mode = params.mode or "run"

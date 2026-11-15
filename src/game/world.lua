@@ -24,6 +24,7 @@ local Grab = require("src.game.grab")
 local Daylight = require("src.game.daylight")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
+local RunStats = require("src.game.runstats")
 
 local World = {}
 World.__index = World
@@ -71,6 +72,8 @@ function World.new(opts)
     self.drawList = {}
     self.flags = { god = false, freezeAI = false }
     self.kos, self.combo, self.bestCombo, self.comboTimer = 0, 0, 0, 0
+    -- damage by source, kills by species, hits taken (src/game/runstats.lua)
+    self.runStats = RunStats.new(self)
 
     local charId = opts.character or Content.characters:all()[1].id
     self.player = Player.new(self, Content.characters:require(charId), self.size / 2, self.size / 2)
@@ -125,6 +128,12 @@ function World:spawnEnemy(def, x, y, elite)
     self.enemyCount = self.enemyCount + 1
     self.enemies[self.enemyCount] = e
     if self.spawner then require("src.game.pacing").onSpawn(self.spawner, e) end
+    -- the first of a species this run (the HUD's first-sighting popup listens)
+    local rs = self.runStats
+    if rs and not rs.seen[def.id] then
+        rs.seen[def.id] = true
+        self.events:emit("species_seen", def, e)
+    end
     return e
 end
 
@@ -341,9 +350,26 @@ function World:addFx(fx)
     self.fx[#self.fx + 1] = fx
 end
 
-function World:damageNumber(x, y, value, crit)
+-- e (optional): the enemy hit. With "Combine Damage Numbers" on, quick hits on the same enemy
+-- add up into one number that keeps counting instead of a spray of small ones.
+function World:damageNumber(x, y, value, crit, e)
     local mode = Settings.get("damageNumbers")
     if mode == "off" or (mode == "crits" and not crit) then return end
+    if e and Settings.get("combineDamageNumbers") then
+        local t = e._dmgText
+        if t and not t.gone and t.t < 0.45 and t.owner == e then
+            t.value = t.value + value
+            t.text = tostring(t.value)
+            t.t, t.z, t.vz = 0, math.max(t.z, 10), 30
+            t.x, t.y = e.x, e.y
+            if crit and not t.big then t.big, t.color, t.life = true, { 1, 0.85, 0.2 }, 0.9 end
+            return
+        end
+        t = self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
+        t.value, t.owner, t.life = value, e, t.life + 0.2
+        e._dmgText = t
+        return
+    end
     self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
 end
 
@@ -358,11 +384,13 @@ function World:grantXP(amount, x, y)
 end
 
 function World:floatText(x, y, text, color, big)
-    if #self.texts > 50 then table.remove(self.texts, 1) end
-    self.texts[#self.texts + 1] = {
+    if #self.texts > 50 then table.remove(self.texts, 1).gone = true end
+    local t = {
         x = x + (love.math.random() - 0.5) * 8, y = y, z = 14, vz = 40,
         text = text, color = color, big = big, t = 0, life = big and 0.9 or 0.6,
     }
+    self.texts[#self.texts + 1] = t
+    return t
 end
 
 -- Context table handed to proc effects. See content/items/_template.lua.
@@ -455,7 +483,7 @@ function World:update(dt)
         t.t = t.t + dt
         t.z = t.z + t.vz * dt
         t.vz = t.vz * (1 - util.damp(6, dt))
-        if t.t >= t.life then table.remove(self.texts, j) end
+        if t.t >= t.life then table.remove(self.texts, j).gone = true end
     end
 
     self.decalFadeT = self.decalFadeT + dt
@@ -599,11 +627,14 @@ function World:updateEnemies(dt)
                 self.player = p
             elseif unseen then
                 self.player = decoyFor(self, e, p, decoy)
+                self.actingEnemy = e
                 e.behavior.update(e, self, dt, e.params)
                 self.player = p
             else
+                self.actingEnemy = e     -- hazards it makes remember who (death recap)
                 e.behavior.update(e, self, dt, e.params)
             end
+            self.actingEnemy = nil
             if e.corrodeT > 0 then
                 e.corrodeT = e.corrodeT - dt
                 if love.math.random() < dt * 5 then
@@ -616,7 +647,7 @@ function World:updateEnemies(dt)
                 e.poisonTick = e.poisonTick + dt
                 if e.poisonTick >= 0.5 then
                     e.poisonTick = e.poisonTick - 0.5
-                    Combat.damage(self, e, e.poisonDps * 0.5, { noCrit = true, dot = true, procDepth = Combat.MAX_PROC_DEPTH })
+                    Combat.damage(self, e, e.poisonDps * 0.5, { noCrit = true, dot = true, procDepth = Combat.MAX_PROC_DEPTH, source = e.poisonSrc or "Poison" })
                     self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, { 0.6, 1, 0.3 }, 1, { glow = true, grav = -10 })
                 end
                 if e.poisonT <= 0 then e.poisonDps = 0 end
@@ -896,10 +927,26 @@ function World:draw()
 
     -- Enemy telegraphs (charges, lunges...)
     if Settings.get("telegraphs") then
+        -- High-Contrast Warnings: thicker lines with a dark outline drawn first (src/ui/palette.lua)
+        local hc = Settings.get("telegraphContrast")
+        if hc then
+            World.edgeShader = World.edgeShader or lg.newShader([[
+                vec4 effect(vec4 c, Image t, vec2 tc, vec2 sc) { return vec4(0.0, 0.0, 0.0, Texel(t, tc).a * c.a); }
+            ]])
+            lg.setLineWidth(3)
+            lg.setShader(World.edgeShader)
+            for i = 1, n do
+                local o = list[i]
+                if o.behavior and o.behavior.draw then o.behavior.draw(o, self) end
+            end
+            lg.setShader()
+            lg.setLineWidth(1.5)
+        end
         for i = 1, n do
             local o = list[i]
             if o.behavior and o.behavior.draw then o.behavior.draw(o, self) end
         end
+        if hc then lg.setLineWidth(1) end
         lg.setColor(1, 1, 1, 1)
     end
 
@@ -1060,7 +1107,13 @@ function World:draw()
         local q = Sprites.pixel
         for i = 1, n do
             local e = list[i]
-            if e ~= p and not e.hidden and e.hp < e.maxHp and (hb == "always" or e.hurtTimer > 0) then
+            local show = false
+            if e ~= p and not e.hidden then
+                if hb == "always" then show = true
+                elseif hb == "elites" then show = (e.elite ~= nil or e.def.boss) and e.hp < e.maxHp
+                else show = e.hp < e.maxHp and e.hurtTimer > 0 end
+            end
+            if show then
                 local w = math.max(8, e.sprite.w - 4)
                 local x = math.floor(e._sx - w / 2)
                 local y = math.floor(e._sy - e.sprite.h * 0.5 * e.scale - 5)
