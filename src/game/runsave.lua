@@ -48,6 +48,8 @@ function RunSave.snapshot(game)
         -- (the seed as text: the save file keeps numbers to 14 digits, a seed has up to 16)
         seed = w.seed and ("%.0f"):format(w.seed), daily = util.deepcopy(w.daily),
         choice = util.deepcopy(w.choice),
+        -- blessings and curses from map gambles (src/game/gambles.lua)
+        blessings = util.deepcopy(w.blessings),
     }
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
@@ -158,6 +160,7 @@ function RunSave.restore(world, snap)
     end
     -- level-up cards: stat cards taken and picks still waiting
     if world.levelups and snap.levelups then world.levelups:restore(snap.levelups) end
+    if snap.blessings then require("src.game.gambles").restore(world, snap.blessings) end
     p.hp = math.max(1, math.min(snap.hp or p.stats:get("maxHp"), p.stats:get("maxHp")))
     -- the waves: species met and queens fought, then a breather before the next wave
     for _, id in ipairs(snap.known or {}) do

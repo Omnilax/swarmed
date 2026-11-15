@@ -133,6 +133,25 @@ local defs = {
                 return v * 0.35
             end)
         end },
+    chime = { bus = "sfx", voices = 2, gap = 0.08, volume = 0.3,
+        data = function()
+            -- a glassy plink (a dew drop): two bright partials, quick decay
+            return synth(0.45, function(t)
+                local v = math.sin(t * 1319 * math.pi * 2) + 0.5 * math.sin(t * 2637 * math.pi * 2)
+                return v * math.exp(-t * 9) * 0.5
+            end)
+        end },
+    bell = { bus = "sfx", voices = 2, gap = 0.2, volume = 0.5,
+        data = function()
+            -- a bell: inharmonic partials ringing out
+            return synth(1.6, function(t)
+                local v = 0
+                for i, pr in ipairs({ { 1, 1 }, { 2.4, 0.6 }, { 3.0, 0.4 }, { 4.5, 0.25 }, { 5.9, 0.15 } }) do
+                    v = v + math.sin(t * 392 * pr[1] * math.pi * 2) * pr[2] * math.exp(-t * (2 + i * 0.9))
+                end
+                return v * 0.4 * math.min(1, t / 0.004)
+            end)
+        end },
     queen = { bus = "sfx", voices = 1, gap = 1, volume = 0.6,
         data = function()
             -- a deep, rumbling chitter as a queen enters

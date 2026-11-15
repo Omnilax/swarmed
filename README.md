@@ -21,6 +21,7 @@ love . --selftest --polish      # just music, event sounds, hints and off-screen
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
 love . --selftest --happenings  # just mid-wave events, boss encounters, stages, weather effects, props
+love . --selftest --gambles     # just map gambles: dewdrop shrine, challenge bell, gamble flower
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
 ```
@@ -345,6 +346,16 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   it moves fast it flattens every ant it rolls over. Props are not enemies.
 - **Nest holes** can be sealed: hit one three times or dash over it, and the groups still waiting
   in it never come out.
+- **Map gambles** (`src/game/gambles.lua`, numbers in `src/config/gambles.lua`, setting **Map
+  Gambles**: Often / Normal / Off): from wave 2 a risky spot may pop up during a wave. A
+  **dewdrop shrine** fills while you stand in its ring (and calls ants in while it does); when full,
+  walk into one of three blessings, a permanent stat boost. A **challenge bell** rings when hit and
+  calls a tough pack with elites: kill them all in time for XP, frenzy and a rarer best card in the
+  next item choice. A **gamble flower** takes nectar for a spin: items, blessings, nectar back or
+  x3, XP, a heal... or nothing, ants, or a curse (a small permanent minus). A few spins, then it
+  wilts. Unused gambles leave when the next wave starts; blessings and curses are kept in run
+  saves. Any prop with a `gamble = { weight, minWave, allowed }` field joins the pool. Console:
+  `gamble <id>`.
 
 Everything that changes movement goes through `world.env` (player / enemy speed, drift, the
 player's inset from the walls, and a per-spot speed `field`). Raw hazard damage that skips player
