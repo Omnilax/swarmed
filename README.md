@@ -120,6 +120,24 @@ the numbers in `src/config/rewards.lua` (a game mode can override them with `rew
 
 Test: `love . --selftest --combat`.
 
+## Nectar beads and pickups
+
+- **Nectar beads**: every kill spills golden beads worth the ant's XP (a gilded elite's holds its
+  bonus too). Walk near them: inside your **Pickup Range** they drift in faster and faster, and
+  each one gives skill XP and **nectar**, the run's currency (the gold counter next to your HP).
+  Beads that land close together merge into a bigger bead, so a massacre stays readable and fast.
+- **Wave-end magnet**: when a wave is cleared every bead left on the floor flies to you, with a
+  chime that climbs note by note. Nothing is ever lost.
+- **Pickups** (glowing tokens, never items): a rare **Nectar Magnet** from any ant pulls in the
+  whole floor; elites sometimes drop **Frost Dew** (the swarm freezes solid for 3 s: no moving,
+  no biting) or **Royal Jelly** (frenzy meter full). Uncollected pickups blink, then fade.
+- Settings > Gameplay > **Auto Collect Nectar**: beads and pickups fly to you from anywhere.
+- Console: `nectar [n]`, `pickup <id>`. Numbers: `src/config/nectar.lua`.
+- For code that spends nectar (shop, shrines), the API is at the top of `src/game/nectar.lua`:
+  `world.nectar`, `World:addNectar`, `World:spendNectar`, `World:canAffordNectar`, event `nectar_changed`.
+
+Test: `love . --selftest --nectar`.
+
 ## Inventory
 
 Press **I** (or **B**) for the inventory, modelled on FATE: a small 10x3 bag (one more row every 15 waves) where items come in shapes (bars,
@@ -285,6 +303,33 @@ from other content (one per bug, family, elite affix and game mode), so new bugs
 achievements on their own. Unlocks slide in at the top right. Run events it listens to:
 `enemy_died`, `player_hurt`, `wave_started`, `wave_cleared`, `run_won`, `item_taken`,
 `item_eaten`, `player_died`. `love . --selftest --records` checks it all without touching the save.
+
+## Unlocks, danger levels and mastery
+
+- **Unlocks.** Eight bugs are open from the start (`src/config/unlocks.lua` `starters`); the other
+  18 each open through an in-run goal ("Clear wave 5 as the Rhino Beetle", "Kill 25 ants mid-dash
+  in one run"...). A few items are locked the same way and stay out of item choices until then.
+  Goals are achievements in the Records screen's **Unlocks** category (`content/achievements/unlocks.lua`),
+  so progress shows there and an "Unlocked" card pops up mid-run. Bugs already played before
+  unlocks existed stay open. Settings > Gameplay > **Unlock Everything** opens it all.
+- **Item pool.** Settings > Gameplay > **Item Pool...** switches items in or out of the item
+  choices (at least 12 stay in). Saved in `prefs.lua`.
+- **Bug rules.** Some bugs bend how items work for them (`src/config/bugrules.lua`, run by
+  `src/game/bugrules.lua`): Dung Beetle gets stronger from eaten items, Hermit Crab starts with an
+  extra bag row but slows per filled cell, Orb Weaver's procs fire twice on webbed ants, Hissing
+  Roach heals double from eating, Scorpion's poison items proc more. Shown on bug select.
+- **Danger levels.** Left/Right on a bug in bug select picks Danger 0-5 (`src/config/danger.lua`):
+  each level adds one rule (more elites, less healing, faster ants, tougher ants, bigger groups and
+  an extra crowned queen). Winning at a level opens the next one for that bug; the highest level
+  won shows as mastery stars and is kept in Records (`characters[id].danger`).
+- **Dash tech.** A kill during a pressed dash (or just after) refunds half its stamina; dashing
+  again within 0.45 s of the last one ending is 15% faster per link, up to 3 (`src/game/dashtech.lua`,
+  Settings > Gameplay > Dash Tech).
+- **Final Swarm.** After the wave-15 win, the victory screen offers a last stand: 60 seconds of
+  every species met pouring in from every side, lots of elites and a crowned queen halfway
+  (`src/game/finalswarm.lua`). Live through it and the run ends with "Swarm survived".
+- Test: `love . --selftest --mastery` (also in the full run). `--locked` keeps the locks on for a
+  selftest or `--balance` run (they normally open everything).
 
 ## Run info, summary and accessibility
 
@@ -499,6 +544,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/streaks` | kill-streak buffs (stats for a few seconds) | 50-kill combos |
 | `content/goals` | optional mini-goals for a wave (`start`, `update`, `on` events, `finish`, `reward`) | runs |
 | `content/routes` | safe / hard route gates between waves (ant, elite, health multipliers, `reward`) | runs |
+| `content/pickups` | ground pickups (`source` elite / kill, `weight`, `allowed`, `collect`) | nectar beads |
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
 | `content/molts` | molting recipes: `from` (2-3 item ids that must touch), `into` (a molted item), `hint` | bag after a queen wave, Records > Recipes |
 | `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |

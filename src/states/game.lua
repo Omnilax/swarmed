@@ -13,14 +13,14 @@ Game.__index = Game
 -- params: mode ("run" | "sandbox"), character (id), stage (id), gameMode (content/modes id),
 -- startItems (item ids, from the starting items screen), seed (replays a run; nil = a fresh one),
 -- daily (the daily run, src/game/daily.lua), resume (a saved run, src/game/runsave.lua),
--- practice ({ wave, species, items, god }: src/states/practice.lua)
+-- practice ({ wave, species, items, god }: src/states/practice.lua), danger (0-5, src/config/danger.lua)
 function Game.new(params)
     local self = setmetatable({ params = params }, Game)
     self.mode = params.mode or "run"
     local RunSave = require("src.game.runsave")
     self.world = World.new({ mode = self.mode, character = params.character, stage = params.stage,
         gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil,
-        seed = params.seed, daily = params.daily })
+        seed = params.seed, daily = params.daily, danger = params.danger })
     if params.resume then RunSave.restore(self.world, params.resume) end
     if params.practice then require("src.states.practice").apply(self.world, params.practice) end
 
@@ -128,7 +128,7 @@ function Game:update(dt)
     end
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
-    if won and self.world.time >= ((self.world.pendingChoice or {}).at or 0) then
+    if won and self.world.time >= (won.at or (self.world.pendingChoice or {}).at or 0) then
         self.world.pendingVictory = nil
         if not self.world.player.dead then
             State.push(require("src.states.victory").new(self, won))

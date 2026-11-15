@@ -67,6 +67,8 @@ return function(wait, shot)
     assert(sk.level == 0 and sk.points == 0, "fresh bug should start at level 0")
     local e = world:spawnEnemy("worker_ant", pl.x + 30, pl.y)
     require("src.game.combat").damage(world, e, 9999, { noCrit = true })
+    -- (the XP comes as a nectar bead that drifts in once it is inside Pickup Range)
+    for _ = 1, 60 do world:update(1 / 60) end
     assert(sk.xp == 1, "a kill should give 1 XP (got " .. sk.xp .. ")")
     world:grantXP(Skills.xpFor(1) - 1)
     assert(sk.level == 1 and sk.points == 1, "first level should give a skill point")

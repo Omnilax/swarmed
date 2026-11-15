@@ -151,7 +151,7 @@ function Balance.runOne(charId, maxWave)
         spawned[id] = (spawned[id] or 0) + 1
         return spawnEnemy(w, def, ...)
     end
-    local log, lastWave, waveStart, kosAt = {}, 0, 0, 0
+    local log, lastWave, waveStart, kosAt, nectarAt = {}, 0, 0, 0, 0
     local dt, limit = 1 / 60, 60 * 60 * 45
     local result = "timeout"
     local function leftovers()
@@ -177,10 +177,10 @@ function Balance.runOne(charId, maxWave)
             local sp = world.spawner
             local mods = {}
             for _, d in ipairs(sp.mods or {}) do mods[#mods + 1] = d.id end
-            log[#log + 1] = ("  w%-2d %4.0fs  par %3.0f  hp %3.0f/%-3.0f  kos %5d  items %2d%s%s%s"):format(c.wave, world.time - waveStart,
-                sp.par or 0, p.hp, p.stats:get("maxHp"), world.kos - kosAt, #p.inventory.bag, c.boss and "  (boss)" or "",
+            log[#log + 1] = ("  w%-2d %4.0fs  par %3.0f  hp %3.0f/%-3.0f  kos %5d  nectar %4d  items %2d%s%s%s"):format(c.wave, world.time - waveStart,
+                sp.par or 0, p.hp, p.stats:get("maxHp"), world.kos - kosAt, world.nectarEarned - nectarAt, #p.inventory.bag, c.boss and "  (boss)" or "",
                 sp.overlapped and "  overlap" or "", #mods > 0 and ("  " .. table.concat(mods, "+")) or "")
-            waveStart, kosAt = world.time, world.kos
+            waveStart, kosAt, nectarAt = world.time, world.kos, world.nectarEarned
             pickItem(world)
             spendSkills(p)
             if c.wave >= maxWave then result = "WON" break end
