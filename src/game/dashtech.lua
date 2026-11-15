@@ -2,7 +2,8 @@
 --   * Kill-dash refund: the first kill made during a pressed dash (or a moment after it ends)
 --     gives back part of the dash's stamina. Chain kills and keep moving.
 --   * Chained dashes: dashing again soon after the last one ended is faster, up to 3 links.
---     Same distance, less time, so a chain zips through gaps.
+--     Same distance, less time, so a chain zips through gaps. (Ground dashes only: jumps and
+--     flights keep their timing, but still count as links.)
 -- Only pressed dashes (and hold-and-release ones) count; hold modes and blocks don't. Every
 -- dash's own code is left alone: this scales the dash velocity Player:update moves with.
 -- Kills made in a dash are emitted as "dash_kill" (Records counts them for unlock goals).
@@ -43,7 +44,10 @@ function DashTech.onStart(p)
         s.chain = 0
     end
     s.active, s.refunded = true, false
-    if s.chain > 0 and p.dashT > 0 then
+    -- only ground dashes speed up; jumps and flights (they steer and land on their own timing)
+    -- and dashes marked chain = false keep theirs
+    local dd = p.dashDef
+    if s.chain > 0 and p.dashT > 0 and not dd.jump and (p.dashHop or 0) <= 0 and dd.chain ~= false then
         local mul = 1 + DashTech.CHAIN_SPEED * s.chain
         p.dashX, p.dashY = p.dashX * mul, p.dashY * mul
         p.dashT = p.dashT / mul
