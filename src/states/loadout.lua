@@ -27,7 +27,7 @@ function Loadout.new(params, opts)
     local self = setmetatable({ params = params, budget = opts.budget or 12, picked = {}, t = 0, focus = 1, scroll = 0 }, Loadout)
     self.list = {}
     local Unlocks = require("src.game.unlocks")
-    for _, d in ipairs(Content.items:all()) do if Unlocks.item(d.id) then self.list[#self.list + 1] = d end end
+    for _, d in ipairs(Content.items:all()) do if not d.molted and Unlocks.item(d.id) then self.list[#self.list + 1] = d end end
     table.sort(self.list, function(a, b)
         local ra, rb = Rarities[a.rarity].order, Rarities[b.rarity].order
         if ra ~= rb then return ra < rb end

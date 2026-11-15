@@ -78,10 +78,10 @@ return function(wait, shot)
     -- the Records screen, every tab, scrolled to the end
     State.switch(require("src.states.menu").new())
     local scr = State.push(require("src.states.records").new())
-    for tab = 1, 4 do
+    for tab = 1, 5 do
         scr:setTab(tab)
         wait(0.1)
-        local focus = { 1, 2, 3, 6 }
+        local focus = { 1, 2, 3, 2, 6 }
         scr.menu.focus = math.min(#scr.menu.items, focus[tab])
         scr.menu:fixFocus(1)
         wait(0.2)

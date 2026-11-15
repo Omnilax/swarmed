@@ -171,6 +171,36 @@ fulgurite, trilobite fossil, honeycomb, snail shell). Proc triggers: `onHit`, `o
 timers, timed buffs, poison patches on the ground, orbiting critters and per-item state.
 `love . --selftest --items` fires every item's procs in a live fight.
 
+## Molting, tag sets, brood cells and the aphid matriarch
+
+**Molting.** Some items molt into a stronger one when they **touch in the bag** (sides, not
+corners): Ember Gland + Bombardier Gland become a Magma Gland, Dew Drop + Honeydew a Nectar Pearl,
+and so on (13 recipes in `content/molts`, a few take three pieces). Nothing happens straight
+away: the molt comes when a **queen wave is cleared**, and the new item takes the old ones' place.
+Molted items (rarity "Molted", `src/config/rarities.lua`) are never dealt in item choices. In the
+bag, the seams between pieces that will molt **glow** (pulsing teal; dim for two pieces of a
+three-piece recipe), a line over the case says what molts after the next queen, and an item's
+tooltip lists what it molts with. **Records > Recipes** is the recipe book: every recipe's pieces,
+with the result shown once you have molted it.
+
+**Tag sets.** Three items sharing a tag, all touching in one group, give the tag's set bonus
+(Warpath +8% Damage for offense, Bulwark +5 Armor for defense...); five give it twice. The bag
+draws the group's seams in the tag's colour and lists active sets over the case. Bonuses are the
+`set` field of each tag in `src/config/tags.lua`; thresholds in `src/config/molting.lua`.
+
+**Brood cell chests.** A slain queen drops a royal brood cell, a caught treasure ant a plain one.
+Walk into it (or clear the wave: it opens by itself) and a fanfare rolls **1, 3 or 5 level-up
+cards** (queen odds 50/38/12, treasure 74/22/4; Luck shifts them up). The cards go to the level-up
+card picks (`src/game/levelups.lua` `grant`); without that system each card is 25 XP.
+
+**The aphid matriarch** (`content/events/aphid_matriarch.lua`) is a rare map event from wave 5
+(only when your bag has two items of one rarity). Walk into her, pick an item to clone, then feed
+her another item of the same rarity (press it twice): she gives birth to a copy and leaves.
+
+Numbers: `src/config/molting.lua`. Code: `src/game/molting.lua`, `src/game/duplicate.lua`,
+`src/states/broodcell.lua`, `src/states/duplicate.lua`. Molted item icons:
+`tools/make_molt_icons.py` (writes `content/sprites/molts.lua`). Test: `love . --selftest --molts`.
+
 ## Game modes
 
 Play opens the mode select, then the bug select. Modes are files in `content/modes/` (schema in
@@ -516,6 +546,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/routes` | safe / hard route gates between waves (ant, elite, health multipliers, `reward`) | runs |
 | `content/pickups` | ground pickups (`source` elite / kill, `weight`, `allowed`, `collect`) | nectar beads |
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
+| `content/molts` | molting recipes: `from` (2-3 item ids that must touch), `into` (a molted item), `hint` | bag after a queen wave, Records > Recipes |
 | `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |
 | `content/bosses` | boss encounters: a predator from content/enemies joins every 5th wave | src/game/director.lua |
 | `content/mechanics` | stage rules a stage turns on with `mechanic = { type = ... }` | src/game/director.lua |

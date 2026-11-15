@@ -103,16 +103,24 @@ return function(wait, shot)
     for _, id in ipairs(ids) do inv:add(id, 1) end
     -- scatter: put each item at the last spot it fits
     local count0 = #inv.bag
-    local snapshot = {}
-    for _, sd in ipairs(Stats.defs) do snapshot[sd.id] = world.player.stats:get(sd.id) end
+    -- (tag set bonuses depend on which items touch, so a sort may change them: compare without)
+    local function noSets()
+        local out = {}
+        for _, st in ipairs(inv.sets or {}) do world.player.stats:removeSource("set:" .. st.tag) end
+        for _, sd in ipairs(Stats.defs) do out[sd.id] = world.player.stats:get(sd.id) end
+        inv:recount()
+        return out
+    end
+    local snapshot = noSets()
     local InvState = require("src.states.inventory")
     local bagState = State.push(InvState.new(game))
     wait(0.3)
     shot("bag_before_sort")
     bagState:sort()
     assert(#inv.bag == count0, "sort lost items")
+    local after = noSets()
     for _, sd in ipairs(Stats.defs) do
-        assert(math.abs(world.player.stats:get(sd.id) - snapshot[sd.id]) < 1e-6, "sort changed " .. sd.id)
+        assert(math.abs(after[sd.id] - snapshot[sd.id]) < 1e-6, "sort changed " .. sd.id)
     end
     for _, e in ipairs(inv.bag) do assert(inv:fits(e.item, e.x, e.y) == false, "grid out of date") end
     wait(0.3)
