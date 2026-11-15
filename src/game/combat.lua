@@ -5,8 +5,10 @@ local util = require("src.core.util")
 
 local Combat = {}
 
--- Procs may trigger other procs, but only this deep (stops infinite chains).
-Combat.MAX_PROC_DEPTH = 2
+-- Procs may trigger other procs, but only this deep (stops infinite chains). The live limit
+-- grows from 2 to 3 in late waves (World.rewards:procDepth, src/config/rewards.lua procs);
+-- MAX_PROC_DEPTH is the hard cap, also passed as procDepth by hits that must never proc.
+Combat.MAX_PROC_DEPTH = 3
 
 -- opts: coefficient, knockback, kbx, kby (direction), procDepth, noCrit, color, source,
 --       corrode = { mul, time } (takes mul x damage from every hit), stun (seconds frozen),
@@ -70,14 +72,15 @@ function Combat.damage(world, e, base, opts)
     Audio.play("hit")
 
     local depth = opts.procDepth or 0
+    local cap = world.rewards and world.rewards:procDepth() or 2
     local ctx = world:procContext(e, dmg, crit, depth)
     if stats:get("lifesteal") > 0 and love.math.random() * 100 < stats:get("lifesteal") then p:heal(1) end
     world.events:emit("enemy_hit", ctx)
-    if depth < Combat.MAX_PROC_DEPTH then p.inventory:trigger("onHit", ctx) end
+    if depth < cap then p.inventory:trigger("onHit", ctx) end
     if e.hp <= 0 then
         world:killEnemy(e)
         world.events:emit("enemy_killed", ctx)
-        if depth < Combat.MAX_PROC_DEPTH then p.inventory:trigger("onKill", ctx) end
+        if depth < cap then p.inventory:trigger("onKill", ctx) end
     end
     return dmg
 end

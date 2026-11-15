@@ -90,7 +90,9 @@ end
 
 function Spawner:groupSize(def, mul)
     local g, cfg = self.cfg.group, self.cfg
-    return math.max(1, math.floor(love.math.random(g[1], g[2]) * (def.spawn.groupSize or 1) * (1 + (self.wave - 1) * cfg.growth) * (mul or 1)))
+    local route = self.world.route         -- a route gate taken into this wave (src/game/routes.lua)
+    return math.max(1, math.floor(love.math.random(g[1], g[2]) * (def.spawn.groupSize or 1) * (1 + (self.wave - 1) * cfg.growth) * (mul or 1)
+        * (route and route.groupMul or 1)))
 end
 
 -- Jumping ahead (dev "wave" command, the menu demo): meet everything earlier waves would have
@@ -290,7 +292,8 @@ function Spawner:update(dt)
         end
         if self.finalThisWave and not pl.dead then self:chapterCleared() end
         if not w.player.dead then
-            w.pendingChoice = { count = 3 + w.bonusPicks, boss = self.bossWave, wave = self.wave, at = w.time + 0.8 }
+            w.pendingChoice = { count = 3 + w.bonusPicks, boss = self.bossWave, wave = self.wave, at = w.time + 0.8,
+                minRarity = w.rewards and w.rewards:takeMinRarity() }
             w.bonusPicks = 0
         end
     end
@@ -492,6 +495,19 @@ function Spawner:spawnGroup(def, count, x, y, opts)
     return st
 end
 
+-- The mode's elite settings, with the current route's elite multiplier on top.
+function Spawner:eliteMode()
+    local m, route = self.mode.elites, self.world.route
+    if not route or route.eliteMul == 1 then return m end
+    local k = route.eliteMul
+    self._eliteMode = self._eliteMode or {}
+    local out = self._eliteMode
+    out.mul = (m and m.mul or 1) * k
+    out.chance = m and m.chance and math.min(1, m.chance * k) or nil
+    out.anyWave = m and m.anyWave
+    return out
+end
+
 function Spawner:updateStreams(dt)
     local world = self.world
     for i = #self.streams, 1, -1 do
@@ -500,8 +516,7 @@ function Spawner:updateStreams(dt)
         while st.timer <= 0 and st.left > 0 do
             st.timer = st.timer + st.rate
             st.left = st.left - 1
-            local elite = not st.noElites and Elites.roll(st.def, math.max(1, self.wave), self.mode.elites)
- or nil
+            local elite = not st.noElites and Elites.roll(st.def, math.max(1, self.wave), self:eliteMode()) or nil
             local e = world:spawnEnemy(st.def, st.x + (love.math.random() - 0.5) * 4, st.y + (love.math.random() - 0.5) * 4, elite)
             -- Link into a follow-the-leader column (used by the "column" behaviour).
             if e and st.style then Entries.arrive(world, e, st.style, st) end

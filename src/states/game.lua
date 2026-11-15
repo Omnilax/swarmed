@@ -61,6 +61,7 @@ function Game:update(dt)
         return
     end
     if Input.pressed("next_wave") then self:nextWave() end
+    if Input.pressed("frenzy") then self.world.rewards.frenzy:unleash() end
     self.world:update(dt)
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
@@ -92,7 +93,7 @@ end
 
 function Game:draw()
     self.world:flushDecals()
-    Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera.zoom)
+    Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera:viewZoom())
     self.world:draw()
     Screen.endWorld()
     self.world:drawText({ small = Theme.font(15), big = Theme.font(22) })
@@ -118,6 +119,7 @@ function Game:touchStatus()
         specialHold = sec ~= nil and sec.type.update ~= nil,
         dash = dashCd, dashCharges = dashMax > 1 and p.dashCharges or nil,
         manualAttack = not Settings.get("autoAttack"),
+        frenzyReady = self.world.rewards.frenzy:ready(),
         sandbox = sandbox,
         -- while placing bugs every tap is a click, so the left half drops them too
         blocked = function(x, y)

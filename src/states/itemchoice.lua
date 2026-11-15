@@ -34,7 +34,10 @@ local BAN_COL = { 1, 0.45, 0.4 }
 -- opts: count (cards), boss (true after a boss wave: one is rare or better), wave
 function Choice.new(game, opts)
     local self = setmetatable({ game = game, world = game.world, t = 0, opts = opts }, Choice)
-    self.minRarity = opts.boss and "rare" or nil
+    -- minRarity: a hard route's prize (src/game/routes.lua); a queen's wave: rare at least
+    local minR = opts.minRarity
+    if opts.boss and (not minR or require("src.config.rarities")[minR].order < 3) then minR = "rare" end
+    self.minRarity = minR
     self.run = Choices.state(game.world)
     self.items = Choices.deal(game.world, opts.count or 3, self.minRarity)
     self.tags = Choices.bagTags(game.world.player.inventory)

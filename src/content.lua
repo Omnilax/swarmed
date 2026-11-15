@@ -121,11 +121,17 @@ Content.weather = Registry.new("weather", { required = { "name" }, defaults = { 
 -- Cosmetics (src/game/cosmetics.lua): skins recolour a character, decor dresses a location.
 Content.skins = Registry.new("skin", { required = { "name" }, defaults = { description = "" } })
 Content.decor = Registry.new("decor", { required = { "name", "paint" }, defaults = { description = "" } })
+-- Combat rewards (src/game/rewards.lua, numbers in src/config/rewards.lua): frenzy super moves,
+-- kill-streak buffs, optional mini-goals in a wave, and the route gates between waves.
+Content.frenzies = Registry.new("frenzy", { required = { "name", "start" }, defaults = { description = "", params = {}, tags = {} } })
+Content.streaks = Registry.new("streak", { required = { "name" }, defaults = { description = "", stats = {}, statsMult = {}, time = 5, weight = 10, color = "#ffb050" } })
+Content.goals = Registry.new("goal", { required = { "name", "text" }, defaults = { description = "", weight = 10, minWave = 2, reward = { xp = 20, frenzy = 0.25 } } })
+Content.routes = Registry.new("route", { required = { "name", "kind" }, defaults = { description = "", weight = 10, minWave = 2, color = "#c0a070", groupMul = 1, eliteMul = 1, hpMul = 1, reward = {} } })
 -- (they load before achievements, which stay last)
 do
     local at = #Content.order + 1
     for i, kind in ipairs(Content.order) do if kind == "achievements" then at = i end end
-    for i, kind in ipairs({ "weather", "skins", "decor" }) do table.insert(Content.order, at + i - 1, kind) end
+    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes" }) do table.insert(Content.order, at + i - 1, kind) end
 end
 
 -- Cross-references are checked after everything is loaded so content can live in any order.
@@ -161,6 +167,15 @@ local function crossCheck()
     for _, m in ipairs(Content.modes:all()) do
         for _, id in ipairs(m.enemies or {}) do need(Content.enemies, id, "mode '" .. m.id .. "'") end
         for _, id in ipairs(m.bossPool or {}) do need(Content.enemies, id, "mode '" .. m.id .. "' bossPool") end
+    end
+
+    for _, c in ipairs(Content.characters:all()) do
+        if c.frenzy then need(Content.frenzies, c.frenzy, "character '" .. c.id .. "' frenzy") end
+    end
+    for _, st in ipairs(Content.streaks:all()) do
+        for _, field in ipairs({ "stats", "statsMult" }) do
+            for id in pairs(st[field]) do if not Stats.byId[id] then errors[#errors + 1] = "streak '" .. st.id .. "' has unknown stat '" .. id .. "'" end end
+        end
     end
 
     if #errors > 0 then error("Content errors:\n  " .. table.concat(errors, "\n  ")) end

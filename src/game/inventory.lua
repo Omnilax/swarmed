@@ -303,7 +303,9 @@ end
 -- proc.chance may be a number or function(stacks) -> chance (0..1). Luck scales it.
 -- proc.effect(ctx, stacks) does the work.
 function Inventory:trigger(name, ctx)
-    local luck = 1 + self.player.stats:get("luck") / 100
+    -- luck, and the proc snowball: chances grow with every wave (src/config/rewards.lua procs)
+    local rw = self.player.world.rewards
+    local luck = (1 + self.player.stats:get("luck") / 100) * (rw and rw:procMul() or 1)
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]
         local stacks = self.counts[id]

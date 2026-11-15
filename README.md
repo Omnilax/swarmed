@@ -59,9 +59,38 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Aim (when Aim Mode = Mouse) | Mouse | Right stick (always) |
 | Inventory | I / B | Y |
 | Next wave now (or send the rest of a wave in early) | E / N | Back |
+| Unleash Frenzy (when the meter is full) | Q / C | Right or left stick click |
 | Pause | Esc / P | Start |
 
 All bindings can be changed in Settings > Controls.
+
+## Frenzy, streaks and combat rewards
+
+All of this lives in `src/game/rewards.lua` (one per run, `world.rewards`) and its helpers, with
+the numbers in `src/config/rewards.lua` (a game mode can override them with `rewards = {...}`).
+
+- **Frenzy meter** (right side, under the KO counter): every kill fills it (elites and queens
+  more). When it is full, press Q (or tap FRENZY) to unleash the bug's super move from
+  `content/frenzies`: Quake (a shockwave across the whole screen) by default, Thunderstorm for
+  flyers. You can't be hurt while it runs, the game slows for a moment, and a short attack-speed
+  and speed buff follows. Settings > Gameplay > Auto Frenzy sets it off by itself.
+- **Kill streaks**: every 50 kills in one combo gives a short random buff from `content/streaks`
+  (Bloodrush, Rage, Flurry, Fortune; Carnage from a 150 combo).
+- **Big moments**: on top of the hitstop, a huge multi-kill, a queen falling and the frenzy move
+  get slow motion (Settings > Gameplay > Slow Motion) and a quick camera zoom punch.
+- **Mini-goals**: from wave 2, some waves come with an optional side task from `content/goals`:
+  stop the courier ant before it crosses the arena, guard the aphid (some ants go for it),
+  reach a combo, or get a burst of KOs in a few seconds. Success pays bonus XP and frenzy.
+- **Treasure ant**: from wave 3, sometimes a gilded ant pops out mid-wave and runs. Catch it within
+  14 s for a pile of XP and half a frenzy meter; otherwise it burrows away (no KO, no reward).
+- **Route gates**: after a wave, two tunnels open beside you. Walk into the safe one (fewer ants,
+  no elites) or the hard one (more ants, more elites or tougher ants) to start the next wave that
+  way; clearing a hard route pays XP, frenzy or a rarer best card in the next item choice. Ignore
+  them for a normal wave. Needs a break between waves; never before the final wave.
+- **Proc snowball**: every wave raises all item proc chances (+7% a wave, up to x2.2), and from
+  wave 8 procs can set off one more link of procs, so late runs fill the screen with chains.
+
+Test: `love . --selftest --combat`.
 
 ## Inventory
 
@@ -328,6 +357,10 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/items` | stat changes and procs (`onHit`, `onKill`, `onHurt`, `onDash`, `onWaveStart`) | shop (step 2), sandbox |
 | `content/stages` | arena size, yard palette, path/fence/dirt look, spawn pacing | runs |
 | `content/sprites` | text-grid pixel art | everything |
+| `content/frenzies` | super moves for a full frenzy meter (`start`, `update`, `draw`, `buff`) | frenzy meter |
+| `content/streaks` | kill-streak buffs (stats for a few seconds) | 50-kill combos |
+| `content/goals` | optional mini-goals for a wave (`start`, `update`, `on` events, `finish`, `reward`) | runs |
+| `content/routes` | safe / hard route gates between waves (ant, elite, health multipliers, `reward`) | runs |
 | `content/bosses`, `content/events` | registries ready for step 3 | |
 
 Other single places to extend:
