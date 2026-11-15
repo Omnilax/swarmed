@@ -63,7 +63,15 @@ return function(wait, shot)
     top.menu.items[1].onActivate()
     assert(State.top() == game and world.continued, "keep going should return to the game")
     game:update(1 / 60)
-    assert(State.top() ~= game and State.top().items, "the item choice should follow")
+    -- (level-up cards earned in the final wave come first)
+    for _ = 1, 40 do
+        local t = State.top()
+        if not t.lu then break end
+        t.t = 10
+        t:activate(1); t:activate(1)
+        if State.top() == game then game:update(1 / 60) end
+    end
+    assert(State.top() ~= game and State.top().items, "the item choice should follow (top: " .. tostring(State.top().items) .. ", pending " .. tostring(world.pendingChoice) .. ")")
     State.pop()
     -- and on we go
     world:clearEnemies()

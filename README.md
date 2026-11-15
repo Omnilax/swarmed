@@ -240,6 +240,20 @@ costs more points than a long run earns, so every run builds the bug differently
 Player tab has **+5 skill points** and **Reset skill tree**; `love . --selftest --skills` buys every
 node of every tree (both fork sides) and fights with it.
 
+## Level-up cards
+
+Each level is a pick of 3 cards (`src/game/levelups.lua`, screen `src/states/levelup.lua`, numbers
+in `src/config/levelups.lua`): nodes from your bug's skill tree (bought outright, no points) and
+global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
+common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
+The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
+Levels play a chime, half a second of slow motion and a ring of light; the picks wait for the end
+of the wave and come right before the item choice (setting **Level-Up Cards: Right Away** opens
+them at once). Instead of a card you can bank a skill point for the SKILLS tab. Setting
+**Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
+picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
+Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

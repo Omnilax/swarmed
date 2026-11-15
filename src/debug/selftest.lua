@@ -773,6 +773,15 @@ local function script(flags)
     shot("wave_break")
     -- the item choice pops up a moment later; take the first card
     wait(1.2)
+    -- level-up cards earned in the wave come first, right before the item choice
+    for _ = 1, 20 do
+        local top = State.top()
+        if not top.lu then break end
+        top.t = 10
+        top:activate(1); top:activate(1)
+        wait(0.05)
+    end
+    assert(#game.world.levelups.queue == 0, "level-up picks left over")
     local choice = State.top()
     assert(choice.items and #choice.items >= 3, "no item choice after the wave")
     local ids = {}

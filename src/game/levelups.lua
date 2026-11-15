@@ -232,9 +232,12 @@ function LevelUps:deal(entry, count)
         end
         return opts[#opts]
     end
-    for _ = 1, count do
+    -- at most one skill node per pick (a chance of skillShare), in a random slot; the rest are
+    -- stat cards (if there aren't enough stat cards, more nodes fill in)
+    local nodeSlot = love.math.random() < self.cfg.skillShare and love.math.random(count) or nil
+    for i = 1, count do
         local card
-        if love.math.random() < self.cfg.skillShare then
+        if i == nodeSlot then
             local n = pickNode()
             if n then card = self:nodeCard(n) end
         end
