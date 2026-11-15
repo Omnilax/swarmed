@@ -465,6 +465,9 @@ function Inv:draw()
         local iw, ih = Inventory.size(e.item)
         itemIcon(e.item, x + 4, y + 4, iw * C - 8, ih * C - 8)
     end
+    -- glowing seams: touching items that will molt (bright), half a recipe (dim), tag sets (tag colour)
+    local seams, ready = require("src.game.molting").seams(inv)
+    self:drawSeams(seams, B, C)
     if preview then
         local col = preview.ok and { 0.45, 1, 0.5, 0.3 } or { 1, 0.3, 0.3, 0.3 }
         shapeCells(self.held.item, B.x + preview.x * C, B.y + preview.y * C, C, col, { col[1], col[2], col[3], 0.9 }, 1)
@@ -488,6 +491,9 @@ function Inv:draw()
             lg.setFont(Theme.font(14))
             Theme.printShadow("No room? Eat something to make space.", P.x, P.y - u(26), COL.label, "center", P.w)
         end
+    end
+    if not (self.held and self.held.item == self.newItem) then self:drawMoltNote(ready, P) end
+    if self.held then
     elseif hoverEntry then
         local tx, ty
         local iw = Inventory.size(hoverEntry.item)
@@ -518,6 +524,64 @@ function Inv:draw()
         Theme.printShadow(f.text, f.x - u(30), f.y - u(20) - f.t * u(30), { c[1], c[2], c[3], 1 - f.t })
     end
     lg.setColor(1, 1, 1, 1)
+end
+
+-- Seams between touching items (src/game/molting.lua Molting.seams), in bag cell units.
+function Inv:drawSeams(seams, B, C)
+    local Molting = require("src.game.molting")
+    local pulse = 0.5 + 0.5 * math.sin(self.t * 5)
+    for _, sm in ipairs(seams) do
+        local c = sm.color
+        local a, wide
+        if sm.kind == "molt" then a, wide = 0.55 + 0.45 * pulse, 3
+        elseif sm.kind == "partial" then a, wide = 0.25 + 0.2 * pulse, 2
+        else a, wide = 0.45 + 0.15 * pulse, 2 end
+        for _, ed in ipairs(Molting.sharedEdges(sm.a, sm.b)) do
+            local x1, y1, x2, y2 = B.x + ed[1] * C, B.y + ed[2] * C, B.x + ed[3] * C, B.y + ed[4] * C
+            local m = math.floor(C * 0.15)
+            if x1 == x2 then y1, y2 = y1 + m, y2 - m else x1, x2 = x1 + m, x2 - m end
+            -- soft glow, then the bright seam
+            lg.setColor(c[1], c[2], c[3], a * 0.3)
+            lg.setLineWidth(wide * 3)
+            lg.line(x1, y1, x2, y2)
+            lg.setColor(c[1] * 0.5 + 0.5, c[2] * 0.5 + 0.5, c[3] * 0.5 + 0.5, a)
+            lg.setLineWidth(wide)
+            lg.line(x1, y1, x2, y2)
+        end
+    end
+    lg.setLineWidth(1)
+end
+
+-- A line over the case: what will molt after the next queen, and the tag sets in effect.
+function Inv:drawMoltNote(ready, P)
+    local u = Theme.u
+    local Molting = require("src.game.molting")
+    local parts = {}
+    if ready and #ready > 0 then
+        local names = {}
+        for _, m in ipairs(ready) do
+            local d = require("src.content").items:get(m.recipe.into)
+            names[#names + 1] = d and d.name or m.recipe.into
+        end
+        parts[#parts + 1] = { { 0.5, 1, 0.85 }, "Molts after the next queen: " .. table.concat(names, ", ") }
+    end
+    for _, st in ipairs(self.inv.sets or {}) do
+        local c = st.def._c or util.hex(st.def.color)
+        st.def._c = c
+        parts[#parts + 1] = { c, st.def.set.name .. (st.tier > 1 and " II" or "") .. " (" .. Molting.setText(st.def.set, st.tier) .. ")" }
+    end
+    if #parts == 0 then return end
+    local txt = {}
+    for i, pt in ipairs(parts) do
+        if i > 1 then txt[#txt + 1] = COL.dim; txt[#txt + 1] = "   ·   " end
+        txt[#txt + 1] = pt[1]; txt[#txt + 1] = pt[2]
+    end
+    local f = Theme.font(13)
+    lg.setFont(f)
+    local _, lines = f:getWrap(txt, P.w)
+    local y = P.y - u(10) - #lines * f:getHeight()
+    lg.setColor(1, 1, 1, 1)
+    lg.printf(txt, P.x, y, P.w, "center")
 end
 
 -- Key hints under the case: little key caps and a word each.
@@ -567,8 +631,13 @@ function Inv:tooltip(item, x, y)
     local tagCounts = Choices.bagTags(self.inv)
     local fTag = Theme.font(13)
     local tagH = Choices.drawTags(def, tagCounts, 0, 0, tw - u(20), fTag, u, true)
+    local moltLines = {}
+    for _, ml in ipairs(self:moltInfo(item)) do
+        local _, wl = fSmall:getWrap(ml[2], tw - u(20))
+        for _, l in ipairs(wl) do moltLines[#moltLines + 1] = { ml[1], l } end
+    end
     local th = u(10) + fName:getHeight() + u(2) + lh + u(8) + #lines * lh + #descLines * lh + u(6) + lh + u(10)
-        + (tagH > 0 and tagH + u(8) or 0)
+        + (tagH > 0 and tagH + u(8) or 0) + (#moltLines > 0 and #moltLines * lh + u(6) or 0)
     local W, H = lg.getDimensions()
     x = math.min(x, W - tw - u(6))
     y = math.min(y, H - th - u(6))
@@ -605,8 +674,41 @@ function Inv:tooltip(item, x, y)
         lg.print(l, x + u(10), cy)
         cy = cy + lh
     end
+    if #moltLines > 0 then
+        cy = cy + u(6)
+        for _, l in ipairs(moltLines) do
+            lg.setColor(l[1])
+            lg.print(l[2], x + u(10), cy)
+            cy = cy + lh
+        end
+    end
     lg.setColor(COL.dim)
     lg.print("Eat: +" .. Inventory.eatValue(item) .. " HP", x + u(10), cy + u(6))
+end
+
+-- Molting lines for an item's tooltip: { { color, text }, ... }.
+function Inv:moltInfo(item)
+    local Molting = require("src.game.molting")
+    local Content = require("src.content")
+    local Records = require("src.game.records")
+    local out = {}
+    local function name(id) local d = Content.items:get(id) return d and d.name or id end
+    local r = Molting.recipeFor(item.id)
+    if r then
+        local names = {}
+        for _, id in ipairs(r.from) do names[#names + 1] = name(id) end
+        out[#out + 1] = { { 0.5, 1, 0.85 }, "Molted from " .. table.concat(names, " + ") }
+    end
+    for _, rc in ipairs(Molting.recipesWith(item.id)) do
+        local others = {}
+        local skipped = false
+        for _, id in ipairs(rc.from) do
+            if id == item.id and not skipped then skipped = true else others[#others + 1] = name(id) end
+        end
+        local known = Records.moltKnown and Records.moltKnown(rc.id)
+        out[#out + 1] = { { 0.55, 0.9, 0.8 }, "Molts touching " .. table.concat(others, " + ") .. " into " .. (known and name(rc.into) or "???") }
+    end
+    return out
 end
 
 -- A tooltip for one stat: its value, where it started, and what the number means.

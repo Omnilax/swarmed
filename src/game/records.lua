@@ -27,6 +27,8 @@ local function blankProfile()
         daily = {},          -- daily run date "YYYY-MM-DD" -> best { wave, kos, won, character }
         history = {},        -- newest first, see Records.endRun
         achievements = {},   -- achievement id -> os.time() it unlocked
+        molts = {},          -- molt recipe id -> times molted (the recipe book, Records > Recipes)
+        moltCount = 0, chestsOpened = 0, duplicated = 0,
         seen = {},           -- enemy id -> true once met (first-sighting popups, src/ui/runhud.lua)
     }
 end
@@ -61,6 +63,12 @@ function Records.load()
 end
 
 function Records.get() return Records.profile or Records.load() end
+
+-- Has this molt recipe ever been molted? (the recipe book shows its result once it has)
+function Records.moltKnown(id)
+    local p = Records.get()
+    return (p.molts[id] or 0) > 0
+end
 
 function Records.save()
     if not Records.profile or Records.noSave then return end
@@ -161,6 +169,17 @@ function Records.track(world, info)
     ev:on("item_eaten", function()
         run.itemsEaten, p.itemsEaten = run.itemsEaten + 1, p.itemsEaten + 1
     end)
+    ev:on("item_molted", function(recipe)
+        p.molts[recipe.id] = (p.molts[recipe.id] or 0) + 1
+        p.moltCount = p.moltCount + 1
+        run.molts = (run.molts or 0) + 1
+        Records.check()
+    end)
+    ev:on("chest_opened", function(kind, n)
+        p.chestsOpened = p.chestsOpened + 1
+        run.chests = (run.chests or 0) + 1
+    end)
+    ev:on("item_duplicated", function() p.duplicated = p.duplicated + 1 end)
     ev:on("player_died", function() Records.endRun("died") end)
     return run
 end

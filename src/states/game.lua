@@ -117,6 +117,15 @@ function Game:update(dt)
         State.push(require("src.states.broodcell").new(self, c))
         return
     end
+    -- walked into the aphid matriarch: the cloning screen (src/states/duplicate.lua)
+    local dup = self.world.pendingDuplicate
+    if dup then
+        self.world.pendingDuplicate = nil
+        if not dup.dead and not dup.leaving and not self.world.player.dead then
+            State.push(require("src.states.duplicate").new(self, dup))
+            return
+        end
+    end
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
     if won and self.world.time >= ((self.world.pendingChoice or {}).at or 0) then
