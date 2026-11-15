@@ -48,6 +48,8 @@ function RunSave.snapshot(game)
         choice = util.deepcopy(w.choice),
         -- danger level (src/config/danger.lua) and the bug rule's state (src/game/bugrules.lua)
         danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
+        -- blessings and curses from map gambles (src/game/gambles.lua)
+        blessings = util.deepcopy(w.blessings),
     }
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
@@ -156,6 +158,7 @@ function RunSave.restore(world, snap)
         p.skills = sk
         sk:apply()
     end
+    if snap.blessings then require("src.game.gambles").restore(world, snap.blessings) end
     p.hp = math.max(1, math.min(snap.hp or p.stats:get("maxHp"), p.stats:get("maxHp")))
     -- the waves: species met and queens fought, then a breather before the next wave
     for _, id in ipairs(snap.known or {}) do
