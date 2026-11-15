@@ -30,7 +30,7 @@ end
 
 function ItemPool:build()
     local list = {}
-    for _, d in ipairs(Content.items:all()) do list[#list + 1] = d end
+    for _, d in ipairs(Content.items:all()) do if not d.molted then list[#list + 1] = d end end   -- molted items only come from molting
     table.sort(list, function(a, b)
         local ra, rb = Rarities[a.rarity].order, Rarities[b.rarity].order
         if ra ~= rb then return ra < rb end
