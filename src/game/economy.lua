@@ -112,7 +112,7 @@ local function boostOffer(world, b)
     local amount = (v > 0 and "+" or "") .. Stats.format(b.stat, v) .. " " .. sd.label
     return { kind = "boost", boost = b, price = Economy.boostPrice(world), name = b.name,
         text = amount, key = "boost:" .. b.stat,
-        def = { name = b.name, stats = { [b.stat] = b.add }, statsMult = { [b.stat] = b.mult }, tags = {}, procs = {} } }
+        def = { name = b.name, rarity = "common", stats = { [b.stat] = b.add }, statsMult = { [b.stat] = b.mult }, tags = {}, procs = {} } }
 end
 
 local function itemOffer(world, id)

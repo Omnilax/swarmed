@@ -670,6 +670,7 @@ local function script(flags)
     if flags["--entries"] then require("src.debug.selftest_entries")(wait, shot) love.event.quit() return end
     if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--economy"] then require("src.debug.selftest_economy")(wait, shot) love.event.quit() return end
     if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
     if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
@@ -786,6 +787,11 @@ local function script(flags)
     assert(State.top() == choice and choice.armed == 1, "first press should only pick the card")
     shot("item_choice")
     choice:activate(1)
+    -- with nectar to spend, the screen moves on to the shop; DONE closes it
+    if State.top() == choice then
+        assert(choice.tab == "shop" and choice.picked, "item choice stayed open but not on the shop")
+        choice:shopBack()
+    end
     assert(State.top() == game and #game.world.player.inventory.bag == before + 1, "taking an item failed")
     print("[selftest] item choice OK")
     wait(sp.timer + 0.6)

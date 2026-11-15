@@ -486,7 +486,7 @@ function Inv:draw()
     local scHover = mx >= sc.x and mx < sc.x + sc.w and my >= sc.y and my < sc.y + sc.h
     local SCRAP_COL = { 1, 0.82, 0.35 }
     local scrapText = "SCRAP"
-    local target = self.held and self.held.item or hoverEntry0
+    local target = self.held and self.held.item or (hoverEntry0 and hoverEntry0.item)
     if target then
         local n, rr = require("src.game.economy").scrapValue(self.world, target)
         scrapText = "SCRAP +" .. n .. (rr and " +R" or "")
