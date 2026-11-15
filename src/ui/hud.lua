@@ -153,7 +153,15 @@ function Hud.draw(game, covered)
         local sp = world.spawner
         lg.setFont(Theme.font(24))
         local sub
-        if sp.phase == "wave" then
+        local swarm = world.finalSwarm
+        if swarm and not swarm.done then
+            -- the Final Swarm (src/game/finalswarm.lua): the clock to survive, and its KOs
+            local left = math.ceil(swarm:left())
+            local pulse = 0.75 + 0.25 * math.sin(world.time * 6)
+            Theme.printShadow(("FINAL SWARM  %d:%02d"):format(math.floor(left / 60), left % 60), 0, u(16),
+                { 1, 0.45 * pulse + 0.2, 0.35, alpha }, "center", w)
+            sub = swarm.kills .. " swarm KOs  ·  survive!"
+        elseif sp.phase == "wave" then
             Theme.printShadow(Hud.waveLabel(sp), 0, u(16), { c.text[1], c.text[2], c.text[3], alpha }, "center", w)
             sub = sp.endless and ("next level in " .. math.max(1, math.ceil(sp.levelT)))
                 or (sp:remaining() .. (sp.mode.families and not require("src.core.util").contains(sp.mode.families, "ant") and " left" or " ants left"))

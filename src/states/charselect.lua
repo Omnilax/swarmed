@@ -11,6 +11,10 @@ local Audio = require("src.core.audio")
 local Prefs = require("src.game.prefs")
 local Playstyles = require("src.config.playstyles")
 local MovePreview = require("src.ui.movepreview")
+local Unlocks = require("src.game.unlocks")
+local Danger = require("src.config.danger")
+local BugRules = require("src.config.bugrules")
+local util = require("src.core.util")
 
 local CharSelect = {}
 CharSelect.__index = CharSelect
@@ -49,8 +53,36 @@ function CharSelect.new(opts)
     return self
 end
 
+-- The danger level picked for a bug (remembered per bug, never above what it has earned).
+function CharSelect.danger(id)
+    local d = Prefs.get().danger
+    local v = type(d) == "table" and tonumber(d[id]) or 0
+    return math.max(0, math.min(v or 0, Unlocks.maxDanger(id)))
+end
+
+function CharSelect:shiftDanger(def, dir)
+    if not Unlocks.bug(def.id) then return end
+    local cur, max = CharSelect.danger(def.id), Unlocks.maxDanger(def.id)
+    local v = math.max(0, math.min(max, cur + dir))
+    if v == cur then
+        if dir > 0 and cur < Danger.MAX then self.dangerFlashT = 1.2 end
+        Audio.play("ui_back")
+        return
+    end
+    local d = Prefs.get().danger
+    if type(d) ~= "table" then d = {} end
+    d[def.id] = v
+    Prefs.set("danger", d)
+    Audio.play("ui_move", { pitch = 1 + v * 0.06 })
+end
+
 function CharSelect:pick(def)
-    local params = { mode = "run", character = def.id, gameMode = self.gameMode }
+    if not Unlocks.bug(def.id) then
+        self.lockFlashT = 1
+        Audio.play("ui_back")
+        return
+    end
+    local params = { mode = "run", character = def.id, gameMode = self.gameMode, danger = CharSelect.danger(def.id) }
     if self.mode and self.mode.chooseItems then
         State.push(require("src.states.loadout").new(params, self.mode.chooseItems))
     else
@@ -97,8 +129,14 @@ function CharSelect:build(focusId, focusRow)
     local focus
     for _, e in ipairs(self:list()) do
         local def = e.def
-        items[#items + 1] = { type = "button", label = def.name, character = def, star = e.fav,
-            value = sort and sort.show and function() return sort.show(def) end or nil,
+        local open = Unlocks.bug(def.id)
+        items[#items + 1] = { type = "button", label = def.name, character = def, star = e.fav, locked = not open,
+            value = (not open) and function() return "Locked" end
+                or (sort and sort.show and function() return sort.show(def) end)
+                or function()
+                    local d = CharSelect.danger(def.id)
+                    return d > 0 and ("Danger " .. d) or nil
+                end,
             onActivate = function() self:pick(def) end }
         if def.id == focusId then focus = #items end
     end
@@ -119,6 +157,11 @@ function CharSelect:update(dt)
     local def = it and it.character
     -- favourite the highlighted bug (F / pad X, or a click on the star in the panel)
     if def and Input.pressed("ui_favourite") then self:toggleFavourite(def) end
+    -- Left / Right on a bug: its danger level
+    if def and Input.pressed("ui_left") then self:shiftDanger(def, -1) end
+    if def and Input.pressed("ui_right") then self:shiftDanger(def, 1) end
+    if self.lockFlashT then self.lockFlashT = self.lockFlashT > 0 and self.lockFlashT - dt or nil end
+    if self.dangerFlashT then self.dangerFlashT = self.dangerFlashT > 0 and self.dangerFlashT - dt or nil end
     -- the menu music picks up the highlighted bug's signature tune (src/core/music.lua)
     Music.preview(def)
     -- the live move preview starts once a bug has stayed highlighted for a moment
@@ -156,7 +199,13 @@ function CharSelect:draw()
     self.menu:draw()
     local fav = Input.glyph("ui_favourite")
     Theme.footer(Input.lastDevice == "gamepad" and { { "A", "Play" }, { (fav.pad or "x"):upper(), "Favourite" }, { "B", "Back" } }
-        or { { "Enter", "Play" }, { fav.key or "F", "Favourite" }, { "Left/Right", "Sort / Show" }, { "Esc", "Back" } })
+        or { { "Enter", "Play" }, { fav.key or "F", "Favourite" }, { "Left/Right", "Danger" }, { "Esc", "Back" } })
+    local nOpen, nAll = Unlocks.bugCount()
+    if nOpen < nAll then
+        lg.setFont(Theme.font(15))
+        lg.setColor(Theme.colors.dim)
+        lg.print(("%d / %d bugs unlocked"):format(nOpen, nAll), Theme.u(60), Theme.u(96))
+    end
 
     local it = self.menu:focused()
     local def = it and it.character
@@ -174,6 +223,9 @@ function CharSelect:draw()
     if self.preview and self.preview.id == def.id and bh > Theme.u(60) then
         -- the bug in action: its special and dash on a loop (a wide, short strip so the stats still fit)
         bh = math.min(bh, math.floor(bw * 0.26))
+        -- room at the bottom of the panel for the danger picker, mastery and rule (or the lock)
+        local reserve = not Unlocks.bug(def.id) and Theme.u(84) or (Theme.u(78) + (BugRules[def.id] and Theme.u(24) or 0))
+        bh = math.max(Theme.u(50), bh - reserve)
         self.preview:draw(bx, by, bw, bh)
         ty = by + bh + Theme.u(22)
     elseif def.model then
@@ -264,6 +316,74 @@ function CharSelect:draw()
             col = col + 1
         end
     end
+    self:drawMastery(def, px, Theme.u(120), pw, ph)
+end
+
+-- Bottom of the panel: the bug's rule, its danger level picker and mastery stars, or what
+-- unlocks it.
+function CharSelect:drawMastery(def, px, py, pw, ph)
+    local lg = love.graphics
+    local u = Theme.u
+    local c = Theme.colors
+    local bottom = py + ph - u(14)
+    self.dangerRects = nil
+    if not Unlocks.bug(def.id) then
+        local flash = self.lockFlashT and self.lockFlashT > 0
+        lg.setColor(0, 0, 0, 0.55)
+        lg.rectangle("fill", px + u(8), bottom - u(58), pw - u(16), u(56))
+        lg.setFont(Theme.font(20, "bold"))
+        Theme.printShadow("LOCKED", px, bottom - u(54), flash and c.bad or c.focus, "center", pw)
+        lg.setFont(Theme.font(16))
+        lg.setColor(c.text)
+        lg.printf(Unlocks.progressText(Unlocks.bugGoal(def.id)), px + u(16), bottom - u(28), pw - u(32), "center")
+        lg.setColor(1, 1, 1, 1)
+        return
+    end
+    -- danger picker:  <  DANGER 2  Hungry  >
+    local cur, max = CharSelect.danger(def.id), Unlocks.maxDanger(def.id)
+    local lv = Danger[cur]
+    local col = lv and util.hex(lv.color) or c.dim
+    lg.setFont(Theme.font(18, "bold"))
+    local label = cur == 0 and "DANGER 0  Normal" or ("DANGER %d  %s"):format(cur, lv.name)
+    local lw = lg.getFont():getWidth(label)
+    local ly = bottom - u(44)
+    Theme.printShadow(label, px, ly, col, "center", pw)
+    local ax1, ax2 = px + pw / 2 - lw / 2 - u(26), px + pw / 2 + lw / 2 + u(12)
+    lg.setColor(cur > 0 and c.text or c.dim)
+    lg.print("<", ax1, ly)
+    lg.setColor(cur < max and c.text or c.dim)
+    lg.print(">", ax2, ly)
+    local fh = lg.getFont():getHeight()
+    self.dangerRects = { def = def,
+        { x = ax1 - u(10), y = ly - u(6), w = u(34), h = fh + u(12), dir = -1 },
+        { x = ax2 - u(10), y = ly - u(6), w = u(34), h = fh + u(12), dir = 1 } }
+    lg.setFont(Theme.font(15))
+    local desc
+    if self.dangerFlashT and self.dangerFlashT > 0 then
+        lg.setColor(c.bad)
+        desc = ("Win at Danger %d with this bug to open Danger %d."):format(max, max + 1)
+    else
+        lg.setColor(c.dim)
+        local rules = {}
+        for i = 1, cur do rules[#rules + 1] = Danger[i].description end
+        desc = cur == 0 and "The normal game. Win to open Danger 1." or table.concat(rules, "  ")
+    end
+    lg.printf(desc, px + u(16), bottom - u(20), pw - u(32), "center")
+    -- mastery stars: one per danger level won
+    local best = Unlocks.bestDanger(def.id)
+    local sr = u(7)
+    local sx = px + pw / 2 - (Danger.MAX - 1) * u(10)
+    for i = 1, Danger.MAX do
+        Menu.star(sx + (i - 1) * u(20), ly - u(16), sr, i <= best and util.hex(Danger[i].color) or { 0.3, 0.26, 0.22, 1 })
+    end
+    -- the bug's own item rule
+    local rule = BugRules[def.id]
+    if rule then
+        lg.setFont(Theme.font(15))
+        lg.setColor(1, 1, 1, 1)
+        lg.printf({ c.accent, "RULE  " .. rule.name .. ":  ", c.text, rule.description }, px + u(16), ly - u(50), pw - u(32), "center")
+    end
+    lg.setColor(1, 1, 1, 1)
 end
 
 function CharSelect:mousemoved(x, y) self.menu:mousemoved(x, y) end
@@ -272,6 +392,12 @@ function CharSelect:mousepressed(x, y, b)
     if b == 1 and r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
         self:toggleFavourite(r.def)
         return
+    end
+    for _, dr in ipairs(b == 1 and self.dangerRects or {}) do
+        if x >= dr.x and x <= dr.x + dr.w and y >= dr.y and y <= dr.y + dr.h then
+            self:shiftDanger(self.dangerRects.def, dr.dir)
+            return
+        end
     end
     self.menu:mousepressed(x, y, b)
 end

@@ -18,7 +18,7 @@ local RunSave = { FILE = "run.lua", VERSION = 1 }
 
 -- Record counters carried over so the run's stats line in Records stays whole.
 local RECORD_FIELDS = { "kills", "elites", "queens", "killsBy", "killsByFamily", "wavesCleared", "flawlessWaves",
-    "damageTaken", "itemsTaken", "itemsEaten", "started", "won" }
+    "damageTaken", "itemsTaken", "itemsEaten", "started", "won", "blocked", "dashKills" }
 
 -- Can this game be saved? (a real run that's still going)
 function RunSave.allowed(game)
@@ -46,6 +46,8 @@ function RunSave.snapshot(game)
         -- (the seed as text: the save file keeps numbers to 14 digits, a seed has up to 16)
         seed = w.seed and ("%.0f"):format(w.seed), daily = util.deepcopy(w.daily),
         choice = util.deepcopy(w.choice),
+        -- danger level (src/config/danger.lua) and the bug rule's state (src/game/bugrules.lua)
+        danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
     }
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
@@ -107,7 +109,8 @@ end
 -- Game params that start the saved run (Game.new calls RunSave.restore with the snapshot).
 function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
-        startItems = snap.startItems, seed = tonumber(snap.seed), daily = snap.daily, resume = snap }
+        startItems = snap.startItems, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
+        danger = tonumber(snap.danger) or 0 }
 end
 
 -- Put a fresh world into the saved run's state.
@@ -118,6 +121,7 @@ function RunSave.restore(world, snap)
     world.won, world.continued, world.bonusPicks = snap.won, snap.continued, snap.bonusPicks or 0
     world.resumed = true
     if snap.choice then world.choice = util.deepcopy(snap.choice) end
+    if type(snap.ruleState) == "table" then world.ruleState = util.deepcopy(snap.ruleState) end
     -- the bag, exactly as it was (anything that no longer fits, or no longer exists, is stowed or skipped)
     local inv = p.inventory
     inv:clear()

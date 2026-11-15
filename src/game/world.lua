@@ -43,6 +43,8 @@ function World.new(opts)
     love.math.setRandomSeed(self.seed)
     self.modeDef = Content.modes:get(opts.gameMode or "colony") or Content.modes:all()[1]
     self.gameMode = self.modeDef.id
+    -- danger level of this run (src/config/danger.lua): every level adds one rule
+    self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)
     -- no stage given: the location picked in Cosmetics
     self.stage = Content.stages:require(opts.stage or Cosmetics.location())
     self.size = self.stage.size
@@ -90,6 +92,9 @@ function World.new(opts)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
+    require("src.game.dashtech").attach(self)
+    require("src.game.bugrules").attach(self)
     -- skin: recoloured in drawing (Cosmetics.shader), or a whole other model
     local skin = Cosmetics.skinFor(charId)
     self.player.skin = skin
@@ -115,6 +120,7 @@ function World:hpScale()
     return m.enemyHp * (1 + (sp and math.max(0, sp.wave - 1) * (m.hpPerWave or 0.12) or 0))
         * (sp and require("src.game.pacing").hpMul(sp) or 1)
         * (self.route and self.route.hpMul or 1)
+        * (self.danger and self.danger.hpMul or 1)
 
 end
 
@@ -440,6 +446,7 @@ function World:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
     self:pushPlayerOutOfSolids()
 
     -- Remove the dead, keeping the array packed.

@@ -682,6 +682,7 @@ local function script(flags)
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
     if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
+    if flags["--mastery"] then require("src.debug.selftest_mastery")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
     if flags["--runinfo"] then require("src.debug.selftest_runinfo")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end
@@ -1107,6 +1108,7 @@ local function script(flags)
     hymenopteraScene()
     require("src.debug.selftest_skills")(wait, shot)
     require("src.debug.selftest_records")(wait, shot)
+    require("src.debug.selftest_mastery")(wait, shot)
     require("src.debug.selftest_polish")(wait, shot)
     require("src.debug.selftest_pacing")(wait, shot)
     require("src.debug.selftest_anims")(wait, shot)

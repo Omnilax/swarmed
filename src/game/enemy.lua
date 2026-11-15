@@ -29,9 +29,10 @@ function Enemy.spawn(world, def, x, y, elite)
     e.mx, e.my, e.kvx, e.kvy = 0, 0, 0, 0
     e.maxHp = math.max(1, math.floor(def.hp * diff.hp * world:hpScale() + 0.5))
     e.hp = e.maxHp
-    e.damage = def.damage * diff.damage * world.modeDef.enemyDamage
+    local danger = world.danger
+    e.damage = def.damage * diff.damage * world.modeDef.enemyDamage * (danger and danger.damageMul or 1)
 
-    e.speed = def.speed * (0.9 + love.math.random() * 0.2)
+    e.speed = def.speed * (0.9 + love.math.random() * 0.2) * (danger and danger.speedMul or 1)
     if def.boss then world.boss = e end
     e.radius = def.radius
     e.mass = def.mass
