@@ -68,6 +68,9 @@ function Enemy.spawn(world, def, x, y, elite)
     e.biteCd = love.math.random() * 0.4
     e.dead = false
     e.lure, e.lureUid, e.lureRolled, e.escaped, e.rushed = nil, nil, nil, nil, nil   -- (pooled tables keep old fields)
+    -- pacing (src/game/pacing.lua): straggler call, royal guard, heat / pressure scaling
+    e.called, e.guardOf, e.guardUid, e.guardA, e.guards, e.guardMul = nil, nil, nil, nil, nil, nil
+    e.pace, e.dpace = 1, 1
     if e.behavior.init then e.behavior.init(e, world, e.params) end
     return e
 end

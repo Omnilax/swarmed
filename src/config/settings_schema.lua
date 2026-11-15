@@ -93,6 +93,15 @@ add { key = "difficulty", category = "Gameplay", label = "Difficulty", type = "c
 add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "choice", default = "auto",
     options = { { value = "auto", label = "After 3 s" }, { value = "instant", label = "Right Away" }, { value = "manual", label = "When I Press" } },
     desc = "When the next wave starts after you pick an item. The Next Wave key (N) always starts it at once, and during a wave sends the rest of its ants in early." }
+add { key = "waveOverlap", category = "Gameplay", label = "Overlapping Waves", type = "toggle", default = true,
+    desc = "When a wave is down to its last few ants, you pick your item and the next wave marches in while they are still about. Off: every ant must die first. (Never with Next Wave set to When I Press.)" }
+add { key = "waveModifiers", category = "Gameplay", label = "Wave Modifiers", type = "toggle", default = true,
+    desc = "From wave 3, some waves get a twist shown on the banner: Swarm, Armored, Ambush, Shield Wall, Pincer..." }
+add { key = "adaptiveWaves", category = "Gameplay", label = "Wave Heat", type = "toggle", default = true,
+    desc = "Waves have a par time. Past it the ants speed up and hit harder, and while you stay healthy the packs come quicker and bigger." }
+add { key = "speciesOrder", category = "Gameplay", label = "Species Order", type = "choice", default = "random",
+    options = { { value = "random", label = "New Each Run" }, { value = "classic", label = "Always the Same" } },
+    desc = "The order you meet the colony's species in. New Each Run shuffles it, so bees, wasps and termites can show up early." }
 add { key = "eliteFrequency", category = "Gameplay", label = "Elite Ants", type = "choice", default = 1,
     options = { { value = 0, label = "Off" }, { value = 0.5, label = "Rare" }, { value = 1, label = "Normal" }, { value = 2, label = "Lots" } },
     desc = "How often tougher elite ants (Aggressive, Gilded, Armored...) show up. They start appearing from wave 2." }

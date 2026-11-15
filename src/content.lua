@@ -99,6 +99,9 @@ Content.stages = Registry.new("stage", {
 -- Planned registries, ready for content: bosses and run events (swarm surges, hazards, ...).
 Content.bosses = Registry.new("boss", { required = { "name", "enemy" } })
 Content.events = Registry.new("event", { required = { "name" } })
+-- Wave modifiers (Swarm, Ambush, Shield Wall...): content/wavemods/_template.lua, src/game/pacing.lua.
+Content.wavemods = Registry.new("wavemod", { required = { "name" },
+    defaults = { description = "", color = { 1, 0.8, 0.4 }, weight = 10, minWave = 3 } })
 
 -- Game modes: wave structures (who comes, how hard, when the run ends). content/modes/_template.lua.
 Content.modes = Registry.new("mode", {
@@ -114,7 +117,7 @@ Content.achievements = Registry.new("achievement", {
     defaults = { description = "", category = "Misc", goal = 1 },
 })
 
-Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skilltrees", "items", "stages", "bosses", "events", "modes", "achievements" }
+Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skilltrees", "items", "stages", "bosses", "events", "wavemods", "modes", "achievements" }
 
 -- Weather spells (visual only): see content/weather/_template.lua and src/game/weather.lua.
 Content.weather = Registry.new("weather", { required = { "name" }, defaults = { weight = 10 } })

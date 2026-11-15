@@ -24,6 +24,7 @@ local function blankProfile()
         playTime = 0, damageTaken = 0, itemsTaken = 0, itemsEaten = 0,
         characters = {},     -- character id -> { runs, wins, kills, bestWave }
         modes = {},          -- game mode id -> { runs, wins, bestWave }
+        daily = {},          -- daily run date "YYYY-MM-DD" -> best { wave, kos, won, character }
         history = {},        -- newest first, see Records.endRun
         achievements = {},   -- achievement id -> os.time() it unlocked
     }
@@ -106,7 +107,7 @@ function Records.track(world, info)
         kills = 0, elites = 0, queens = 0, killsBy = {}, killsByFamily = {},
         wave = 0, wavesCleared = 0, flawlessWaves = 0, waveDamage = 0,
         damageTaken = 0, itemsTaken = 0, itemsEaten = 0, time = 0,
-        won = false, started = os.time(), checkT = 0,
+        won = false, started = os.time(), checkT = 0, daily = world.daily,
     }
     Records.run = run
     p.runs = p.runs + 1
@@ -210,6 +211,19 @@ function Records.endRun(outcome)
     p.bestCombo = math.max(p.bestCombo, w.bestCombo or 0)
     local level = w.player.skills and w.player.skills.level or 0
     p.bestLevel = math.max(p.bestLevel, level)
+    -- the daily run keeps its best result per day (furthest wave, then most KOs)
+    if run.daily then
+        local b = p.daily[run.daily]
+        local kos = w.kos or run.kills
+        if not b or run.wave > b.wave or (run.wave == b.wave and kos > b.kos) then
+            p.daily[run.daily] = { wave = run.wave, kos = kos, won = run.won, character = run.character }
+        end
+        -- only the last few weeks are kept
+        local keys = {}
+        for k in pairs(p.daily) do keys[#keys + 1] = k end
+        table.sort(keys)
+        for i = 1, #keys - 30 do p.daily[keys[i]] = nil end
+    end
     -- a run that never got going (quit in the first seconds) isn't worth a history line
     if run.time >= 5 or run.kills > 0 then
         -- the most-killed species of the run, for the history line
