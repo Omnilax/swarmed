@@ -296,6 +296,21 @@ function Spawner:update(dt)
     end
 end
 
+-- What the next wave will bring, for the HUD's next-wave preview during a break:
+-- { wave, boss, final, newSpecies (def or nil), modifiers = { def with name, description?, color? } }.
+-- Wave modifiers come from self:modifiersFor(n) when the spawner has it, else self.nextModifiers.
+-- nil in endless mode (no waves).
+function Spawner:preview()
+    if self.endless then return nil end
+    local n, cfg = self.wave + 1, self.cfg
+    local final = self:isFinal(n)
+    local boss = final or (cfg.bossEvery > 0 and n % cfg.bossEvery == 0)
+    local fresh
+    if #self.knownList == 0 or (not boss and (n - 1) % cfg.introEvery == 0) then fresh = self:nextSpecies() end
+    local mods = (self.modifiersFor and self:modifiersFor(n)) or self.nextModifiers or {}
+    return { wave = n, boss = boss, final = final, newSpecies = fresh, modifiers = mods }
+end
+
 -- Seconds of breather after a wave (and its item choice), from Settings "waveBreak".
 function Spawner:breakLength()
     local mode = Settings.get("waveBreak")

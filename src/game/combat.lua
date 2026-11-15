@@ -42,6 +42,10 @@ function Combat.damage(world, e, base, opts)
     if e.behavior.onHit and not opts.dot then dmg = dmg * (e.behavior.onHit(e, world, opts, dmg) or 1) end
     dmg = math.max(1, util.round(dmg))
 
+    -- run summary: damage by source (src/game/runstats.lua), counting only what the ant had left
+    local RunStats = require("src.game.runstats")
+    local label = RunStats.label(world, opts)
+    if world.runStats then world.runStats:dealtHit(math.min(dmg, math.max(0, e.hp)), label) end
     e.hp = e.hp - dmg
     e.flash = 0.09
     e.squash = 0.12
@@ -54,6 +58,7 @@ function Combat.damage(world, e, base, opts)
     if opts.poison then
         e.poisonT = math.max(e.poisonT, opts.poison[2])
         e.poisonDps = math.max(e.poisonDps, opts.poison[1])
+        e.poisonSrc = label         -- its venom ticks count for whoever applied it
     end
     if opts.corrode then
         if e.corrodeT <= 0 then e.corrodeMul = 1 end
@@ -65,7 +70,7 @@ function Combat.damage(world, e, base, opts)
         e.slowT = math.max(e.slowT, opts.slow[2])
         e.slowMul = math.min(e.slowT > opts.slow[2] and e.slowMul or 1, opts.slow[1])
     end
-    world:damageNumber(e.x, e.y, dmg, crit)
+    world:damageNumber(e.x, e.y, dmg, crit, e)
     world.particles:sparks(e.x, e.y, crit and 6 or 2, crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }, opts.kbx or 0, opts.kby or 0)
     Audio.play("hit")
 

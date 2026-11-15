@@ -7,6 +7,7 @@ return {
     name = "Mighty",                 -- shown in the catalogue and as a prefix ("Mighty Worker Ant")
     description = "What makes this elite different, for the catalogue.",
     color = "#ff4040",               -- tint, aura and light colour
+    safeColor = "#d55e00",            -- with Colourblind-Safe Colours on (Okabe-Ito)
     hp = 2, damage = 1.3, speed = 1.1, mass = 1.5, scale = 1.2,
     params = { cooldown = 0.7 },      -- multipliers for numeric behaviour params (cooldowns, ranges...)
     armor = nil,                      -- 0..1: fraction of every hit ignored

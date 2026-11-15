@@ -251,7 +251,12 @@ function Inventory:trigger(name, ctx)
                 local chance = proc.chance
                 if type(chance) == "function" then chance = chance(stacks) end
                 if chance == nil or love.math.random() < chance * luck then
+                    -- the damage it does counts for this item in the run summary
+                    local w = ctx.world
+                    local prev = w and w.dmgSrc
+                    if w then w.dmgSrc = def.name end
                     proc.effect(ctx, stacks)
+                    if w then w.dmgSrc = prev end
                     -- the sandbox's proc log listens here (every-frame ticks are left out)
                     if self.onProc and name ~= "onTick" then self.onProc(def, name) end
                 end

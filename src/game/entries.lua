@@ -15,6 +15,7 @@
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 local Sprites = require("src.gfx.sprites")
+local Palette = require("src.ui.palette")
 
 local Entries = {}
 
@@ -270,10 +271,10 @@ function Entries.drawGround(spawner, time)
         end
         if not h.open then
             -- still opening: a pulsing warning rim
-            lg.setColor(1, 0.55, 0.25, 0.55 + 0.35 * math.sin(time * 14))
-            lg.ellipse("line", x, y + 1, w + 5, (w + 5) * 0.5)
+            local a = 0.55 + 0.35 * math.sin(time * 14)
+            Palette.ring(x, y + 1, w + 5, (w + 5) * 0.5, { 1, 0.55, 0.25 }, a)
             local r = 34 - 26 * k
-            lg.ellipse("line", x, y + 1, w + r, (w + r) * 0.5)
+            Palette.ring(x, y + 1, w + r, (w + r) * 0.5, { 1, 0.55, 0.25 }, a)
         end
     end
     for _, pt in ipairs(spawner.portals) do
@@ -282,13 +283,12 @@ function Entries.drawGround(spawner, time)
         local pulse = 0.5 + 0.5 * math.sin(time * (8 + 10 * k))
         if pt.kind == "drop" then
             -- a shadow growing as they come down, and a ring marking where
-            lg.setColor(0, 0, 0, 0.15 + 0.3 * k)
+            local hc = Palette.contrast()
+            lg.setColor(0, 0, 0, (hc and 0.45 or 0.15) + (hc and 0.4 or 0.3) * k)
             lg.draw(atlas, glow, x, y + 1, 0, 0.6 + 1.6 * k, (0.6 + 1.6 * k) * 0.5, 8, 8)
-            lg.setColor(1, 0.85, 0.4, 0.45 + 0.4 * pulse)
             local r = 30 - 18 * k
-            lg.ellipse("line", x, y + 1, r, r * 0.5)
-            r = 12
-            lg.ellipse("line", x, y + 1, r, r * 0.5)
+            Palette.ring(x, y + 1, r, r * 0.5, { 1, 0.85, 0.4 }, 0.45 + 0.4 * pulse)
+            Palette.ring(x, y + 1, 12, 6, { 1, 0.85, 0.4 }, 0.45 + 0.4 * pulse)
         else
             -- heaving soil: a mound that grows and cracks, with a warning rim
             local big = pt.kind == "ringspot" and 0.7 or 1
@@ -304,9 +304,8 @@ function Entries.drawGround(spawner, time)
                 lg.line(x + sh, y - k, x + sh + math.cos(a) * w * k, y - k + math.sin(a) * w * 0.45 * k)
             end
             -- a warning ring closing in on the mound
-            lg.setColor(1, 0.45, 0.2, 0.45 + 0.4 * pulse)
             local r = w + (30 - 24 * k) * big
-            lg.ellipse("line", x, y + 1, r, r * 0.5)
+            Palette.ring(x, y + 1, r, r * 0.5, { 1, 0.45, 0.2 }, 0.45 + 0.4 * pulse)
         end
     end
     lg.setColor(1, 1, 1, 1)

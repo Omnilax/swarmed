@@ -14,6 +14,8 @@ local util = require("src.core.util")
 local Sprites = require("src.gfx.sprites")
 local Audio = require("src.core.audio")
 local Combat = require("src.game.combat")
+local RunStats = require("src.game.runstats")
+local Palette = require("src.ui.palette")
 
 local Hazards = {}
 Hazards.__index = Hazards
@@ -27,19 +29,27 @@ end
 -- a wall until it has caught `strength` ants or runs out of `life`.
 --   { x1, y1, x2, y2, life, strength, hold (seconds stuck), damage (per catch), max (walls kept) }
 function Hazards:addWall(w)
+    RunStats.tag(self.world, w)
     w.t, w.maxLife, w.caught, w.wobble = 0, w.life, 0, 0
     self.walls[#self.walls + 1] = w
     while #self.walls > (w.max or 3) do table.remove(self.walls, 1) end
     return w
 end
 
+-- Who made it (for the death recap): the enemy acting right now, if any.
+local function maker(world, h)
+    if h.by == nil then h.by = RunStats.enemyName(world.actingEnemy) or false end
+end
+
 function Hazards:addZone(z)
+    maker(self.world, z)
     z.t, z.maxLife = 0, z.life
     self.zones[#self.zones + 1] = z
     return z
 end
 
 function Hazards:shoot(s)
+    if s.friendly then RunStats.tag(self.world, s) else maker(self.world, s) end
     s.z, s.vz, s.t = s.z or 6, s.vz or 40, 0
     self.shots[#self.shots + 1] = s
     return s
@@ -81,7 +91,7 @@ function Hazards:updateWalls(dt)
                         e.kvx, e.kvy = 0, 0
                         w.caught = w.caught + 1
                         w.wobble = 1
-                        if (w.damage or 0) > 0 then Combat.damage(world, e, w.damage, { knockback = 0, noCrit = true, dot = true }) end
+                        if (w.damage or 0) > 0 then Combat.damage(world, e, w.damage, { knockback = 0, noCrit = true, dot = true, source = w._src }) end
                     end
                 end
             end
@@ -107,14 +117,23 @@ function Hazards:update(dt)
             if inside and z.damage then
                 -- hurts in quarter-second ticks so it doesn't spam tiny numbers
                 z.tick = (z.tick or 0) + dt
-                if z.tick >= 0.25 then z.tick = z.tick - 0.25 p:hurt(z.damage * 0.25, "zone") end
+                if z.tick >= 0.25 then
+                    z.tick = z.tick - 0.25
+                    world.hitBy = z.by or nil
+                    p:hurt(z.damage * 0.25, "zone")
+                    world.hitBy = nil
+                end
             end
             if inside and z.pull and p.dashT <= 0 then
                 local d = math.sqrt(dx * dx + dy * dy) + 0.001
                 local k = math.min(d, z.pull * dt * (0.4 + 0.6 * d / r))
                 p.x, p.y = p.x - dx / d * k, p.y - dy / d * k
             end
-            if z.update then z.update(world, z, dt, inside) end
+            if z.update then
+                local prev = RunStats.enter(world, z)
+                z.update(world, z, dt, inside)
+                RunStats.leave(world, prev)
+            end
             if z.enemySlow then
                 -- webs: ants inside are slowed (and lightly hurt)
                 local list, n = world:queryEnemies(z.x, z.y, r)
@@ -171,7 +190,7 @@ function Hazards:update(dt)
                     s.hitSet[e] = true
                     local nx, ny = util.normalize(s.vx, s.vy)
                     Combat.damage(world, e, s.damage, { knockback = s.knockback or 70, kbx = nx, kby = ny, procDepth = s.procDepth or 1, slow = s.slow,
-                        poison = s.poison, corrode = s.corrode, stun = s.stun })
+                        poison = s.poison, corrode = s.corrode, stun = s.stun, source = s._src })
                     s.pierce = s.pierce - 1
                     if s.pierce < 0 then done = true break end
                 end
@@ -184,7 +203,9 @@ function Hazards:update(dt)
                 local dx, dy = p.x - s.x, p.y - s.y
                 if not p.dead and dx * dx + dy * dy < (L.r + p.radius) ^ 2 then
                     hit = true
+                    world.hitBy = s.by or nil
                     p:hurt(s.damage, "pebble")
+                    world.hitBy = nil
                     if L.slow then p:slow(L.slow, L.slowTime or 0.8) end
                 end
                 world:addFx({ kind = "ring", x = s.x, y = s.y, r = L.r, life = 0.18, color = { 0.8, 0.75, 0.65 } })
@@ -195,14 +216,21 @@ function Hazards:update(dt)
             local rr = p.radius + s.r
             hit = not p.dead and dx * dx + dy * dy < rr * rr
             if hit then
+                world.hitBy = s.by or nil
                 p:hurt(s.damage, "acid")
+                world.hitBy = s.by or nil
                 if s.venom then p:poison(s.venom.dps, s.venom.time) end
+                world.hitBy = nil
                 if s.onHitPlayer then s.onHitPlayer(world, s, p) end
             end
         end
         if hit or done or s.t >= s.life or s.x < 0 or s.y < 0 or s.x > world.size or s.y > world.size then
             table.remove(self.shots, i)
-            if s.onEnd then s.onEnd(world, s) end
+            if s.onEnd then
+                local prev = RunStats.enter(world, s)
+                s.onEnd(world, s)
+                RunStats.leave(world, prev)
+            end
             if not s.pebble then
                 world.particles:burst(s.x, s.y, 5, { s.color }, 50, 40, { stain = true, grav = 300 })
                 if s.splat then world.pendingSplats[#world.pendingSplats + 1] = { kind = "splat", s.x, s.y, s.color, 3, s.vx / 200, s.vy / 200 } end
@@ -290,7 +318,7 @@ function Hazards:drawGround()
         local sx, sy = Iso.toScreen(z.x, z.y)
         local grow = math.min(1, z.t / 0.3)
         local fade = math.min(1, (z.maxLife - z.t) / 1.5)
-        local c = z.color
+        local c = Palette.zone(z)
         local k = z.r / 9 * grow
         if z.draw then
             z.draw(z, sx, sy, fade)
@@ -338,8 +366,7 @@ function Hazards:drawAir()
             -- landing marker: a ring on the ground that closes in as the stone falls
             local tx, ty = Iso.toScreen(s.lob.x, s.lob.y)
             local k = math.min(1, s.t / math.max(0.1, s.lob.flight or 0.9))
-            lg.setColor(1, 0.8, 0.5, 0.25 + 0.45 * k)
-            lg.ellipse("line", tx, ty, s.lob.r * (1.6 - 0.6 * k), s.lob.r * 0.5 * (1.6 - 0.6 * k))
+            Palette.ring(tx, ty, s.lob.r * (1.6 - 0.6 * k), s.lob.r * 0.5 * (1.6 - 0.6 * k), { 1, 0.8, 0.5 }, 0.25 + 0.45 * k)
         end
         if s.pebble and not s.friendly then
             -- enemy stone: has to read at night, so a firm shadow, a pale halo, a short dust
@@ -365,9 +392,10 @@ function Hazards:drawAir()
             lg.setColor(1, 0.97, 0.9, 1)
             lg.draw(atlas, Sprites.pixel, px + 1, py + 1, 0, 1, 1)
         else
-            lg.setColor(0, 0, 0, 0.3)
+            local sc = Palette.shot(s)
+            lg.setColor(0, 0, 0, Palette.contrast() and not s.friendly and 0.6 or 0.3)
             lg.draw(atlas, glow, gx, gy, 0, 0.35, 0.18, 8, 8)
-            lg.setColor(s.color[1], s.color[2], s.color[3], 0.9)
+            lg.setColor(sc[1], sc[2], sc[3], 0.9)
             lg.draw(atlas, glow, ax, ay, 0, 0.45, 0.45, 8, 8)
             lg.setColor(1, 1, 0.8, 1)
             lg.draw(atlas, Sprites.pixel, math.floor(ax), math.floor(ay), 0, 2, 2)

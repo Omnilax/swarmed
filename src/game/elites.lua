@@ -41,8 +41,13 @@ function Elites.params(def, elite)
     return out
 end
 
--- Colour of an elite as {r, g, b} (cached on the def).
+-- Colour of an elite as {r, g, b} (cached on the def). With "Colourblind-Safe Colours" on it is
+-- the affix's safeColor (an Okabe-Ito colour), when it has one.
 function Elites.color(elite)
+    if elite.safeColor and Settings.get("safePalette") then
+        elite._cs = elite._cs or util.hex(elite.safeColor)
+        return elite._cs
+    end
     elite._c = elite._c or util.hex(elite.color)
     return elite._c
 end

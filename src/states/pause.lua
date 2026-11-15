@@ -17,6 +17,7 @@ function Pause.new(game)
         onBack = function() State.pop() end,
         items = {
             { type = "button", label = "Resume", onActivate = function() State.pop() end },
+            { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
             { type = "button", label = "Settings", onActivate = function() State.push(require("src.states.settings").new()) end },
             { type = "button", label = "Restart", onActivate = function() game:restart() end },
             { type = "button", label = "Main Menu", onActivate = function() State.switch(require("src.states.menu").new()) end },
@@ -24,7 +25,7 @@ function Pause.new(game)
         rect = function()
             local w, h = love.graphics.getDimensions()
             local mw = Theme.u(300)
-            return math.floor((w - mw) / 2), math.floor(h * 0.36), mw, Theme.u(46) * 4
+            return math.floor((w - mw) / 2), math.floor(h * 0.36), mw, Theme.u(46) * 5
         end,
     })
     return self

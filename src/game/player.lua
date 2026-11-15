@@ -11,6 +11,7 @@ local Stats = require("src.game.stats")
 local Inventory = require("src.game.inventory")
 local Skills = require("src.game.skills")
 local Stamina = require("src.game.stamina")
+local RunStats = require("src.game.runstats")
 
 local Player = {}
 Player.__index = Player
@@ -19,7 +20,9 @@ local DASH_TIME, DASH_SPEED = 0.16, 420
 Player.DASH_SPEED = DASH_SPEED
 
 -- Queue something for later (attacks with several beats).
-function Player:after(t, fn) self.delayed[#self.delayed + 1] = { t = t, fn = fn, move = self.curMove } end
+function Player:after(t, fn)
+    self.delayed[#self.delayed + 1] = { t = t, fn = fn, move = self.curMove, src = self.world.dmgSrc }
+end
 
 -- Move fast along (dx, dy) for `dist` units, like a dash (afterimages included). Only the
 -- start of a dash is untouchable (DASH_GUARD of it); the tail end can be bitten, so dashing
@@ -216,7 +219,9 @@ function Player:update(dt)
         local wasBlocking = self.blocking
         local held = not demo and Input.down("dash")
         if dd.blocked then held = Stamina.guard(self, dt, dp, held) end
+        local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
         dd.update(self, world, dt, dp, held)
+        RunStats.leave(world, prevSrc)
         if wasBlocking and not self.blocking and dd.blocked then self:releaseShove(dp) end
         if (self.blocking or self.holdMode) and not (self._anims and self._anims.dash) then Anim.move(self, "dash", dp) end
     elseif not demo and not stunned and Input.pressed("dash") and self.dashT <= 0.04 and not self.grapple
@@ -226,7 +231,9 @@ function Player:update(dt)
         if self.moving then dx, dy = wx, wy end
         local px, py = self:pointer()
         self.dashHop, self.dashHit, self.dashT0 = 0, nil, nil
+        local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
         dd.start(self, world, dx, dy, dp, px, py)
+        RunStats.leave(world, prevSrc)
         -- jumps (a hop of any height) and flights stay untouchable for nearly the whole move;
         -- a dash def or a character's dash params can set their own share with iframes = 0..1
         local guard = dp.iframes or dd.iframes
@@ -237,8 +244,10 @@ function Player:update(dt)
         Audio.play("dash")
         self.inventory:trigger("onDash", { world = world, player = self, procDepth = 0 })
     end
+    local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
     if (self.dashT > 0 or self.grapple) and dd.update and not dd.hold then dd.update(self, world, dt, dp) end
     if dd.tick then dd.tick(self, world, dt, dp) end      -- dashes with lasting effects (stink shield)
+    RunStats.leave(world, prevSrc)
     -- hops: height follows an arc over the dash
     if self.dashT > 0 and self.dashHop > 0 and self.dashT0 then
         self.z = math.sin((1 - self.dashT / self.dashT0) * math.pi) * self.dashHop
@@ -311,7 +320,9 @@ function Player:update(dt)
         -- specials with a held part (drawing a web wall, munching a snatched ant) or a carry
         if sec.type.update then
             local px, py = self:pointer()
+            local prevSrc = RunStats.push(world, RunStats.moveName(self, "secondary"))
             sec.type.update(self, world, dt, sec.params, not demo and Input.down("secondary"), px, py)
+            RunStats.leave(world, prevSrc)
         end
         if not demo and not stunned and not self.blocking and sec.timer <= 0 and not sec.type.manual and Input.pressed("secondary") then
             local px, py = self:pointer()
@@ -337,7 +348,9 @@ function Player:update(dt)
     if atk.type.update then
         local free = not self.blocking and not stunned
         local auto = (Settings.get("autoAttack") or demo) and (target ~= nil or world:nearestEnemy(self.x, self.y, range * 1.2) ~= nil)
+        local prevSrc = RunStats.push(world, RunStats.moveName(self, "attack"))
         atk.type.update(self, world, dt, atk.params, free and not demo and Input.down("attack"), free and auto)
+        RunStats.leave(world, prevSrc)
     end
     if atk.timer <= 0 and (not self.blocking or dd.attackWhileBlocking) and not stunned and not atk.type.manual then
         local want
@@ -367,7 +380,9 @@ function Player:update(dt)
         if d.t <= 0 then
             table.remove(self.delayed, i)
             self.curMove = d.move
+            local prevSrc = RunStats.push(world, d.src)
             d.fn(self, world)
+            RunStats.leave(world, prevSrc)
             self.curMove = nil
         end
     end
@@ -489,6 +504,8 @@ function Player:poison(dps, time)
     if self.def.immune then return end     -- hissing roach: shrugs off every debuff
     self.venomDps = math.max(self.venomDps, dps)
     self.venomT = math.max(self.venomT, time)
+    local w = self.world
+    self.venomBy = RunStats.enemyName(w.actingEnemy) or w.hitBy or self.venomBy
 end
 
 -- Slow to `mul` x speed for `time` seconds (pebble daze).
