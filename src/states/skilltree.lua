@@ -316,14 +316,14 @@ function Tree:draw()
         lg.printf(n.desc, I.x + u(12), I.y + u(32), I.w - u(24))
         local stc = st == "available" and Theme.colors.good or (st == "maxed" and { 0.45, 0.9, 1 } or Theme.colors.bad)
         local txt = STATUS_TEXT[st]
-        if st == "available" and not useMouse then txt = "Press " .. (Input.lastDevice == "gamepad" and "A" or "Enter") .. " to learn" end
+        if st == "available" and not useMouse then txt = "Press " .. (Input.lastDevice == "gamepad" and "{pad:a}" or "{key:Enter}") .. " to learn" end
         if st == "excluded" then
             for _, x in ipairs(n.excludes) do
                 if sk:rank(x) > 0 then txt = "Locked: you took " .. self.tree.nodes[x].name end
             end
         end
         lg.setColor(stc)
-        lg.print(txt, I.x + u(12), I.y + I.h - u(22))
+        Theme.rich(txt, I.x + u(12), I.y + I.h - u(22), I.w - u(24), "left", stc)
     else
         lg.setFont(Theme.font(14))
         lg.setColor(COL.dim)

@@ -9,6 +9,8 @@ return {
     sprite = "dragonfly",
     model = { legs = "dragonfly_legs", body = "dragonfly_body", height = 2, lift = 3 },
     order = 18,
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Hold {dash} to fly: only flying enemies can reach you up there. Hold {secondary} to snatch an ant, then let go to drop it as a bomb.",
     radius = 6,
     scale = 0.95,
     stats = { maxHp = 30, moveSpeed = 200, dodge = 12, pickupRange = 70 },

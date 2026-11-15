@@ -10,6 +10,8 @@ return {
     sprite = "crab",
     model = { legs = "crab_legs", body = "crab_body", height = 4, lift = 2, stride = 1.2 },
     order = 15,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "{secondary} cuts an ant clean in two and is ready again in half a second: spam it. Your dash only goes sideways.",
     radius = 9,
     scale = 1.1,
     stats = { maxHp = 80, armor = 6, moveSpeed = 95 },

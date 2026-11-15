@@ -13,6 +13,8 @@ return {
     sprite = "emperor_scorpion",
     model = { legs = "emperor_scorpion_legs", body = "emperor_scorpion_body", height = 4, lift = 2, kneeUp = 1 },
     order = 14,
+    playstyle = "tank",          -- src/config/playstyles.lua
+    tip = "Hold {dash} to raise your claws as a wall that ants can't get through. Let go to shove the whole crowd back.",
     radius = 13,
     scale = 1.5,
     stats = { maxHp = 150, armor = 8, moveSpeed = 62, knockback = 40, damage = 10, area = 20 },

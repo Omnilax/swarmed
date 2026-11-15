@@ -111,7 +111,8 @@ add { key = "showKoCounter", category = "Gameplay", label = "KO Counter", type =
     desc = "Show the running KO count and combo." }
 add { key = "tutorialHints", category = "Gameplay", label = "Tutorial Hints", type = "toggle", default = true,
     desc = "Short tips the first time something comes up in a run. Turning it back on shows them all again." }
-add { key = "pauseOnFocusLost", category = "Gameplay", label = "Pause When Unfocused", type = "toggle", default = true }
+add { key = "pauseOnFocusLost", category = "Gameplay", label = "Pause When Unfocused", type = "toggle", default = true,
+    desc = "Pause when the window loses focus, the app goes to the background, or the controller in use is unplugged." }
 add { key = "telegraphs", category = "Gameplay", label = "Attack Warnings", type = "toggle", default = true,
     desc = "Show a warning before enemies charge or lunge." }
 
@@ -148,7 +149,11 @@ add { key = "vibration", category = "Controls", label = "Controller Vibration", 
 add { key = "touchControls", category = "Controls", label = "Touch Controls", type = "choice", default = "auto",
     options = { { value = "auto", label = "Auto" }, { value = "on", label = "Always" }, { value = "off", label = "Off" } },
     desc = "On-screen stick and buttons. Auto shows them once you touch the screen. Always also lets the mouse press them, for testing on a PC." }
-add { key = "touchSize", category = "Controls", label = "Touch Button Size", type = "slider", default = 100, min = 70, max = 150, step = 10, format = percent }
+add { key = "touchLayout", category = "Controls", label = "Touch Layout", type = "choice", default = "right",
+    options = { { value = "right", label = "Right Handed" }, { value = "left", label = "Left Handed" } },
+    desc = "Right Handed: move with the left thumb, buttons on the right. Left Handed swaps the sides." }
+add { key = "touchSize", category = "Controls", label = "Touch Button Size", type = "slider", default = 100, min = 60, max = 160, step = 10, format = percent,
+    desc = "How big the on-screen stick and buttons are." }
 add { key = "touchOpacity", category = "Controls", label = "Touch Button Opacity", type = "slider", default = 70, min = 20, max = 100, step = 10, format = percent }
 add { key = "touchStick", category = "Controls", label = "Touch Stick", type = "choice", default = "floating",
     options = { { value = "floating", label = "Floating" }, { value = "fixed", label = "Fixed" } },

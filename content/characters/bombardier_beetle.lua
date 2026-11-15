@@ -5,6 +5,8 @@ return {
     sprite = "bombardier_beetle",
     model = { legs = "bombardier_beetle_legs", body = "bombardier_beetle_body", height = 4, lift = 2 },
     order = 3,
+    playstyle = "ranged",          -- src/config/playstyles.lua
+    tip = "Your dash is an explosion: dash into a crowd, not away from it. The spray pierces, so line the ants up.",
     radius = 7,
     scale = 0.95,
     stats = { maxHp = 60, armor = 3, moveSpeed = 100, damage = 5, area = 10 },

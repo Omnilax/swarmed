@@ -131,6 +131,24 @@ function Screen.endWorld()
     love.graphics.setShader()
 end
 
+-- Like endWorld, but shows only a srcW x srcH patch from the middle of the world view, stretched
+-- into a box on screen (the character select move preview). Doesn't clear the screen.
+function Screen.endWorldInto(x, y, w, h, srcW, srcH)
+    love.graphics.setCanvas()
+    srcW, srcH = math.min(srcW, Screen.viewW), math.min(srcH, Screen.viewH)
+    Screen.boxQuad = Screen.boxQuad or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
+    local cw, ch = Screen.canvas:getDimensions()
+    Screen.boxQuad:setViewport(math.floor((Screen.viewW - srcW) / 2), math.floor((Screen.viewH - srcH) / 2), srcW, srcH, cw, ch)
+    local mode = Settings.get("colorblindMode")
+    Screen.post:send("brightness", Settings.get("brightness") / 100)
+    Screen.post:send("cbOn", CB[mode] and 1 or 0)
+    Screen.post:send("cb", CB[mode] or CB.protanopia)
+    love.graphics.setShader(Screen.post)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(Screen.canvas, Screen.boxQuad, x, y, 0, w / srcW, h / srcH)
+    love.graphics.setShader()
+end
+
 function Screen.toVirtual(wx, wy)
     return (wx - Screen.ox) / Screen.scale, (wy - Screen.oy) / Screen.scale
 end

@@ -20,7 +20,10 @@ function MainMenu.new()
         rowHeight = 46,
         rect = function()
             local w, h = love.graphics.getDimensions()
-            return Theme.u(70), math.floor(h * 0.42), Theme.u(300), Theme.u(46) * #self.menu.items
+            -- a long list (resume + play again + practice) starts higher so it still fits
+            local y = math.floor(h * (#self.menu.items > 8 and 0.34 or 0.42))
+            return Theme.u(70), y, math.min(w - Theme.u(90), Theme.u(520)),
+                math.min(h - y - Theme.u(36), Theme.u(self.menu.opts.rowHeight) * #self.menu.items)
         end,
     })
     self:buildItems()
@@ -41,13 +44,44 @@ function MainMenu:newDemo()
     Audio.muted = false
 end
 
-function MainMenu:buildItems()
-    local items = {
-        { type = "button", label = "Play", onActivate = function()
-            State.push(require("src.states.modeselect").new())
+-- Start a run straight away with a bug and mode (the starting items screen still comes first
+-- for modes that have one).
+function MainMenu.quickStart(character, gameMode)
+    local mode = Content.modes:get(gameMode)
+    local params = { mode = "run", character = character, gameMode = gameMode }
+    if mode and mode.chooseItems then
+        State.push(require("src.states.loadout").new(params, mode.chooseItems))
+    else
+        State.switch(require("src.states.game").new(params))
+    end
+end
 
-        end },
-    }
+function MainMenu:buildItems()
+    local items = {}
+    -- a run left with Save & Quit (or closed mid-run) carries on from where it was
+    local RunSave = require("src.game.runsave")
+    local snap = RunSave.peek()
+    if snap then
+        items[#items + 1] = { type = "button", label = "Resume: " .. RunSave.describe(snap), onActivate = function()
+            local s = RunSave.peek()
+            if s then State.switch(require("src.states.game").new(RunSave.params(s))) end
+        end }
+    end
+    items[#items + 1] = { type = "button", label = "Play", onActivate = function()
+        State.push(require("src.states.modeselect").new())
+    end }
+    -- the last bug and mode played, one press away
+    local last = require("src.game.prefs").get().last
+    local lc = last and Content.characters:get(last.character)
+    local lm = last and Content.modes:get(last.gameMode or "colony")
+    if lc and lm then
+        items[#items + 1] = { type = "button", label = "Play Again: " .. lc.name .. "  ·  " .. lm.name, onActivate = function()
+            MainMenu.quickStart(lc.id, lm.id)
+        end }
+    end
+    items[#items + 1] = { type = "button", label = "Practice", onActivate = function()
+        State.push(require("src.states.practice").new())
+    end }
     if Settings.get("devMode") then
         items[#items + 1] = { type = "button", label = "Sandbox", onActivate = function()
             State.switch(require("src.states.game").new({ mode = "sandbox" }))
@@ -73,6 +107,9 @@ function MainMenu:buildItems()
     if os ~= "Web" and os ~= "iOS" then
         items[#items + 1] = { type = "button", label = "Quit", onActivate = function() love.event.quit() end }
     end
+    -- more rows than usual: a little tighter so the list still fits under the title
+    local many = #items > 8
+    self.menu.opts.rowHeight, self.menu.opts.fontSize = many and 38 or 46, many and 22 or 26
     self.menu:setItems(items)
 end
 

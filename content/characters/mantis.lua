@@ -5,6 +5,8 @@ return {
     sprite = "mantis",
     model = { legs = "mantis_legs", body = "mantis_body", height = 3, lift = 4, kneeUp = 1.5 },
     order = 12,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "{secondary} snatches up to three ants: hold it to munch them for health, let go to fling them into the crowd.",
     radius = 7,
     scale = 1.05,
     stats = { maxHp = 30, moveSpeed = 115, critChance = 20, attackSpeed = 25, damage = 10 },

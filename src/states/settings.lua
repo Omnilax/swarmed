@@ -5,6 +5,7 @@ local Input = require("src.core.input")
 local Audio = require("src.core.audio")
 local Theme = require("src.ui.theme")
 local Menu = require("src.ui.menu")
+local Presets = require("src.config.settings_presets")
 
 local SettingsState = {}
 SettingsState.__index = SettingsState
@@ -27,6 +28,7 @@ end
 function SettingsState:build()
     local cat = self.categories[self.tab]
     local items = {}
+    if cat == "Video" then items[#items + 1] = SettingsState.presetItem() end
     for _, s in ipairs(Settings.schema) do
         if s.category == cat then
             local key = s.key
@@ -52,6 +54,31 @@ function SettingsState:build()
     end }
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() self:close() end }
     self.menu:setItems(items)
+end
+
+-- The Video tab's preset row (src/config/settings_presets.lua).
+function SettingsState.current()
+    for _, p in ipairs(Presets) do
+        local all = true
+        for k, v in pairs(p.values) do if Settings.get(k) ~= v then all = false break end end
+        if all then return p end
+    end
+end
+
+function SettingsState.applyPreset(p)
+    for k, v in pairs(p.values) do if Settings.byKey[k] then Settings.set(k, v) end end
+end
+
+function SettingsState.presetItem()
+    local opts = {}
+    for _, p in ipairs(Presets) do opts[#opts + 1] = { value = p.id, label = p.label } end
+    local desc = "Sets the graphics options below in one go (changing one after makes it Custom). Performance suits phones and browsers, Pretty a strong PC."
+    return {
+        type = "choice", label = "Preset", options = opts, desc = desc,
+        get = function() local p = SettingsState.current() return p and p.id or "custom" end,
+        set = function(v) for _, p in ipairs(Presets) do if p.id == v then SettingsState.applyPreset(p) end end end,
+        value = function() local p = SettingsState.current() return p and p.label or "Custom" end,
+    }
 end
 
 function SettingsState:close()

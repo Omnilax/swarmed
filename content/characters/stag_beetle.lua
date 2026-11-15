@@ -5,6 +5,8 @@ return {
     sprite = "stag_beetle",
     model = { legs = "stag_beetle_legs", body = "stag_beetle_body", height = 5, lift = 2 },
     order = 5,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "Slow swings, huge knockback. {dash} is a clumsy flight you can steer: aim it at the biggest crowd and crash down.",
     radius = 10,
     scale = 1.3,
     stats = { maxHp = 105, armor = 5, moveSpeed = 78, damage = 20, knockback = 100, attackSpeed = -10, area = 15 },

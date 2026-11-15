@@ -11,6 +11,8 @@ return {
     sprite = "hermit_crab",
     model = { legs = "hermit_crab_legs", body = "hermit_crab_body", height = 5, lift = 2 },
     order = 16,
+    playstyle = "tank",          -- src/config/playstyles.lua
+    tip = "Hold {dash} to hide in your shell: no damage, and you can still walk and pinch. Plant anemones with {secondary} where the ants will walk.",
     radius = 10,
     scale = 1.2,
     stats = { maxHp = 115, armor = 9, moveSpeed = 68 },

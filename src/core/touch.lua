@@ -6,6 +6,7 @@
 --
 -- Which buttons show depends on the top state's `touchControls` field:
 --   "game"      stick, Special, Dash, Attack (when Auto Attack is off), Bag, Pause
+--               (Touch Layout = Left Handed mirrors it: stick on the right, buttons on the left)
 --   "inventory" Turn, Eat, Close (taps on the bag are clicks)
 --   nil         none: taps are clicks, vertical drags scroll (mouse wheel)
 -- The game state can offer `touchStatus()` (cooldowns, sandbox panel) to the buttons.
@@ -62,6 +63,18 @@ local function unit()
     return math.min(w, h) / 6 * Settings.get("touchSize") / 100
 end
 
+-- Left Handed (Settings > Controls > Touch Layout) mirrors the whole layout.
+local function lefty() return Settings.get("touchLayout") == "left" end
+Touch.lefty = lefty
+
+-- Is a point on the stick's half of the screen?
+local function onStickSide(x)
+    local w = love.graphics.getWidth()
+    if lefty() then return x > w * 0.5 end
+    return x < w * 0.5
+end
+Touch.onStickSide = onStickSide
+
 local function status()
     local top = State.top()
     return top and top.touchStatus and top:touchStatus() or {}
@@ -106,13 +119,18 @@ function Touch.buttons()
         add { id = "turn", x = x, y = h - pad - r * 3.6, r = r, label = "TURN", action = "inventory_rotate", kind = "tap" }
         add { id = "eat", x = x, y = h - pad - r, r = r, label = "EAT", action = "inventory_alt", kind = "tap" }
     end
+    if lefty() then
+        for _, b in ipairs(list) do if b.id ~= "panel" then b.x = w - b.x end end
+    end
     return list
 end
 
 local function stickHome()
     local w, h = love.graphics.getDimensions()
     local s = unit()
-    return s * 0.35 + s * 1.05, h - s * 0.35 - s * 1.05, s * 0.8
+    local x = s * 0.35 + s * 1.05
+    if lefty() then x = w - x end
+    return x, h - s * 0.35 - s * 1.05, s * 0.8
 end
 
 local function buttonAt(x, y)
@@ -149,7 +167,7 @@ function Touch.pressed(id, x, y)
         elseif b.kind == "tap" or b.kind == "hold" or (b.kind == "aim" and not b.fireOnRelease) then
             Input.press(b.action)
         end
-    elseif top and top.touchControls == "game" and Touch.enabled() and x < love.graphics.getWidth() * 0.5
+    elseif top and top.touchControls == "game" and Touch.enabled() and onStickSide(x)
         and not (st.blocked and st.blocked(x, y)) then
         t.kind = "stick"
         if Settings.get("touchStick") == "fixed" then t.x0, t.y0 = stickHome() end
@@ -270,7 +288,7 @@ function Touch.mousepressed(x, y, b)
     if not (top and top.touchControls) then return false end
     local st = top.touchControls == "game" and status() or {}
     local onUi = st.blocked and st.blocked(x, y)
-    if not buttonAt(x, y) and (top.touchControls ~= "game" or onUi or x >= love.graphics.getWidth() * 0.5) then return false end
+    if not buttonAt(x, y) and (top.touchControls ~= "game" or onUi or not onStickSide(x)) then return false end
     Touch.pressed(MOUSE, x, y)
     return true
 end

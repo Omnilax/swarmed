@@ -7,7 +7,8 @@
 --   { type = "choice", label, get, set, options = { {value, label}, ... } }
 --   { type = "keybind", label, action, slot }
 --   { type = "header", label }   -- not selectable
--- Any item may have: desc (help text), disabled, value (function returning display text).
+-- Any item may have: desc (help text), disabled, value (function returning display text),
+-- star (draws a favourite star before the label).
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
@@ -210,6 +211,23 @@ function Menu:valueText(it)
     end
 end
 
+-- A five-pointed star centred on x, y (favourite marks).
+function Menu.star(x, y, r, color)
+    local pts = {}
+    for i = 0, 9 do
+        local a = -math.pi / 2 + i * math.pi / 5
+        local rr = (i % 2 == 0) and r or r * 0.45
+        pts[#pts + 1] = x + math.cos(a) * rr
+        pts[#pts + 1] = y + math.sin(a) * rr
+    end
+    love.graphics.setColor(color)
+    -- a star isn't convex: draw it as triangles from the centre
+    for i = 1, 10 do
+        local j = i % 10 + 1
+        love.graphics.polygon("fill", x, y, pts[i * 2 - 1], pts[i * 2], pts[j * 2 - 1], pts[j * 2])
+    end
+end
+
 function Menu:draw()
     local lg = love.graphics
     local c = Theme.colors
@@ -252,7 +270,14 @@ function Menu:draw()
                 if center then
                     lg.printf(it.label, x, ty, w, "center")
                 else
-                    lg.print(it.label, x + pad + ((focused and self.opts.plain) and Theme.u(6) or 0), ty)
+                    local lx = x + pad + ((focused and self.opts.plain) and Theme.u(6) or 0)
+                    if it.star then
+                        -- favourites: a small amber star before the name
+                        Menu.star(lx + Theme.u(6), ry + rh / 2, Theme.u(6), c.focus)
+                        lx = lx + Theme.u(18)
+                        lg.setColor(tc)
+                    end
+                    lg.print(it.label, lx, ty)
                     local v = self:valueText(it)
                     if it.type == "slider" then
                         local bx, by, bw, bh = self:sliderBar(x, ry, w, rh)

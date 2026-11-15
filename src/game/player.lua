@@ -190,8 +190,20 @@ function Player:update(dt)
     local world = self.world
     if self.dead then return end
     local demo = world.flags.demo     -- title-screen attract mode: wander and fight on its own
+    -- scripted buttons (character select's move preview, src/ui/movepreview.lua): { pressed = {}, down = {} }
+    local pilot = world.pilot
+    local function pressed(id)
+        if pilot then return pilot.pressed[id] == true end
+        return not demo and Input.pressed(id)
+    end
+    local function held(id)
+        if pilot then return pilot.down[id] == true end
+        return not demo and Input.down(id)
+    end
     local mx, my
-    if demo then
+    if pilot and pilot.mx then
+        mx, my = pilot.mx, pilot.my
+    elseif demo then
         local t = world.time * 0.35
         mx, my = math.cos(t) * 0.5, math.sin(t * 2) * 0.35
     else
@@ -202,7 +214,7 @@ function Player:update(dt)
     if stunned then
         mx, my = 0, 0
         -- struggle: mashing dash or attack wears the paralysis off faster
-        if not demo and (Input.pressed("dash") or Input.pressed("attack")) then self.stunT = self.stunT - 0.2 end
+        if pressed("dash") or pressed("attack") then self.stunT = self.stunT - 0.2 end
     end
     local mag = util.len(mx, my)
     local wx, wy = Iso.screenDirToWorld(mx, my)
@@ -214,12 +226,12 @@ function Player:update(dt)
     Stamina.update(self, dt)
     if dd.hold then
         local wasBlocking = self.blocking
-        local held = not demo and Input.down("dash")
-        if dd.blocked then held = Stamina.guard(self, dt, dp, held) end
-        dd.update(self, world, dt, dp, held)
+        local hold = held("dash")
+        if dd.blocked then hold = Stamina.guard(self, dt, dp, hold) end
+        dd.update(self, world, dt, dp, hold)
         if wasBlocking and not self.blocking and dd.blocked then self:releaseShove(dp) end
         if (self.blocking or self.holdMode) and not (self._anims and self._anims.dash) then Anim.move(self, "dash", dp) end
-    elseif not demo and not stunned and Input.pressed("dash") and self.dashT <= 0.04 and not self.grapple
+    elseif not stunned and pressed("dash") and self.dashT <= 0.04 and not self.grapple
         and ((dd.free and dd.free(self)) or Stamina.hasCharge(self)) then
         if not (dd.free and dd.free(self)) then Stamina.spendCharge(self) end
         local dx, dy = self.aimX, self.aimY
@@ -311,9 +323,9 @@ function Player:update(dt)
         -- specials with a held part (drawing a web wall, munching a snatched ant) or a carry
         if sec.type.update then
             local px, py = self:pointer()
-            sec.type.update(self, world, dt, sec.params, not demo and Input.down("secondary"), px, py)
+            sec.type.update(self, world, dt, sec.params, held("secondary"), px, py)
         end
-        if not demo and not stunned and not self.blocking and sec.timer <= 0 and not sec.type.manual and Input.pressed("secondary") then
+        if not stunned and not self.blocking and sec.timer <= 0 and not sec.type.manual and pressed("secondary") then
             local px, py = self:pointer()
             local ax, ay, l = util.normalize(px - self.x, py - self.y)
             if l < 1 then ax, ay = self.aimX, self.aimY end

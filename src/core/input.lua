@@ -19,6 +19,8 @@ Input.actions = {
     { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "e", "n" }, pad = { "back" }, rebind = true },
     { id = "inventory_alt", label = "Drop Item (inventory)", keys = { "f" }, pad = { "x" }, rebind = true },
     { id = "inventory_rotate", label = "Turn Item (inventory)", keys = { "r" }, pad = { "leftshoulder" }, rebind = true },
+    { id = "quick_restart", label = "Quick Restart (pause / defeat)", keys = { "r" }, pad = { "y" }, rebind = true },
+    { id = "ui_favourite", label = "Favourite Bug (bug select)", keys = { "f" }, pad = { "x" }, rebind = true },
 
     { id = "ui_up", keys = { "up", "w" }, pad = { "dpup" }, repeats = true },
     { id = "ui_down", keys = { "down", "s" }, pad = { "dpdown" }, repeats = true },
@@ -200,6 +202,27 @@ function Input.vibrate(strength, duration)
         j:setVibration(strength, strength, duration)
     end
 end
+
+-- What to press for an action on the device in use right now, for prompts and key caps:
+-- { pad = "a" } (a controller button, drawn as an icon by Theme), { mouse = 1 }, or { key = "SPACE" }.
+-- Touch has no keys: those prompts name the on-screen button instead (see Tutorial.key).
+local PAD_FALLBACK = { ui_confirm = "a", ui_back = "b" }
+function Input.glyph(id)
+    local a = byId[id]
+    if not a then return { key = tostring(id):upper() } end
+    if Input.lastDevice == "gamepad" then
+        local b = (a.pad and a.pad[1]) or PAD_FALLBACK[id]
+        if b then return { pad = b } end
+    end
+    if a.mouse and id ~= "attack" and Input.lastDevice ~= "gamepad" then return { mouse = a.mouse[1] } end
+    local k = Input.getKeys(id)[1]
+    return { key = k and Input.keyName(k) or "?" }
+end
+
+local KEY_NAMES = { ["return"] = "ENTER", escape = "ESC", lshift = "SHIFT", rshift = "SHIFT", space = "SPACE",
+    backspace = "BKSP", lctrl = "CTRL", rctrl = "CTRL", lalt = "ALT", ralt = "ALT", pagedown = "PG DN", pageup = "PG UP",
+    kpenter = "ENTER", up = "UP", down = "DOWN", left = "LEFT", right = "RIGHT", tab = "TAB" }
+function Input.keyName(k) return KEY_NAMES[k] or k:upper() end
 
 function Input.endFrame()
     for k in pairs(pressed) do pressed[k] = nil end

@@ -27,6 +27,8 @@ return {
     sprite = "lobster",
     model = { legs = "lobster_legs", body = "lobster_body", height = 5, lift = 2, kneeUp = 0.5, restLimbs = { CRUSHER, CUTTER } },
     order = 7,
+    playstyle = "tank",          -- src/config/playstyles.lua
+    tip = "Hold {attack} to open the crusher claw wider, let go to snap it shut. A full charge bites three and a half times as hard.",
     radius = 14,
     scale = 1.45,
     stats = { maxHp = 145, armor = 9, moveSpeed = 64, hpRegen = 0.5, area = 25 },

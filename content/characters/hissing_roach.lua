@@ -7,6 +7,8 @@ return {
     sprite = "hissing_roach",
     model = { legs = "hissing_roach_legs", body = "hissing_roach_body", height = 5, lift = 2, stride = 1.8 },
     order = 21,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "Nothing slows, poisons or stuns you. Hold {secondary} to draw a breath: the longer you hold it, the wider the hiss stuns.",
     radius = 9,
     scale = 1.15,
     immune = true,

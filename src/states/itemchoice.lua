@@ -226,8 +226,8 @@ function Choice:draw()
         if self.armed == i then
             lg.setFont(Theme.font(16, "bold"))
             local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
-            Theme.printShadow(Input.lastDevice == "gamepad" and "PRESS A AGAIN TO TAKE" or Input.lastDevice == "touch" and "TAP AGAIN TO TAKE" or "CLICK AGAIN TO TAKE",
-                x, y + c.h + u(10), { rc[1], rc[2], rc[3], pulse }, "center", c.w)
+            Theme.rich(Input.lastDevice == "gamepad" and "PRESS {pad:a} AGAIN TO TAKE" or Input.lastDevice == "touch" and "TAP AGAIN TO TAKE" or "CLICK AGAIN TO TAKE",
+                x, y + c.h + u(10), c.w, "center", rc, pulse)
         end
         if not ready then
             lg.setColor(0.02, 0.015, 0.02, 0.55 * (1 - self.t / Choice.ARM_TIME))
@@ -251,9 +251,9 @@ function Choice:draw()
         lg.setLineWidth(1)
     end
     lg.setFont(Theme.font(16, "bold"))
-    local skipKey = Input.lastDevice == "gamepad" and "B" or Input.lastDevice == "touch" and nil or "Esc"
-    Theme.printShadow(skipKey and ("SKIP (" .. skipKey .. ")") or "SKIP", r.x, r.y + math.floor((r.h - lg.getFont():getHeight()) / 2),
-        sf and COL.label or COL.dim, "center", r.w)
+    local skipKey = Input.lastDevice == "gamepad" and "{pad:b}" or Input.lastDevice == "touch" and nil or "{key:Esc}"
+    Theme.rich(skipKey and ("SKIP " .. skipKey) or "SKIP", r.x, r.y + math.floor((r.h - lg.getFont():getHeight()) / 2), r.w, "center",
+        sf and COL.label or COL.dim)
     if sa then
         lg.setFont(Theme.font(14, "bold"))
         local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
@@ -266,8 +266,8 @@ function Choice:draw()
     end
     lg.setFont(Theme.font(13))
     lg.setColor(COL.dim)
-    lg.printf(Input.lastDevice == "gamepad" and "Left / right to look, A to pick, A again to take" or Input.lastDevice == "touch" and "Tap an item to pick it, tap it again to take it" or "Click an item to pick it, click it again to take it",
-        0, cards[1].y + cards[1].h + u(44), w, "center")
+    Theme.rich(Input.lastDevice == "gamepad" and "{pad:dpad} to look, {pad:a} to pick, {pad:a} again to take" or Input.lastDevice == "touch" and "Tap an item to pick it, tap it again to take it" or "Click an item to pick it, click it again to take it",
+        0, cards[1].y + cards[1].h + u(44), w, "center", COL.dim)
     lg.setColor(1, 1, 1, 1)
 end
 

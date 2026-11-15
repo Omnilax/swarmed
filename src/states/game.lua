@@ -11,12 +11,16 @@ local Game = { touchControls = "game" }
 Game.__index = Game
 
 -- params: mode ("run" | "sandbox"), character (id), stage (id), gameMode (content/modes id),
--- startItems (item ids, from the starting items screen)
+-- startItems (item ids, from the starting items screen), resume (a saved run, src/game/runsave.lua),
+-- practice ({ wave, species, items, god }: src/states/practice.lua)
 function Game.new(params)
     local self = setmetatable({ params = params }, Game)
     self.mode = params.mode or "run"
+    local RunSave = require("src.game.runsave")
     self.world = World.new({ mode = self.mode, character = params.character, stage = params.stage,
-        gameMode = params.gameMode, startItems = params.startItems })
+        gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil })
+    if params.resume then RunSave.restore(self.world, params.resume) end
+    if params.practice then require("src.states.practice").apply(self.world, params.practice) end
 
     if self.mode == "sandbox" then
         self.world.flags.god = true
@@ -25,9 +29,37 @@ function Game.new(params)
     self.world.events:on("player_died", function()
         self.deathTimer = 1.2
     end)
-    -- real runs count toward stats and achievements (src/game/records.lua)
-    if self.mode == "run" then require("src.game.records").track(self.world, params) end
+    -- real runs count toward stats and achievements (src/game/records.lua); practice doesn't
+    if self.mode == "run" and not params.practice then
+        local run = require("src.game.records").track(self.world, params)
+        if params.resume then RunSave.restoreRecord(run, params.resume) end
+        require("src.game.prefs").played(params)
+        -- a new run replaces any saved one; the run saves itself at every wave clear
+        if not params.resume then RunSave.clear() end
+        self.world.events:on("wave_cleared", function() self.saveSoon = true end)
+        self.world.events:on("player_died", function() RunSave.clear() end)
+        self.world.events:on("run_finished", function() RunSave.clear() end)
+    end
     return self
+end
+
+-- Pause > Save & Quit: save the run and go back to the title screen.
+function Game:saveAndQuit()
+    local RunSave = require("src.game.runsave")
+    if not RunSave.save(self) then return false end
+    require("src.game.records").suspend()
+    self.suspended = true
+    State.switch(require("src.states.menu").new())
+    return true
+end
+
+-- The game is closing mid-run (love.quit): keep the run to resume next time.
+function Game:closing()
+    local RunSave = require("src.game.runsave")
+    if RunSave.save(self) then
+        require("src.game.records").suspend()
+        self.suspended = true
+    end
 end
 
 function Game:enter()
@@ -39,7 +71,11 @@ function Game:resume() self:applyCursor() end
 function Game:leave()
     love.mouse.setVisible(true)
     local Records = require("src.game.records")
-    if Records.run and Records.run.world == self.world then Records.endRun("quit") end
+    if Records.run and Records.run.world == self.world and not self.suspended then
+        Records.endRun("quit")
+        -- leaving any other way (Main Menu, Restart) gives the run up
+        if self.mode == "run" and not self.params.practice then require("src.game.runsave").clear() end
+    end
 end
 
 function Game:applyCursor()
@@ -47,8 +83,12 @@ function Game:applyCursor()
     love.mouse.setVisible(style == "system" or (self.sandbox ~= nil and self.sandbox.visible))
 end
 
+-- Same bug, same mode, same starting items (and for practice, the same setup), from wave 1.
 function Game:restart()
-    State.switch(Game.new(self.params))
+    local p = {}
+    for k, v in pairs(self.params) do p[k] = v end
+    p.resume = nil
+    State.switch(Game.new(p))
 end
 
 function Game:update(dt)
@@ -62,6 +102,11 @@ function Game:update(dt)
     end
     if Input.pressed("next_wave") then self:nextWave() end
     self.world:update(dt)
+    -- autosave a beat after each wave clear (phones and browser tabs can close at any moment)
+    if self.saveSoon then
+        self.saveSoon = nil
+        require("src.game.runsave").save(self)
+    end
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
     if won and self.world.time >= ((self.world.pendingChoice or {}).at or 0) then
@@ -127,7 +172,17 @@ function Game:touchStatus()
 end
 
 function Game:focus(f)
-    if not f and Settings.get("pauseOnFocusLost") and State.top() == self then
+    if not f and Settings.get("pauseOnFocusLost") and State.top() == self and not self.world.player.dead then
+        State.push(require("src.states.pause").new(self))
+    end
+end
+
+-- Minimised / hidden behind another app: the same as losing focus.
+function Game:visible(v) self:focus(v) end
+
+-- The controller in use was unplugged (or its battery died): pause so nobody dies holding nothing.
+function Game:joystickremoved(j, wasActive)
+    if wasActive and Input.lastDevice == "gamepad" and State.top() == self and not self.world.player.dead then
         State.push(require("src.states.pause").new(self))
     end
 end

@@ -9,6 +9,8 @@ return {
     sprite = "assassin_bug",
     model = { legs = "assassin_bug_legs", body = "assassin_bug_body", height = 3, lift = 3, kneeUp = 1 },
     order = 13,
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Hold {dash} to turn invisible. Stabs and shoves from the shadows hit much harder, and every stab drinks back a little health.",
     radius = 6,
     scale = 0.9,
     stats = { maxHp = 42, moveSpeed = 122, critChance = 12, dodge = 8 },

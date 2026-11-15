@@ -10,6 +10,8 @@ return {
     sprite = "pistol_shrimp",
     model = { legs = "pistol_shrimp_legs", body = "pistol_shrimp_body", height = 3, lift = 2, stride = 1.3 },
     order = 25,
+    playstyle = "ranged",          -- src/config/playstyles.lua
+    tip = "Hold {secondary} to aim, let go to fire a sniper jet through a whole line. Shots from the cloak ({dash}) hit twice as hard.",
     radius = 5,
     scale = 0.8,
     stats = { maxHp = 34, moveSpeed = 118, critChance = 15, critDamage = 200 },

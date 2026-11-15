@@ -677,6 +677,7 @@ local function script(flags)
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
     if flags["--skills"] then require("src.debug.selftest_skills")(wait, shot) love.event.quit() return end
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
+    if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end

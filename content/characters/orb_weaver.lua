@@ -5,6 +5,8 @@ return {
     sprite = "orb_weaver",
     model = { legs = "orb_weaver_legs", body = "orb_weaver_body", height = 4, lift = 4, kneeUp = 3 },
     order = 11,
+    playstyle = "control",          -- src/config/playstyles.lua
+    tip = "Webbed ants crawl. Hold {secondary} and sweep to spin a silk wall that holds the crowd back. {dash} grapples you to where you point.",
     radius = 7,
     scale = 1.0,
     stats = { maxHp = 40, moveSpeed = 100, area = 25, luck = 10 },

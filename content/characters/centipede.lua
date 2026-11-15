@@ -8,6 +8,8 @@ return {
         segments = 15, spacing = 2.3, height = 2, lift = 1.5, legColor = "#e0a030", wave = 0.11,
         leg = { { 0, -1.5, -0.4, -4.2, -1.6, -6.2 } } },
     order = 8,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "Your jabs are tiny but blindingly fast and venomous. {dash} flips you round to hit what is behind you.",
     radius = 6,
     scale = 1.0,
     stats = { maxHp = 55, moveSpeed = 145, attackSpeed = 20 },

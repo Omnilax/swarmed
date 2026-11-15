@@ -13,6 +13,8 @@ return {
     sprite = "vinegaroon",
     model = { legs = "vinegaroon_legs", body = "vinegaroon_body", height = 3, lift = 2, stride = 1.5 },
     order = 23,
+    playstyle = "ranged",          -- src/config/playstyles.lua
+    tip = "Corroded ants take more damage from everything. {secondary} grabs an ant: hold to soak it, let go to throw it as an acid bomb.",
     radius = 8,
     scale = 1.05,
     stats = { maxHp = 62, armor = 3, moveSpeed = 98, area = 10 },

@@ -5,6 +5,8 @@ return {
     sprite = "tiger_beetle",
     model = { legs = "tiger_beetle_legs", body = "tiger_beetle_body", height = 3, lift = 3 },
     order = 4,
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Hold {attack} to wind up a charge that tears through a line of ants. Hold {dash} to sprint, clipping ants aside.",
     radius = 5,
     scale = 0.85,
     stats = { maxHp = 35, moveSpeed = 175, dashCooldown = 0.8, critChance = 10 },

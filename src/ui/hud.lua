@@ -124,10 +124,10 @@ function Hud.draw(game, covered)
         Theme.printShadow("LV " .. sk.level, xx - u(48), xy - u(5), { 0.55, 0.85, 1, alpha })
         if sk.points > 0 then
             local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 5)
-            local key = require("src.core.input").lastDevice == "gamepad" and "Y, then RB" or "E, then Tab"
+            local key = require("src.core.input").lastDevice == "gamepad" and "{inventory}, then {pad:rightshoulder}" or "{inventory}, then {key:Tab}"
             if require("src.core.touch").enabled() then key = "BAG" end
-            Theme.printShadow(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, xy - u(22),
-                { 0.55, 0.9, 1, alpha * (sk.flashT > 0 and 1 or pulse) }, "center", w)
+            Theme.rich(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, xy - u(22) - u(3), w, "center",
+                { 0.55, 0.9, 1 }, alpha * (sk.flashT > 0 and 1 or pulse))
         end
     end
 
