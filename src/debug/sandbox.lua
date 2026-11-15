@@ -239,6 +239,9 @@ function Sandbox:playerTab()
             local sk = world.player.skills
             for _ = 1, 5 do world:grantXP(sk.toNext - sk.into) end
         end },
+        { type = "button", label = "Level-up card pick", desc = "Opens a level-up card pick now (src/game/levelups.lua)", onActivate = function()
+            require("src.game.levelups").grant(world, 1, { source = "sandbox", now = true })
+        end },
         { type = "button", label = "Reset skill tree", desc = "Refunds every point spent", onActivate = function()
             local sk = world.player.skills
             sk.points, sk.spent, sk.ranks = sk.points + sk.spent, 0, {}

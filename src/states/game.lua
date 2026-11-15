@@ -135,8 +135,17 @@ function Game:update(dt)
             return
         end
     end
-    -- wave cleared: choose an item (a beat after the last kill)
+    -- level-up cards: queued ones come at the end of the wave, right before the item choice
     local choice = self.world.pendingChoice
+    local lu = self.world.levelups
+    if lu and #lu.queue > 0 and not self.world.player.dead then
+        local e = lu:nextToShow(choice and self.world.time >= (choice.at or 0))
+        if e then
+            State.push(require("src.states.levelup").new(self, e))
+            return
+        end
+    end
+    -- wave cleared: choose an item (a beat after the last kill)
     if choice and self.world.time >= (choice.at or 0) then
         self.world.pendingChoice = nil
         if not self.world.player.dead then

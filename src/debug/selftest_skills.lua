@@ -60,6 +60,7 @@ return function(wait, shot)
     local world = game.world
     local pl = world.player
     world.spawner.enabled = false
+    world.levelups.disabled = true      -- the classic way: levels give skill points (--levelups tests cards)
 
     -- XP: one per kill, levels give points, the curve climbs
     local sk = pl.skills
@@ -78,18 +79,22 @@ return function(wait, shot)
     assert(sk:buy(n1.id), "could not buy a tier 1 node")
     assert(pl.attack.params.damage > hpBefore, "buying Heavy Horn did not raise sweep damage")
     assert(Content.characters:get("rhino_beetle").attack.damage == hpBefore, "skill mods leaked into the character def")
-    -- a run can't buy the whole tree by wave ~20
-    local earned, xp = 0, 0
-    for w = 1, 20 do xp = xp + 3 * 18 * w * (1 + (w - 1) * 0.15) end
-    local lv = 0
+    -- a run can't finish the whole tree by wave ~20: level-up cards offer at most one node a
+    -- pick (chance skillShare); a 15-wave run is ~12-15k XP, wave 20 ~20k
+    local cfg = require("src.config.levelups")
+    local lv, xp = 0, 20000
     while xp >= Skills.xpFor(lv + 1) do xp = xp - Skills.xpFor(lv + 1); lv = lv + 1 end
-    earned = lv
+    local offers = math.ceil(lv * cfg.skillShare)
     for _, t in ipairs(Content.skilltrees:all()) do
-        local cost = 0
-        for _, n in pairs(t.nodes) do cost = cost + n.cost * n.ranks end
-        assert(cost > earned, t.id .. " tree is cheap enough to finish in one run")
+        local ranks = 0           -- the cheapest full tree: per tier, the fork side with fewest ranks
+        for _, br in ipairs(t.branches) do
+            local byTier = {}
+            for _, n in ipairs(br.nodes) do byTier[n.tier] = math.min(byTier[n.tier] or math.huge, n.ranks) end
+            for _, r in pairs(byTier) do ranks = ranks + r end
+        end
+        assert(ranks > offers, t.id .. " tree (" .. ranks .. " ranks) can be finished in one run (" .. offers .. " node offers)")
     end
-    print(("[selftest] skills: ~%d points by wave 20, trees cost %d+"):format(earned, 30))
+    print(("[selftest] skills: level %d by wave 20, ~%d node offers"):format(lv, offers))
 
     -- the tree screen, via the bag's tab
     world:grantXP(400)

@@ -39,7 +39,9 @@ function RunSave.snapshot(game)
         continued = w.continued or nil, bonusPicks = w.bonusPicks,
         hp = p.hp, rows = p.inventory.rows,
         bag = {}, known = {}, usedQueens = {},
-        skills = { xp = p.skills and p.skills.xp or 0, ranks = util.deepcopy(p.skills and p.skills.ranks or {}) },
+        skills = { xp = p.skills and p.skills.xp or 0, ranks = util.deepcopy(p.skills and p.skills.ranks or {}),
+            points = p.skills and p.skills.points or 0, carded = p.skills and p.skills.carded or 0 },
+        levelups = w.levelups and w.levelups:snapshot() or nil,
         saved = os.time(),
         -- the run's seed and daily run (src/game/daily.lua), and the item choice's rerolls,
         -- bans and locked cards (src/game/choices.lua)
@@ -165,9 +167,13 @@ function RunSave.restore(world, snap)
                 sk.spent = sk.spent + node.cost * r
             end
         end
+        -- level-up cards bought nodes without points: the saved count wins (old saves: as before)
+        if snap.skills.points then sk.points, sk.carded = snap.skills.points, snap.skills.carded or 0 end
         p.skills = sk
         sk:apply()
     end
+    -- level-up cards: stat cards taken and picks still waiting
+    if world.levelups and snap.levelups then world.levelups:restore(snap.levelups) end
     if snap.blessings then require("src.game.gambles").restore(world, snap.blessings) end
     p.hp = math.max(1, math.min(snap.hp or p.stats:get("maxHp"), p.stats:get("maxHp")))
     -- the waves: species met and queens fought, then a breather before the next wave
