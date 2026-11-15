@@ -5,6 +5,8 @@ return {
     sprite = "scorpion",
     model = { legs = "scorpion_legs", body = "scorpion_body", height = 3, lift = 2, kneeUp = 1 },
     order = 6,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "After two pincer snaps comes a long tail sting that skewers a whole line. {dash} springs you backwards, stinging the spot you left.",
     radius = 8,
     scale = 1.05,
     stats = { maxHp = 62, armor = 4, moveSpeed = 100, critDamage = 180 },

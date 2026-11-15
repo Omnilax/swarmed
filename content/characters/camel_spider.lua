@@ -14,6 +14,8 @@ return {
     sprite = "camel_spider",
     model = { legs = "camel_spider_legs", body = "camel_spider_body", height = 3, lift = 2, stride = 2, kneeUp = 1 },
     order = 20,
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Hold {dash} to tunnel under the sand: nothing can hit you down there, and surfacing bites everything around you.",
     radius = 6,
     scale = 0.95,
     stats = { maxHp = 40, moveSpeed = 165, attackSpeed = 15 },

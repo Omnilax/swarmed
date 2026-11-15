@@ -4,6 +4,8 @@ return {
     sprite = "wolf_spider",
     model = { legs = "wolf_spider_legs", body = "wolf_spider_body", height = 4, lift = 3, kneeUp = 2.5 },
     order = 2,
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Fragile but quick. {dash} makes you vanish for a moment, so the ants lose track of you. {secondary} sends spiderlings to hunt.",
     radius = 6,
     scale = 0.9,
     stats = { maxHp = 38, moveSpeed = 150, critChance = 10, attackSpeed = 15, dodge = 6 },

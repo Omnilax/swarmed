@@ -124,8 +124,132 @@ function Theme.title(text, width)
     end
 end
 
+----------------------------------------------------------------------------------------------
+-- Controller button icons. Wherever a prompt names a button it can show it instead of a word:
+-- coloured face buttons, shoulder tabs, a d-pad cross and the two small middle buttons.
+
+-- Face button colours (the usual green A, red B, blue X, yellow Y).
+Theme.padColors = {
+    a = { 0.36, 0.72, 0.32 }, b = { 0.86, 0.3, 0.26 }, x = { 0.3, 0.52, 0.9 }, y = { 0.92, 0.74, 0.22 },
+}
+
+-- Names a prompt may use for a pad button -> the LÖVE gamepad button.
+local PAD_ALIASES = {
+    A = "a", B = "b", X = "x", Y = "y", LB = "leftshoulder", RB = "rightshoulder", LT = "triggerleft", RT = "triggerright",
+    START = "start", BACK = "back", MENU = "start", VIEW = "back", ["D-PAD"] = "dpad", DPAD = "dpad",
+    ["L-STICK"] = "leftstick", ["R-STICK"] = "rightstick", LS = "leftstick", RS = "rightstick",
+}
+local PAD_TEXT = { leftshoulder = "LB", rightshoulder = "RB", triggerleft = "LT", triggerright = "RT",
+    start = "START", back = "BACK", leftstick = "LS", rightstick = "RS", dpup = "", dpdown = "", dpleft = "", dpright = "", dpad = "" }
+
+-- The LÖVE button for a word in a prompt ("A", "RB", "LB/RB" -> list), or nil if it isn't one.
+function Theme.padButtons(word)
+    local out = {}
+    for part in tostring(word):upper():gmatch("[^/]+") do
+        part = part:gsub("^%s+", ""):gsub("%s+$", "")
+        local b = PAD_ALIASES[part]
+        if not b then return nil end
+        out[#out + 1] = b
+    end
+    return #out > 0 and out or nil
+end
+
+-- Width of a pad button icon h pixels tall.
+function Theme.glyphWidth(button, h)
+    if Theme.padColors[button] or button:match("^dp") or button == "dpad" or button:match("stick$") then return h end
+    local f = Theme.font("small", "bold")
+    return math.max(h * 1.3, f:getWidth(PAD_TEXT[button] or button:upper()) + h * 0.6)
+end
+
+-- Draw a pad button icon with its top-left at x, y, h pixels tall. Returns its width.
+function Theme.glyph(button, x, y, h, alpha)
+    local lg = love.graphics
+    local a = alpha or 1
+    local c = Theme.colors
+    local w = Theme.glyphWidth(button, h)
+    local cx, cy, r = x + w / 2, y + h / 2, h / 2
+    local face = Theme.padColors[button]
+    if face then
+        lg.setColor(0, 0, 0, 0.45 * a)
+        lg.circle("fill", cx + 1, cy + 1, r)
+        lg.setColor(face[1] * 0.55, face[2] * 0.55, face[3] * 0.55, a)
+        lg.circle("fill", cx, cy, r)
+        lg.setColor(face[1], face[2], face[3], a)
+        lg.circle("fill", cx, cy - 1, r - 1.5)
+        local f = Theme.font("small", "bold")
+        lg.setFont(f)
+        lg.setColor(1, 1, 1, a)
+        lg.printf(button:upper(), x, cy - f:getHeight() / 2 - 1, w, "center")
+    elseif button == "dpad" or button:match("^dp") then
+        -- a plus; the pressed arm (for dpup...) lights up
+        local t = h / 3
+        lg.setColor(0, 0, 0, 0.45 * a)
+        lg.rectangle("fill", x + t + 1, y + 1, t, h)
+        lg.rectangle("fill", x + 1, y + t + 1, h, t)
+        lg.setColor(c.panelHi[1], c.panelHi[2], c.panelHi[3], a)
+        lg.rectangle("fill", x + t, y, t, h)
+        lg.rectangle("fill", x, y + t, h, t)
+        lg.setColor(c.key[1], c.key[2], c.key[3], a)
+        local arm = ({ dpup = { x + t, y }, dpdown = { x + t, y + 2 * t }, dpleft = { x, y + t }, dpright = { x + 2 * t, y + t } })[button]
+        if arm then lg.rectangle("fill", arm[1], arm[2], t, t) end
+    elseif button:match("stick$") then
+        lg.setColor(0, 0, 0, 0.45 * a)
+        lg.circle("fill", cx + 1, cy + 1, r)
+        lg.setColor(c.panelHi[1], c.panelHi[2], c.panelHi[3], a)
+        lg.circle("fill", cx, cy, r)
+        lg.setColor(c.panelEdge[1], c.panelEdge[2], c.panelEdge[3], a)
+        lg.circle("fill", cx, cy, r * 0.55)
+        local f = Theme.font("small", "bold")
+        lg.setFont(f)
+        lg.setColor(c.key[1], c.key[2], c.key[3], a)
+        lg.printf(button == "leftstick" and "L" or "R", x, cy - f:getHeight() / 2, w, "center")
+    else
+        -- shoulders, triggers and the middle buttons: a rounded tab with its name
+        local rr = button:match("shoulder") and h * 0.45 or h * 0.3
+        lg.setColor(0, 0, 0, 0.45 * a)
+        lg.rectangle("fill", x + 1, y + 1, w, h, rr, rr)
+        lg.setColor(0.2, 0.18, 0.17, a)
+        lg.rectangle("fill", x, y, w, h, rr, rr)
+        lg.setColor(c.panelHi[1], c.panelHi[2], c.panelHi[3], a)
+        lg.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1, rr, rr)
+        local f = Theme.font("small", "bold")
+        lg.setFont(f)
+        lg.setColor(c.text[1], c.text[2], c.text[3], a)
+        lg.printf(PAD_TEXT[button] or button:upper(), x, cy - f:getHeight() / 2, w, "center")
+    end
+    return w
+end
+
+-- A key cap with a word on it. Returns its width.
+function Theme.keycap(text, x, y, h, alpha)
+    local lg = love.graphics
+    local c = Theme.colors
+    local a = alpha or 1
+    local f = lg.getFont()
+    local kw = f:getWidth(text) + Theme.u(10)
+    lg.setColor(c.panelEdge[1], c.panelEdge[2], c.panelEdge[3], a)
+    lg.rectangle("fill", x, y + 1, kw, h)
+    lg.setColor(c.panelHi[1] * 0.6, c.panelHi[2] * 0.6, c.panelHi[3] * 0.6, a)
+    lg.rectangle("fill", x, y - 1, kw, h)
+    lg.setColor(c.key[1], c.key[2], c.key[3], a)
+    lg.print(text, x + Theme.u(5), y + math.floor((h - f:getHeight()) / 2))
+    return kw
+end
+
+local function capWidth(f, text)
+    local pads = require("src.core.input").lastDevice == "gamepad" and Theme.padButtons(text)
+    local h = f:getHeight() + Theme.u(4)
+    if pads then
+        local w = 0
+        for i, b in ipairs(pads) do w = w + Theme.glyphWidth(b, h) + (i > 1 and Theme.u(3) or 0) end
+        return w, pads
+    end
+    return f:getWidth(text) + Theme.u(10)
+end
+
 -- Key hints: a row of little key caps, each followed by a word, centred on cx.
--- hints = { { "Esc", "Back" }, { "Q / E", "Tab" }, ... }. Returns the row's width.
+-- hints = { { "Esc", "Back" }, { "Q / E", "Tab" }, ... }. With a controller in use, cap words
+-- that name a pad button ("A", "LB/RB", "D-pad") are drawn as button icons. Returns the row's width.
 function Theme.hints(hints, cx, y, alpha)
     local lg = love.graphics
     local u = Theme.u
@@ -135,26 +259,132 @@ function Theme.hints(hints, cx, y, alpha)
     lg.setFont(f)
     local total, parts = 0, {}
     for i, hnt in ipairs(hints) do
-        local kw, lw = f:getWidth(hnt[1]) + u(10), f:getWidth(hnt[2])
-        parts[i] = { kw, lw }
+        local kw, pads = capWidth(f, hnt[1])
+        local lw = f:getWidth(hnt[2])
+        parts[i] = { kw, lw, pads }
         total = total + kw + u(6) + lw + (i < #hints and u(22) or 0)
     end
     local x = math.floor(cx - total / 2)
     local kh = f:getHeight() + u(4)
     for i, hnt in ipairs(hints) do
-        local kw, lw = parts[i][1], parts[i][2]
-        lg.setColor(c.panelEdge[1], c.panelEdge[2], c.panelEdge[3], a)
-        lg.rectangle("fill", x, y + 1, kw, kh)
-        lg.setColor(c.panelHi[1] * 0.6, c.panelHi[2] * 0.6, c.panelHi[3] * 0.6, a)
-        lg.rectangle("fill", x, y - 1, kw, kh)
-        lg.setColor(c.key[1], c.key[2], c.key[3], a)
-        lg.print(hnt[1], x + u(5), y + u(1))
+        local kw, lw, pads = parts[i][1], parts[i][2], parts[i][3]
+        if pads then
+            local gx = x
+            for _, b in ipairs(pads) do gx = gx + Theme.glyph(b, gx, y - 1, kh, a) + u(3) end
+            lg.setFont(f)
+        else
+            Theme.keycap(hnt[1], x, y, kh, a)
+        end
         lg.setColor(c.dim[1], c.dim[2], c.dim[3], a)
         lg.print(hnt[2], x + kw + u(6), y + u(1))
         x = x + kw + u(6) + lw + u(22)
     end
     lg.setColor(1, 1, 1, 1)
     return total
+end
+
+----------------------------------------------------------------------------------------------
+-- Prompts with buttons in them. Text may hold {action} tokens (an Input action id, e.g.
+-- "Press {dash} to dash"), drawn as the key cap, mouse button or controller icon for the device
+-- in use, and wraps like printf. {pad:a} / {key:Esc} name a button or key directly.
+
+local MOUSE_NAMES = { "LEFT CLICK", "RIGHT CLICK", "MIDDLE CLICK" }
+
+-- Split into words and button pieces: { text = "Press" } / { pad = "a" } / { key = "SPACE" }.
+local function tokens(text)
+    local Input = require("src.core.input")
+    local out = {}
+    local i = 1
+    while i <= #text do
+        local s, e, inner = text:find("{([%w_:%-%s]+)}", i)
+        local chunk = text:sub(i, (s or #text + 1) - 1)
+        for sp, word in chunk:gmatch("(%s*)(%S+)") do out[#out + 1] = { text = word, space = #sp > 0 or #out == 0 } end
+        if chunk:match("%s$") then out.trailing = true end
+        if not s then break end
+        local g
+        local kind, val = inner:match("^(%a+):(.+)$")
+        if kind == "pad" then g = { pad = val }
+        elseif kind == "key" then g = { key = val:upper() }
+        else
+            g = Input.glyph(inner)
+            if g.mouse then g = { key = MOUSE_NAMES[g.mouse] or "CLICK" } end
+            local Touch = require("src.core.touch")
+            if Touch.enabled() and Input.lastDevice == "touch" then
+                g = { key = ({ dash = "DASH", secondary = "SPECIAL", inventory = "BAG", attack = "ATTACK", pause = "II" })[inner] or g.key or "?" }
+            end
+        end
+        g.space = (s > 1 and text:sub(s - 1, s - 1):match("%s") ~= nil) or #out == 0
+        out[#out + 1] = g
+        out.trailing = false
+        i = e + 1
+    end
+    return out
+end
+
+local function pieceWidth(f, p, h)
+    if p.text then return f:getWidth(p.text) end
+    if p.pad then return Theme.glyphWidth(p.pad, h) end
+    return f:getWidth(p.key) + Theme.u(10)
+end
+
+-- Lay out rich text in lines no wider than limit: returns lines ({ pieces, width }), line height.
+function Theme.richLayout(text, limit)
+    local f = love.graphics.getFont()
+    local h = f:getHeight()
+    local gh = math.floor(h * 0.92)
+    local space = f:getWidth(" ")
+    local lines, cur, cw = {}, {}, 0
+    for _, p in ipairs(tokens(text)) do
+        local pw = pieceWidth(f, p, gh)
+        local gap = (#cur > 0 and p.space) and space or 0
+        if #cur > 0 and limit and cw + gap + pw > limit then
+            lines[#lines + 1] = { pieces = cur, width = cw }
+            cur, cw, gap = {}, 0, 0
+        end
+        p.x = cw + gap
+        p.w = pw
+        cur[#cur + 1] = p
+        cw = cw + gap + pw
+    end
+    lines[#lines + 1] = { pieces = cur, width = cw }
+    return lines, h
+end
+
+-- Width of the longest line, and the number of lines.
+function Theme.richSize(text, limit)
+    local lines = Theme.richLayout(text, limit)
+    local w = 0
+    for _, l in ipairs(lines) do w = math.max(w, l.width) end
+    return w, #lines
+end
+
+-- printf with buttons: align "left" | "center" | "right" inside width. color = text colour.
+function Theme.rich(text, x, y, width, align, color, alpha)
+    local lg = love.graphics
+    local f = lg.getFont()
+    local a = alpha or 1
+    local col = color or Theme.colors.text
+    local lines, h = Theme.richLayout(text, width)
+    local gh = math.floor(h * 0.92)
+    for li, line in ipairs(lines) do
+        local ox = x
+        if align == "center" then ox = x + math.floor((width - line.width) / 2)
+        elseif align == "right" then ox = x + width - line.width end
+        local ly = y + (li - 1) * h
+        for _, p in ipairs(line.pieces) do
+            if p.text then
+                lg.setColor(col[1], col[2], col[3], (col[4] or 1) * a)
+                lg.print(p.text, ox + p.x, ly)
+            elseif p.pad then
+                Theme.glyph(p.pad, ox + p.x, ly + math.floor((h - gh) / 2), gh, a)
+                lg.setFont(f)
+            else
+                Theme.keycap(p.key, ox + p.x, ly + 1, h - 2, a)
+            end
+        end
+    end
+    lg.setColor(1, 1, 1, 1)
+    return #lines * h
 end
 
 -- Hints along the bottom edge of the screen.

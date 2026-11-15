@@ -15,21 +15,35 @@ function GameOver.new(game)
         items = {
             { type = "button", label = "Try Again", onActivate = function() game:restart() end },
             { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
+            { type = "button", label = "Change Bug", onActivate = function() GameOver.changeBug(game) end },
             { type = "button", label = "Main Menu", onActivate = function() State.switch(require("src.states.menu").new()) end },
         },
         rect = function()
             local w, h = love.graphics.getDimensions()
             local mw = Theme.u(300)
-            return math.floor((w - mw) / 2), math.floor(h * 0.7), mw, Theme.u(46) * 3
+            return math.floor((w - mw) / 2), math.floor(h * 0.66), mw, Theme.u(46) * 4
         end,
     })
     return self
+end
+
+-- Back to bug select for the same mode (or the practice screen, for a practice run).
+function GameOver.changeBug(game)
+    State.switch(require("src.states.menu").new())
+    if game.params.practice then
+        State.push(require("src.states.practice").new())
+        return
+    end
+    State.push(require("src.states.modeselect").new())
+    State.push(require("src.states.charselect").new({ gameMode = game.params.gameMode }))
 end
 
 function GameOver:enter() love.mouse.setVisible(true) end
 
 function GameOver:update(dt)
     self.t = self.t + dt
+    -- a held attack or dash key must not restart by accident the instant the bug falls
+    if self.t > 0.6 and require("src.core.input").pressed("quick_restart") then self.game:restart() return end
     self.menu:update(dt)
 end
 
@@ -69,6 +83,9 @@ function GameOver:draw()
     end
     GameOver.drawRecap(world, ry, w)
     self.menu:draw()
+    local Pause = require("src.states.pause")
+    local hints = Pause.hints()
+    Theme.footer({ hints[1], hints[2] })
 end
 
 -- Death recap: what finished you and the last few hits you took (src/game/runstats.lua).

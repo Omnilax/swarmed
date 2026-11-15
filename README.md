@@ -62,8 +62,33 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Next wave now (or send the rest of a wave in early) | E / N | Back |
 | Unleash Frenzy (when the meter is full) | Q / C | Right or left stick click |
 | Pause | Esc / P | Start |
+| Quick restart (pause / defeat screen) | R | Y |
+| Favourite a bug (bug select) | F | X |
 
-All bindings can be changed in Settings > Controls.
+All bindings can be changed in Settings > Controls. With a controller in use, prompts and key
+hints show its buttons as icons (`Theme.glyph`); any prompt can name an action as `{dash}` and
+`Theme.rich` draws the right key cap, mouse button, pad icon or touch button for it.
+
+## Menus and quality of life
+
+- **Resume** on the title screen picks up a run left with Pause > Save & Quit. Runs also save
+  themselves at every wave clear and when the game is closed (`src/game/runsave.lua`). A run
+  saved mid-wave plays that wave again. Abandon Run, defeat and End Run delete the save.
+- **Play Again** on the title screen starts the last bug and mode in one press. Pause and the
+  defeat screen restart the same setup; the defeat screen can also go straight to bug select.
+- **Bug select** sorts (speed, health, size, armour, playstyle, name) and filters (playstyle,
+  favourites) from `src/config/playstyles.lua`; favourites are pinned on top. A live preview
+  shows the highlighted bug's special and dash (`src/ui/movepreview.lua`).
+- Each bug has a `playstyle` and a one-time `tip` (content/characters), shown in its first run.
+- **Practice** (title screen): pick a bug, mode, starting wave and one species (or a boss, or
+  "Mixed"), optionally with the items and skill points a real run would have, and invincibility.
+  Practice never counts toward records and is never saved (`src/states/practice.lua`).
+- Settings > Video starts with **Preset** (Performance / Balanced / Pretty,
+  `src/config/settings_presets.lua`). Settings > Controls has **Touch Layout** (left handed
+  mirrors the touch controls) and **Touch Button Size**.
+- The game pauses when it loses focus, is minimised or the controller in use is unplugged.
+- What the menus remember (last bug and mode, favourites, sort, practice setup) is in `prefs.lua`
+  in the save folder (`src/game/prefs.lua`). Test all of it with `love . --selftest --qol`.
 
 ## Frenzy, streaks and combat rewards
 

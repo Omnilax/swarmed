@@ -41,6 +41,8 @@ function love.load(args)
     -- test runs must not touch the player's save
     Records.noSave = flags["--selftest"] or flags["--profile"] or false
     require("src.game.tutorial").load()
+    require("src.game.prefs").noSave = Records.noSave or flags["--balance"] or false
+    require("src.game.runsave").noSave = Records.noSave or flags["--balance"] or false
     -- tests and the balance bot run without hints (the polish selftest turns them on itself)
     require("src.game.tutorial").noSave = Records.noSave
     require("src.game.tutorial").off = Records.noSave or flags["--balance"] or false
@@ -132,7 +134,11 @@ function love.wheelmoved(x, y) State.call("wheelmoved", x, y) end
 
 function love.gamepadpressed(j, b) Input.gamepadpressed(j, b) end
 function love.joystickadded(j) Input.joystickadded(j) end
-function love.joystickremoved(j) Input.joystickremoved(j) end
+function love.joystickremoved(j)
+    local wasActive = Input.joystick == j
+    Input.joystickremoved(j)
+    State.call("joystickremoved", j, wasActive)
+end
 
 function love.resize() Screen.updateScale() end
 
@@ -142,8 +148,13 @@ function love.focus(f)
     State.call("focus", f)
 end
 
+function love.visible(v) State.call("visible", v) end
+
 function love.quit()
     Settings.save()
+    -- closing mid-run keeps the run to resume (src/game/runsave.lua)
+    local game = State.find(require("src.states.game"))
+    if game and game.closing then game:closing() end
     Records.quit()
 end
 

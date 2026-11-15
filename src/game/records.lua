@@ -99,6 +99,8 @@ end
 -- Tracking a run
 
 -- info: { character = id, gameMode = id } (Game params). Call once, right after the world is made.
+-- A resumed run (info.resume, src/game/runsave.lua) carries on the run it was saved from, so it
+-- isn't counted as another run.
 function Records.track(world, info)
     local p = Records.get()
     if Records.run and not Records.run.ended then Records.endRun("quit") end
@@ -108,12 +110,16 @@ function Records.track(world, info)
         kills = 0, elites = 0, queens = 0, killsBy = {}, killsByFamily = {},
         wave = 0, wavesCleared = 0, flawlessWaves = 0, waveDamage = 0,
         damageTaken = 0, itemsTaken = 0, itemsEaten = 0, time = 0,
-        won = false, started = os.time(), checkT = 0, daily = world.daily,
+        won = false, started = os.time(), checkT = 0, daily = world.daily, time0 = world.time,
     }
     Records.run = run
-    p.runs = p.runs + 1
-    sub(p.characters, charId, CHAR_FIELDS).runs = p.characters[charId].runs + 1
-    sub(p.modes, run.mode, MODE_FIELDS).runs = p.modes[run.mode].runs + 1
+    sub(p.characters, charId, CHAR_FIELDS)
+    sub(p.modes, run.mode, MODE_FIELDS)
+    if not (info and info.resume) then
+        p.runs = p.runs + 1
+        p.characters[charId].runs = p.characters[charId].runs + 1
+        p.modes[run.mode].runs = p.modes[run.mode].runs + 1
+    end
 
     local ev = world.events
     ev:on("enemy_died", function(e) Records.onKill(e) end)
@@ -206,7 +212,7 @@ function Records.endRun(outcome)
     run.time = w.time
     run.outcome = outcome
     if outcome == "died" then p.deaths = p.deaths + 1 end
-    p.playTime = p.playTime + run.time
+    p.playTime = p.playTime + run.time - (run.time0 or 0)
     p.longestRun = math.max(p.longestRun, run.time)
     p.bestKOs = math.max(p.bestKOs, w.kos or run.kills)
     p.bestCombo = math.max(p.bestCombo, w.bestCombo or 0)
@@ -241,6 +247,18 @@ function Records.endRun(outcome)
         })
         while #p.history > HISTORY do table.remove(p.history) end
     end
+    Records.check()
+    Records.save()
+end
+
+-- Save & Quit: the run stops being tracked but isn't over, so it gets no history line yet (it
+-- is written when the resumed run ends). Play time so far still counts.
+function Records.suspend()
+    local run, p = Records.run, Records.profile
+    if not run or run.ended then return end
+    run.ended = true
+    run.time = run.world.time
+    p.playTime = p.playTime + run.time - (run.time0 or 0)
     Records.check()
     Records.save()
 end

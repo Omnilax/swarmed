@@ -4,6 +4,8 @@ return {
     sprite = "rhino_beetle",
     model = { legs = "rhino_beetle_legs", body = "rhino_beetle_body", height = 5, lift = 2 },
     order = 1,
+    playstyle = "tank",          -- src/config/playstyles.lua
+    tip = "{dash} scoops ants onto your horn and heaves them into the crowd. Charge into groups, not away from them.",
     radius = 10,
     scale = 1.25,
     stats = { maxHp = 100, armor = 5, moveSpeed = 85, knockback = 60, area = 15 },

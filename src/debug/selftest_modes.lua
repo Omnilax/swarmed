@@ -20,7 +20,9 @@ return function(wait, shot)
     ms.menu:focused().onActivate()                  -- -> character select for endless
     wait(0.2)
     local cs = State.top()
-    cs.menu.items[1].onActivate()                   -- -> starting items
+    for _, it in ipairs(cs.menu.items) do            -- the first bug -> starting items
+        if it.character then it.onActivate() break end
+    end
     local lo = State.top()
     assert(lo.budget and lo.picked, "endless did not open the starting items screen")
     for _, id in ipairs({ "honeydew", "chitin_plate", "royal_jelly" }) do lo:add(Content.items:get(id)) end

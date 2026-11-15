@@ -13,6 +13,8 @@ return {
     sprite = "whip_scorpion",
     model = { legs = "whip_scorpion_legs", body = "whip_scorpion_body", height = 2, lift = 2, stride = 1.6, kneeUp = 2 },
     order = 22,
+    playstyle = "ranged",          -- src/config/playstyles.lua
+    tip = "Only the tips of your palps hit, so keep a little distance. {dash} lashes a feeler out and pulls you to where it lands.",
     radius = 7,
     scale = 1.0,
     stats = { maxHp = 48, moveSpeed = 112, critChance = 10, area = 15 },

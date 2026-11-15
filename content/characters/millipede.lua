@@ -10,6 +10,8 @@ return {
         segments = 18, spacing = 2.4, height = 3, lift = 1, legColor = "#c0402a", wave = 0.07,
         leg = { { 0, -1.8, -0.3, -3.4, -0.7, -4.6 } } },
     order = 26,
+    playstyle = "tank",          -- src/config/playstyles.lua
+    tip = "Ants touching you get poisoned, so let them come. Hold {secondary} to coil up (85% less damage), let go to burst.",
     radius = 8,
     scale = 1.2,
     stats = { maxHp = 110, armor = 8, moveSpeed = 70, hpRegen = 1.5 },

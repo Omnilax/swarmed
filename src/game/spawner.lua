@@ -94,8 +94,9 @@ function Spawner:learn(def)
     self.knownList[#self.knownList + 1] = def
 end
 
--- The next species nobody has met yet.
+-- The next species nobody has met yet (none while practice holds the waves to one species).
 function Spawner:nextSpecies()
+    if self.only then return nil end
     for _, d in ipairs(self.introOrder) do
         if not self.known[d.id] then return d end
     end
@@ -458,6 +459,7 @@ end
 -- A queen whose brood species is already in the mix, preferring ones not fought yet.
 
 function Spawner:pickQueen()
+    if self.onlyQueen then return self.onlyQueen end      -- practice: the boss picked
     local wave = self.mode.queensAnyWave and math.huge or self.wave
     local options, fresh = {}, {}
     for _, d in ipairs(Content.enemies:all()) do
@@ -487,6 +489,7 @@ end
 -- A species the player has already met (the newest one a little more often, so it sinks in).
 -- Before any have been met (sandbox), anything that spawns on its own.
 function Spawner:pickEnemy()
+    if self.only then return self.only end                -- practice: the one species picked
     local util = require("src.core.util")
     if #self.knownList == 0 then
         return Content.enemies:pickWeighted(function(d) return d.spawn.weight end, function(d) return not d.boss and d.spawn.weight > 0 end)

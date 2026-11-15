@@ -5,6 +5,8 @@ return {
     sprite = "tarantula",
     model = { legs = "tarantula_legs", body = "tarantula_body", height = 5, lift = 3, kneeUp = 2.5 },
     order = 10,
+    playstyle = "tank",          -- src/config/playstyles.lua
+    tip = "Your stomp stuns everything in front of you. Hold {secondary} to kick itching hairs that slow the whole crowd.",
     radius = 11,
     scale = 1.35,
     stats = { maxHp = 120, armor = 4, moveSpeed = 82, hpRegen = 0.6, area = 20 },

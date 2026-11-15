@@ -385,11 +385,11 @@ function Choice:draw()
             local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
             local text, col
             if self.armedBan == i then
-                text, col = pad and "PRESS Y AGAIN TO BAN" or touch and "TAP BAN AGAIN TO BAN" or "PRESS BAN AGAIN TO BAN", BAN_COL
+                text, col = pad and "PRESS {pad:y} AGAIN TO BAN" or touch and "TAP BAN AGAIN TO BAN" or "PRESS BAN AGAIN TO BAN", BAN_COL
             else
-                text, col = pad and "PRESS A AGAIN TO TAKE" or touch and "TAP AGAIN TO TAKE" or "CLICK AGAIN TO TAKE", rc
+                text, col = pad and "PRESS {pad:a} AGAIN TO TAKE" or touch and "TAP AGAIN TO TAKE" or "CLICK AGAIN TO TAKE", rc
             end
-            Theme.printShadow(text, x - u(20), y + c.h + u(10), { col[1], col[2], col[3], pulse }, "center", c.w + u(40))
+            Theme.rich(text, x - u(20), y + c.h + u(10), c.w + u(40), "center", col, pulse)
         end
         if not ready then
             lg.setColor(0.02, 0.015, 0.02, 0.55 * (1 - self.t / Choice.ARM_TIME))
@@ -431,10 +431,10 @@ function Choice:draw()
     end
     lg.setFont(Theme.font(13))
     lg.setColor(COL.dim)
-    lg.printf(pad and "Left / right to look, A to pick, A again to take  ·  RB lock  ·  Y ban"
+    Theme.rich(pad and "{pad:dpad} to look, {pad:a} to pick, {pad:a} again to take  ·  {pad:rightshoulder} lock  ·  {pad:y} ban"
         or touch and "Tap an item to pick it, tap it again to take it"
-        or "Click an item to pick it, click it again to take it  ·  L lock  ·  X ban",
-        0, cards[1].y + cards[1].h + u(34), w, "center")
+        or "Click an item to pick it, click it again to take it  ·  {key:L} lock  ·  {key:X} ban",
+        0, cards[1].y + cards[1].h + u(34), w, "center", COL.dim)
     lg.setColor(1, 1, 1, 1)
 end
 

@@ -9,6 +9,8 @@ return {
     sprite = "dung_beetle",
     model = { legs = "dung_beetle_legs", body = "dung_beetle_body", height = 5, lift = 2 },
     order = 17,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "Your ball grows as you roll it and squash ants. Bigger hits harder but slows you down: kick it off with {secondary} to start a fresh one.",
     radius = 8,
     scale = 1.05,
     stats = { maxHp = 90, armor = 4, moveSpeed = 88, knockback = 30 },
