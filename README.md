@@ -74,7 +74,15 @@ pad), and right click an item (F / X) to **eat** it: it's gone and heals you by 
 (common 8, uncommon 14, rare 22, legendary 35 HP, `eat` in `src/config/rarities.lua`), +25% per
 extra cell. Ants don't drop items: after **every wave you choose 1 of 3 random items** (a boss
 wave guarantees a rare or better; each gilded elite you killed adds a 4th/5th card). If the pick
-doesn't fit, the bag opens holding it so you can make room or eat something. Bag size lives in
+doesn't fit, the bag opens holding it so you can make room or eat something. **Item choice helpers**: REROLL (R / pad X) redraws every unlocked card (3 per run, +1 per
+queen slain), LOCK (L / pad RB, free) keeps a card for the next item choice, and BAN (X / Del /
+pad Y, press twice, 2 per run) removes an item from the run. Numbers live in
+`src/config/itemchoice.lua`; a mode can override them with `itemChoice = { ... }`. Cards show the
+item's tags (lit, with a count, when bag items share them; colours in `src/config/tags.lua`) and
+a stat preview such as "Speed 120 » 138". In the bag, **SORT** (T / pad L3) packs items tidily,
+dragging an item out of the case eats it, and pointing at a stat explains its number (each
+stat's `info` in `src/config/stats.lua`). The pause screen lists every stat and every item's
+full effect. Test: `love . --selftest --choiceqol`. Bag size lives in
 `src/config/equipment.lua`; an item's `shape` (or `size`), `icon` and `effect` text in its file;
 icons are modelled by `tools/make_item_icons.py` (needs numpy) with a small renderer in `tools/icon_render.py`: each item is built from lit 3D shapes with real materials (gloss, grain, translucency), lit by a warm low sun and cool dusk ambient, at 28 px per cell, then reduced to a small palette. `python3 tools/make_item_icons.py --preview out.png [ids]` renders a contact sheet.
 

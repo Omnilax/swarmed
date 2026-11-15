@@ -669,6 +669,7 @@ local function script(flags)
     if flags["--finalwave"] then require("src.debug.selftest_finalwave")(wait, shot) love.event.quit() return end
     if flags["--entries"] then require("src.debug.selftest_entries")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end

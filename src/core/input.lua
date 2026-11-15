@@ -19,6 +19,10 @@ Input.actions = {
     { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "e", "n" }, pad = { "back" }, rebind = true },
     { id = "inventory_alt", label = "Drop Item (inventory)", keys = { "f" }, pad = { "x" }, rebind = true },
     { id = "inventory_rotate", label = "Turn Item (inventory)", keys = { "r" }, pad = { "leftshoulder" }, rebind = true },
+    { id = "inventory_sort", label = "Sort Bag (inventory)", keys = { "t" }, pad = { "leftstick" }, rebind = true },
+    { id = "choice_reroll", label = "Reroll (item choice)", keys = { "r" }, pad = { "x" }, rebind = true },
+    { id = "choice_lock", label = "Lock Card (item choice)", keys = { "l" }, pad = { "rightshoulder" }, rebind = true },
+    { id = "choice_ban", label = "Ban Card (item choice)", keys = { "x", "delete" }, pad = { "y" }, rebind = true },
 
     { id = "ui_up", keys = { "up", "w" }, pad = { "dpup" }, repeats = true },
     { id = "ui_down", keys = { "down", "s" }, pad = { "dpdown" }, repeats = true },

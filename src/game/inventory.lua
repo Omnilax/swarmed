@@ -143,6 +143,67 @@ function Inventory:stow(item)
     return false
 end
 
+-- Tidy the bag: big items first, then rarest, copies of one item side by side, each packed
+-- into the top-left-most spot (trying every turn). Tries a few orders; if none fits everything
+-- (the old layout was tighter), nothing moves. Returns true if the bag was sorted.
+local function rarityOrder(def)
+    local r = require("src.config.rarities")[def.rarity]
+    return r and r.order or 0
+end
+
+local SORTS = {
+    function(a, b)   -- most cells, rarest, by name
+        local ca, cb = #a.def.cells, #b.def.cells
+        if ca ~= cb then return ca > cb end
+        local ra, rb = rarityOrder(a.def), rarityOrder(b.def)
+        if ra ~= rb then return ra > rb end
+        if a.id ~= b.id then return a.id < b.id end
+        return a.uid < b.uid
+    end,
+    function(a, b)   -- biggest bounding box first (packs awkward shapes better)
+        local wa, ha = Inventory.size(a)
+        local wb, hb = Inventory.size(b)
+        if wa * ha ~= wb * hb then return wa * ha > wb * hb end
+        if math.max(wa, ha) ~= math.max(wb, hb) then return math.max(wa, ha) > math.max(wb, hb) end
+        if a.id ~= b.id then return a.id < b.id end
+        return a.uid < b.uid
+    end,
+}
+
+function Inventory:autoSort()
+    local old = {}
+    for i, e in ipairs(self.bag) do old[i] = { e = e, rot = e.item.rot } end
+    for _, cmp in ipairs(SORTS) do
+        local items = {}
+        for i, o in ipairs(old) do items[i] = o.e.item end
+        table.sort(items, cmp)
+        -- place without recount (that would drop proc bonuses of items not yet placed back)
+        self.bag, self.grid = {}, {}
+        local ok = true
+        for _, item in ipairs(items) do
+            local best, bx, by, bk
+            for k = 0, 3 do
+                item.rot = k
+                local x, y = self:findSpace(item)
+                if x and (not best or y * self.cols + x < best) then best, bx, by, bk = y * self.cols + x, x, y, k end
+            end
+            if not best then ok = false break end
+            item.rot = bk
+            local e = { item = item, x = bx, y = by }
+            self.bag[#self.bag + 1] = e
+            for _, c in ipairs(Inventory.cells(item)) do self.grid[(by + c[2]) * self.cols + bx + c[1]] = e end
+        end
+        if ok then
+            self:recount()
+            return true
+        end
+    end
+    self.bag = {}
+    for i, o in ipairs(old) do o.e.item.rot = o.rot; self.bag[i] = o.e end
+    self:rebuildGrid()
+    return false
+end
+
 -- HP from eating an item: its rarity's `eat`, plus a quarter more for every extra cell it fills.
 function Inventory.eatValue(item)
     local r = require("src.config.rarities")[item.def.rarity]

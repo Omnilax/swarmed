@@ -225,6 +225,7 @@ function World:killEnemy(e)
         self.boss = nil
         -- a slain queen adds one more card to the item choice after the wave
         self.bonusPicks = math.min(2, self.bonusPicks + 1)
+        require("src.game.choices").onQueen(self)   -- and some item choice rerolls back
         self:floatText(e.x, e.y - 20, "+1 ITEM CHOICE", { 1, 0.9, 0.4 }, true)
         self.milestone = { text = def.name:upper() .. " SLAIN", t = 0 }
         self.hitstop = 0.12

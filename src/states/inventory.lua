@@ -6,6 +6,8 @@
 --
 -- Mouse:   left click picks an item up / puts it down (swapping with one item underneath),
 --          right click or the wheel turns the held item, right click an item to eat it.
+--          Drag an item: let go over the bag to place it, outside the case to eat it (discard).
+--          SORT (T / pad left stick click) packs the bag tidily (see Inventory:autoSort).
 -- Keys/pad: arrows move the cursor, Enter / A picks up and places, R / LB turns, F / X eats.
 -- Opened with opts.held (an item just chosen that didn't fit): place it, or eat something to
 -- make room; closing while still holding it eats it.
@@ -108,6 +110,11 @@ function Inv:layout()
     local th = math.min(f:getHeight() + u(6), top - ty - u(4))
     self.L.tabs = { { id = "bag", x = tx, y = ty, w = f:getWidth("BAG") + u(20), h = th } }
     self.L.tabs[2] = { id = "skills", x = tx + self.L.tabs[1].w + u(6), y = ty, w = f:getWidth("SKILLS") + u(20), h = th }
+    -- SORT button in the header, left of the cell meter
+    local sf = Theme.font(14, "bold")
+    local sw = sf:getWidth("SORT") + u(20)
+    local mw = math.floor(C * 2.2)
+    self.L.sort = { x = math.floor(px + panelW - pad - mw - u(80) - sw), y = ty, w = sw, h = th }
     return self.L
 end
 
@@ -156,6 +163,21 @@ function Inv:primary(target, mx, my)
             Audio.play("ui_move")
         end
     end
+end
+
+-- Pack the bag tidily (not while holding something).
+function Inv:sort()
+    if self.held then Audio.play("ui_back") return false end
+    local ok = self.inv:autoSort()
+    if ok then
+        Audio.play("equip", { pitch = 1.2 })
+        self.world.events:emit("bag_sorted")
+    else
+        Audio.play("ui_back")
+        local L = self.L or self:layout()
+        self.flash[#self.flash + 1] = { text = "Can't pack it tighter", x = L.sort.x, y = L.sort.y + Theme.u(40), t = 0, color = { 1, 0.8, 0.5 } }
+    end
+    return ok
 end
 
 -- Turn the held item a quarter clockwise.
@@ -211,6 +233,7 @@ function Inv:update(dt)
     if Input.pressed("ui_confirm") then self:primary(self.cursor) end
     if Input.pressed("inventory_rotate") then self:rotate() end
     if Input.pressed("inventory_alt") then self:eat(self.cursor) end
+    if Input.pressed("inventory_sort") then self:sort() end
     for i = #self.flash, 1, -1 do
         local f = self.flash[i]
         f.t = f.t + dt
@@ -218,21 +241,49 @@ function Inv:update(dt)
     end
 end
 
-function Inv:mousepressed(x, y, b)
+function Inv:mousepressed(x, y, b, istouch)
     self:layout()
     local sk = self.L.tabs[2]
     if x >= sk.x and x < sk.x + sk.w and y >= sk.y and y < sk.y + sk.h then
         require("src.states.skilltree").openFrom(self)
         return
     end
+    local so = self.L.sort
+    if b == 1 and x >= so.x and x < so.x + so.w and y >= so.y and y < so.y + so.h then self:sort() return end
     local target = self:hit(x, y)
     if target and target.kind == "bag" then self.cursor = target end
+    local wasHeld = self.held
     if b == 1 then self:primary(target, x, y) elseif b == 2 then self:secondary(target) end
+    -- picked something up with the mouse: it can be dragged (let go somewhere else to drop it)
+    if b == 1 and self.held and not wasHeld and not istouch then
+        self.drag = { x = x, y = y, moved = false }
+    end
+end
+
+function Inv:mousereleased(x, y, b)
+    local d = self.drag
+    self.drag = nil
+    if b ~= 1 or not d or not d.moved or not self.held then return end
+    self:layout()
+    local target = self:hit(x, y)
+    if not target then
+        -- dragged out of the case: eat it (items never go on the ground)
+        self:eatItem(self.held.item, x, y)
+        self.held = nil
+    elseif target.kind == "bag" then
+        local held = self.held
+        self:primary(target, x, y)
+        if self.held == held then self:returnHeld() end   -- didn't fit there: back where it was
+    end
 end
 
 function Inv:wheelmoved() self:rotate() end
 
-function Inv:mousemoved() self.mouseActive = true end
+function Inv:mousemoved(x, y)
+    self.mouseActive = true
+    local d = self.drag
+    if d and not d.moved and math.abs(x - d.x) + math.abs(y - d.y) > Theme.u(12) then d.moved = true end
+end
 
 ----------------------------------------------------------------------------------------------
 -- Drawing helpers
@@ -323,13 +374,11 @@ local function statLines(def)
     for _, sd in ipairs(Stats.defs) do
         local v = def.stats[sd.id]
         if v then
-            local good = v > 0
-            local txt = (v > 0 and "+" or "") .. Stats.format(sd.id, v) .. " " .. sd.label
-            if sd.id == "dashCooldown" then good = v < 0; txt = (v > 0 and "+" or "") .. v .. "s " .. sd.label end
-            lines[#lines + 1] = { txt, good }
+            local good = (v > 0) ~= (sd.lowerIsBetter == true)
+            lines[#lines + 1] = { (v > 0 and "+" or "") .. Stats.format(sd.id, v) .. " " .. sd.label, good }
         end
         local m = def.statsMult[sd.id]
-        if m then lines[#lines + 1] = { (m > 0 and "+" or "") .. math.floor(m * 100 + 0.5) .. "% " .. sd.label, m > 0 } end
+        if m then lines[#lines + 1] = { (m > 0 and "+" or "") .. math.floor(m * 100 + 0.5) .. "% " .. sd.label, (m > 0) ~= (sd.lowerIsBetter == true) } end
     end
     return lines
 end
@@ -370,6 +419,14 @@ function Inv:draw()
     lg.setFont(Theme.font(14))
     lg.setColor(COL.dim)
     lg.printf(used .. "/" .. total, mxp - u(70), myp - u(4), u(62), "right")
+    local so = L.sort
+    local soHover = mx >= so.x and mx < so.x + so.w and my >= so.y and my < so.y + so.h
+    lg.setColor(soHover and COL.frameHi or COL.frameLo)
+    lg.rectangle("fill", so.x, so.y, so.w, so.h)
+    lg.setColor(COL.label[1], COL.label[2], COL.label[3], self.held and 0.35 or (soHover and 1 or 0.7))
+    lg.rectangle("line", so.x + 0.5, so.y + 0.5, so.w - 1, so.h - 1)
+    lg.setFont(Theme.font(14, "bold"))
+    lg.printf("SORT", so.x, so.y + math.floor((so.h - lg.getFont():getHeight()) / 2), so.w, "center")
 
     -- Left: your bug in a little window, and its stats
     local S = L.side
@@ -437,11 +494,28 @@ function Inv:draw()
         if useMouse then tx, ty = mx + u(18), my + u(12)
         else tx, ty = B.x + (hoverEntry.x + iw) * C + u(8), B.y + hoverEntry.y * C end
         self:tooltip(hoverEntry.item, tx, ty)
+    elseif useMouse then
+        -- a stat under the mouse: what its number means
+        for _, r in ipairs(self.statRows or {}) do
+            if mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h then
+                local st = self.world.player.stats
+                Inv.statTip(r.sd, st:get(r.sd.id), st.base[r.sd.id], mx + u(16), my + u(10))
+            end
+        end
+    end
+    -- dragging an item out of the case: letting go eats it
+    if self.held and self.drag and self.drag.moved and not self:hit(mx, my) then
+        lg.setFont(Theme.font(15, "bold"))
+        local tx = math.max(u(4), math.min(mx - u(120), w - u(244)))
+        local ty = my + u(28) > h - u(30) and my - u(48) or my + u(28)
+        Theme.printShadow("Let go to eat it (+" .. Inventory.eatValue(self.held.item) .. " HP)", tx, ty,
+            { 1, 0.6, 0.45, 0.9 + 0.1 * math.sin(self.t * 8) }, "center", u(240))
     end
     -- "+12 HP" from eaten items floats up
     lg.setFont(Theme.font(18, "bold"))
     for _, f in ipairs(self.flash) do
-        Theme.printShadow(f.text, f.x - u(30), f.y - u(20) - f.t * u(30), { 0.5, 1, 0.5, 1 - f.t })
+        local c = f.color or { 0.5, 1, 0.5 }
+        Theme.printShadow(f.text, f.x - u(30), f.y - u(20) - f.t * u(30), { c[1], c[2], c[3], 1 - f.t })
     end
     lg.setColor(1, 1, 1, 1)
 end
@@ -449,9 +523,9 @@ end
 -- Key hints under the case: little key caps and a word each.
 function Inv:drawHints(x, y, w)
     local u = Theme.u
-    local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "RB", "Skills" }, { "B", "Close" } }
-        or Input.lastDevice == "touch" and { { "Tap", "Pick up / put down" }, { "TURN", "Turn held" }, { "EAT", "Eat held" } }
-        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Tab", "Skills" }, { (Input.getKeys("inventory")[1] or "I"):upper(), "Close" } }
+    local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "L3", "Sort" }, { "RB", "Skills" }, { "B", "Close" } }
+        or Input.lastDevice == "touch" and { { "Tap", "Pick up / put down" }, { "TURN", "Turn held" }, { "EAT", "Eat held" }, { "SORT", "Tidy up" } }
+        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Drag out", "Eat" }, { "T", "Sort" }, { "Tab", "Skills" }, { (Input.getKeys("inventory")[1] or "I"):upper(), "Close" } }
     local f = Theme.font(13)
     lg.setFont(f)
     local parts, total = {}, 0
@@ -489,7 +563,12 @@ function Inv:tooltip(item, x, y)
     local effect = def.effect or (#def.procs > 0 and #lines == 0 and def.description)
     if effect then _, descLines = fSmall:getWrap(effect, tw - u(20)) end
     local lh = fSmall:getHeight() + u(2)
+    local Choices = require("src.game.choices")
+    local tagCounts = Choices.bagTags(self.inv)
+    local fTag = Theme.font(13)
+    local tagH = Choices.drawTags(def, tagCounts, 0, 0, tw - u(20), fTag, u, true)
     local th = u(10) + fName:getHeight() + u(2) + lh + u(8) + #lines * lh + #descLines * lh + u(6) + lh + u(10)
+        + (tagH > 0 and tagH + u(8) or 0)
     local W, H = lg.getDimensions()
     x = math.min(x, W - tw - u(6))
     y = math.min(y, H - th - u(6))
@@ -511,6 +590,11 @@ function Inv:tooltip(item, x, y)
     lg.setColor(COL.dim)
     lg.print(Rarities[def.rarity].label .. "  ·  " .. shapeLabel(def), x + u(10), cy)
     cy = cy + lh + u(8)
+    if tagH > 0 then
+        Choices.drawTags(def, tagCounts, x + u(10), cy, tw - u(20), fTag, u)
+        cy = cy + tagH + u(8)
+        lg.setFont(fSmall)
+    end
     for _, l in ipairs(lines) do
         lg.setColor(l[2] and Theme.colors.good or Theme.colors.bad)
         lg.print(l[1], x + u(10), cy)
@@ -523,6 +607,39 @@ function Inv:tooltip(item, x, y)
     end
     lg.setColor(COL.dim)
     lg.print("Eat: +" .. Inventory.eatValue(item) .. " HP", x + u(10), cy + u(6))
+end
+
+-- A tooltip for one stat: its value, where it started, and what the number means.
+function Inv.statTip(sd, v, base, x, y)
+    local u = Theme.u
+    local tw = u(260)
+    local fName, fSmall = Theme.font(16, "bold"), Theme.font(14)
+    local info = Stats.explain(sd.id, v)
+    local _, wrapped = fSmall:getWrap(info, tw - u(20))
+    local lh = fSmall:getHeight() + u(2)
+    local th = u(10) + fName:getHeight() + u(4) + lh + (#wrapped > 0 and u(6) + #wrapped * lh or 0) + u(8)
+    local W, H = lg.getDimensions()
+    x = math.max(u(4), math.min(x, W - tw - u(6)))
+    y = math.max(u(4), math.min(y, H - th - u(6)))
+    plate(x, y, tw, th, COL.inner)
+    local cy = y + u(9)
+    lg.setFont(fName)
+    Theme.printShadow(sd.label, x + u(10), cy, COL.label)
+    lg.setFont(fSmall)
+    local diff = v - base
+    local better = (diff > 0) ~= (sd.lowerIsBetter == true)
+    lg.setColor(math.abs(diff) < 0.001 and Theme.colors.text or (better and Theme.colors.good or Theme.colors.bad))
+    lg.printf(Stats.format(sd.id, v), x, cy + u(2), tw - u(10), "right")
+    cy = cy + fName:getHeight() + u(4)
+    lg.setColor(COL.dim)
+    local delta = math.abs(diff) < 0.001 and "no change" or ((diff > 0 and "+" or "") .. Stats.format(sd.id, diff))
+    lg.print("Base " .. Stats.format(sd.id, base) .. "  ·  " .. delta, x + u(10), cy)
+    cy = cy + lh + u(6)
+    lg.setColor(Theme.colors.text)
+    for _, l in ipairs(wrapped) do
+        lg.print(l, x + u(10), cy)
+        cy = cy + lh
+    end
 end
 
 -- Your bug's stats: the ones your items changed come first and are coloured.
@@ -540,18 +657,19 @@ function Inv:drawStats(x, y, w, h)
         if math.abs(stats:get(sd.id) - stats.base[sd.id]) <= 0.001 then list[#list + 1] = sd end
     end
     local maxRows = math.max(1, math.floor(h / rowH))
+    self.statRows = {}
     for i = 1, math.min(#list, maxRows) do
         local sd = list[i]
         local v, base = stats:get(sd.id), stats.base[sd.id]
         local cy = y + (i - 1) * rowH
+        self.statRows[i] = { sd = sd, x = x, y = cy - 1, w = w, h = rowH }
         if i % 2 == 1 then
             lg.setColor(1, 1, 1, 0.025)
             lg.rectangle("fill", x, cy - 1, w, rowH)
         end
         lg.setColor(COL.dim)
         lg.print(sd.label, x + u(4), cy)
-        local better = v > base
-        if sd.id == "dashCooldown" then better = v < base end
+        local better = (v > base) ~= (sd.lowerIsBetter == true)
         lg.setColor(math.abs(v - base) < 0.001 and Theme.colors.text or (better and Theme.colors.good or Theme.colors.bad))
         lg.printf(Stats.format(sd.id, v), x, cy, w - u(4), "right")
     end
