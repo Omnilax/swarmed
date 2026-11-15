@@ -73,7 +73,15 @@ add { key = "scrollZoom", category = "Video", label = "Scroll Wheel Zoom", type 
     desc = "Zoom the camera in and out with the mouse wheel (or a two-finger pinch on a touch screen)." }
 add { key = "weather", category = "Video", label = "Weather", type = "choice", default = "random",
     options = { { value = "random", label = "Random" }, { value = "off", label = "Always Clear" } },
-    desc = "Rain, fog, wind and other passing weather. Only changes how the arena looks." }
+    desc = "Rain, fog, wind and other passing weather. Some spells also change the fight (see Gameplay > Weather Effects)." }
+
+add { key = "midWaveEvents", category = "Gameplay", label = "Mid-Wave Events", type = "choice", default = "normal",
+    options = { { value = "often", label = "Often" }, { value = "normal", label = "Normal" }, { value = "off", label = "Off" } },
+    desc = "Things that happen during a wave: honeydew rain, an anteater's tongue, a boot, a flood, a lawnmower, a rival colony, a merchant..." }
+add { key = "bossEncounters", category = "Gameplay", label = "Boss Encounters", type = "toggle", default = true,
+    desc = "Every 5th wave a predator joins the queen: an anteater, an antlion's pit or a bird swooping down." }
+add { key = "weatherEffects", category = "Gameplay", label = "Weather Effects", type = "toggle", default = true,
+    desc = "Wind pushes everyone, rain slows the fight down, a heatwave speeds it up." }
 
 -- Audio ---------------------------------------------------------------------------------
 add { key = "masterVolume", category = "Audio", label = "Master Volume", type = "slider", default = 80, min = 0, max = 100, step = 5, format = percent }

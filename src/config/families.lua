@@ -8,4 +8,6 @@ return {
     { id = "wasp", label = "Wasps", single = "Wasp" },
     { id = "hornet", label = "Hornets", single = "Hornet" },
     { id = "termite", label = "Termites", single = "Termite" },
+    -- the big things that eat ants (and bugs): boss encounters (content/bosses)
+    { id = "predator", label = "Predators", single = "Predator" },
 }

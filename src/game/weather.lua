@@ -1,5 +1,6 @@
 -- Weather: random passing spells of rain, fog, wind, pollen and so on, defined in
--- content/weather (see _template.lua). Purely visual for now; nothing in combat reads it.
+-- content/weather (see _template.lua). A spell's `effects` (wind pushing, rain slowing, a
+-- heatwave speeding things up) are applied by src/game/director.lua.
 --
 -- A spell lasts `duration` seconds, fading in and out over a few seconds, then a new one is
 -- picked by weight. A stage can change the odds with `weather = { rain = 0, dust = 30 }`.

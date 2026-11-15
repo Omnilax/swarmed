@@ -20,6 +20,7 @@ return {
     ambient = "#7a8090",
     -- Waves: `groups` columns in wave 1, +groupsPerWave each wave, `group` ants per column
     -- (scaled by the enemy's groupSize and +growth per wave), released groupGap seconds apart.
+    props = { pebble = 6, twig = 3 },     -- shovable things lying about (content/props)
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15,
         -- a new species every introEvery waves; ants enter from entries[1] points in wave 1,

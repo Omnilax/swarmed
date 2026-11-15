@@ -1,4 +1,5 @@
--- TEMPLATE. Copy to content/weather/my_weather.lua. Weather is visual only (src/game/weather.lua).
+-- TEMPLATE. Copy to content/weather/my_weather.lua. Weather (src/game/weather.lua) is visual,
+-- plus optional `effects` on the fight (src/game/director.lua, Settings "Weather Effects").
 return {
     name = "My Weather",
     weight = 10,                    -- how often it is picked; a stage's `weather = { id = w }` overrides
@@ -6,7 +7,9 @@ return {
     -- stages = { "backyard" },     -- only on these stages (unless a stage lists it in `weather`)
     -- night = true,                -- only picked after dusk, and fades out by day
     dim = 0.85,                     -- multiplies daylight while it lasts (clouds); omit for none
-    wind = { 20, 4 },               -- drift added to every particle and fog bank, px/s on screen
+    wind = { 20, 4 },
+    -- effects = { playerSpeed = 0.9, enemySpeed = 0.85, drift = 0.3 (share of `wind` that pushes
+    --     everyone along the ground; lighter bugs more), note = "banner line", color = { r, g, b } },               -- drift added to every particle and fog bank, px/s on screen
     -- lightning = true,            -- the odd thunder flash (off with Reduce Flashing)
     -- fog = { color = "#c8d0dc", alpha = 0.3, count = 8, size = { 90, 180 } },
     particles = {

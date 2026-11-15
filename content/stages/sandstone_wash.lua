@@ -20,6 +20,8 @@ return {
     ambient = "#8a7c88",
     ambients = { day = "#fff2dc", sunset = "#f0a070", night = "#4a4c74", dawn = "#e0b0a8" },
     weather = { clear = 50, rain = 0, drizzle = 0, storm = 1, fog = 0, petals = 0, fireflies = 0, dust = 18, windy = 8, pollen = 2 },
+    props = { pebble = 9, twig = 1 },
+    events = { flood = 0, dew_drops = 2, honeydew_rain = 3, acorns = 0 },   -- no oaks or sprinklers out here
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
 }

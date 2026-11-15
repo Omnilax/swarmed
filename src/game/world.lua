@@ -24,6 +24,7 @@ local Grab = require("src.game.grab")
 local Daylight = require("src.game.daylight")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
+local Director = require("src.game.director")
 
 local World = {}
 World.__index = World
@@ -77,6 +78,8 @@ function World.new(opts)
     local sx, sy = Iso.toScreen(self.player.x, self.player.y)
     self.camera = Camera.new(sx, sy)
     self.weather = Weather.new(self)
+    -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
+    self.director = Director.new(self)
     -- skin: recoloured in drawing (Cosmetics.shader), or a whole other model
     local skin = Cosmetics.skinFor(charId)
     self.player.skin = skin
@@ -384,6 +387,7 @@ function World:update(dt)
     self:updateEnemies(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
+    self.director:update(dt)
     self:pushPlayerOutOfSolids()
 
     -- Remove the dead, keeping the array packed.
@@ -533,6 +537,10 @@ function World:updateEnemies(dt)
     local freeze = self.flags.freezeAI
     local kDamp = 1 - util.damp(8, dt)
     local attackers, shields = 0, 0
+    local env = self.env
+    local envK, envField = env.enemySpeed, env.field
+    local driftX, driftY = env.driftX, env.driftY
+    if freeze then envK, driftX, driftY, envField = 1, 0, 0, nil end
     local sqrt = math.sqrt
     local atan2 = math.atan2
     local floor = math.floor
@@ -660,8 +668,13 @@ function World:updateEnemies(dt)
                 end
             end
 
-            e.x = util.clamp(e.x + (e.mx + e.kvx) * dt + sx * 0.6, r0, S - r0)
-            e.y = util.clamp(e.y + (e.my + e.kvy) * dt + sy * 0.6, r0, S - r0)
+            -- the arena's pull on it (src/game/director.lua): weather, water, sun and shade
+            local k = envK
+            if envField then k = k * envField(ex, ey, e) end
+            local wk = def._windK
+            if not wk then wk = 1 / math.sqrt(math.max(0.2, def.mass)) def._windK = wk end
+            e.x = util.clamp(e.x + (e.mx * k + e.kvx + driftX * wk) * dt + sx * 0.6, r0, S - r0)
+            e.y = util.clamp(e.y + (e.my * k + e.kvy + driftY * wk) * dt + sy * 0.6, r0, S - r0)
             e.kvx, e.kvy = e.kvx * kDamp, e.kvy * kDamp
 
             -- Turn to face the direction of travel on screen.
@@ -783,6 +796,7 @@ function World:draw()
     self.ground:draw()
     self.hazards:drawGround()
     Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
+    self.director:drawGround()                      -- puddles, pits, lane warnings, shadows overhead
 
     -- View culling bounds in projected space.
     local cx0, cy0, cx1, cy1 = ox - 40, oy - 40, ox + vw + 40, oy + vh + 60
@@ -817,6 +831,11 @@ function World:draw()
             lg.setColor(0.08, 0.04, 0.03, sw)
             lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.6, o.radius * 0.4, 8, 8)
         end
+        if o.rival == "red" and not o.hidden then
+            -- a rival colony's ant (colony war): a red mark under it
+            lg.setColor(1, 0.25, 0.15, 0.45)
+            lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.45 + 1, o.radius * 0.25 + 0.5, 8, 8)
+        end
         if o.elite and not o.hidden then
             -- a coloured aura on the ground marks elites even in a dense swarm
             local c = Elites.color(o.elite)
@@ -837,6 +856,9 @@ function World:draw()
         lg.draw(atlas, Sprites.ring, math.floor(p._sx - 10), math.floor(p._sy - 4))
         lg.setColor(1, 1, 1, 1)
     end
+
+    -- Pebbles, twigs, cocoons, allies, the merchant (src/game/props.lua)
+    self.director:drawProps()
 
     -- Things behaviours put in the world (silk strands, feeding threads): always drawn.
     for i = 1, n do
@@ -980,6 +1002,9 @@ function World:draw()
             Anim.applyTo(pose, Anim.sample(o), facing, sxs, sys)    -- attack clips (src/gfx/anim.lua)
             if o.lungeT > 0.09 then sxs, sys = sxs * 1.06, sys * 0.94 end
             Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, flash, sxs, sys, a, pose)
+        elseif o ~= p and o.def.drawBody then
+            -- big creatures drawn by their own code (encounter bosses: content/enemies/predators.lua)
+            if not o.hidden then o.def.drawBody(o, self, o._sx, o._sy, sxs, sys, flash) end
         elseif not o.hidden then
             local el = o.elite
             local alpha = o.alpha or 1
@@ -987,6 +1012,8 @@ function World:draw()
                 -- elites: tinted towards their colour, plus a pulsing additive sheen
                 local c = Elites.color(el)
                 lg.setColor(0.5 + c[1] * 0.5, 0.5 + c[2] * 0.5, 0.5 + c[3] * 0.5, alpha)
+            elseif o.tint then
+                lg.setColor(o.tint[1], o.tint[2], o.tint[3], alpha)     -- a rival colony (colony war)
             elseif alpha < 1 then
                 lg.setColor(1, 1, 1, alpha)
             end
@@ -1003,7 +1030,7 @@ function World:draw()
         end
         if skinShader then lg.setShader() end
         -- plain ants leave the colour white; skip the reset for them (it adds up in a horde)
-        if o == p or o.model or o.elite or (o.alpha or 1) < 1 then lg.setColor(1, 1, 1, 1) end
+        if o == p or o.model or o.elite or o.tint or (o.alpha or 1) < 1 or o.def.drawBody then lg.setColor(1, 1, 1, 1) end
     end
 
     if nSheen > 0 then
@@ -1042,6 +1069,7 @@ function World:draw()
 
     self.particles:draw(cx0, cy0, cx1, cy1)
     self.hazards:drawAir()
+    self.director:drawAir()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
     self.weather:drawGlow(ox, oy, vw, vh)

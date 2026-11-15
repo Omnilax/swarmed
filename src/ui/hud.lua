@@ -241,6 +241,8 @@ function Hud.draw(game, covered)
 
     -- arrows to queens and elites off screen, first-run hints (src/game/feedback.lua)
     require("src.game.feedback").drawHud(game, covered)
+    -- event banners, the boss encounter's bar, the merchant's price (src/game/director.lua)
+    require("src.game.director").drawHud(game, covered)
 
     if Settings.get("showFps") then
         lg.setFont(Theme.font(14))

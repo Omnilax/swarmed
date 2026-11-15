@@ -86,7 +86,8 @@ return function(wait, shot)
 
     local function onlyFamilies(seen, allowed, mode)
         for fam in pairs(seen.families) do
-            local ok = false
+            -- boss encounter predators (src/game/director.lua) visit every mode's boss waves
+            local ok = fam == "predator"
             for _, a in ipairs(allowed) do if a == fam then ok = true end end
             assert(ok, mode .. ": a " .. fam .. " got in")
         end

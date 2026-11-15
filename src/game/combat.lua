@@ -60,7 +60,7 @@ function Combat.damage(world, e, base, opts)
         e.corrodeMul = math.max(e.corrodeMul, opts.corrode[1])
         e.corrodeT = math.max(e.corrodeT, opts.corrode[2])
     end
-    if opts.stun and e.hp > 0 and not e.def.boss then e.stunT = math.max(e.stunT, opts.stun) end
+    if opts.stun and e.hp > 0 and not e.def.boss and not e.def.noStun then e.stunT = math.max(e.stunT, opts.stun) end
     if opts.slow then
         e.slowT = math.max(e.slowT, opts.slow[2])
         e.slowMul = math.min(e.slowT > opts.slow[2] and e.slowMul or 1, opts.slow[1])
