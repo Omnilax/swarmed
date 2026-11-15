@@ -78,6 +78,8 @@ Content.items = Registry.new("item", {
         if #def.cells == 0 then return false, "shape has no cells" end
         local ok, err = statsValid(def)
         if not ok then return ok, err end
+        -- molted items (content/molts) are never dealt in item choices, only made by molting
+        def.molted = def.rarity == "molted" or nil
         for i, p in ipairs(def.procs) do
             if not p.trigger or not p.effect then return false, "proc #" .. i .. " needs trigger and effect" end
         end
@@ -143,6 +145,15 @@ do
     for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes" }) do table.insert(Content.order, at + i - 1, kind) end
 end
 
+-- Molting recipes (content/molts/_template.lua, src/game/molting.lua): items touching in the bag
+-- after a queen wave molt into a stronger item. Loaded after items, before achievements.
+Content.molts = Registry.new("molt", { required = { "from", "into" }, defaults = { hint = nil } })
+do
+    local at = #Content.order + 1
+    for i, kind in ipairs(Content.order) do if kind == "achievements" then at = i end end
+    table.insert(Content.order, at, "molts")
+end
+
 -- Cross-references are checked after everything is loaded so content can live in any order.
 local function crossCheck()
     local errors = {}
@@ -189,6 +200,10 @@ local function crossCheck()
         for _, field in ipairs({ "stats", "statsMult" }) do
             for id in pairs(st[field]) do if not Stats.byId[id] then errors[#errors + 1] = "streak '" .. st.id .. "' has unknown stat '" .. id .. "'" end end
         end
+    end
+    for _, m in ipairs(Content.molts:all()) do
+        for _, id in ipairs(m.from) do need(Content.items, id, "molt '" .. m.id .. "'") end
+        need(Content.items, m.into, "molt '" .. m.id .. "'")
     end
 
     if #errors > 0 then error("Content errors:\n  " .. table.concat(errors, "\n  ")) end

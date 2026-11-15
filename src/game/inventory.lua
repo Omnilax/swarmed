@@ -259,6 +259,13 @@ function Inventory:recount()
     for _, id in ipairs(old) do
         if not self.counts[id] then stats:removeSource("fx:" .. id) end
     end
+    -- tag set bonuses: 3+ touching items sharing a tag (src/game/molting.lua, src/config/tags.lua)
+    for _, s in ipairs(self.sets or {}) do stats:removeSource("set:" .. s.tag) end
+    self.sets = require("src.game.molting").sets(self)
+    for _, s in ipairs(self.sets) do
+        for stat, v in pairs(s.def.set.stats or {}) do stats:addModifier("set:" .. s.tag, stat, v * s.tier, 0) end
+        for stat, v in pairs(s.def.set.statsMult or {}) do stats:addModifier("set:" .. s.tag, stat, 0, v * s.tier) end
+    end
 end
 
 ----------------------------------------------------------------------------------------------

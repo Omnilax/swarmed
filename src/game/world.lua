@@ -87,6 +87,9 @@ function World.new(opts)
     self.weather = Weather.new(self)
     -- frenzy meter, streak buffs, mini-goals, treasure ant, route gates (src/game/rewards.lua)
     self.rewards = require("src.game.rewards").new(self)
+    -- molting after a queen wave, brood cell chests opening by themselves when the wave ends
+    self.molts = 0
+    self.events:on("wave_cleared", function() self:onWaveClearedMolting() end)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
@@ -244,6 +247,13 @@ function World:killEnemy(e)
         local x, y, info = e.x, e.y, { selfDestruct = e.st.exploded }
         self.deferred[#self.deferred + 1] = function() def.onDeath(self, x, y, def, info) end
     end
+    if def.boss then
+        -- a queen: whatever touches in the bag molts once this wave is cleared, and she leaves a
+        -- brood cell chest behind (src/game/molting.lua, content/props/brood_cell.lua)
+        self.queenThisWave = true
+        local x, y = e.x, e.y
+        self.deferred[#self.deferred + 1] = function() self:dropChest(x, y, "queen") end
+    end
     if self.boss == e then
         self.boss = nil
         -- a slain queen adds one more card to the item choice after the wave
@@ -260,6 +270,33 @@ function World:killEnemy(e)
             end
         end
         self.events:emit("boss_killed", e)
+    end
+end
+
+-- A brood cell chest at (x, y): kind "queen" or "treasure" (odds in src/config/molting.lua).
+-- Walk into it to open it; one still shut when the wave ends opens by itself.
+function World:dropChest(x, y, kind)
+    if not self.props then return nil end
+    local o = self.props:spawn("brood_cell", x, y, { kind = kind or "queen" })
+    self.events:emit("chest_dropped", o)
+    return o
+end
+
+-- Queue a chest's fanfare (src/states/broodcell.lua, opened by Game:update before the item choice).
+function World:openChest(kind, x, y)
+    self.pendingChests = self.pendingChests or {}
+    local list = self.pendingChests
+    list[#list + 1] = { kind = kind or "queen", x = x, y = y }
+end
+
+function World:onWaveClearedMolting()
+    if self.queenThisWave then
+        self.queenThisWave = nil
+        require("src.game.molting").afterQueenWave(self)
+    end
+    -- chests nobody opened pop open now
+    if self.props then
+        for _, o in ipairs(self.props:find("brood_cell")) do o.def.open(self, o) end
     end
 end
 

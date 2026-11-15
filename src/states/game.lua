@@ -110,6 +110,13 @@ function Game:update(dt)
         self.saveSoon = nil
         require("src.game.runsave").save(self)
     end
+    -- a brood cell chest was cracked open: its fanfare first (src/states/broodcell.lua)
+    local chests = self.world.pendingChests
+    if chests and #chests > 0 and not self.world.player.dead then
+        local c = table.remove(chests, 1)
+        State.push(require("src.states.broodcell").new(self, c))
+        return
+    end
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
     if won and self.world.time >= ((self.world.pendingChoice or {}).at or 0) then

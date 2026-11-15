@@ -159,6 +159,8 @@ function Rewards:treasureCaught(x, y)
     local tc, fc = self.cfg.treasure, self.cfg.frenzy
     self:pay({ xp = tc.xp, frenzy = fc.treasure }, x, y)
     self.world:floatText(x, y - 10, "TREASURE!", { 1, 0.85, 0.3 }, true)
+    -- and a brood cell chest of level-up cards (content/props/brood_cell.lua)
+    if self.world.dropChest then self.world:dropChest(x, y, "treasure") end
     self.world.particles:burst(x, y, 30, { { 1, 0.9, 0.4 }, { 1, 1, 0.8 } }, 160, 100, { glow = true, grav = 120 })
     Audio.play("pickup", { pitch = 0.9 })
     self:punch(0.08)
