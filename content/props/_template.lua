@@ -14,6 +14,10 @@ return {
     -- hp = 3, onHit = function(world, o, hits, dx, dy) end,   -- the player's attacks / dashes
     -- init = function(world, o) end, update = function(world, o, dt) end, remove = function(world, o) end,
     -- label = function(world, o) return "text", color end,     -- text above it (HUD)
+    -- labels = function(world, o) return { { text = "a", x = o.x, y = o.y, z = 20, align = "left" } } end,
+    -- A map gamble (src/game/gambles.lua): the director may place it in a wave and it goes when
+    -- the next wave starts unless o.busy. leave(world, o) is called to send it off.
+    -- gamble = { weight = 10, minWave = 2, allowed = function(world) return true end, text = "banner line", color = { 1, 1, 1 } },
     draw = function(world, o, sx, sy) end,     -- on the ground, under the crowd (projected coords)
     -- drawAir = function(world, o, sx, sy) end,
 }

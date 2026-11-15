@@ -78,6 +78,9 @@ add { key = "weather", category = "Video", label = "Weather", type = "choice", d
 add { key = "midWaveEvents", category = "Gameplay", label = "Mid-Wave Events", type = "choice", default = "normal",
     options = { { value = "often", label = "Often" }, { value = "normal", label = "Normal" }, { value = "off", label = "Off" } },
     desc = "Things that happen during a wave: honeydew rain, an anteater's tongue, a boot, a flood, a lawnmower, a rival colony, a merchant..." }
+add { key = "mapGambles", category = "Gameplay", label = "Map Gambles", type = "choice", default = "normal",
+    options = { { value = "often", label = "Often" }, { value = "normal", label = "Normal" }, { value = "off", label = "Off" } },
+    desc = "Risky spots that pop up in a wave: a dewdrop shrine to stand in for a blessing, a challenge bell that calls a tough pack, a gamble flower to spin with nectar." }
 add { key = "bossEncounters", category = "Gameplay", label = "Boss Encounters", type = "toggle", default = true,
     desc = "Every 5th wave a predator joins the queen: an anteater, an antlion's pit or a bird swooping down." }
 add { key = "weatherEffects", category = "Gameplay", label = "Weather Effects", type = "toggle", default = true,
@@ -127,6 +130,8 @@ add { key = "slowMotion", category = "Gameplay", label = "Slow Motion", type = "
     desc = "A moment of slow motion on huge multi-kills, a queen falling and the frenzy move." }
 add { key = "frenzyAuto", category = "Gameplay", label = "Auto Frenzy", type = "toggle", default = false,
     desc = "Unleash the frenzy move by itself as soon as the meter is full (and ants are around). Otherwise press Q." }
+add { key = "autoCollect", category = "Gameplay", label = "Auto Collect Nectar", type = "toggle", default = false,
+    desc = "Nectar beads and pickups fly to you wherever they drop, without walking near them. Off: they drift in once inside your Pickup Range (and everything is swept up at the end of a wave)." }
 add { key = "miniGoals", category = "Gameplay", label = "Mini-Goals", type = "toggle", default = true,
     desc = "Some waves come with an optional side task (catch the courier, guard the aphid...) for bonus XP and frenzy." }
 add { key = "routeGates", category = "Gameplay", label = "Route Gates", type = "toggle", default = true,

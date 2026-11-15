@@ -2,7 +2,7 @@
 --
 -- A run is saved as a snapshot of what makes it *your* run: the bug, mode and stage, the waves
 -- cleared, time, KOs, HP, the bag (every item where you put it and how it's turned), the bag's
--- extra rows, the skill tree, the species met so far and queens already fought, any item choice
+-- extra rows, the skill tree, the nectar balance, the species met so far and queens already fought, any item choice
 -- still owed, and the run's record counters. The fight itself is not saved: resuming starts with
 -- a short breather before the next wave, and a run saved mid-wave plays that wave again.
 --
@@ -50,7 +50,17 @@ function RunSave.snapshot(game)
         economy = w.economy and util.deepcopy({ boosts = w.economy.boosts, locked = w.economy.locked,
             interestPaid = w.economy.interestPaid, scrapped = w.economy.scrapped, growth = w.economy.growth,
             interestWave = w.economy.interestWave }),
+        -- blessings and curses from map gambles (src/game/gambles.lua)
+        blessings = util.deepcopy(w.blessings),
     }
+    -- nectar: the balance, plus any beads still on the floor (as if swept up)
+    local beads = w.beads and w.beads:pending() or 0
+    snap.nectar = (w.nectar or 0) + beads * (w.beads and w.beads.cfg.perXP or 1)
+    snap.nectarEarned, snap.nectarSpent = (w.nectarEarned or 0) + beads, w.nectarSpent or 0
+    if beads > 0 then
+        snap.xp = (snap.xp or 0) + beads
+        snap.skills.xp = snap.skills.xp + beads
+    end
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
     end
@@ -121,6 +131,8 @@ function RunSave.restore(world, snap)
     world.kos, world.bestCombo, world.xp = snap.kos or 0, snap.bestCombo or 0, snap.xp or 0
     world.won, world.continued, world.bonusPicks = snap.won, snap.continued, snap.bonusPicks or 0
     world.resumed = true
+    world.nectar = snap.nectar or 0
+    world.nectarEarned, world.nectarSpent = snap.nectarEarned or world.nectar, snap.nectarSpent or 0
     if snap.choice then world.choice = util.deepcopy(snap.choice) end
     if snap.economy then
         local Economy = require("src.game.economy")
@@ -162,6 +174,7 @@ function RunSave.restore(world, snap)
         p.skills = sk
         sk:apply()
     end
+    if snap.blessings then require("src.game.gambles").restore(world, snap.blessings) end
     p.hp = math.max(1, math.min(snap.hp or p.stats:get("maxHp"), p.stats:get("maxHp")))
     -- the waves: species met and queens fought, then a breather before the next wave
     for _, id in ipairs(snap.known or {}) do

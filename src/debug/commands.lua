@@ -57,6 +57,22 @@ add { name = "killall", help = "Kill all enemies (counts KOs, triggers procs)", 
     for i = 1, w.enemyCount do w:killEnemy(w.enemies[i]) end
 end }
 
+add { name = "nectar", usage = "[n]", help = "Show the nectar balance, or add n nectar", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local w = game.world
+    local n = tonumber(args[1])
+    if n and n > 0 then w:addNectar(math.floor(n)) end
+    out(("Nectar %d (earned %d, spent %d, %d on the ground)"):format(w.nectar, w.nectarEarned, w.nectarSpent, w.beads:pending()))
+end }
+
+add { name = "pickup", usage = "<id>", help = "Drop a ground pickup next to you (magnet, freeze, frenzy)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.pickups:get(args[1] or "")
+    if not def then out("Unknown pickup. " .. table.concat(Content.pickups:ids(), ", ")) return end
+    local p = game.world.player
+    if game.world:dropPickup(def.id, p.x + 40, p.y) then out("Dropped " .. def.name) else out("Too many pickups on the ground") end
+end }
+
 add { name = "god", help = "Toggle invulnerability", run = function(args, game, out)
     if not needGame(game, out) then return end
     game.world.flags.god = not game.world.flags.god
@@ -157,6 +173,21 @@ add { name = "encounter", usage = "[id]", help = "Bring in a boss encounter now 
     if not def then out("Encounters: " .. table.concat(Content.bosses:ids(), ", ")) return end
     game.world.director:startBoss(def)
     out("Encounter: " .. def.name)
+end }
+
+add { name = "gamble", usage = "[id]", help = "Put a map gamble next to you (dewdrop_shrine, challenge_bell, gamble_flower)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local w = game.world
+    local def = Content.props:get(args[1] or "")
+    if not def or not def.gamble then
+        local ids = {}
+        for _, k in ipairs(w.gambles:kinds()) do ids[#ids + 1] = k.id end
+        out("Gambles: " .. table.concat(ids, ", "))
+        return
+    end
+    local x, y = require("src.game.envfx").pointNear(w, w.player.x, w.player.y, 70)
+    w.gambles:place(def.id, x, y)
+    out("Placed " .. def.name)
 end }
 
 add { name = "prop", usage = "<id> [n]", help = "Drop props near you (pebble, twig, acorn, cocoon, merchant)", run = function(args, game, out)

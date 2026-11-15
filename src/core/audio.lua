@@ -70,6 +70,14 @@ local defs = {
                 return (math.sin(t * f * math.pi * 2) + math.sin(t * f * 2 * math.pi * 2) * 0.3) * (1 - p) ^ 1.5 * 0.5
             end)
         end },
+    -- a nectar bead collected (src/game/nectar.lua plays it with a rising pitch along a chain)
+    nectar = { bus = "sfx", voices = 4, gap = 0.035, volume = 0.28,
+        data = function()
+            return synth(0.11, function(t, p)
+                local f = 1046
+                return (math.sin(t * f * math.pi * 2) + math.sin(t * f * 3 * math.pi * 2) * 0.15) * math.exp(-p * 5) * 0.6
+            end)
+        end },
     equip = { bus = "ui", voices = 2, gap = 0.03, volume = 0.45,
         data = function()
             return synth(0.09, function(t, p) return (noise() * 0.5 + math.sin(t * 300 * math.pi * 2) * 0.6) * (1 - p) ^ 3 end)
@@ -131,6 +139,25 @@ local defs = {
                     if d >= 0 then v = v + (math.sin(d * f * math.pi * 2) + 0.3 * math.sin(d * f * 4 * math.pi * 2)) * math.exp(-d * 4) end
                 end
                 return v * 0.35
+            end)
+        end },
+    chime = { bus = "sfx", voices = 2, gap = 0.08, volume = 0.3,
+        data = function()
+            -- a glassy plink (a dew drop): two bright partials, quick decay
+            return synth(0.45, function(t)
+                local v = math.sin(t * 1319 * math.pi * 2) + 0.5 * math.sin(t * 2637 * math.pi * 2)
+                return v * math.exp(-t * 9) * 0.5
+            end)
+        end },
+    bell = { bus = "sfx", voices = 2, gap = 0.2, volume = 0.5,
+        data = function()
+            -- a bell: inharmonic partials ringing out
+            return synth(1.6, function(t)
+                local v = 0
+                for i, pr in ipairs({ { 1, 1 }, { 2.4, 0.6 }, { 3.0, 0.4 }, { 4.5, 0.25 }, { 5.9, 0.15 } }) do
+                    v = v + math.sin(t * 392 * pr[1] * math.pi * 2) * pr[2] * math.exp(-t * (2 + i * 0.9))
+                end
+                return v * 0.4 * math.min(1, t / 0.004)
             end)
         end },
     queen = { bus = "sfx", voices = 1, gap = 1, volume = 0.6,
