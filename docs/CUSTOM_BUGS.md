@@ -6,13 +6,16 @@ Swarmed has a **Bug Creator** (main menu > Bug Creator). It makes custom playabl
   then set the size, colour, stats, an item rule and a skill tree. A live preview shows the bug
   fighting while you change it.
 * **Write a Script** – a bug is a small Lua script. Start from the blueprint (every field
-  explained), or press **Edit as Code** in the mixer to carry on from a mix.
+  explained), or press **Edit as Code** in the mixer to carry on from a mix. A script can be a
+  **completely new bug**: its own pixel art and legs, and moves written in code. The worked
+  example is the **Stick Insect** (Bug Creator > Example: Stick Insect, or
+  [`content/characters/_example_stick_insect.lua`](../content/characters/_example_stick_insect.lua)).
 
 Custom bugs join the bug select screen with the others (Show: **Custom Bugs**). They are just for
 fun: they don't count towards the play-every-bug achievements and never come up as the daily bug.
 
-> This is a first version. The plan is to grow it: custom models and colours per part, moves
-> written in code, sharing codes. Ideas welcome.
+> This is a first version, to grow from: per-part colours, animations for scripted moves,
+> hold-to-charge and stamina moves in code, sharing codes. Ideas welcome.
 
 ## Sharing a bug
 
@@ -96,6 +99,88 @@ to see what a move type understands.
 
 Numbers outside the range are moved back inside it, and the Creator says so in a note.
 
+### Your own art
+
+Leave out `look` and give the bug `art` instead. It is drawn the way the built-in bugs are: the
+body is stacked into a raised 3D shell and the legs are jointed lines that walk.
+
+```lua
+art = {
+    palette = { o = "#1c140ab0", a = "#4a3a1e", b = "#94784a", g = "#6a8a3a" },
+    -- top-down, FACING RIGHT, one letter per pixel ("." = empty). Up to 64 x 48 pixels.
+    body = {
+        ".oooooooooooooo.",
+        "oaabbbbbbggggbbo",
+        ".oooooooooooooo.",
+    },
+    -- frames = { {rows}, {rows} }  instead of body for up to 4 animation frames (fps = 8)
+    -- legs for ONE side (mirrored): { hipU, hipV, kneeU, kneeV, footU, footV } with
+    -- u = pixels forward from the middle of the drawing, v = pixels to the side (negative)
+    legs = { { 4, -1, 8, -6, 12, -9 }, { 0, -1, 0, -7, -2, -11 }, { -4, -1, -8, -6, -12, -9 } },
+    legColor = "#7a6438",
+    height = 2,     -- body thickness, 1..10
+    lift = 3,       -- how high it stands, 0..10
+    kneeUp = 2,     -- knee height, 0..6
+    stride = 2.4,   -- step length, 0.5..4
+},
+```
+
+Colours are `#rrggbb`, or `#rrggbbaa` for see-through (the built-in outlines use `b0`). The
+hitbox is worked out from the drawing (and `scale` / `radius` still work). Up to 8 legs a side,
+each with 2 to 4 joints.
+
+### Moves written in code
+
+Any move can be `type = "scripted"` with a function. The function gets `me`, a toolkit for
+acting on the ants around the bug:
+
+```lua
+attack = {
+    type = "scripted", name = "Stick Whip", cooldown = 0.55, range = 55,
+    fire = function(me)
+        me.state.swings = (me.state.swings or 0) + 1      -- me.state keeps values between uses
+        if me.state.swings % 3 == 0 then
+            me.hitLine({ length = 95, width = 6, damage = 16, knockback = 160 })
+        else
+            me.hitArc({ radius = 50, arc = 1.6, damage = 8 })
+        end
+    end,
+},
+dash = {
+    type = "scripted", name = "Twig Vault", charges = 2,
+    start = function(me)                                   -- Shift pressed
+        me.lunge(80)
+        me.after(0.22, function(m) m.hitCircle({ radius = 34, damage = 10, stun = 0.4 }) end)
+    end,
+    -- tick = function(me, dt) ... end                     -- every frame while the dash moves you
+},
+```
+
+| In `me` | What it does |
+|---|---|
+| `x`, `y`, `aimX`, `aimY`, `angle` | Where the bug is and where it aims (a unit vector, and in radians). |
+| `moveX`, `moveY` | Dash only: the direction the bug is moving. |
+| `hp`, `maxHp`, `time`, `params` | Health, seconds into the run, and this move's own table (your extra fields too). |
+| `state` | A table kept for the whole run: counters, combos, anything. |
+| `hitArc{ radius, arc, damage, ... }` | Hits ants in a cone in front (`arc` in radians, 0.1 .. 6.28). Returns how many it hit. |
+| `hitCircle{ radius, damage, ahead, x, y, ... }` | Hits ants in a circle around the bug, `ahead` pixels along the aim, or at `x, y`. |
+| `hitLine{ length, width, damage, ... }` | Hits every ant in a straight line along the aim. |
+| `shoot{ speed, range, damage, size, pierce, burst = { radius, damage }, ... }` | Fires a projectile; `burst` explodes where it stops. 12 per call. |
+| `lunge(distance, turn)` | Dashes the bug along the aim (0 .. 200 pixels). |
+| `after(seconds, function(me) ... end)` | Runs a function later (combos, delayed blasts). 16 waiting at most. |
+| `heal(n)` | Heals up to 50 HP. |
+| `ring{ radius, color, x, y }`, `shake(amount)`, `sound(name, pitch)` | Effects. Sounds: `hit`, `swing`, `special`, `zap`, `boom`, `dash`, `chime`, `drop`. |
+| `count(radius)`, `nearest(radius)` | How many ants are near; the x, y of the nearest one (or nil). |
+
+Every hit takes the same extras: `knockback` (0 .. 600), `poison = { dps, seconds }`,
+`slow = { speedMultiplier, seconds }`, `stun = seconds`, `color = { r, g, b }` (0..1) and
+`turn` (radians to turn away from the aim: fans of shots). Damage goes through the bug's
+stats and items like any other move: crits, damage %, area % and procs all apply.
+
+Move code runs in the sandbox too, with a budget for every call. If a move breaks or gets stuck
+it switches off for the rest of the run (the Creator shows the error), and saving runs a test
+fight first, so most mistakes are caught before you play.
+
 ### Safety limits
 
 Scripts can't harm the game or your computer:
@@ -104,7 +189,8 @@ Scripts can't harm the game or your computer:
   `love`, `require`, `load`, `os`, `io`, `debug` and metatables don't exist.
 * A script gets a budget of about two million steps and 64 MB to build its table, so a loop that
   never ends stops with an error instead of freezing the game. Compiled bytecode is refused.
-* Only **data** comes out. Functions in the returned table are dropped, every field is checked,
+* Only **data** comes out, plus the functions of `scripted` moves, which only ever run inside the
+  sandbox with a budget per call and only see the `me` toolkit. Every field is checked,
   and numbers are kept in sane ranges (move damage at most 200, cooldowns at least 0.05 s,
   projectile and hit counts at most 24).
 * Custom bugs can't replace a built-in bug: their ids always start with `custom_`.
@@ -278,6 +364,9 @@ each one does.
 
 * Loader and sandbox: [`src/game/custombugs.lua`](../src/game/custombugs.lua) (`CustomBugs.run`,
   `.build`, `.save`, `.loadAll`, `.toSource`, `.trial`).
+* Moves in code: [`src/game/scriptmoves.lua`](../src/game/scriptmoves.lua) (the `me` toolkit),
+  with the `scripted` types in `content/attacks/scripted.lua` and `content/dashes/scripted.lua`.
+  Own art: `Sprites.buildSet` makes a small image of its own per bug (no atlas rebuild).
 * Screens: [`src/states/creator.lua`](../src/states/creator.lua) (hub),
   [`src/states/bugmixer.lua`](../src/states/bugmixer.lua) (mix parts),
   [`src/states/codeeditor.lua`](../src/states/codeeditor.lua) (script editor).

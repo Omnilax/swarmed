@@ -362,7 +362,7 @@ function Mixer:draw()
         local function mv(slot, reg)
             local p = d[slot]
             local mdef = p and reg:get(p.type)
-            return mdef and (mdef.name or p.type) or "none"
+            return p and p.name or (mdef and (mdef.name or p.type)) or "none"
         end
         lg.setColor(c.dim)
         lg.printf(("Attack: %s    Special: %s    Dash: %s"):format(mv("attack", Content.attacks),

@@ -23,7 +23,7 @@ CharSelect.__index = CharSelect
 -- charged attacks may have no flat damage or cooldown, and the panel must never crash on them.
 local function moveLine(registry, cfg)
     local def = registry:get(cfg.type)
-    local text = (def and def.name) or cfg.type or "?"
+    local text = cfg.name or (def and def.name) or cfg.type or "?"     -- (scripted moves name themselves)
     local parts = {}
     if type(cfg.damage) == "number" then parts[#parts + 1] = cfg.damage .. " dmg" end
     if type(cfg.cooldown) == "number" then parts[#parts + 1] = "every " .. cfg.cooldown .. "s" end

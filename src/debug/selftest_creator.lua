@@ -6,6 +6,7 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local CustomBugs = require("src.game.custombugs")
+local Input = require("src.core.input")
 
 return function(wait, shot)
     local function compile(src) return CustomBugs.compile(src, "test") end
@@ -138,6 +139,51 @@ return function(wait, shot)
     end
     CustomBugs.delete(mixed.id)
 
+    -- 4b. a brand-new bug: own art and moves written in code (the Stick Insect example)
+    local SM = require("src.game.scriptmoves")
+    local Sprites = require("src.gfx.sprites")
+    local stickSrc = assert(love.filesystem.read("content/characters/_example_stick_insect.lua"))
+    local stick, sinfo = CustomBugs.save(stickSrc)
+    assert(stick, "the Stick Insect example should save: " .. tostring(sinfo.errors[1]))
+    assert(#sinfo.warnings == 0, "the example should load without notes: " .. tostring(sinfo.warnings[1]))
+    assert(stick.mix.art and stick.scripted and Sprites.byId[stick.model.body] and Sprites.byId[stick.sprite].image, "own art not built")
+    assert(stick.attack.type == "scripted" and type(stick.attack.fire) == "function", "scripted attack lost its code")
+    do
+        local sw = World.new({ mode = "sandbox", character = stick.id })
+        sw.flags.god = true
+        sw.pilot = { pressed = {}, down = {} }
+        local p = sw.player
+        local shotsSeen, hit = 0, false
+        for f = 1, 300 do
+            if f % 40 == 1 then sw:spawnRing("worker_ant", 8, p.x, p.y, 45) end
+            local ph = f % 90
+            sw.pilot.pressed = { secondary = ph == 10, dash = ph == 50 }
+            sw.pilot.down = { attack = true }
+            sw:update(1 / 60)
+            shotsSeen = math.max(shotsSeen, #sw.hazards.shots)
+            love.graphics.origin()
+            if f % 60 == 0 then sw:draw() end
+        end
+        assert(not SM.errors[stick.id], "a Stick Insect move failed: " .. tostring(SM.errors[stick.id]))
+        assert(shotsSeen >= 5, "the thorn fan fired no thorns (" .. shotsSeen .. ")")
+        assert((p.scriptState.swings or 0) >= 3, "the scripted attack did not run")
+        print(("[selftest] creator: stick insect fought (swings %d, thorns in flight %d, ants left %d)"):format(p.scriptState.swings, shotsSeen, sw.enemyCount))
+    end
+    -- move code is sandboxed too: a stuck loop in a move stops that move, not the game
+    local loopy, linfo = CustomBugs.compile([[return { name = "Loopy", attack = { type = "scripted", cooldown = 0.5,
+        fire = function(me) while true do end end } }]])
+    assert(loopy, tostring(linfo.errors[1]))
+    local okSave, why = CustomBugs.trial(loopy)
+    assert(not okSave and why:find("too long"), "a stuck move should fail the test fight: " .. tostring(why))
+    -- and it can't reach the engine
+    local sneak = assert(CustomBugs.compile([[return { name = "Sneak", attack = { type = "scripted", cooldown = 0.5,
+        fire = function(me) me.state.seen = tostring(love) .. tostring(me.params.fire and "f") .. tostring(rawget(me, "world")) end } }]]))
+    assert(CustomBugs.trial(sneak), "sneak trial failed")
+    local bad1 = CustomBugs.compile([[return { name = "Nofire", attack = { type = "scripted" } }]])
+    assert(not bad1, "a scripted attack needs fire")
+    local badArt, binfo = CustomBugs.compile([[return { name = "Badart", art = { palette = { a = "#ffffff" }, body = { "aaz" } } }]])
+    assert(not badArt and binfo.errors[1]:find("palette"), "unknown art letters should fail")
+
     -- 5. every move on someone else's body, fighting for a few seconds
     local bugs = Content.characters:filter(function(c) return not c.custom end)
     local nb = #bugs
@@ -178,7 +224,7 @@ return function(wait, shot)
     assert(CustomBugs.save([[local b = bug("stag_beetle") b.name = "Shared Stag" b.colors = { hue = 200 } return b]]))
     local hub = State.push(Creator.new())
     wait(0.2)
-    for i, it in ipairs(hub.menu.items) do if it.bugId then hub.menu.focus = i it.onActivate() break end end
+    for i, it in ipairs(hub.menu.items) do if it.bugId == "custom_stick_insect" then hub.menu.focus = i it.onActivate() break end end
     wait(0.3)
     shot("creator_hub")
     -- mix: change body and moves, the preview follows, save
@@ -255,9 +301,21 @@ return function(wait, shot)
     cs:build()
     local seen = 0
     for _, it in ipairs(cs.menu.items) do if it.character and it.character.custom then seen = seen + 1 end end
-    if seen ~= 2 then for _, e in ipairs(CustomBugs.all()) do print("  custom: " .. e.id) end end
-    assert(seen == 2, "bug select should list the custom bugs (saw " .. seen .. ")")
+    if seen ~= 3 then for _, e in ipairs(CustomBugs.all()) do print("  custom: " .. e.id) end end
+    assert(seen == 3, "bug select should list the custom bugs (saw " .. seen .. ")")
     State.pop()
+    -- the stick insect in a real run, close up
+    local Game = require("src.states.game")
+    local g = State.switch(Game.new({ mode = "run", character = "custom_stick_insect", seed = 31 }))
+    g.world.flags.god = true
+    g.world.camera.zoom, g.world.camera.targetZoom = 2, 2
+    g.world:spawnRing("worker_ant", 10, g.world.player.x, g.world.player.y, 50)
+    Input.virtualDown.attack = true
+    for _ = 1, 40 do wait(1 / 60) end
+    Input.press("secondary")
+    for _ = 1, 14 do wait(1 / 60) end
+    shot("creator_stick_insect")
+    Input.virtualDown.attack = nil
     for _, e in ipairs(CustomBugs.all()) do CustomBugs.delete(e.id) end
     State.pop()
     print("[selftest] creator OK")

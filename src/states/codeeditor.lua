@@ -607,11 +607,12 @@ function Editor:draw()
         local function mv(slot, reg)
             local p = d[slot]
             local m = p and reg:get(p.type)
-            return m and (m.name or p.type) or "none"
+            return p and p.name or (m and (m.name or p.type)) or "none"
         end
         local Content = require("src.content")
-        lines[#lines + 1] = { c.good, ("OK: %s  ·  looks like the %s  ·  attack %s  ·  special %s  ·  dash %s"):format(d.name,
-            (Content.characters:get(d.mix.look) or {}).name or d.mix.look, mv("attack", Content.attacks),
+        local looks = d.mix.art and "its own art" or ("looks like the " .. ((Content.characters:get(d.mix.look or "") or {}).name or tostring(d.mix.look)))
+        lines[#lines + 1] = { c.good, ("OK: %s  ·  %s  ·  attack %s  ·  special %s  ·  dash %s"):format(d.name,
+            looks, mv("attack", Content.attacks),
             mv("secondary", Content.attacks), mv("dash", Content.dashes)) }
     end
     for i = 1, math.min(2, #info.warnings) do lines[#lines + 1] = { c.focus, "Note: " .. info.warnings[i] } end

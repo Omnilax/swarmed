@@ -10,8 +10,11 @@
 --      `require`, `load`, `os` and `io` do not exist here.
 --    * Helpers: bug("scorpion") gives a copy of a built-in bug's data to start from;
 --      bugs, attacks, dashes, items, statIds are lists of every id.
---    * Only data comes out: functions in the table you return are ignored, and numbers are
---      kept in sane ranges (the Creator tells you what it changed).
+--    * Only data comes out, plus the functions of moves written in code (type = "scripted"),
+--      which run in the same sandbox. Numbers are kept in sane ranges (the Creator says what
+--      it changed).
+--    * Want a completely new bug? See "A BRAND-NEW BUG" at the bottom: own pixel art and legs,
+--      moves written as code.
 --    * Every field except `name` is optional. Leave one out and it comes from the `look` bug.
 -- ===========================================================================================
 
@@ -71,6 +74,26 @@ return {
     -- Extra tags (beetle, arachnid, crustacean, myriapod, flyer, heavy ...) for item synergies.
     tags = { "beetle" },
 }
+
+-- ===========================================================================================
+--  A BRAND-NEW BUG: own art and moves written in code
+--
+--  Instead of `look`, give it art (pixel rows, facing right, letters = palette colours):
+--      art = {
+--          palette = { o = "#1c140ab0", a = "#4a3a1e", b = "#94784a" },
+--          body = { ".oooo..", "oabbbo.", ".oooo.." },
+--          legs = { { 4, -1, 8, -6, 12, -9 }, { 0, -1, 0, -7, -2, -11 } },  -- one side, mirrored
+--          legColor = "#7a6438", height = 2, lift = 3,
+--      },
+--
+--  And a move as code (type = "scripted"); `me` is the move toolkit:
+--      attack = { type = "scripted", name = "Stick Whip", cooldown = 0.5, range = 50,
+--          fire = function(me) me.hitArc({ radius = 50, arc = 1.6, damage = 8 }) end },
+--      dash = { type = "scripted", name = "Vault", start = function(me) me.lunge(80) end },
+--
+--  The whole worked example: content/characters/_example_stick_insect.lua
+--  (in the game: Bug Creator > Example: Stick Insect). Every toolkit call: docs/CUSTOM_BUGS.md
+-- ===========================================================================================
 
 -- ===========================================================================================
 --  MORE IDEAS

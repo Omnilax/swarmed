@@ -29,6 +29,7 @@ local CustomBugs = {
 }
 
 local BLUEPRINT = "content/characters/_custom_blueprint.lua"
+local ser     -- Lua value -> source text (defined under "Writing scripts")
 
 ----------------------------------------------------------------------------------------------
 -- Sandbox
@@ -40,9 +41,14 @@ local function copyTable(t, skip)
 end
 
 -- Plain data only: no functions, userdata or threads, no cycles, bounded depth and size.
-local function plain(v, depth, seen, budget)
+local function plain(v, depth, seen, budget, env)
     local tv = type(v)
     if tv == "string" or tv == "number" or tv == "boolean" then return v end
+    -- functions survive only when they were written in the script itself (move code)
+    if tv == "function" then
+        if env and getfenv and getfenv(v) == env then return v end
+        return nil
+    end
     if tv ~= "table" or depth > 8 or seen[v] then return nil end
     seen[v] = true
     local o = {}
@@ -51,14 +57,14 @@ local function plain(v, depth, seen, budget)
         if budget.n < 0 then break end
         local tk = type(k)
         if tk == "string" or tk == "number" then
-            local px = plain(x, depth + 1, seen, budget)
+            local px = plain(x, depth + 1, seen, budget, env)
             if px ~= nil then o[k] = px end
         end
     end
     seen[v] = nil
     return o
 end
-function CustomBugs.plain(v) return plain(v, 0, {}, { n = 20000 }) end
+function CustomBugs.plain(v, env) return plain(v, 0, {}, { n = 20000 }, env) end
 
 -- A deep copy of trusted engine data (keeps functions: built-in params may hold them).
 local function deepCopy(v, seen)
@@ -123,6 +129,48 @@ local function makeEnv(log)
     return env
 end
 
+-- Runs fn(...) with a budget of VM instructions and memory. Checked every few instructions: a
+-- loop doubling a string must be caught within a doubling. Used to load scripts and, during a
+-- run, to call the move code they define (src/game/scriptmoves.lua).
+local EVERY = 4
+local activeHook
+function CustomBugs.protect(fn, budget, memMB, ...)
+    if activeHook then return pcall(fn, ...) end       -- already guarded (nested call)
+    local steps, limit = 0, math.floor(budget / EVERY)
+    local memStart, gccount = collectgarbage("count"), collectgarbage
+    local hook
+    hook = function()
+        steps = steps + 1
+        -- (the hook removes itself first: the error must not fire again once back outside)
+        if steps > limit then debug.sethook() activeHook = nil error("the script took too long (a loop that never ends?)", 2) end
+        if gccount("count") - memStart > memMB * 1024 then debug.sethook() activeHook = nil error("the script used too much memory", 2) end
+    end
+    activeHook = hook
+    string.rep = safeRep
+    debug.sethook(hook, "", EVERY)
+    local res = { pcall(fn, ...) }
+    debug.sethook()
+    string.rep = realRep
+    activeHook = nil
+    return unpack(res, 1, table.maxn(res))
+end
+
+-- Engine code called from script code (the move toolkit) runs without the budget hook: it is
+-- trusted, and hooking it would be slow. Errors still reach the script's call.
+function CustomBugs.unguarded(fn, ...)
+    local h = activeHook
+    if not h then return fn(...) end
+    debug.sethook()
+    string.rep = realRep
+    activeHook = nil
+    local res = { pcall(fn, ...) }
+    activeHook = h
+    string.rep = safeRep
+    debug.sethook(h, "", EVERY)
+    if not res[1] then error(res[2], 0) end
+    return unpack(res, 2, table.maxn(res))
+end
+
 -- "[string "my_bug"]:12: oops" -> "line 12: oops", plus the line number.
 local function cleanError(err)
     err = tostring(err)
@@ -150,21 +198,7 @@ function CustomBugs.run(source, name)
     end
     -- hooks don't fire inside JIT-compiled code, so the script runs interpreted
     if jit and jit.off then jit.off(fn, true) end
-    -- checked every few instructions: a loop doubling a string must be caught within a doubling
-    local EVERY = 4
-    local steps, limit = 0, math.floor(CustomBugs.BUDGET / EVERY)
-    local memStart = collectgarbage("count")
-    local gccount = collectgarbage
-    debug.sethook(function()
-        steps = steps + 1
-        -- (the hook removes itself first: the error must not fire again once back outside)
-        if steps > limit then debug.sethook() error("the script took too long (a loop that never ends?)", 2) end
-        if gccount("count") - memStart > 32 * 1024 then debug.sethook() error("the script used too much memory", 2) end
-    end, "", EVERY)
-    string.rep = safeRep
-    local ok, res = pcall(fn)
-    debug.sethook()
-    string.rep = realRep
+    local ok, res = CustomBugs.protect(fn, CustomBugs.BUDGET, 32)
     if not ok then
         local e, line = cleanError(res)
         return nil, e, line, log
@@ -172,7 +206,7 @@ function CustomBugs.run(source, name)
     if type(res) ~= "table" then
         return nil, "the script must end with `return { ... }` (a table describing the bug)", nil, log
     end
-    return CustomBugs.plain(res), nil, nil, log
+    return CustomBugs.plain(res, env), nil, nil, log
 end
 
 ----------------------------------------------------------------------------------------------
@@ -213,6 +247,13 @@ end
 local function builtIn(id)
     local d = type(id) == "string" and Content.characters:get(id)
     if d and not d.custom then return d end
+end
+
+local function text(v, max)
+    if type(v) ~= "string" then return nil end
+    v = v:gsub("[%c]", " ")
+    if #v > max then v = v:sub(1, max) end
+    return v
 end
 
 -- One move slot (attack / secondary / dash). Returns params, mix info, or nil + error.
@@ -257,6 +298,22 @@ local function buildMove(slot, v, reg, errs, warns)
         errs[#errs + 1] = ("%s: unknown %s type '%s' (see the lists in docs/CUSTOM_BUGS.md)"):format(slot, reg.kind, tostring(params.type))
         return nil
     end
+    -- a move written in code: its functions (made in the script) come along
+    if params.type == "scripted" then
+        local need = slot == "dash" and "start" or "fire"
+        for _, k in ipairs({ "fire", "start", "tick" }) do
+            if type(v[k]) == "function" then params[k] = v[k] end
+        end
+        if type(params[need]) ~= "function" then
+            errs[#errs + 1] = ("%s: a scripted %s needs %s = function(me) ... end"):format(slot, slot, need)
+            return nil
+        end
+        params.name = text(v.name, 24)
+        params.cooldown = params.cooldown or (slot == "secondary" and 2 or 0.6)
+    elseif params.fire or params.start or params.tick then
+        warns[#warns + 1] = slot .. ": code only runs in type = \"scripted\" moves (ignored)"
+        params.fire, params.start, params.tick = nil, nil, nil
+    end
     return params, from
 end
 
@@ -269,11 +326,96 @@ CustomBugs.slug = slug
 
 function CustomBugs.idFor(name) return CustomBugs.PREFIX .. slug(name) end
 
-local function text(v, max)
-    if type(v) ~= "string" then return nil end
-    v = v:gsub("[%c]", " ")
-    if #v > max then v = v:sub(1, max) end
-    return v
+
+-- Own art: a script's `art` table -> sprite definitions for Sprites.buildSet (made when the bug
+-- is registered, see CustomBugs.prepareArt), or nil + errors.
+--   art = { palette = { a = "#rrggbb", ... }, body = { rows } or frames = { { rows }, ... },
+--           legs = { { hipU, hipV, kneeU, kneeV, footU, footV }, ... }, legColor = "#rrggbb",
+--           height = 3, lift = 2, kneeUp = 1, stride = 1.6, fps = 8 }
+local ART_MAX_W, ART_MAX_H, ART_MAX_FRAMES = 64, 48, 4
+local function buildArt(id, art, errs, warns)
+    if type(art) ~= "table" then errs[#errs + 1] = "art must be a table" return nil end
+    local pal = {}
+    for k, v in pairs(type(art.palette) == "table" and art.palette or {}) do
+        if type(k) ~= "string" or #k ~= 1 or k == "." or k == " " then
+            errs[#errs + 1] = "art.palette: keys are single letters or digits (got '" .. tostring(k) .. "')"
+        elseif type(v) ~= "string" or not (v:match("^#%x%x%x%x%x%x$") or v:match("^#%x%x%x%x%x%x%x%x$")) then
+            errs[#errs + 1] = "art.palette." .. k .. " must be a colour like \"#5a7a30\""
+        else
+            pal[k] = v
+        end
+    end
+    if not next(pal) then errs[#errs + 1] = "art.palette is empty" return nil end
+    local frames = art.frames or { art.body }
+    if type(frames) ~= "table" or type(frames[1]) ~= "table" then
+        errs[#errs + 1] = "art needs body = { \"rows of pixels\", ... } (or frames = { {...}, {...} })"
+        return nil
+    end
+    local w, h = 0, 0
+    local clean = {}
+    for fi = 1, math.min(#frames, ART_MAX_FRAMES) do
+        local rows = frames[fi]
+        if type(rows) ~= "table" or #rows == 0 then errs[#errs + 1] = "art frame " .. fi .. " has no rows" return nil end
+        if #rows > ART_MAX_H then errs[#errs + 1] = ("art: %d rows at most"):format(ART_MAX_H) return nil end
+        clean[fi] = {}
+        for ri, row in ipairs(rows) do
+            if type(row) ~= "string" then errs[#errs + 1] = ("art frame %d row %d must be a string"):format(fi, ri) return nil end
+            if #row > ART_MAX_W then errs[#errs + 1] = ("art: rows are %d pixels wide at most"):format(ART_MAX_W) return nil end
+            for ci = 1, #row do
+                local ch = row:sub(ci, ci)
+                if ch ~= "." and ch ~= " " and not pal[ch] then
+                    errs[#errs + 1] = ("art frame %d row %d: '%s' is not in the palette"):format(fi, ri, ch)
+                    return nil
+                end
+            end
+            clean[fi][ri] = row
+            w = math.max(w, #row)
+        end
+        h = math.max(h, #rows)
+    end
+    if #frames > ART_MAX_FRAMES then warns[#warns + 1] = ("art: %d frames at most"):format(ART_MAX_FRAMES) end
+    -- how big the drawing really is (for the hitbox)
+    local minX, maxX, minY, maxY = math.huge, -1, math.huge, -1
+    for y, row in ipairs(clean[1]) do
+        for x = 1, #row do
+            local ch = row:sub(x, x)
+            if ch ~= "." and ch ~= " " then
+                minX, maxX, minY, maxY = math.min(minX, x), math.max(maxX, x), math.min(minY, y), math.max(maxY, y)
+            end
+        end
+    end
+    if maxX < 0 then errs[#errs + 1] = "art: the body has no pixels" return nil end
+    local rig
+    if art.legs ~= nil then
+        if type(art.legs) ~= "table" then errs[#errs + 1] = "art.legs must be a list of legs" return nil end
+        rig = {}
+        for li, leg in ipairs(art.legs) do
+            if li > 8 then warns[#warns + 1] = "art.legs: 8 legs a side at most" break end
+            if type(leg) ~= "table" or #leg < 4 or #leg > 8 or #leg % 2 == 1 then
+                errs[#errs + 1] = ("art.legs[%d] must be 2 to 4 joints: { hipU, hipV, kneeU, kneeV, footU, footV }"):format(li)
+                return nil
+            end
+            local l = {}
+            for j, n in ipairs(leg) do
+                if type(n) ~= "number" then errs[#errs + 1] = ("art.legs[%d] must hold numbers"):format(li) return nil end
+                l[j] = clamp(n, -40, 40)
+            end
+            rig[li] = l
+        end
+    end
+    local legColor = type(art.legColor) == "string" and art.legColor:match("^#%x%x%x%x%x%x$") or "#302820"
+    local ids = { icon = id .. "_icon", body = id .. "_body", legs = id .. "_legs" }
+    local fps = clamp(tonumber(art.fps) or 8, 1, 24)
+    local sprites = {
+        { id = ids.icon, fps = fps, palette = pal, frames = clean },
+        { id = ids.body, fps = fps, iso = true, palette = pal, frames = clean },
+        { id = ids.legs, fps = 16, iso = true, rig = rig or {}, palette = { l = legColor }, frames = { { "l" } } },
+    }
+    local model = { legs = ids.legs, body = ids.body,
+        height = clamp(tonumber(art.height) or 3, 1, 10), lift = clamp(tonumber(art.lift) or 2, 0, 10),
+        kneeUp = clamp(tonumber(art.kneeUp) or 1, 0, 6), stride = clamp(tonumber(art.stride) or 1.6, 0.5, 4) }
+    local size = math.max(maxX - minX + 1, maxY - minY + 1)
+    return { sprites = sprites, model = model, sprite = ids.icon, radius = clamp(size * 0.22, 4, 16) }
 end
 
 -- raw (a script's result) -> def ready for Content.characters, or nil + errors. Warnings are
@@ -307,11 +449,22 @@ function CustomBugs.build(raw)
     }
     def.id = raw.id and (CustomBugs.PREFIX .. slug(raw.id)) or CustomBugs.idFor(name)
     if def.id == CustomBugs.PREFIX then def.id = CustomBugs.PREFIX .. "bug" end
+    -- own art instead of a built-in bug's look
+    local art
+    if raw.art ~= nil then
+        art = buildArt(def.id, raw.art, errs, warns)
+        if art then
+            def.sprite, def.model, def.anims, def.sideways, def.segs, def.strike, def.alt = art.sprite, art.model, nil, nil, nil, nil, nil
+            def.art = art.sprites
+            def.mix.look = nil
+            def.mix.art = true
+        end
+    end
     -- size: scale draws it bigger, the hitbox follows unless radius is given
-    local scale = tonumber(raw.scale) or look.scale or 1
+    local scale = tonumber(raw.scale) or (art and 1) or look.scale or 1
     if scale ~= clamp(scale, 0.7, 1.6) then warns[#warns + 1] = "scale kept between 0.7 and 1.6" end
     def.scale = clamp(scale, 0.7, 1.6)
-    local baseR = (look.radius or 6) * def.scale / (look.scale or 1)
+    local baseR = art and art.radius * def.scale or (look.radius or 6) * def.scale / (look.scale or 1)
     def.radius = clamp(tonumber(raw.radius) or baseR, 4, 16)
     -- playstyle
     local Playstyles = require("src.config.playstyles")
@@ -351,6 +504,10 @@ function CustomBugs.build(raw)
         else warns[#warns + 1] = "skillTree: the bug '" .. tostring(raw.skillTree) .. "' has no skill tree (dropped)" end
     end
     def.immune = raw.immune == true or nil
+    -- moves written in code (src/game/scriptmoves.lua runs them)
+    for _, slot in ipairs({ "attack", "secondary", "dash" }) do
+        if type(def[slot]) == "table" and def[slot].type == "scripted" then def.scripted = true end
+    end
     -- colours: a built-in skin's fields
     if type(raw.colors) == "table" then
         local c = raw.colors
@@ -388,12 +545,23 @@ end
 ----------------------------------------------------------------------------------------------
 -- Registering, saving and loading
 
+-- Make the bug's own sprites (once per version of its art).
+local artKeys = {}
+function CustomBugs.prepareArt(def)
+    if not def.art then return end
+    local key = ser(def.art, "")
+    if artKeys[def.sprite] == key then return end
+    require("src.gfx.sprites").buildSet(def.art)
+    artKeys[def.sprite] = key
+end
+
 function CustomBugs.register(def, source)
     local old = Content.characters:get(def.id)
     if old then
         if not old.custom then return false, "that id belongs to a built-in bug" end
         Content.characters:unregister(def.id)
     end
+    CustomBugs.prepareArt(def)
     Content.characters:register(def)
     Content.characters:sort()
     CustomBugs.list[def.id] = { id = def.id, def = def, source = source, file = CustomBugs.dir .. "/" .. def.id .. ".lua" }
@@ -431,7 +599,10 @@ function CustomBugs.trial(def)
     for k, v in pairs(def) do copy[k] = v end
     copy.id = TRIAL
     if Content.characters:get(TRIAL) then Content.characters:unregister(TRIAL) end
+    CustomBugs.prepareArt(copy)
     Content.characters:register(copy)
+    local SM = require("src.game.scriptmoves")
+    SM.errors[TRIAL] = nil
     local Audio = require("src.core.audio")
     local muted = Audio.muted
     Audio.muted = true
@@ -458,6 +629,11 @@ function CustomBugs.trial(def)
     if not ok then
         local msg = tostring(err):gsub("^[^:]*:%d+: ", "")
         return false, "it crashed in a test fight (" .. msg .. "). A move param probably has the wrong kind of value."
+    end
+    if SM.errors[TRIAL] then
+        local e = SM.errors[TRIAL]
+        SM.errors[TRIAL] = nil
+        return false, "a move's code failed in a test fight: " .. e
     end
     return true
 end
@@ -541,7 +717,7 @@ local function num(v)
 end
 
 -- A Lua value as readable source: short tables on one line, longer ones one field per line.
-local function ser(v, indent)
+function ser(v, indent)
     local tv = type(v)
     if tv == "string" then return (("%q"):format(v):gsub("\\\n", "\\n")) end
     if tv == "number" then return num(v) end

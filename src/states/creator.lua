@@ -54,6 +54,12 @@ function Creator:build(focusKey)
     items[#items + 1] = { type = "button", label = "Paste a Script", onActivate = function() self:pasteScript() end,
         desc = "Import a bug someone shared: copy their script, then press this. On a computer you can also drop a .lua file onto the game window." }
 
+    items[#items + 1] = { type = "button", label = "Example: Stick Insect", onActivate = function()
+            State.push(Editor().new({ text = love.filesystem.read("content/characters/_example_stick_insect.lua"),
+                title = "Example Bug" }))
+        end,
+        desc = "A brand-new bug made only from a script: its own pixel art and legs, and three moves written in code. Open it, read it, press Save to play it, or use it as a starting point." }
+
     local bugs = CustomBugs.all()
     items[#items + 1] = { type = "header", label = ("Your bugs  (%d)"):format(#bugs) }
     if #bugs == 0 and #CustomBugs.broken == 0 then
@@ -69,7 +75,10 @@ function Creator:build(focusKey)
                 items[#items + 1] = { type = "button", label = "     " .. label, entry = e, onActivate = fn, desc = desc }
             end
             act("Play", function() playBug(e.id) end)
-            act("Mix Parts", function() State.push(Mixer().new({ from = e })) end)
+            -- (a bug with its own art or move code is edited as code: the mixer would drop them)
+            if not (e.def.art or e.def.scripted) then
+                act("Mix Parts", function() State.push(Mixer().new({ from = e })) end)
+            end
             act("Edit Code", function() State.push(Editor().new({ text = e.source, replaces = e.id, title = "Bug Script" })) end)
             act("Copy Code", function()
                 local ok = pcall(love.system.setClipboardText, e.source or "")
@@ -229,11 +238,11 @@ function Creator:draw()
         local function mv(slot, reg)
             local p = def[slot]
             local m = p and reg:get(p.type)
-            return m and (m.name or p.type) or "none"
+            return p and p.name or (m and (m.name or p.type)) or "none"
         end
-        local look = Content.characters:get(def.mix.look)
+        local look = def.mix.look and Content.characters:get(def.mix.look)
         local rows = {
-            { "Body", look and look.name or def.mix.look },
+            { "Body", def.mix.art and "Its own art" or (look and look.name) or tostring(def.mix.look) },
             { "Attack", mv("attack", Content.attacks) },
             { "Special", mv("secondary", Content.attacks) },
             { "Dash", mv("dash", Content.dashes) },
@@ -251,6 +260,12 @@ function Creator:draw()
             lg.print(r[2], px + pw / 2 + u(8), ty + (i - 1) * lh)
         end
         ty = ty + #rows * lh + u(8)
+        local moveErr = require("src.game.scriptmoves").errors[def.id]
+        if moveErr then
+            lg.setColor(c.bad)
+            lg.printf("Move error last run: " .. moveErr, px + u(24), ty, pw - u(48), "center")
+            ty = ty + lh * 2
+        end
         lg.setColor(c.dim)
         lg.printf("File: " .. tostring(e.file), px + u(24), ty, pw - u(48), "center")
     else
