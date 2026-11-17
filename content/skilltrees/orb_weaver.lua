@@ -8,7 +8,7 @@ local SPARK = { 0.7, 0.9, 1 }
 return {
     character = "orb_weaver",
     branches = {
-        { name = "Web Shot", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Web Shot", blurb = "Webs that slow the crowd", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "ow_sticky", tier = 1, ranks = 3, name = "Sticky Silk", desc = "+15% web damage and bigger webs per rank.",
               attack = { damage = { mul = 0.15 }, radius = 3 } },
             { id = "ow_glue", tier = 2, name = "Gluey Silk", desc = "Webs hold ants much tighter and last 2 s longer.",
@@ -34,7 +34,7 @@ return {
                   sk.replaying = false
               end } } },
         } },
-        { name = "Silk Walls", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Silk Walls", blurb = "Silk walls that hold them back", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "ow_wall", tier = 1, ranks = 3, name = "Strong Strands", desc = "Walls catch 15 more ants and last 2 s longer per rank.",
               secondary = { strength = 15, duration = 2 } },
             { id = "ow_long", tier = 2, name = "Long Strands", desc = "Walls can be stretched much longer.",
@@ -54,7 +54,7 @@ return {
                   end
               end } } },
         } },
-        { name = "Grapple", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Grapple", blurb = "Swing around on a grapple line", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "ow_legs", tier = 1, ranks = 3, name = "Long Legs", desc = "+6 speed and +6 max HP per rank.",
               stats = { moveSpeed = 6, maxHp = 6 } },
             { id = "ow_reel", tier = 2, name = "Strong Reel", desc = "The line pulls you in much harder and faster.",
@@ -74,4 +74,10 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_orb_golden", name = "Golden Orb", desc = "Every 4th web shot is a giant golden web, and ants dying in webs leave fresh ones.",
+          empower = { move = "attack", every = 4, text = "GOLDEN ORB!", mods = { radius = { mul = 0.8 }, duration = { mul = 0.5 } } },
+          procs = { { trigger = "onKill", chance = 0.25, effect = function(ctx)
+              fx.web(ctx, ctx.x, ctx.y, 24, 2.5, 0.3)
+          end } } },
 }

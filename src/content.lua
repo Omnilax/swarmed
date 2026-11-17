@@ -87,10 +87,22 @@ Content.items = Registry.new("item", {
     end,
 })
 
+-- Kin branches (content/skillbranches/_template.lua): a 4th skill tree branch shared by a whole
+-- lineage of bugs (beetles, spiders, crustaceans...). Each tree gets the best match for its bug's
+-- tags, topped with the tree's own `signature` node. Loaded before the skill trees.
+Content.skillbranches = Registry.new("skillbranch", {
+    required = { "name", "nodes" },
+    defaults = { tags = {}, priority = 0, blurb = "" },
+})
+
 -- Skill trees: one per character (`character` = its id; see content/skilltrees/_template.lua).
 Content.skilltrees = Registry.new("skilltree", {
     required = { "character", "branches" },
-    validate = function(def) return require("src.game.skills").validateTree(def) end,
+    validate = function(def)
+        local Skills = require("src.game.skills")
+        Skills.attachKin(def, Content.characters:get(def.character))
+        return Skills.validateTree(def)
+    end,
 })
 
 Content.stages = Registry.new("stage", {
@@ -130,7 +142,7 @@ Content.achievements = Registry.new("achievement", {
     defaults = { description = "", category = "Misc", goal = 1 },
 })
 
-Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skilltrees", "items", "stages", "bosses", "events", "props", "mechanics", "wavemods", "modes", "achievements" }
+Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skillbranches", "skilltrees", "items", "stages", "bosses", "events", "props", "mechanics", "wavemods", "modes", "achievements" }
 
 -- Weather spells (visual only): see content/weather/_template.lua and src/game/weather.lua.
 Content.weather = Registry.new("weather", { required = { "name" }, defaults = { weight = 10 } })

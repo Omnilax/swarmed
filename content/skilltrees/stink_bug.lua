@@ -7,7 +7,7 @@ local STINK = { 0.7, 0.85, 0.25 }
 return {
     character = "stink_bug",
     branches = {
-        { name = "Stink Clouds", color = { 0.7, 0.85, 0.25 }, nodes = {
+        { name = "Stink Clouds", blurb = "Clouds that poison and weaken", color = { 0.7, 0.85, 0.25 }, nodes = {
             { id = "sb_reek", tier = 1, ranks = 3, name = "Reek", desc = "+20% cloud poison per rank.",
               attack = { damage = { mul = 0.2 } } },
             { id = "sb_big", tier = 2, name = "Billowing", desc = "Clouds are 30% bigger and linger 1 s longer.",
@@ -35,7 +35,7 @@ return {
                   fx.explode(ctx, ctx.x, ctx.y, 26, 12, { 1, 0.85, 0.3 }, { knockback = 120 })
               end } } },
         } },
-        { name = "Acid", color = { 0.5, 1, 0.3 }, nodes = {
+        { name = "Acid", blurb = "Acid pools that burn and wall", color = { 0.5, 1, 0.3 }, nodes = {
             { id = "sb_caustic", tier = 1, ranks = 3, name = "Caustic", desc = "+20% acid damage per rank.",
               secondary = { damage = { mul = 0.2 } } },
             { id = "sb_wide", tier = 2, name = "Wide Splash", desc = "Pools are 30% wider.",
@@ -56,7 +56,7 @@ return {
                   end
               end } } },
         } },
-        { name = "Shield", color = { 0.6, 0.55, 0.4 }, nodes = {
+        { name = "Shield", blurb = "Hunker under a stinking shield", color = { 0.6, 0.55, 0.4 }, nodes = {
             { id = "sb_plates", tier = 1, ranks = 3, name = "Shield Plates", desc = "+1.5 armor and +6 max HP per rank.",
               stats = { armor = 1.5, maxHp = 6 } },
             { id = "sb_hold", tier = 2, name = "Hunker", desc = "The stink shield lasts 0.8 s longer.",
@@ -79,4 +79,9 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_stink_marmorated", name = "Lingering Stench", desc = "Kills have a 20% chance to leave a reeking puddle that poisons and slows.",
+          procs = { { trigger = "onKill", chance = 0.2, effect = function(ctx)
+              fx.patch(ctx, ctx.x, ctx.y, 26, 3, 6, 0.5, { 0.7, 0.85, 0.25 })
+          end } } },
 }

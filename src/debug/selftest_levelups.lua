@@ -81,12 +81,15 @@ return function(wait, shot)
     assert(#lu.queue == 0, "the pick should leave the queue")
     assert(p.stats:get("moveSpeed") > speed * 1.1, "Swift Legs (legendary) should add ~12% speed")
 
-    -- skill node cards buy ranks without points
-    local nodes = lu:nodeOptions()
-    assert(#nodes > 0, "a fresh rhino beetle should have nodes to offer")
-    local node = nodes[1]
-    lu:take(lu:nodeCard(node))
-    assert(sk:rank(node.id) == 1 and sk.points == 0, "a node card should buy its node")
+    -- the skill tree is never on the cards: skipping a pick is the skill point
+    for _ = 1, 40 do
+        for _, c in ipairs(lu:deal({ level = 20 })) do assert(c.kind == "stat", "level-up cards should be stat cards only") end
+    end
+    local ptsBefore = sk.points
+    lu:take(LevelUps.skipCard())
+    assert(sk.points == ptsBefore + 1 and sk.skipped == 1, "a skip should bank a skill point")
+    local node = sk.tree.branches[1].nodes[1]
+    assert(sk:buy(node.id), "the skipped point should buy a tier-1 node")
 
     -- rarity: Luck makes rare cards likelier; minRarity is a floor
     local function count(luckAdd, minR)
@@ -127,11 +130,11 @@ return function(wait, shot)
         assert(getmetatable(scr) == LevelUp, "pick " .. k .. " of 3 should be open")
         scr.t = 10
         if k == 3 then
-            -- bank a skill point instead
+            -- skip the cards for a skill point instead
             local pts = sk.points
-            scr:activate(scr:bankIndex())
-            scr:activate(scr:bankIndex())
-            assert(sk.points == pts + 1, "banking should give a skill point")
+            scr:activate(scr:skipIndex())
+            scr:activate(scr:skipIndex())
+            assert(sk.points == pts + 1, "skipping should give a skill point")
         else
             scr:activate(2); scr:activate(2)
         end
@@ -147,7 +150,8 @@ return function(wait, shot)
     local w2 = g2.world
     assert(#w2.levelups.queue == 2, "waiting picks should survive a save")
     assert(math.abs(w2.player.stats:get("moveSpeed") - p.stats:get("moveSpeed")) < 0.01, "stat cards should survive a save")
-    assert(w2.player.skills.points == sk.points and w2.player.skills:rank(node.id) == 1, "skill points and node cards should survive a save")
+    assert(w2.player.skills.points == sk.points and w2.player.skills:rank(node.id) == 1, "skill points and bought nodes should survive a save")
+    assert(w2.player.skills.skipped == sk.skipped, "the skip count should survive a save")
     w2.levelups.queue = {}
 
     -- "Right Away" timing opens the cards mid-wave, a beat after the level

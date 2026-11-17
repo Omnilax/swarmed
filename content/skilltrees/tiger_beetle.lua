@@ -7,7 +7,7 @@ local GREEN = { 0.6, 1, 0.7 }
 return {
     character = "tiger_beetle",
     branches = {
-        { name = "Charge Dash", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Charge Dash", blurb = "Wind up, then tear through", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "tb_edge", tier = 1, ranks = 3, name = "Sharp Mandibles", desc = "+15% charge dash damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "tb_stride", tier = 2, name = "Long Stride", desc = "Charge dashes go further and cut a wider path.",
@@ -28,7 +28,7 @@ return {
                   a.timer = math.min(a.timer, 0.05)
               end } } },
         } },
-        { name = "Sprint Strike", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Sprint Strike", blurb = "Quick sprint strikes", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "tb_rage", tier = 1, ranks = 3, name = "Bloodlust", desc = "+15% sprint strike damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "tb_frenzy", tier = 2, name = "Restless Legs", desc = "Sprint strike recharges 30% faster.",
@@ -45,7 +45,7 @@ return {
                   fx.nova(ctx, p.x, p.y, 34, p.secondary.params.damage * 0.7, GREEN, { knockback = 120 })
               end } } },
         } },
-        { name = "Run", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Run", blurb = "Run faster than anything", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "tb_legs", tier = 1, ranks = 3, name = "Long Legs", desc = "+8 speed and +2% dodge per rank.",
               stats = { moveSpeed = 8, dodge = 2 } },
             { id = "tb_burner", tier = 2, name = "Second Wind", desc = "+1 s of running and it refills 30% faster.",
@@ -65,4 +65,14 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_tiger_wake", name = "Razor Wake", desc = "Every charge dash leaves a slicing wake behind it that cuts the ants again.",
+          procs = { { trigger = "onAttack", effect = function(ctx)
+              local p = ctx.player
+              local x0, y0, ax, ay = p.x, p.y, ctx.ax, ctx.ay
+              local dmg = (ctx.params.damage or 14) * 0.6
+              p:after(0.2, function(pl, w)
+                  fx.line(fx.ctx(w), x0, y0, ax, ay, 120, 10, dmg, { 0.6, 1, 0.7 })
+              end)
+          end } } },
 }

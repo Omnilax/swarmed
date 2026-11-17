@@ -7,7 +7,7 @@ local HAIR = { 1, 0.6, 0.3 }
 return {
     character = "tarantula",
     branches = {
-        { name = "Hair Flick", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Hair Flick", blurb = "Itching hairs that slow", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "ta_hairs", tier = 1, ranks = 3, name = "Thick Hairs", desc = "+20% hair damage per rank.",
               secondary = { damage = { mul = 0.2 } } },
             { id = "ta_itch", tier = 2, name = "Itching Hairs", desc = "Hairs slow ants much harder and for longer.",
@@ -27,7 +27,7 @@ return {
                   fx.shards(ctx, ctx.x, ctx.y, 3, 4, HAIR, { range = 50 })
               end } } },
         } },
-        { name = "Stomp", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Stomp", blurb = "Rear up and stomp them flat", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "ta_fang", tier = 1, ranks = 3, name = "Huge Fangs", desc = "+15% stomp damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "ta_rear", tier = 2, name = "Quick Rear", desc = "Rear up 40% faster and recharge 20% faster.",
@@ -50,7 +50,7 @@ return {
                   end)
               end } } },
         } },
-        { name = "Bulk", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Bulk", blurb = "Big, hairy and hard to kill", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "ta_bulk", tier = 1, ranks = 3, name = "Bulk", desc = "+14 max HP and +0.2 HP regen per rank.",
               stats = { maxHp = 14, hpRegen = 0.2 } },
             { id = "ta_ram", tier = 2, name = "Heavy Landing", desc = "Leap slams hit harder over a wider area.",
@@ -71,4 +71,14 @@ return {
               procs = { { trigger = "onKill", chance = 0.1, effect = function(ctx) fx.heal(ctx, 1) end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_tara_goliath", name = "Goliath Birdeater", desc = "Every 3rd stomp sends a shockwave rolling out that stuns everything around you.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_tara", 3) then return end
+              local dmg = ctx.params.damage or 15
+              ctx.player:after(0.25, function(pl, w)
+                  fx.nova(fx.ctx(w), pl.x, pl.y, 80, dmg, { 1, 0.6, 0.3 }, { slow = { 0.05, 1 }, knockback = 160 })
+                  w.camera:shake(0.15)
+              end)
+          end } } },
 }

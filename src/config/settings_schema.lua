@@ -106,7 +106,7 @@ add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "cho
     desc = "When the next wave starts after you pick an item. The Next Wave key (N) always starts it at once, and during a wave sends the rest of its ants in early." }
 add { key = "levelUps", category = "Gameplay", label = "Level-Ups", type = "choice", default = "cards",
     options = { { value = "cards", label = "Pick a Card" }, { value = "points", label = "Skill Points" } },
-    desc = "Pick a Card: every level offers 3 cards (skill tree nodes of your bug, or stat boosts that roll a rarity; Luck makes rare ones likelier). Skill Points: every level gives a point to spend in the bag's SKILLS tab." }
+    desc = "Pick a Card: every level offers 3 stat cards that roll a rarity (Luck makes rare ones likelier), or skip them all for a skill point to spend in the bag's SKILLS tab. Skill Points: every level is simply a skill point." }
 add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type = "choice", default = "bloom",
     options = { { value = "bloom", label = "Walk to the Bloom" }, { value = "instant", label = "Open at Once" } },
     desc = "Walk to the Bloom: a cleared wave's rewards (level-up cards, then the item) sprout as a glowing bloom next to you; walk into it to open it (Next Wave brings it to you, and it rolls to you by itself after a few seconds). Open at Once: the reward screens pop up right after the wave." }
