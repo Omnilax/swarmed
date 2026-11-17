@@ -18,6 +18,7 @@ love . --roster       # model viewer: every bug walking in place
 love . --anims        # attack animation viewer (--shot saves anims_<id>.png contact sheets)
 love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
+love . --selftest --arttour     # pictures of every bug, prop and the antlion for an art check
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
 love . --selftest --happenings  # just mid-wave events, boss encounters, stages, weather effects, props
@@ -436,6 +437,19 @@ and brass while a queen is out, and a slowed-down fade when you fall. Stems are 
 per frame at start-up and cached as .wav files in the save folder (`music/`); change the score,
 then bump `CACHE` so they render again. Sound effects live in `src/core/audio.lua`.
 
+The music also changes with the bug you play. Each body plan (spiders and other arachnids,
+beetles, crustaceans, centipedes and millipedes, flyers, other insects) has its own band: while
+you play, the shared arp, lead and drums are swapped for that band's versions of the same song
+(spiders: half-time drums and a cold glassy lead with a creeping grace note; beetles: double
+kicks, organ stabs and brass; crustaceans: a clave groove on wood blocks and marimba rolls;
+myriapods: four on the floor under a 16th-note rattle; flyers: brushes and a breathy flute;
+other insects: claps, bells and a buzzing reed), plus a signature stem. On top of that every
+bug has its own riff, made from its id (so it never changes and no two bugs share one) on its
+band's instrument; it is loudest between waves and on the character select, which previews the
+bug's band, riff and key. A character file can pick its band with `music = "chug"` or
+`music = { theme = "chug", key = -2 }`. Band and riff stems render the first time a bug is
+picked and are cached like the rest.
+
 `src/game/feedback.lua` plays the big-moment sounds (wave horn, wave cleared chime, a queen's
 arrival, victory, defeat, a heartbeat under 30% health), draws arrows at the screen edge for
 queens and elites out of view (setting **Off-screen Markers**), and runs the first-run hints in
@@ -705,6 +719,26 @@ Sprites are simple top-down text grids (one character per pixel), facing right. 
 `tools/make_bug_sprites.py` builds `content/sprites/bugs.lua` from shape recipes (ellipses for
 body segments, lines for legs), and `python3 tools/preview_sprites.py out.png content/sprites/bugs.lua`
 previews any sprite file (needs `luajit` and Pillow).
+
+## Art style guide
+
+Everything in the world shares one look: small pixels with rich per-pixel detail, shaded like
+the bug sprites. Each material is a 4-5 colour ramp (dark .. light), the light comes from the
+upper left, a little noise keeps big areas from looking flat, and every shape gets the soft,
+slightly see-through dark outline. Colours sit in the dusky, natural range of the cast: real
+animals' colours, but not candy-bright (`tools/tone_palette.py` pulled the loudest crustaceans
+and the centipede back in line).
+
+- **Bugs** are text-grid sprites from the `tools/make_*_sprites.py` generators, baked into the
+  atlas in 32 turns.
+- **Anything else in the world** (props, the antlion and its pit, map gambles) is painted in Lua
+  at runtime with `src/gfx/paint.lua` (`Paint.pic`, `p:blob`, `p:stroke`, `p:outline`,
+  `Paint.get` caches it) and drawn with `Paint.draw`; the prop pictures live in
+  `src/gfx/propart.lua`. Don't draw world objects with flat `love.graphics.ellipse` /
+  `polygon` fills: those read as a different game. Flat primitives are fine for effects (glows,
+  rings, arcs, telegraphs) and shadows.
+- `love . --selftest --arttour` saves `selftest_art_*.png` (catalogue walls, a line-up of each
+  family, every prop, the antlion) so the whole cast can be checked side by side.
 
 ## Performance notes
 

@@ -2,6 +2,8 @@
 -- the wave goes on. Its price is paid in KOs made while it is around; walk into it once you
 -- have enough and the ware goes straight into your bag (never on the ground). Two sales, then
 -- it packs up, and it leaves when the wave ends.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Audio = require("src.core.audio")
 local Sprites = require("src.gfx.sprites")
 
@@ -79,30 +81,9 @@ return {
         local bob = (math.floor(o.anim) % 2)
         lg.setColor(0, 0, 0, 0.35)
         lg.ellipse("fill", sx, sy + 2, 14, 6)
-        -- legs
-        lg.setColor(0.12, 0.08, 0.08, 1)
-        for i = -1, 1 do
-            local k = ((math.floor(o.anim) + i) % 2) * 2 - 1
-            lg.line(sx + i * 5, sy - 2, sx + i * 6 - 3, sy + 2 + k)
-            lg.line(sx + i * 5, sy - 2, sx + i * 6 + 3, sy + 2 - k)
-        end
-        -- an iridescent shell with a big pack on its back
-        lg.setColor(0.1, 0.32, 0.3, 1)
-        lg.ellipse("fill", sx, sy - 5 - bob, 11, 6)
-        lg.setColor(0.25, 0.62, 0.52, 1)
-        lg.ellipse("fill", sx - 2, sy - 7 - bob, 7, 3)
-        lg.setColor(0.55, 0.38, 0.2, 1)
-        lg.rectangle("fill", sx - 6, sy - 17 - bob, 12, 9)
-        lg.setColor(0.72, 0.52, 0.28, 1)
-        lg.rectangle("fill", sx - 6, sy - 17 - bob, 12, 2)
-        lg.setColor(0.35, 0.22, 0.1, 1)
-        lg.rectangle("line", sx - 6, sy - 17 - bob, 12, 9)
-        -- head and antennae, toward where it walks
-        local fx = math.cos(o.face) * 10
-        lg.setColor(0.08, 0.2, 0.2, 1)
-        lg.circle("fill", sx + fx, sy - 5 - bob, 3)
-        lg.setColor(0.1, 0.08, 0.06, 1)
-        lg.line(sx + fx, sy - 7 - bob, sx + fx * 1.4, sy - 12 - bob)
+        -- an iridescent beetle with a big pack on its back (src/gfx/propart.lua)
+        local flip = math.cos(o.face) < 0 and -1 or 1
+        Paint.draw(PA.merchant(math.floor(o.anim) % 2), sx, sy - bob, 0, flip, 1)
     end,
     drawAir = function(world, o, sx, sy)
         if o.leaving then return end

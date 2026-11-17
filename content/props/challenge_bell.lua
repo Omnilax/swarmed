@@ -3,6 +3,8 @@
 -- all round, some of them elite. Kill every one of them before the time runs out for XP, a
 -- chunk of frenzy and a rarer best card in the next item choice. Too slow, and the pack just
 -- stays on as part of the wave.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Content = require("src.content")
 local Audio = require("src.core.audio")
 local Env = require("src.game.envfx")
@@ -140,29 +142,20 @@ return {
         end
         lg.setColor(0, 0, 0, 0.3 * a)
         lg.ellipse("fill", sx, sy + 1, 9, 4)
-        -- the stalk, bending over
-        lg.setColor(0.25, 0.5, 0.2, a)
-        lg.setLineWidth(2)
-        lg.line(sx - 2, sy, sx - 3, sy - 16, sx, sy - 26, sx + 6, sy - 28)
-        lg.setLineWidth(1)
-        lg.setColor(0.35, 0.62, 0.26, a)
-        lg.polygon("fill", sx - 3, sy - 6, sx - 10, sy - 12, sx - 3, sy - 11)
+        -- the stalk, bending over (painted: src/gfx/propart.lua)
+        Paint.draw(PA.bellStalk(), sx, sy, 0, 1, 1, a)
     end,
     drawAir = function(world, o, sx, sy)
         local lg, st = love.graphics, o.st
         local a = st.fade * st.pop
         local sw = math.sin(o.t * 14) * st.swing * 0.6 + math.sin(o.t * 1.5) * 0.08
+        -- the bell flower, swinging from the stalk's tip
+        local done = st.state == "done"
+        sw = math.floor(sw / 0.08 + 0.5) * 0.08          -- a few steps, so the pixels stay crisp
+        Paint.draw(PA.bell(done), sx + 6, sy - 28, sw, 1, 1, a)
         lg.push()
         lg.translate(sx + 6, sy - 28)
         lg.rotate(sw)
-        -- the bell flower
-        local done = st.state == "done"
-        lg.setColor(done and 0.55 or 0.45, done and 0.5 or 0.55, done and 0.6 or 0.95, a)
-        lg.polygon("fill", -5, 11, -4, 3, 0, 0, 4, 3, 5, 11)
-        lg.setColor(0.65, 0.72, 1, a)
-        lg.polygon("fill", -2, 9, -2, 3, 0, 1, 1, 4)
-        lg.setColor(0.3, 0.35, 0.7, a)
-        lg.polygon("line", -5, 11, -4, 3, 0, 0, 4, 3, 5, 11)
         -- the clapper
         lg.setColor(GOLD[1], GOLD[2], GOLD[3], a)
         lg.circle("fill", math.sin(o.t * 9) * st.swing * 2, 12, 1.6)

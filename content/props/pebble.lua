@@ -1,4 +1,6 @@
 -- A pebble: roll it into a column of ants and it flattens them.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 return {
     name = "Pebble",
     radius = 6, pushable = true, mass = 2, friction = 2.2, crushSpeed = 55, damage = 14, roll = true, material = "stone",
@@ -10,13 +12,7 @@ return {
         local lg, r, c = love.graphics, o.r, o.shade
         lg.setColor(0, 0, 0, 0.35)
         lg.ellipse("fill", sx + 1, sy + 2, r * 1.5, r * 0.75)
-        lg.setColor(0.42 * c, 0.4 * c, 0.38 * c, 1)
-        lg.ellipse("fill", sx, sy - r * 0.35, r * 1.35, r * 0.85)
-        lg.setColor(0.6 * c, 0.57 * c, 0.53 * c, 1)
-        lg.ellipse("fill", sx - 1, sy - r * 0.55, r * 1.0, r * 0.55)
-        -- a fleck that turns as it rolls
-        local a = o.roll or 0
-        lg.setColor(0.78 * c, 0.75 * c, 0.7 * c, 1)
-        lg.rectangle("fill", math.floor(sx + math.cos(a) * r * 0.6) - 1, math.floor(sy - r * 0.6 + math.sin(a) * r * 0.25), 2, 1)
+        local a = math.floor((o.roll or 0) / (math.pi / 8) + 0.5) * (math.pi / 8)
+        Paint.draw(PA.pebble(r, o.uid or 0), sx, sy - r * 0.45, a * 0.5, 1, 1, { c, c, c, 1 })
     end,
 }

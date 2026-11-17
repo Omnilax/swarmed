@@ -1,6 +1,8 @@
 -- The aphid matriarch (the "aphid_matriarch" event): a round green aphid ambling near you. Walk
 -- into her to open the cloning screen (src/states/duplicate.lua, via world.pendingDuplicate).
 -- Backing out is fine, she waits; after one clone (cfg.duplicator.uses) she leaves.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Config = require("src.config.molting")
 
 return {
@@ -57,33 +59,14 @@ return {
         local bob = math.floor(o.anim) % 2
         lg.setColor(0, 0, 0, 0.35)
         lg.ellipse("fill", sx, sy + 2, 13, 6)
-        lg.setColor(0.2, 0.35, 0.12, 1)
-        for i = -1, 1 do
-            local k = ((math.floor(o.anim) + i) % 2) * 2 - 1
-            lg.line(sx + i * 5, sy - 2, sx + i * 6 - 3, sy + 2 + k)
-            lg.line(sx + i * 5, sy - 2, sx + i * 6 + 3, sy + 2 - k)
-        end
-        -- a plump, pear-shaped green body with a soft shine and two cornicles
-        local fx, fy = math.cos(o.face), math.sin(o.face) * 0.5
-        lg.setColor(0.32, 0.62, 0.22, 1)
-        lg.ellipse("fill", sx - fx * 2, sy - 7 - bob, 11, 8)
-        lg.setColor(0.5, 0.82, 0.35, 1)
-        lg.ellipse("fill", sx - fx * 2 - 2, sy - 9 - bob, 7, 4)
-        lg.setColor(0.85, 1, 0.75, 0.8)
-        lg.ellipse("fill", sx - fx * 2 - 4, sy - 11 - bob, 2.5, 1.3)
-        lg.setColor(0.2, 0.4, 0.12, 1)
-        lg.line(sx - fx * 9 - 2, sy - 9 - bob, sx - fx * 12 - 3, sy - 13 - bob)
-        lg.line(sx - fx * 9 + 2, sy - 9 - bob, sx - fx * 12 + 3, sy - 13 - bob)
-        lg.setColor(0.28, 0.52, 0.18, 1)
-        lg.circle("fill", sx + fx * 9, sy - 6 - bob + fy, 4)
-        lg.setColor(0.6, 0.1, 0.1, 1)
-        lg.circle("fill", sx + fx * 10, sy - 7 - bob + fy, 1.2)
+        -- painted (src/gfx/propart.lua), facing the way she walks
+        local flip = math.cos(o.face) < 0 and -1 or 1
         -- a tiny clone peeking out behind her
         if not o.leaving then
             local k = 0.5 + 0.5 * math.sin(world.time * 2 + o.uid)
-            lg.setColor(0.45, 0.75, 0.3, 0.6 + 0.4 * k)
-            lg.ellipse("fill", sx - fx * 12, sy - 3, 3.5, 2.5)
+            Paint.draw(PA.aphid(0), sx - flip * 12, sy, 0, flip * 0.35, 0.35, 0.6 + 0.4 * k)
         end
+        Paint.draw(PA.aphid(math.floor(o.anim) % 2), sx, sy - bob, 0, flip, 1)
     end,
     label = function(world, o)
         if o.leaving then return nil end
