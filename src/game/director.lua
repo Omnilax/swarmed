@@ -5,9 +5,12 @@
 --     cocoons with a bug to free, a merchant beetle. A few are scheduled into each wave from
 --     wave 2 on (Settings "Mid-Wave Events"); they never hold a wave up, and whatever is still
 --     going when the last ant falls ends with the wave.
---   * Boss encounters (content/bosses): every 5th wave (not the final one) a big predator joins
---     the queen: an anteater, an antlion's pit, a bird swooping down. It is a real enemy, so
---     the wave lasts until it is killed. Settings "Boss Encounters".
+--   * Boss encounters (content/bosses): every 5th wave (not the final one) something big joins
+--     the queen. Bugs (the antlion in its pit) are real enemies: the wave lasts until it is
+--     killed. Animals far too big to fight (the sparrow, the giant anteater) are stage hazards
+--     instead (def.hazard): godly attacks sweeping the arena that eat ants and hurt you alike.
+--     You can't hit them; they hunt until the wave is cleared, then leave. Settings "Boss
+--     Encounters".
 --   * Stage mechanics (content/mechanics): a stage's `mechanic` changes how it plays (a rising
 --     puddle, a lawn that shrinks in, patches of sun and shade).
 --   * Weather effects: a spell's `effects` (content/weather) push and slow or speed things up.
@@ -30,6 +33,7 @@ local util = require("src.core.util")
 local Env = require("src.game.envfx")
 local Props = require("src.game.props")
 local Gambles = require("src.game.gambles")
+local Beasts = require("src.gfx.beasts")
 
 local Director = {}
 Director.__index = Director
@@ -158,12 +162,17 @@ function Director:onWaveStart(n)
     local every = self.cfg.encounterEvery
     if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n)) then
         local boss = self:pickBoss(n)
-        if boss then self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt } end
+        if boss then
+            self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
+            -- paint the hazard's pictures now rather than on the frame it arrives
+            if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
+        end
     end
 end
 
 function Director:onWaveCleared()
     self.schedule, self.pendingBoss = {}, nil
+    if self.hazard and not self.hazard.leaving then self:endHazard(true) end
     self.recent = {}
     for i = #self.active, 1, -1 do
         local ev = self.active[i]
@@ -218,9 +227,10 @@ function Director:pickBoss(wave)
     return b
 end
 
--- Bring a boss encounter in now. Returns the boss enemy.
+-- Bring a boss encounter in now. Returns the boss enemy (or the hazard, for def.hazard ones).
 function Director:startBoss(id)
     local def = type(id) == "table" and id or Content.bosses:require(id)
+    if def.hazard then return self:startHazard(def) end
     local world = self.world
     local x, y
     if def.entry then x, y = def.entry(world) else x, y = Env.pointAway(world, 220, 60) end
@@ -234,6 +244,40 @@ function Director:startBoss(id)
     world.camera:shake(0.3)
     world.events:emit("encounter_started", def.id)
     return e
+end
+
+-- A stage hazard: no enemy, nothing to hit. Its own hooks run it (content/bosses/sparrow.lua):
+-- start(world, h), update(world, h, dt), leave(world, h, dt) once the wave is cleared (set
+-- h.gone when it is out of sight), env(world, h, env), drawGround / drawAir(world, h).
+-- h.label is the HUD line saying what it is doing ("SWOOPING!").
+function Director:startHazard(id)
+    local def = type(id) == "table" and id or Content.bosses:require(id)
+    local world = self.world
+    if self.hazard then self.hazard = nil end
+    if def.pictures then Beasts.prepare(def.pictures) end
+    local h = { def = def, t = 0, st = {}, label = nil }
+    self.hazard = h
+    if def.start then def.start(world, h) end
+    self:announce(def.name, def.description, def.color or { 1, 0.45, 0.3 }, true)
+    Audio.play("queen", { pitch = def.pitch or 0.5 })
+    world.camera:shake(0.35)
+    world.events:emit("encounter_started", def.id)
+    return h
+end
+
+-- The hazard leaves: survived = the wave was cleared under it (bonus XP and a popup).
+function Director:endHazard(survived)
+    local h = self.hazard
+    if not h then return end
+    local world = self.world
+    if not survived then self.hazard = nil return end
+    h.leaving, h.label = 0, nil
+    local def = h.def
+    world.milestone = { text = def.survived or (def.title or def.name):upper() .. " MOVES ON", t = 0 }
+    Audio.play("boom", { pitch = 0.45 })
+    local p = world.player
+    if def.xp and p then world:grantXP(def.xp, p.x, p.y) end
+    world.events:emit("encounter_won", def.id)
 end
 
 ----------------------------------------------------------------------------------------------
@@ -330,6 +374,21 @@ function Director:update(dt)
         if m.def.update then m.def.update(world, m, dt) end
         Env.current = nil
         if m.def.env then m.def.env(world, m, env) end
+    end
+    -- the stage hazard (sparrow, anteater): hunts until the wave is cleared, then leaves
+    local h = self.hazard
+    if h then
+        h.t = h.t + dt
+        Env.current = h.def.id
+        if h.leaving then
+            h.leaving = h.leaving + dt
+            if h.def.leave then h.def.leave(world, h, dt) end
+            if h.gone or h.leaving >= (h.def.leaveTime or 3) then self.hazard = nil end
+        else
+            if h.def.update then h.def.update(world, h, dt) end
+            if h.def.env then h.def.env(world, h, env) end
+        end
+        Env.current = nil
     end
     self:weatherEffects(env)
     env.field = makeField(self)
@@ -446,6 +505,8 @@ function Director:drawGround()
     end
     local enc = self.encounter
     if enc and enc.def.drawGround then enc.def.drawGround(world, enc.e, enc) end
+    local hz = self.hazard
+    if hz and hz.def.drawGround then hz.def.drawGround(world, hz) end
     -- cracks on nest holes that have been hit
     local lg = love.graphics
     for _, h in ipairs(world.spawner.holes or {}) do
@@ -475,6 +536,8 @@ function Director:drawAir()
     local enc = self.encounter
     if enc and enc.def.drawAir then enc.def.drawAir(world, enc.e, enc) end
     world.props:drawAir()
+    local hz = self.hazard
+    if hz and hz.def.drawAir then hz.def.drawAir(world, hz) end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -497,6 +560,19 @@ function Director.drawHud(game, covered)
         lg.rectangle("fill", bx - 2, by - 2, bw + 4, u(10) + 4)
         lg.setColor(0.95, 0.5, 0.2, 1)
         lg.rectangle("fill", bx, by, bw * math.max(0, enc.e.hp / enc.e.maxHp), u(10))
+    end
+    -- a hazard has no health bar: its name, and what it is doing right now
+    local hz = self.hazard
+    if hz and not hz.leaving and not (enc and not enc.e.dead) then
+        local by = h - u(world.boss and not world.boss.dead and 118 or 70)
+        lg.setFont(Theme.font(16))
+        Theme.printShadow((hz.def.title or hz.def.name):upper() .. "  -  STAGE HAZARD", 0, by - u(22), { 1, 0.65, 0.45, 1 }, "center", w)
+        if hz.label then
+            local pulse = hz.danger and (0.65 + 0.35 * math.sin(world.time * 14)) or 0.85
+            lg.setFont(Theme.font(15, "bold"))
+            local c = hz.danger and { 1, 0.35, 0.25, pulse } or { 0.95, 0.88, 0.75, pulse }
+            Theme.printShadow(hz.label, 0, by, c, "center", w)
+        end
     end
     world.props:drawLabels(function() return Theme.font(13, "bold") end)
     local y = h * 0.62

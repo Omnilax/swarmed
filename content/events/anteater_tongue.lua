@@ -4,6 +4,7 @@
 local Env = require("src.game.envfx")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
+local Beasts = require("src.gfx.beasts")
 
 local WARN, OUT, HOLD, BACK = 1.4, 0.22, 0.18, 0.4
 local WIDTH = 9
@@ -27,7 +28,7 @@ return {
     color = { 1, 0.55, 0.45 },
     kind = "hazard",
     weight = 9, minWave = 3,
-    start = function(world, ev) ev.st.licks = 0 aim(world, ev.st) end,
+    start = function(world, ev) Beasts.prepare(Beasts.ANTEATER) ev.st.licks = 0 aim(world, ev.st) end,
     update = function(world, ev, dt)
         local st = ev.st
         st.pt = st.pt + dt
@@ -60,22 +61,14 @@ return {
         local st, lg = ev.st, love.graphics
         local k = 0
         if st.phase == "out" then k = st.pt / OUT elseif st.phase == "hold" then k = 1 elseif st.phase == "back" then k = 1 - st.pt / BACK end
-        if k > 0 then Env.tongue(st.x1, st.y1, st.x2, st.y2, k, 4) end
         if st.phase ~= "rest" then
-            -- the tip of a long grey snout poking in at the edge
+            -- the giant anteater's long snout poking in at the edge (the rest of it is outside)
             local dx, dy = st.x2 - st.x1, st.y2 - st.y1
             local l = math.sqrt(dx * dx + dy * dy) + 0.0001
-            local ax, ay = Iso.toScreen(st.x1 - dx / l * 30, st.y1 - dy / l * 30, 4)
-            local bx, by = Iso.toScreen(st.x1 + dx / l * 6, st.y1 + dy / l * 6, 3)
-            lg.setLineWidth(9)
-            lg.setColor(0.38, 0.34, 0.3, 1)
-            lg.line(ax, ay, bx, by)
-            lg.setLineWidth(5)
-            lg.setColor(0.55, 0.5, 0.44, 1)
-            lg.line(ax, ay - 2, bx, by - 1)
-            lg.setLineWidth(1)
-            lg.setColor(0.1, 0.08, 0.08, 1)
-            lg.circle("fill", bx, by, 2)
+            local push = st.phase == "warn" and math.min(1, st.pt / 0.5) * 12 or 12
+            local bx, by = st.x1 - dx / l * (182 * 1.05 - push), st.y1 - dy / l * (182 * 1.05 - push)
+            Beasts.drawUp("anteater", bx, by, 0, math.atan2(dy, dx), 1.05)
         end
+        if k > 0 then Env.tongue(st.x1, st.y1, st.x2, st.y2, k, 4) end
     end,
 }
