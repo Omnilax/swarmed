@@ -24,7 +24,11 @@ return {
         st.pt = st.pt + dt
         if st.phase == "warn" then
             if love.math.random() < dt * 3 then Audio.play("rumble", { pitch = 0.45 + st.pt / WARN * 0.3, volume = 0.5 }) end
-            if st.pt >= WARN then st.phase, st.pt = "cut", 0 Audio.play("boom", { pitch = 0.4 }) end
+            if st.pt >= WARN then
+                -- place the mower at the lane start now: drawAir can run before the next update
+                st.phase, st.pt, st.bx, st.by = "cut", 0, st.x1, st.y1
+                Audio.play("boom", { pitch = 0.4 })
+            end
         elseif st.phase == "cut" then
             local k = math.min(1, st.pt / PASS)
             st.bx, st.by = st.x1 + (st.x2 - st.x1) * k, st.y1 + (st.y2 - st.y1) * k
@@ -76,7 +80,7 @@ return {
     end,
     drawAir = function(world, ev)
         local st, lg = ev.st, love.graphics
-        if st.phase ~= "cut" then return end
+        if st.phase ~= "cut" or not st.bx then return end
         -- the mower deck: a red box with a spinning glint
         local sx, sy = Iso.toScreen(st.bx, st.by, 10)
         lg.setColor(0, 0, 0, 0.4)
