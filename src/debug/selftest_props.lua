@@ -253,6 +253,34 @@ return function(wait, shot)
     peb.held, peb.z, peb.heldPing = true, 10, 0
     assert(until_(function() return not peb.held and peb.z == 0 end, 120), "an abandoned held prop should drop")
 
+    -- through the real controls: press the special with a pebble in front and nothing else
+    -- around, for each bug whose special grabs, and check the pebble ends up held or thrown
+    local Input = require("src.core.input")
+    local prevDev = Input.lastDevice
+    Input.lastDevice = "gamepad"
+    Input.virtualAim = { 1, 0.5 }
+    for _, id in ipairs({ "mantis", "stag_beetle", "emperor_scorpion", "vinegaroon", "dragonfly", "jumping_spider", "crab" }) do
+        fresh()
+        pl:setCharacter(Content.characters:get(id))
+        center()
+        step(2)
+        local ax, ay = pl.aimX, pl.aimY
+        peb = props:spawn("pebble", pl.x + ax * 22, pl.y + ay * 22)
+        pl.secondary.timer = 0
+        local got = false
+        for _ = 1, 40 do
+            Input.press("secondary")
+            Input.virtualDown.secondary = true
+            world:update(1 / 60)
+            if peb.held or #world.thrown > 0 then got = true break end
+        end
+        Input.virtualDown.secondary = nil
+        assert(got, id .. ": pressing the special next to a pebble should grab it (aim " .. string.format("%.2f,%.2f", pl.aimX, pl.aimY) .. ")")
+        for _ = 1, 200 do world:update(1 / 60) if not pl.carry and #world.thrown == 0 then break end end
+        print("[selftest] " .. id .. " grabs a pebble with the real controls OK")
+    end
+    Input.virtualAim, Input.lastDevice = nil, prevDev
+
     -- a screenshot of a scatter
     fresh()
     for i = 1, 6 do props:spawn("pebble", pl.x + 40 + i * 6, pl.y + (i % 3) * 8) end
