@@ -2,6 +2,8 @@
 -- so does a caught treasure ant (World:dropChest). Walk into it to crack it open: a fanfare rolls
 -- 1, 3 or 5 level-up cards (src/states/broodcell.lua, odds in src/config/molting.lua). One still
 -- shut when the wave ends opens by itself, so it never holds anything up.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Audio = require("src.core.audio")
 
 local function hexPts(cx, cy, r, sq)
@@ -57,27 +59,12 @@ return {
         local pulse = 0.5 + 0.5 * math.sin(world.time * 4)
         lg.setColor(1, 0.8, 0.3, 0.12 + 0.12 * pulse)
         lg.ellipse("fill", sx, sy, 16 * s, 8 * s)
-        -- the cell: wax walls (a hexagonal prism seen from above-front), a domed cap
-        local cx, cy = sx + wob * 0.4, y - 8 * s
-        lg.setColor(0.55, 0.36, 0.1, 1)
-        lg.polygon("fill", hexPts(cx, cy + 4 * s, 9 * s, 0.6))
-        lg.setColor(0.85, 0.6, 0.2, 1)
-        lg.polygon("fill", hexPts(cx, cy, 9 * s, 0.6))
-        lg.setColor(royal and { 1, 0.92, 0.6, 1 } or { 0.98, 0.82, 0.45, 1 })
-        lg.polygon("fill", hexPts(cx, cy - 1, 6.5 * s, 0.6))
-        lg.setColor(1, 1, 0.9, 0.7)
-        lg.ellipse("fill", cx - 2 * s, cy - 2.5 * s, 2.2 * s, 1.1 * s)
-        lg.setColor(0.42, 0.26, 0.08, 1)
-        lg.setLineWidth(1)
-        lg.polygon("line", hexPts(cx, cy, 9 * s, 0.6))
+        -- the cell: a painted wax prism with a domed cap (src/gfx/propart.lua)
+        local cx = sx + wob * 0.4
+        Paint.draw(PA.broodCell(royal), cx, y)
         -- a grub wriggling under the cap
-        lg.setColor(0.7, 0.5, 0.25, 0.55)
-        lg.arc("line", "open", cx + wob, cy, 3 * s, 0.3, math.pi - 0.3)
-        if royal then
-            -- a little crown of wax
-            lg.setColor(1, 0.85, 0.3, 1)
-            for i = -1, 1 do lg.polygon("fill", cx + i * 3 - 1.5, cy - 7 * s, cx + i * 3 + 1.5, cy - 7 * s, cx + i * 3, cy - 10 * s) end
-        end
+        lg.setColor(0.7, 0.5, 0.25, 0.45)
+        lg.arc("line", "open", cx + wob, y - 8 * s - 4, 3 * s, 0.3, math.pi - 0.3)
     end,
     label = function(world, o)
         if o.t < 0.35 then return nil end

@@ -65,27 +65,8 @@ local function drawAnteater(o, world, sx, sy, kx, ky, flash)
 end
 
 local function drawAntlion(o, world, sx, sy, kx, ky, flash)
-    local lg = love.graphics
-    local st = o.st
-    local open = st.snap and (0.2 + 0.8 * math.max(0, 1 - st.snap / 0.25)) or (0.6 + 0.4 * math.sin(world.time * 3))
-    -- a bristly head just above the sand, two long curved jaws
-    col(flash, 0.42, 0.3, 0.18)
-    lg.ellipse("fill", sx, sy - 3, 9 * kx, 5 * ky)
-    col(flash, 0.58, 0.44, 0.27)
-    lg.ellipse("fill", sx - 1, sy - 5, 6 * kx, 3 * ky)
-    col(flash, 0.22, 0.14, 0.08)
-    lg.setLineWidth(2)
-    for s = -1, 1, 2 do
-        local a = -math.pi / 2 + s * (0.25 + open * 0.55)
-        local x1, y1 = sx + s * 4, sy - 6
-        local x2, y2 = x1 + math.cos(a) * 12, y1 + math.sin(a) * 9
-        local x3, y3 = x2 - s * 5, y2 - 2
-        lg.line(x1, y1, x2, y2, x3, y3)
-    end
-    lg.setLineWidth(1)
-    col(flash, 0.05, 0.03, 0.02)
-    lg.rectangle("fill", sx - 3, sy - 7, 1, 1)
-    lg.rectangle("fill", sx + 2, sy - 7, 1, 1)
+    -- painted in the bug sprites' style (src/gfx/antlion.lua)
+    require("src.gfx.antlion").drawBody(o, world, sx, sy, kx, ky, flash)
 end
 
 local function drawSparrow(o, world, sx, sy, kx, ky, flash)

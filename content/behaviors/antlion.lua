@@ -72,11 +72,7 @@ return {
         local lg = love.graphics
         local R = e.st.R or 0
         if R < 2 then return end
-        local rings = { { 1, 0.82, 0.7, 0.48 }, { 0.8, 0.74, 0.62, 0.42 }, { 0.6, 0.64, 0.53, 0.36 }, { 0.4, 0.52, 0.42, 0.28 }, { 0.2, 0.35, 0.27, 0.18 } }
-        for _, r in ipairs(rings) do
-            lg.setColor(r[2], r[3], r[4], 0.9)
-            Env.ellipse("fill", e.x, e.y, R * r[1])
-        end
+        require("src.gfx.antlion").drawPit(e.x, e.y, R)
         -- sand trickling down in a slow swirl
         lg.setColor(0.9, 0.82, 0.6, 0.6)
         local Iso = require("src.core.iso")
@@ -86,7 +82,5 @@ return {
             local sx, sy = Iso.toScreen(e.x + math.cos(a) * rr, e.y + math.sin(a) * rr)
             lg.rectangle("fill", math.floor(sx), math.floor(sy), 1, 1)
         end
-        lg.setColor(0.95, 0.88, 0.68, 0.5)
-        Env.ellipse("line", e.x, e.y, R)
     end,
 }

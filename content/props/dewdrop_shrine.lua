@@ -2,6 +2,8 @@
 -- pebbles. Stand in the ring while the wave is on to gather the dew; it draws ants in while it
 -- fills, and it slowly dries if you step out. When it is full three blessings float up around
 -- it: walk into the one you want (a permanent stat boost for the run).
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Audio = require("src.core.audio")
 local Env = require("src.game.envfx")
 local Gambles = require("src.game.gambles")
@@ -115,20 +117,16 @@ return {
                 Env.ellipse("fill", o.x, o.y, st.ring * st.charge)
             end
         end
-        lg.setColor(0.5, 0.48, 0.44, a)
+        -- the ring of pebbles and the leaf, painted (src/gfx/propart.lua)
+        local Iso = require("src.core.iso")
         for i = 0, 9 do
             local ang = i / 10 * math.pi * 2
-            Env.ellipse("fill", o.x + math.cos(ang) * st.ring, o.y + math.sin(ang) * st.ring, 2.2)
+            local px, py = Iso.toScreen(o.x + math.cos(ang) * st.ring, o.y + math.sin(ang) * st.ring)
+            Paint.draw(PA.pebble(2, i), math.floor(px + 0.5), math.floor(py + 0.5), 0, 1, 1, a)
         end
-        -- the leaf
         lg.setColor(0, 0, 0, 0.3 * a)
         lg.ellipse("fill", sx, sy + 2, 15, 6)
-        lg.setColor(0.28, 0.55, 0.22, a)
-        lg.ellipse("fill", sx, sy, 15, 6)
-        lg.setColor(0.42, 0.72, 0.3, a)
-        lg.ellipse("fill", sx - 3, sy - 1, 9, 3)
-        lg.setColor(0.2, 0.4, 0.16, a)
-        lg.line(sx - 14, sy, sx + 14, sy)
+        Paint.draw(PA.shrineLeaf(), sx, sy, 0, 1, 1, a)
     end,
     drawAir = function(world, o, sx, sy)
         local lg, st = love.graphics, o.st
@@ -138,12 +136,7 @@ return {
         local r = (4 + 5 * k) * st.pop
         local y = sy - 6 - r + math.sin(o.t * 2) * 1
         if st.state ~= "done" then
-            lg.setColor(0.55, 0.85, 1, 0.75 * a)
-            lg.circle("fill", sx, y, r)
-            lg.setColor(0.85, 0.97, 1, 0.9 * a)
-            lg.circle("fill", sx - r * 0.35, y - r * 0.35, math.max(1, r * 0.3))
-            lg.setColor(0.3, 0.6, 0.8, a)
-            lg.circle("line", sx, y, r)
+            Paint.draw(PA.drop(r), sx, math.floor(y + r + 0.5), 0, 1, 1, a)
         end
         if st.state == "offer" then
             -- three bubbles, each with a blessing in it

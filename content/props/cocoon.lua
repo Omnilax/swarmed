@@ -1,5 +1,7 @@
 -- A web cocoon with a bug wrapped up inside (the "web cocoon" event). Hit it three times (or
 -- dash through it) and the bug inside breaks free and fights beside you for a while.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Content = require("src.content")
 local Audio = require("src.core.audio")
 
@@ -44,22 +46,15 @@ return {
         local x = sx + j
         lg.setColor(0, 0, 0, 0.3)
         lg.ellipse("fill", sx + 1, sy + 2, 11, 5)
-        -- the strand it hangs from... it lies on the ground: a silk bundle, the bug's colour showing through
-        lg.setColor(0.86, 0.86, 0.82, 1)
-        lg.ellipse("fill", x, sy - 7, 7, 9)
+        -- a silk bundle lying on the ground, the bug inside stirring (src/gfx/propart.lua)
+        Paint.draw(PA.cocoon(), x, sy)
         local pulse = 0.5 + 0.5 * math.sin(world.time * 3 + o.uid)
-        lg.setColor(0.45, 0.3, 0.25, 0.35 + 0.2 * pulse)
-        lg.ellipse("fill", x, sy - 7, 3, 5)
-        lg.setColor(1, 1, 0.97, 1)
-        for i = -2, 2 do
-            lg.line(x - 6, sy - 7 + i * 3 - 1, x + 6, sy - 7 + i * 3 + 1)
-        end
-        lg.setColor(0.7, 0.7, 0.66, 1)
-        lg.ellipse("line", x, sy - 7, 7, 9)
+        lg.setColor(0.45, 0.3, 0.25, 0.12 + 0.12 * pulse)
+        lg.ellipse("fill", x, sy - 8, 3, 5)
         -- cracks as it is hit
         lg.setColor(0.3, 0.25, 0.2, 1)
         for i = 1, (o.def.hp - o.hp) do
-            lg.line(x - 2 + i * 2, sy - 13 + i, x + i, sy - 5 - i)
+            lg.line(x - 2 + i * 2, sy - 14 + i, x + i, sy - 6 - i)
         end
     end,
     label = function(world, o)

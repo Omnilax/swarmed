@@ -4,6 +4,8 @@
 -- a full heal); some are not (nothing, a swarm of ants, a curse that lowers a stat for the run).
 -- A few spins, each dearer than the last, then it wilts. Needs the nectar currency
 -- (World:spendNectar); without it the flower never shows up.
+local PA = require("src.gfx.propart")
+local Paint = require("src.gfx.paint")
 local Content = require("src.content")
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
@@ -179,12 +181,7 @@ return {
         local a = o.st.fade * o.st.pop
         lg.setColor(0, 0, 0, 0.3 * a)
         lg.ellipse("fill", sx, sy + 1, 10, 4)
-        lg.setColor(0.25, 0.5, 0.2, a)
-        lg.setLineWidth(2)
-        lg.line(sx, sy, sx + 1, sy - 18)
-        lg.setLineWidth(1)
-        lg.setColor(0.35, 0.62, 0.26, a)
-        lg.polygon("fill", sx, sy - 6, sx + 8, sy - 10, sx + 1, sy - 11)
+        Paint.draw(PA.flowerStem(), sx, sy, 0, 1, 1, a)
     end,
     drawAir = function(world, o, sx, sy)
         local lg, st = love.graphics, o.st
@@ -199,18 +196,10 @@ return {
             local lit = i == st.lit
             local r = lit and 6.5 or 5
             local px, py = cx + math.cos(ang) * 8, cy + math.sin(ang) * 4.5 + wilt
-            local m = lit and 1 or 0.6
-            lg.setColor(c[1] * m, c[2] * m, c[3] * m, a)
-            lg.ellipse("fill", px, py, r * 0.55, r * 0.4)
-            if lit then
-                lg.setColor(1, 1, 1, 0.9 * a)
-                lg.ellipse("line", px, py, r * 0.55, r * 0.4)
-            end
+            -- painted petals (src/gfx/propart.lua), the lit one bigger with a pale rim
+            Paint.draw(PA.petal(c, lit), math.floor(px + 0.5), math.floor(py + 0.5), 0, 1, 1, a)
         end
-        lg.setColor(1, 0.85, 0.3, a)
-        lg.circle("fill", cx, cy, 3.2)
-        lg.setColor(0.7, 0.5, 0.15, a)
-        lg.circle("line", cx, cy, 3.2)
+        Paint.draw(PA.flowerHeart(), math.floor(cx + 0.5), math.floor(cy + 0.5), 0, 1, 1, a)
     end,
     label = function(world, o)
         local st = o.st
