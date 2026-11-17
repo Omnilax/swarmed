@@ -17,13 +17,18 @@ return {
     -- Kill-streak buffs (src/game/streaks.lua): every `every` kills in one combo, a short buff.
     streaks = { every = 50 },
 
-    -- Big moments: freeze frames, slow motion and a camera zoom punch.
+    -- Big moments: freeze frames, slow motion and a camera zoom punch. Kept rare on purpose:
+    -- a freeze is a reward for a really big hit, not something that happens every few seconds.
     feel = {
-        bigKill = 12,           -- kills in one frame that count as a big multi-kill
-        bigSlow = 0.35, bigSlowTime = 0.3, bigPunch = 0.06,
-        queenStop = 0.12, queenSlow = 0.25, queenSlowTime = 0.9, queenPunch = 0.14,
-        frenzySlow = 0.2, frenzySlowTime = 0.45, frenzyPunch = 0.18,
-        cooldown = 1.2,         -- seconds between two big-kill slow-mos
+        stopKills = 15,         -- kills in one frame before the action freezes for a beat
+        stopMin = 0.02, stopPerKill = 0.0015, stopMax = 0.045,   -- freeze length for a multi-kill
+        stopCooldown = 4,       -- seconds before another multi-kill can freeze the action
+        stopScale = 0.6,        -- every other freeze (big punches, molts, encounters) is this much shorter
+        bigKill = 30,           -- kills in one frame that count as a big multi-kill (slow motion)
+        bigSlow = 0.55, bigSlowTime = 0.22, bigPunch = 0.05,
+        queenStop = 0.08, queenSlow = 0.35, queenSlowTime = 0.6, queenPunch = 0.14,
+        frenzySlow = 0.3, frenzySlowTime = 0.3, frenzyPunch = 0.18,
+        cooldown = 10,          -- seconds between two big-kill slow-mos
     },
 
     -- Optional mini-goals (src/game/goals.lua, content/goals): one per wave, sometimes.

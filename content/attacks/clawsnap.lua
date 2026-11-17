@@ -64,7 +64,7 @@ return {
         Audio.play(f > 0.6 and "boom" or "hit", { pitch = 1.4 - f * 0.6, volume = 0.6 + f * 0.4 })
         if f >= 1 then
             world:floatText(x, y, "CRUNCH!", { 1, 0.6, 0.45 }, true)
-            world.hitstop = math.max(world.hitstop or 0, 0.05)
+            world:hitStop(0.05)
             world.particles:burst(x, y, 14, { { 0.6, 0.55, 0.5 }, { 0.75, 0.7, 0.62 } }, 100, 60, { grav = 300 })
         end
     end,

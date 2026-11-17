@@ -47,8 +47,15 @@ return function(wait, shot)
 
     -- slow motion and a camera punch on a big multi-kill
     run(1.5)
-    world:spawnRing("worker_ant", 20, p.x, p.y, 6)
-    local list = {}
+    local feel = rw.cfg.feel
+    -- heavy-hit freezes are scaled down (and stay off with the Hit Stop setting off)
+    world.hitstop = 0
+    world:hitStop(0.1)
+    assert(math.abs(world.hitstop - 0.1 * feel.stopScale) < 1e-6, "hitStop should scale the freeze")
+    run(0.2)
+    assert(feel.stopKills >= 10 and feel.stopCooldown >= 2, "multi-kill freezes should stay rare")
+    world:spawnRing("worker_ant", feel.bigKill + 5, p.x, p.y, 6)
+    list = {}
     for i = 1, world.enemyCount do list[i] = world.enemies[i] end
     world.killsThisFrame = 0
     for _, e in ipairs(list) do world:killEnemy(e) end

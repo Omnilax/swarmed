@@ -341,7 +341,7 @@ function Director:update(dt)
             self.encounter = nil
             if enc.def.finish then enc.def.finish(world, enc) end
             world.milestone = { text = (enc.def.slain or (enc.def.name:upper() .. " DRIVEN OFF")), t = 0 }
-            world.hitstop = math.max(world.hitstop, 0.1)
+            world:hitStop(0.1)
             world.camera:shake(0.5)
             Audio.play("boom", { pitch = 0.55 })
             if enc.def.xp then world:grantXP(enc.def.xp, enc.e.x, enc.e.y) end

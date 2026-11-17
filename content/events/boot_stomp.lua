@@ -34,7 +34,7 @@ return {
             local kills = Env.strikeCircle(world, st.x, st.y, R, 999, { bossMul = 0.25 })
             if Env.playerIn(world, st.x, st.y, R - 4) then Env.hurtPlayer(world, 20, st.x, st.y, { force = 220 }) end
             world.camera:shake(0.7)
-            world.hitstop = math.max(world.hitstop, 0.08)
+            world:hitStop(0.08)
             Audio.play("boom", { pitch = 0.45 })
             world.particles:burst(st.x, st.y, 30, { { 0.5, 0.42, 0.32 }, { 0.65, 0.56, 0.44 } }, 160, 60, { grav = 260 })
             world:addFx({ kind = "ring", x = st.x, y = st.y, r = R + 10, life = 0.35, color = { 0.8, 0.7, 0.55 } })
