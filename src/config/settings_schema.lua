@@ -168,6 +168,8 @@ add { key = "uiFont", category = "Interface", label = "Font", type = "choice", d
     options = { { value = "pixel", label = "Pixel" }, { value = "smooth", label = "Smooth" } },
     desc = "Pixel matches the game's art. Smooth is easier to read at small sizes." }
 add { key = "uiScale", category = "Interface", label = "Interface Scale", type = "slider", default = 100, min = 75, max = 150, step = 5, format = percent }
+add { key = "hudScale", category = "Interface", label = "HUD Size", type = "slider", default = 75, min = 50, max = 125, step = 5, format = percent,
+    desc = "Size of everything drawn over the fight: health, wave line, KO count, banners, species cards, tips and damage numbers. Smaller leaves more of the screen for the game." }
 add { key = "hudOpacity", category = "Interface", label = "HUD Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent }
 add { key = "showTimer", category = "Interface", label = "Show Run Timer", type = "toggle", default = true }
 add { key = "showEnemyCount", category = "Interface", label = "Enemies Left", type = "toggle", default = true,
@@ -176,7 +178,7 @@ add { key = "nextWavePreview", category = "Interface", label = "Next Wave Previe
     desc = "During the break, show what the next wave brings: a queen, a new species, wave modifiers." }
 add { key = "speciesPopups", category = "Interface", label = "First Sighting Popups", type = "choice", default = "new",
     options = { { value = "new", label = "First Time Ever" }, { value = "run", label = "Every Run" }, { value = "off", label = "Off" } },
-    desc = "A card with a species' name and what it does the first time it shows up (species introduced by a wave already get the big card)." }
+    desc = "A card with a species' name and what it does the first time it shows up (a species a wave introduces always gets its card, unless this is Off)." }
 add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Markers", type = "toggle", default = true,
     desc = "Arrows at the screen edge pointing at queens and elites you cannot see." }
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }

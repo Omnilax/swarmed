@@ -170,8 +170,11 @@ function Game:draw()
     Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera:viewZoom())
     self.world:draw()
     Screen.endWorld()
+    -- the HUD, banners and floating numbers draw at the HUD Size zoom (Theme.hudZoom)
+    Theme.pushZoom(Theme.hudZoom())
     self.world:drawText({ small = Theme.font(15), big = Theme.font(22) })
     Hud.draw(self, State.top() ~= self)
+    Theme.popZoom()
     if self.sandbox then self.sandbox:draw() end
     if Settings.get("cursorStyle") == "crosshair" and not require("src.core.touch").enabled() and not (self.sandbox and self.sandbox:hovering()) and State.top() == self then
         Hud.crosshair()

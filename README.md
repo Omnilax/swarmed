@@ -731,6 +731,11 @@ use them instead of drawing your own. Check by eye with `love . --selftest --uit
 - **Type**: use the named sizes, `Theme.font("title")`, `"heading"`, `"body"`, `"label"`,
   `"small"`. Nothing is drawn below `Theme.MIN_TEXT` (14): if text doesn't fit, cut words, don't
   shrink it. Bold is for names and card titles, not whole paragraphs.
+- **HUD size**: everything is drawn at `Theme.TEXT_SCALE` (90%) of its named size, and the
+  in-run HUD (`Game:draw`) sits inside `Theme.pushZoom(Theme.hudZoom())`, which scales text and
+  `Theme.u` together (Settings "HUD Size", default 75%). New HUD pieces drawn from `Hud.draw`
+  get it for free; keep them small and at the screen edges so the fight stays visible
+  (`love . --selftest --hudsize`).
 - **Screen titles**: `Theme.title("Bug catalogue")` (top-left) or `Theme.title("Settings", w)`
   (centred). Short, one or two words, no colons.
 - **Panels**: `Theme.panel(x, y, w, h, rivets)`: the bevelled plate the bag uses. Square corners,
