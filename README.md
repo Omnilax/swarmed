@@ -22,6 +22,7 @@ love . --selftest --entries     # just the ways into the arena (burrows, drops, 
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
 love . --selftest --happenings  # just mid-wave events, boss encounters, stages, weather effects, props
 love . --selftest --props       # rocks and sticks: hit physics, blasts, collisions, every grab attack on them
+love . --selftest --hazards     # the sparrow and anteater hazards hunting a run, a screenshot per attack
 love . --selftest --gambles     # just map gambles: dewdrop shrine, challenge bell, gamble flower
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
@@ -457,11 +458,22 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   it is around; walk into it to buy, the item goes straight into the bag). A stage's
   `events = { id = weight }` and a mode's `eventWeights` / `events = false` change the odds.
 - **Boss encounters** (`content/bosses`, setting **Boss Encounters**): every 5th wave except the
-  final one, a predator joins the queen: the anteater (licks lanes), the antlion (a sand pit that
-  drags everything to its jaws, throws sand) or the sparrow (a shadow overhead, swoops down a line,
-  lands to peck, which is when it can be hit). They are real enemies (`content/enemies/predators.lua`,
-  `encounter = true`, drawn by `drawBody`), so the wave lasts until they fall; hazards don't hurt
-  them. A mode can say `encounters = false`.
+  final one, something big joins the queen. Bugs are fights: the antlion (a sand pit that drags
+  everything to its jaws, throws sand) is a real enemy (`content/enemies/predators.lua`,
+  `encounter = true`, drawn by `drawBody`), so the wave lasts until it falls; hazards don't hurt it.
+  Animals far too big to fight are **stage hazards** (`hazard = true`): no enemy, nothing to hit,
+  they don't hold the wave up. They hunt the arena until the wave is cleared, then leave (bonus XP),
+  and everything they do kills ants and hurts you alike. The HUD shows their name and what they are
+  doing instead of a health bar, and they speed up the longer the wave lasts.
+  - **Sparrow**: soars overhead as a shadow, swoops down a lane across the whole arena (sometimes
+    straight back again), lands on a marked spot, hops after you pecking at marked circles, then
+    takes off with a wing beat that blasts everything away.
+  - **Giant Anteater**: lies at an arena edge with its head and forelegs reaching in. Tongue
+    flicks down red lanes (you get dragged toward the snout), a tongue sweep across a whole fan,
+    a claw rake (three gouges), and it shuffles along the edge after you or comes in at another
+    side.
+  Their pictures are painted in code (`src/gfx/beasts.lua`: feathers, streaks, coarse fur, the
+  anteater's shoulder stripe) and drawn at full size. A mode can say `encounters = false`.
 - **Stage mechanics** (`content/mechanics`): Puddled Patio (a puddle that rises through each wave),
   Overgrown Lawn (the long grass closes in during a wave), Dappled Garden (drifting sun patches
   speed everyone up, shade slows ants). Pick them in Cosmetics > Location like the other stages.
@@ -495,7 +507,7 @@ wave up: a wave still ends only when every enemy is dead, and events still going
 Everything that changes movement goes through `world.env` (player / enemy speed, drift, the
 player's inset from the walls, and a per-spot speed `field`). Raw hazard damage that skips player
 stats and procs is in `src/game/envfx.lua`, with the shared warning-lane and shadow drawing.
-Dev console: `event <id>`, `encounter <id>`, `prop <id> [n]`. `love . --selftest --happenings`
+Dev console: `event <id>`, `encounter <id>` (`encounter off` sends a hazard away), `prop <id> [n]`. `love . --selftest --happenings`
 checks it all.
 
 ## Enemies and damage
@@ -622,7 +634,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
 | `content/molts` | molting recipes: `from` (2-3 item ids that must touch), `into` (a molted item), `hint` | bag after a queen wave, Records > Recipes |
 | `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |
-| `content/bosses` | boss encounters: a predator from content/enemies joins every 5th wave | src/game/director.lua |
+| `content/bosses` | boss encounters every 5th wave: a bug from content/enemies to fight, or a stage hazard (`hazard = true`) | src/game/director.lua, src/gfx/beasts.lua |
 | `content/mechanics` | stage rules a stage turns on with `mechanic = { type = ... }` | src/game/director.lua |
 | `content/props` | pebbles, twigs, acorns, cocoons, freed allies, the merchant | src/game/props.lua |
 

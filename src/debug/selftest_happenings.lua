@@ -245,35 +245,86 @@ return function(wait, shot)
     Settings.set("weatherEffects", true)
     w:set(Content.weather:require("clear"), 60)
 
-    -- boss encounters: real enemies the wave waits for; each does its thing
+    -- boss encounters. Bugs (the antlion) are real enemies the wave waits for; animals too big
+    -- to fight (sparrow, anteater) are stage hazards: no enemy, they kill ants and hit the
+    -- player, they can't be hurt, and they leave when the wave is cleared.
     world.flags.freezeAI = false
+    local realHurt = Env.hurtPlayer
     for _, b in ipairs(Content.bosses:all()) do
         world:clearEnemies()
-        local e = dir:startBoss(b.id)
-        assert(e and dir.encounter and dir.encounter.e == e, b.id .. " did not arrive")
-        assert(world.spawner:remaining() >= 1, b.id .. " should count as an enemy")
-        crowd(e.x + 40, e.y, 20, 25)
-        for i = 1, world.enemyCount do world.enemies[i].st.frozen = nil end
-        step(60 * 6)
-        shot("boss_" .. b.id)
-        assert(not e.dead, b.id .. " should not die to the hazards")
-        world:killEnemy(e)
-        step(2)
-        assert(not dir.encounter, b.id .. " encounter should end when it falls")
+        center()
+        if b.hazard then
+            local hits = 0
+            Env.hurtPlayer = function(...)
+                local landed = realHurt(...)
+                if landed then hits = hits + 1 end
+                return landed
+            end
+            local h = dir:startBoss(b.id)
+            assert(h and dir.hazard == h, b.id .. " hazard did not arrive")
+            assert(world.enemyCount == 0, b.id .. " should not be an enemy")
+            local killed, seen, t = 0, {}, 0
+            while t < 40 do
+                if alive() < 25 then crowd(pl.x + love.math.random(-120, 120), pl.y + love.math.random(-120, 120), 12, 40) end
+                for i = 1, world.enemyCount do world.enemies[i].st.frozen = nil end
+                local before, t0 = alive(), world.time
+                world:update(1 / 60)
+                t = t + math.max(world.time - t0, 1 / 600)
+                if alive() < before then killed = killed + (before - alive()) end
+                seen[h.st.mode or "?"] = true
+                local m = h.st.mode
+                if not seen["shot_" .. tostring(m)] and (m == "swoop" or m == "peckWarn" or m == "sweep" or m == "rakeWarn" or m == "flickWarn" or m == "gustWarn") then
+                    seen["shot_" .. m] = true
+                    shot("hazard_" .. b.id .. "_" .. m)
+                end
+                -- keep the player in the middle so the hazard keeps coming at the crowd
+                if (pl.x - world.size / 2) ^ 2 + (pl.y - world.size / 2) ^ 2 > 200 * 200 then center() end
+                if killed >= 15 and hits >= 1 and t > 20 then break end
+            end
+            Env.hurtPlayer = realHurt
+            local modes = {}
+            for k in pairs(seen) do if not k:find("^shot_") then modes[#modes + 1] = k end end
+            table.sort(modes)
+            print(("[selftest] hazard %s: %d ants killed, %d hits on the player in %.0f s; modes %s"):format(b.id, killed, hits, t, table.concat(modes, " ")))
+            assert(killed >= 10, b.id .. " should eat ants")
+            assert(hits >= 1, b.id .. " should hit the player")
+            -- it leaves once the wave is cleared, with a bonus
+            dir:endHazard(true)
+            assert(dir.hazard and dir.hazard.leaving, b.id .. " should be leaving")
+            for _ = 1, 60 * 5 do world:update(1 / 60) if not dir.hazard then break end end
+            assert(not dir.hazard, b.id .. " should be gone after leaving")
+        else
+            local e = dir:startBoss(b.id)
+            assert(e and dir.encounter and dir.encounter.e == e, b.id .. " did not arrive")
+            assert(world.spawner:remaining() >= 1, b.id .. " should count as an enemy")
+            crowd(e.x + 40, e.y, 20, 25)
+            for i = 1, world.enemyCount do world.enemies[i].st.frozen = nil end
+            step(60 * 6)
+            shot("boss_" .. b.id)
+            assert(not e.dead, b.id .. " should not die to the hazards")
+            world:killEnemy(e)
+            step(2)
+            assert(not dir.encounter, b.id .. " encounter should end when it falls")
+        end
         print("[selftest] encounter " .. b.id .. " OK")
     end
 
-    -- a boss wave lines up an encounter and the wave can't end before it is dead
-    world:clearEnemies()
-    sp.enabled = true
-    Settings.set("bossEncounters", true)
-    sp:startWave(5)
-    assert(dir.pendingBoss, "wave 5 should bring a boss encounter")
-    for _ = 1, 60 * 8 do
-        world:update(1 / 60)
-        if dir.encounter then break end
+    -- a boss wave with a bug lines up an encounter and the wave can't end before it is dead
+    local function bossWave(n, want)
+        world:clearEnemies()
+        sp.enabled = true
+        Settings.set("bossEncounters", true)
+        dir.usedBosses = {}
+        for _, b in ipairs(Content.bosses:all()) do if b.id ~= want then dir.usedBosses[b.id] = true end end
+        sp:startWave(n)
+        assert(dir.pendingBoss and dir.pendingBoss.def.id == want, "wave " .. n .. " should bring " .. want)
+        for _ = 1, 60 * 8 do
+            world:update(1 / 60)
+            if dir.encounter or dir.hazard then break end
+        end
+        assert(dir.encounter or dir.hazard, "the encounter never arrived")
     end
-    assert(dir.encounter, "the encounter never arrived")
+    bossWave(5, "antlion")
     local boss = dir.encounter.e
     -- kill everything but the predator: the wave must still be on
     for _ = 1, 60 * 40 do
@@ -294,6 +345,21 @@ return function(wait, shot)
         world:update(1 / 60)
     end
     assert(sp.phase == "break", "the wave should end once the predator is dead")
+    world.pendingChoice = nil
+    sp.enabled = false
+
+    -- a hazard wave ends as soon as the ants are dead, and the hazard leaves with it
+    bossWave(10, "sparrow")
+    for _ = 1, 60 * 40 do
+        sp.queue, sp.streams, sp.portals = {}, {}, {}
+        for i = 1, world.enemyCount do if not world.enemies[i].dead then world:killEnemy(world.enemies[i]) end end
+        world:update(1 / 60)
+        if sp.phase == "break" then break end
+    end
+    assert(sp.phase == "break", "a hazard should not hold the wave up")
+    assert(not dir.hazard or dir.hazard.leaving, "the hazard should leave when the wave is cleared")
+    for _ = 1, 60 * 5 do world:update(1 / 60) if not dir.hazard then break end end
+    assert(not dir.hazard, "the hazard should be gone after the wave")
     world.pendingChoice = nil
     sp.enabled = false
 

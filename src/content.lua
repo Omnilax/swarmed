@@ -99,8 +99,13 @@ Content.stages = Registry.new("stage", {
 })
 
 -- Planned registries, ready for content: bosses and run events (swarm surges, hazards, ...).
--- Boss encounters (content/bosses): a big predator that joins boss waves (src/game/director.lua).
-Content.bosses = Registry.new("boss", { required = { "name", "enemy" }, defaults = { description = "", weight = 10, minWave = 1 } })
+-- Boss encounters (content/bosses): something big that joins boss waves (src/game/director.lua):
+-- a fightable bug (`enemy`) or a stage hazard too big to fight (`hazard = true`).
+Content.bosses = Registry.new("boss", { required = { "name" }, defaults = { description = "", weight = 10, minWave = 1 },
+    validate = function(d)
+        if d.hazard then return d.update ~= nil, "a hazard needs an update hook" end
+        return d.enemy ~= nil, "needs an enemy (or hazard = true)"
+    end })
 -- Mid-wave events and moving hazards (content/events/_template.lua).
 Content.events = Registry.new("event", { required = { "name" }, defaults = { description = "", weight = 10, minWave = 2 } })
 -- Props: pebbles, twigs, cocoons, allies, the merchant (content/props/_template.lua, src/game/props.lua).
@@ -185,7 +190,7 @@ local function crossCheck()
     end
     for _, t in ipairs(Content.skilltrees:all()) do need(Content.characters, t.character, "skill tree '" .. t.id .. "'") end
     for _, it in ipairs(Content.items:all()) do need(Content.sprites, it.icon, "item '" .. it.id .. "' icon") end
-    for _, b in ipairs(Content.bosses:all()) do need(Content.enemies, b.enemy, "boss '" .. b.id .. "'") end
+    for _, b in ipairs(Content.bosses:all()) do if b.enemy then need(Content.enemies, b.enemy, "boss '" .. b.id .. "'") end end
     for _, st in ipairs(Content.stages:all()) do
         if st.mechanic then need(Content.mechanics, st.mechanic.type, "stage '" .. st.id .. "' mechanic") end
         for id in pairs(st.props or {}) do need(Content.props, id, "stage '" .. st.id .. "' props") end

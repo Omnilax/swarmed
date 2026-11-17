@@ -672,6 +672,7 @@ local function script(flags)
     if flags["--finalwave"] then require("src.debug.selftest_finalwave")(wait, shot) love.event.quit() return end
     if flags["--entries"] then require("src.debug.selftest_entries")(wait, shot) love.event.quit() return end
     if flags["--gambles"] then require("src.debug.selftest_gambles")(wait, shot) love.event.quit() return end
+    if flags["--hazards"] then require("src.debug.selftest_hazards")(wait, shot) love.event.quit() return end
     if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--props"] then require("src.debug.selftest_props")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
