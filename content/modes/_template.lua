@@ -20,6 +20,9 @@ return {
     enemies = nil,
     exclude = nil,
     queensAnyWave = false,      -- queens ignore their own minWave (for short species lists)
+    queensAnyBrood = false,     -- queens come even before their brood species has been met (Royal Court)
+    introOnBoss = false,        -- boss waves still bring in a new species
+    introCount = 1,             -- new species per wave (the first gets the banner, the rest join the mix)
     bossPool = nil,             -- enemy ids to use as boss-wave bosses when no queen fits
 
     enemyHp = 1,                -- multiplies every enemy's health
@@ -34,6 +37,19 @@ return {
     -- every levelTime s and brings a new species; a queen every bossEvery levels; an item choice
     -- every rewardEvery levels (0 = never).
     endless = nil,              -- e.g. { levelTime = 40, packGap = 2.4, minGap = 0.5, packSize = 0.6, rewardEvery = 3 }
+
+    -- Scripted waves: every wave spelled out, in order (after the last, the script starts over,
+    -- tougher). Same format the in-game Custom Waves builder saves (src/game/customwaves.lua), so
+    -- Copy Set there gives you text to paste here. See content/modes/gauntlet.lua. Set
+    -- finalWave to #waves, and spawn = { earlyBoost = false } to keep the counts exact.
+    waves = nil,                -- e.g. { { groups = { { "worker_ant", 40 } } },
+                                --        { groups = { { "fire_ant", 20 } }, queen = "queen_fire",
+                                --          mods = { "armored" }, events = { "lawnmower" }, encounter = "sparrow" } }
+
+    -- Mid-wave events / encounters (src/game/director.lua DEFAULTS): eventsFrom, eventAt,
+    -- encounterEvery, eventBonus (extra events every wave). events = false / encounters = false
+    -- switch them off. Wave modifiers: spawn = { modifiers = { from, chance, doubleFrom, double, anyWave } }.
+    director = nil,
 
     -- Before the run, pick starting items from the whole catalogue with a point budget
     -- (cost per rarity, see src/states/loadout.lua).

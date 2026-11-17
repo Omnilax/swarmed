@@ -201,6 +201,15 @@ local function crossCheck()
     for _, m in ipairs(Content.modes:all()) do
         for _, id in ipairs(m.enemies or {}) do need(Content.enemies, id, "mode '" .. m.id .. "'") end
         for _, id in ipairs(m.bossPool or {}) do need(Content.enemies, id, "mode '" .. m.id .. "' bossPool") end
+        -- scripted waves: every species, queen, modifier, event and encounter they name
+        for i, wv in ipairs(m.waves or {}) do
+            local where = "mode '" .. m.id .. "' wave " .. i
+            for _, g in ipairs(wv.groups or {}) do need(Content.enemies, g[1] or g.enemy, where) end
+            if wv.queen then need(Content.enemies, wv.queen, where .. " queen") end
+            for _, id in ipairs(wv.mods or {}) do need(Content.wavemods, id, where .. " mods") end
+            for _, id in ipairs(wv.events or {}) do need(Content.events, id, where .. " events") end
+            if wv.encounter then need(Content.bosses, wv.encounter, where .. " encounter") end
+        end
     end
 
     for _, c in ipairs(Content.characters:all()) do

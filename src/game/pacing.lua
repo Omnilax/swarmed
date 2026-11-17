@@ -64,7 +64,7 @@ end
 -- Wave modifiers
 
 local function modAllowed(sp, def, n)
-    if def.minWave and n < def.minWave then return false end
+    if def.minWave and n < def.minWave and not (sp.cfg.modifiers and sp.cfg.modifiers.anyWave) then return false end
     if def.maxWave and n > def.maxWave then return false end
     if def.modes and not require("src.core.util").contains(def.modes, sp.mode.id) then return false end
     return true
@@ -75,6 +75,15 @@ function Pacing.modifiersFor(sp, n)
     if sp.modsByWave[n] then return sp.modsByWave[n] end
     local cfg, out = sp.cfg.modifiers, {}
     sp.modsByWave[n] = out
+    -- scripted waves (Custom Waves, content/modes `waves`) name their own modifiers
+    local sw = sp:scriptWave(n)
+    if sw then
+        for _, id in ipairs(sw.mods or {}) do
+            local d = Content.wavemods:get(id)
+            if d then out[#out + 1] = d end
+        end
+        return out
+    end
     if not cfg or sp.endless or Settings.get("waveModifiers") == false then return out end
     local boss = sp.cfg.bossEvery > 0 and n % sp.cfg.bossEvery == 0
     if n < (cfg.from or 3) or boss or sp:isFinal(n) then return out end
@@ -171,8 +180,8 @@ function Pacing.shapeGroups(sp)
             else
                 local pts = sp:spreadPoints(2)
                 local half = math.ceil(g.count / 2)
-                out[#out + 1] = { def = g.def, count = half, x = pts[1][1], y = pts[1][2], at = g.at }
-                out[#out + 1] = { def = g.def, count = g.count - half, x = pts[2][1], y = pts[2][2], at = g.at }
+                out[#out + 1] = { def = g.def, count = half, x = pts[1][1], y = pts[1][2], at = g.at, exact = g.exact }
+                out[#out + 1] = { def = g.def, count = g.count - half, x = pts[2][1], y = pts[2][2], at = g.at, exact = g.exact }
             end
         end
         sp.queue = out

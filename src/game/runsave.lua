@@ -35,6 +35,7 @@ function RunSave.snapshot(game)
         version = RunSave.VERSION,
         character = p.def.id, gameMode = w.gameMode, stage = w.stage.id,
         startItems = game.params.startItems,
+        customWaves = util.deepcopy(w.customWaves),     -- the Custom Waves set, as it was when the run began
         -- waves fully behind you: a wave still going is played again
         wave = (sp.phase == "wave") and math.max(0, sp.wave - 1) or sp.wave,
         time = w.time, kos = w.kos, bestCombo = w.bestCombo, xp = w.xp, won = w.won or nil,
@@ -127,7 +128,7 @@ end
 -- Game params that start the saved run (Game.new calls RunSave.restore with the snapshot).
 function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
-        startItems = snap.startItems, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
+        startItems = snap.startItems, customWaves = snap.customWaves, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
         danger = tonumber(snap.danger) or 0 }
 end
 

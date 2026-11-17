@@ -107,7 +107,7 @@ function love.keypressed(key, scancode, isrepeat)
     State.call("keypressed", key, scancode, isrepeat)
 end
 
-function love.textinput(t) Dev.textinput(t) end
+function love.textinput(t) if not Dev.textinput(t) then State.call("textinput", t) end end
 
 -- Mouse events made up from touches are dropped: src/core/touch.lua turns touches into
 -- stick and button input, taps into clicks and drags into scrolling.

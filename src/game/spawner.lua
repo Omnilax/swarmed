@@ -12,6 +12,9 @@
 -- groups in at once, and the last few ants left in a wave hurry towards the player.
 -- Introduction order: enemies' spawn.minWave, then the most common first (spawn.weight).
 -- Stage config (stage.spawn): see content/stages/_template.lua.
+-- Scripted waves: a mode with a `waves` list (Custom Waves, src/game/customwaves.lua, or a mode
+-- file like content/modes/gauntlet.lua) skips all of that and sends exactly what each wave names
+-- (Spawner:startScripted); after the last one the script starts over, tougher.
 local Content = require("src.content")
 local Elites = require("src.game.elites")
 local Settings = require("src.core.settings")
@@ -56,7 +59,8 @@ function Spawner.new(world, stage)
     for k, v in pairs(mode.spawn or {}) do cfg[k] = v end
     local self = setmetatable({ world = world, cfg = cfg, wave = 0, phase = "break", timer = cfg.firstBreak,
         enabled = true, streams = {}, queue = {}, waveTime = 0, usedQueens = {}, known = {}, knownList = {},
-        trickleT = 0, mode = mode, endless = mode.endless, portals = {}, holes = {} }, Spawner)
+        trickleT = 0, mode = mode, endless = mode.endless, portals = {}, holes = {},
+        script = not mode.endless and type(mode.waves) == "table" and #mode.waves > 0 and mode.waves or nil }, Spawner)
     Pacing.init(self)
     -- every species that spawns on its own (and that the mode lets in), in the order the player meets them
     local order = {}
@@ -78,6 +82,13 @@ function Spawner:allows(d)
     if m.exclude and util.contains(m.exclude, d.id) then return false end
     if not m.families and not m.enemies then return true end
     return (m.families ~= nil and util.contains(m.families, d.family)) or (m.enemies ~= nil and util.contains(m.enemies, d.id))
+end
+
+-- The scripted wave n (nil when the mode has no script). Past the end it loops round.
+function Spawner:scriptWave(n)
+    local s = self.script
+    if not s or not n or n < 1 then return nil end
+    return s[(n - 1) % #s + 1]
 end
 
 -- Ants still to come this wave (queued groups + streams still pouring out) plus those alive.
@@ -167,6 +178,9 @@ function Spawner:startWave(n)
     local entries = self:spreadPoints(nEntries)
     self.entries = entries
     Entries.openNests(self)     -- some waves also open nest holes in the floor
+    self.waveSpecies = nil
+    local sw = self:scriptWave(self.wave)
+    if sw then return self:startScripted(sw) end
     local groups = cfg.groups + math.floor((self.wave - 1) * cfg.groupsPerWave)
     local gap = math.max(1, cfg.groupGap * 0.95 ^ (self.wave - 1))
     local start = 0
@@ -194,7 +208,8 @@ function Spawner:startWave(n)
         end
     end
     -- A new species: it comes first, on its own, so you can see what it does.
-    local fresh = (#self.knownList == 0 or (not self.bossWave and (self.wave - 1) % cfg.introEvery == 0)) and self:nextSpecies()
+    local intro = #self.knownList == 0 or ((not self.bossWave or self.mode.introOnBoss) and (self.wave - 1) % cfg.introEvery == 0)
+    local fresh = intro and self:nextSpecies()
     if fresh then
         self:learn(fresh)
         self.newSpecies = fresh
@@ -204,6 +219,12 @@ function Spawner:startWave(n)
             start = 4     -- give it the stage for a few seconds
         end
         world.events:emit("species_introduced", fresh)
+        -- modes that bring in more than one species a wave (Blitz): the others just join the mix
+        for _ = 2, self.mode.introCount or 1 do
+            local more = self:nextSpecies()
+            if not more then break end
+            self:learn(more)
+        end
     end
     -- The rest: species already met, from every entry in turn; later waves send pairs of
     -- groups at once from opposite sides.
@@ -223,6 +244,56 @@ function Spawner:startWave(n)
             end
         end
     end
+    Pacing.shapeGroups(self)
+    world.events:emit("wave_started", self.wave)
+    world.player.inventory:trigger("onWaveStart", { world = world, player = world.player, wave = self.wave, procDepth = 0 })
+end
+
+-- A scripted wave: exactly the groups it names, split into columns from every entry in turn,
+-- its queen (if any) two seconds in. A species met for the first time gets its banner.
+function Spawner:startScripted(sw)
+    local cfg, world = self.cfg, self.world
+    local entries = self.entries
+    self.finalThisWave = self:isFinal()
+    self.bossWave = false
+    if sw.queen then
+        local q = Content.enemies:get(sw.queen)
+        if q then
+            local e = entries[1]
+            self.queue[#self.queue + 1] = { def = q, count = 1, x = e[1], y = e[2], at = 2 }
+            self.bossWave = true
+            self.usedQueens[q.id] = true
+        end
+    end
+    local pack = math.max(6, cfg.group[2] or 22)
+    local gap = math.max(0.8, cfg.groupGap * 0.95 ^ math.min(20, self.wave - 1)) * 0.75
+    local t, k, species = 0.5, 0, {}
+    for _, g in ipairs(sw.groups or {}) do
+        local def = Content.enemies:get(g[1] or g.enemy)
+        local total = math.floor(tonumber(g[2] or g.count) or 0)
+        if def and total > 0 then
+            species[#species + 1] = def
+            if not self.known[def.id] then
+                self:learn(def)
+                if not self.newSpecies then
+                    self.newSpecies = def
+                    world.events:emit("species_introduced", def)
+                end
+            end
+            local packs = math.ceil(total / pack)
+            for i = 1, packs do
+                local n = math.min(pack, total - (i - 1) * pack)
+                k = k + 1
+                local e = entries[(k - 1) % #entries + 1]
+                local hole = Entries.holeFor(self)
+                local q = { def = def, count = n, x = e[1], y = e[2], at = t, hole = hole, exact = true }
+                if hole then q.x, q.y = hole.x, hole.y end
+                self.queue[#self.queue + 1] = q
+                t = t + gap
+            end
+        end
+    end
+    self.waveSpecies = #species > 0 and species or nil
     Pacing.shapeGroups(self)
     world.events:emit("wave_started", self.wave)
     world.player.inventory:trigger("onWaveStart", { world = world, player = world.player, wave = self.wave, procDepth = 0 })
@@ -263,20 +334,20 @@ function Spawner:update(dt)
                 self:spawnGroup(g.def, g.count, g.x, g.y)
                 table.remove(self.queue, i)
             elseif g.ambush then
-                Pacing.ambush(self, g.def, Pacing.groupCount(self, g.count))
+                Pacing.ambush(self, g.def, g.exact and g.count or Pacing.groupCount(self, g.count))
                 table.remove(self.queue, i)
             elseif g.formation == "wall" then
-                local st = self:spawnGroup(g.def, Pacing.groupCount(self, g.count), g.x, g.y)
+                local st = self:spawnGroup(g.def, g.exact and g.count or Pacing.groupCount(self, g.count), g.x, g.y)
                 if st then st.formation = "wall" end
                 table.remove(self.queue, i)
             else
-                Entries.send(self, g.def, Pacing.groupCount(self, g.count), g.x, g.y)
+                Entries.send(self, g.def, g.exact and g.count or Pacing.groupCount(self, g.count), g.x, g.y)
                 table.remove(self.queue, i)
             end
         end
     end
     -- Stray packs keep slipping in from other sides while the main groups are still coming.
-    if self.wave >= 2 and #self.queue > 0 then
+    if self.wave >= 2 and #self.queue > 0 and not self.script then
         self.trickleT = self.trickleT - dt
         if self.trickleT <= 0 then
             self.trickleT = math.max(2, cfg.trickle - self.wave * 0.3) * (0.7 + love.math.random() * 0.6)
@@ -349,7 +420,16 @@ function Spawner:preview()
     local final = self:isFinal(n)
     local boss = final or (cfg.bossEvery > 0 and n % cfg.bossEvery == 0)
     local fresh
-    if #self.knownList == 0 or (not boss and (n - 1) % cfg.introEvery == 0) then fresh = self:nextSpecies() end
+    local sw = self:scriptWave(n)
+    if sw then
+        boss = sw.queen ~= nil
+        for _, g in ipairs(sw.groups or {}) do
+            local d = Content.enemies:get(g[1] or g.enemy)
+            if d and not self.known[d.id] then fresh = d break end
+        end
+    elseif #self.knownList == 0 or ((not boss or self.mode.introOnBoss) and (n - 1) % cfg.introEvery == 0) then
+        fresh = self:nextSpecies()
+    end
     local mods = (self.modifiersFor and self:modifiersFor(n)) or self.nextModifiers or {}
     return { wave = n, boss = boss, final = final, newSpecies = fresh, modifiers = mods }
 end
@@ -468,7 +548,7 @@ function Spawner:pickQueen()
     for _, d in ipairs(Content.enemies:all()) do
         if d.boss and d.spawn.minWave <= wave and self:allows(d) then
             local brood = d.behaviorParams.brood and Content.enemies:get(d.behaviorParams.brood)
-            if not brood or self.known[brood.id] then
+            if not brood or self.known[brood.id] or self.mode.queensAnyBrood then
                 options[#options + 1] = d
                 if not self.usedQueens[d.id] then fresh[#fresh + 1] = d end
             end
@@ -494,6 +574,8 @@ end
 function Spawner:pickEnemy()
     if self.only then return self.only end                -- practice: the one species picked
     local util = require("src.core.util")
+    -- a scripted wave: only the species it names
+    if self.waveSpecies then return self.waveSpecies[love.math.random(#self.waveSpecies)] end
     if #self.knownList == 0 then
         return Content.enemies:pickWeighted(function(d) return d.spawn.weight end, function(d) return not d.boss and d.spawn.weight > 0 end)
     end
