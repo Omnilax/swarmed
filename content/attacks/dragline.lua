@@ -1,5 +1,6 @@
 -- Dragline yank (jumping spider): fires a silk dragline at an ant where you point and yanks it
--- in, bowling over everything between you, then sinks its fangs in as it arrives.
+-- in, bowling over everything between you, then sinks its fangs in as it arrives. It can reel
+-- in a pebble or twig the same way.
 -- params: damage (the bite), cooldown, range (140), poison ({dps, seconds}), color
 local Combat = require("src.game.combat")
 local Grab = require("src.game.grab")
@@ -14,7 +15,7 @@ return {
         local tx, ty = px or player.x + ax * 60, py or player.y + ay * 60
         -- the ant nearest the pointer, within range of you
         local best, bd
-        for _, e in ipairs(Combat.collect(world, player.x, player.y, range)) do
+        for _, e in ipairs(Grab.collect(world, player.x, player.y, range)) do
             if not e.held and not e.def.boss then
                 local d = (e.x - tx) ^ 2 + (e.y - ty) ^ 2
                 if not bd or d < bd then best, bd = e, d end
@@ -47,8 +48,15 @@ return {
         end
         player.wangle = math.atan2(-dy, -dx)
         if d > player.radius + e.radius + 2 and c.t < 0.5 then return end
-        -- arrived: the bite
+        -- arrived: the bite (a reeled-in pebble or twig is caught and dropped at your feet,
+        -- still rolling a little)
         Grab.release(c.h)
+        if e.isProp then
+            e.vx, e.vy = -dx * 40, -dy * 40
+            world.props:struck(e, 0.6, -dx, -dy)
+            player.carry = nil
+            return
+        end
         player.lungeT = 0.18
         Combat.damage(world, e, params.damage, { knockback = 140, kbx = -dx, kby = -dy, poison = params.poison })
         world.particles:burst(e.x, e.y, 5, { { 0.6, 1, 0.9 } }, 50, 30, { glow = true })

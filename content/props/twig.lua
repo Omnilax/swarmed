@@ -2,15 +2,15 @@
 return {
     name = "Twig",
     radius = 3, length = 46, pushable = true, mass = 1.5, friction = 2.6, crushSpeed = 50, damage = 11,
-    spinOnLaunch = 3,
+    spinOnLaunch = 3, material = "wood", grabRadius = 10,   -- swung or thrown, it clubs a wide path
     init = function(world, o) o.r = 3 o.knot = love.math.random() * 0.6 + 0.2 end,
     draw = function(world, o, sx, sy)
         local Iso = require("src.core.iso")
         local lg = love.graphics
         local L = o.def.length
         local cx, cy = math.cos(o.angle) * L / 2, math.sin(o.angle) * L / 2
-        local ax, ay = Iso.toScreen(o.x - cx, o.y - cy)
-        local bx, by = Iso.toScreen(o.x + cx, o.y + cy)
+        local ax, ay = Iso.toScreen(o.x - cx, o.y - cy, o.z)
+        local bx, by = Iso.toScreen(o.x + cx, o.y + cy, o.z)
         lg.setColor(0, 0, 0, 0.3)
         lg.setLineWidth(4)
         lg.line(ax + 1, ay + 2, bx + 1, by + 2)

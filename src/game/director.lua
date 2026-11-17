@@ -364,12 +364,14 @@ end
 ----------------------------------------------------------------------------------------------
 -- The player's attacks: props in reach get batted, nest holes in reach take a hit.
 
-function Director:playerAttacked(ax, ay)
+-- params: the move's params, if known (its damage sets how hard props are batted).
+function Director:playerAttacked(ax, ay, params)
     local world = self.world
     local p = world.player
     if p.dead then return end
     local range = p:attackRange()
-    world.props:attacked(p.x, p.y, ax or p.aimX, ay or p.aimY, range)
+    local power = params and params.damage and math.max(0.75, math.min(1.7, 0.7 + params.damage / 30)) or 1
+    world.props:attacked(p.x, p.y, ax or p.aimX, ay or p.aimY, range, power)
     local sp = world.spawner
     for _, h in ipairs(sp.holes or {}) do
         if not h.closing then

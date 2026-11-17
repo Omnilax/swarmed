@@ -17,6 +17,11 @@ Combat.MAX_PROC_DEPTH = 3
 -- Hidden enemies (e.hidden: burrowed underground) can't be hit at all.
 function Combat.damage(world, e, base, opts)
     if e.dead or e.hidden then return 0 end
+    -- a grabbed prop (pebble, twig) being squeezed / stung / slammed: it only chips
+    if e.isProp then
+        if world.props then world.props:struck(e, math.min(1.5, (base or 10) / 15), opts and opts.kbx, opts and opts.kby) end
+        return 0
+    end
     opts = opts or {}
     local p = world.player
     local stats = p.stats
@@ -187,6 +192,8 @@ function Combat.explode(world, x, y, radius, base, opts)
     Audio.play("boom")
     local o = { knockback = 120 }
     for k, v in pairs(opts or {}) do o[k] = v end
+    -- blasts scatter the pebbles and twigs lying about
+    if world.props then world.props:blast(x, y, radius, 180 + math.min(200, (base or 10) * 4)) end
     return Combat.area(world, x, y, radius, base, o)
 end
 

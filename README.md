@@ -21,6 +21,7 @@ love . --selftest --polish      # just music, event sounds, hints and off-screen
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
 love . --selftest --happenings  # just mid-wave events, boss encounters, stages, weather effects, props
+love . --selftest --props       # rocks and sticks: hit physics, blasts, collisions, every grab attack on them
 love . --selftest --gambles     # just map gambles: dewdrop shrine, challenge bell, gamble flower
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
@@ -442,6 +443,14 @@ wave up: a wave still ends only when every enemy is dead, and events still going
 - **Props** (`content/props`, `src/game/props.lua`): pebbles and twigs lie about every stage
   (`props = { pebble = 6, twig = 3 }`). Walk into one to roll it, dash or attack to launch it; while
   it moves fast it flattens every ant it rolls over. Props are not enemies.
+  Hits are physical: a struck pebble pops off the ground and bounces (harder moves bat it
+  further), squashes, flashes and chips; a twig hit near one end spins; blasts scatter them; and
+  a rolling pebble knocks a resting one on like a marble. **Grab attacks work on them too**
+  (`Grab.collect` in `src/game/grab.lua`): the mantis snatches and flings them, the stag beetle
+  clubs with a twig, the dragonfly bombs with an acorn, the emperor scorpion slams one, the
+  vinegaroon acid-bombs one, the jumping spider reels one in, the rhino scoops one onto its horn
+  and the whip scorpion cracks one back. A thrown prop crashes down and rolls on through the
+  crowd. Test: `love . --selftest --props`.
 - **Nest holes** can be sealed: hit one three times or dash over it, and the groups still waiting
   in it never come out.
 - **Map gambles** (`src/game/gambles.lua`, numbers in `src/config/gambles.lua`, setting **Map

@@ -2,7 +2,7 @@
 return {
     name = "Acorn",
     radius = 7, pushable = true, mass = 3, friction = 2.0, crushSpeed = 50, damage = 20, roll = true,
-    batSpeed = 200, dashSpeed = 250,
+    batSpeed = 200, dashSpeed = 250, material = "nut",
     max = 8, life = 60,     -- they don't pile up: the oldest one goes, and squirrels take them in time
     draw = function(world, o, sx, sy)
         local lg = love.graphics

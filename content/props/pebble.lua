@@ -1,7 +1,7 @@
 -- A pebble: roll it into a column of ants and it flattens them.
 return {
     name = "Pebble",
-    radius = 6, pushable = true, mass = 2, friction = 2.2, crushSpeed = 55, damage = 14, roll = true,
+    radius = 6, pushable = true, mass = 2, friction = 2.2, crushSpeed = 55, damage = 14, roll = true, material = "stone",
     init = function(world, o)
         o.r = o.r * (0.8 + love.math.random() * 0.5)
         o.shade = 0.85 + love.math.random() * 0.25

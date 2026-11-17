@@ -14,10 +14,15 @@ local function slam(player, world, c, params)
     for _, h in ipairs(c.list) do
         if Grab.valid(h) then
             local e = h.e
-            Grab.release(h)
+            -- (a held pebble stays out of its own slam, then bounces off the ground)
+            if not e.isProp then Grab.release(h) end
             Combat.explode(world, e.x, e.y, 22 * (1 + player.stats:get("area") / 100), params.slam or 20,
                 { knockback = 160, color = { 0.6, 0.7, 1 } })
             if not e.dead then Combat.damage(world, e, params.slam or 20, { knockback = 40 }) end
+            if e.isProp then
+                Grab.release(h)
+                e.z, e.vz = 0, 120
+            end
         end
     end
     player.carry = nil
@@ -30,7 +35,7 @@ return {
     fire = function(player, world, ax, ay, params)
         local reach = (params.reach or 44) * (1 + player.stats:get("area") / 200)
         local ang = math.atan2(ay, ax)
-        local cands = Combat.collect(world, player.x, player.y, reach, function(e, dx, dy)
+        local cands = Grab.collect(world, player.x, player.y, reach, function(e, dx, dy)
             return not e.held and not e.def.boss and math.abs(util.angleDiff(ang, math.atan2(dy, dx))) < 0.75
         end)
         table.sort(cands, function(a, b)

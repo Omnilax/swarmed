@@ -9,6 +9,9 @@ return {
     -- faster than crushSpeed they flatten every ant they roll over (damage, scaled by speed).
     pushable = true, mass = 2, friction = 2.5, crushSpeed = 55, damage = 14,
     batSpeed = 230, dashSpeed = 280, roll = true,
+    -- material = "stone",      -- "stone" | "wood" | "nut": the chips that fly off it and its knock
+    -- bounce = 0.38,            -- how much of its fall it keeps when it lands (popped by a hit, thrown)
+    -- grabRadius = 6,           -- its size to grab attacks (they can pick pushable props up and throw them)
     -- max = 8, life = 60,      -- at most this many at once (the oldest goes); seconds before it goes
     -- length = 40,              -- a long prop (a stick): collides as a line and rolls side-on
     -- hp = 3, onHit = function(world, o, hits, dx, dy) end,   -- the player's attacks / dashes

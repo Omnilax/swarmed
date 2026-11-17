@@ -1,13 +1,15 @@
 -- Antenna whip grapple (tailless whip scorpion): it cracks its whip-long feelers out to where you
 -- point like a bullwhip. If the tips catch an ant, they lash it and the bug hauls itself straight
 -- to it and cracks the whip around it on arrival; if they hit only ground, they hook in and pull
--- the bug there. Ants in the way while it flies in get whipped aside. Two charges.
+-- the bug there. Ants in the way while it flies in get whipped aside. Two charges. If the tips
+-- lash a pebble or twig instead, it is cracked back toward the bug.
 -- params: range (furthest the feelers reach, 140), hookSpeed (feeler flight, 800), speed (x normal
 --         dash speed while hauling in, 1.6), damage (lash on the caught ant, 8), crack (whip crack
 --         on arrival at a caught ant, 14), radius (crack, 26), charges (2)
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 local Combat = require("src.game.combat")
+local Grab = require("src.game.grab")
 local util = require("src.core.util")
 
 local COLOR = { 0.75, 0.6, 0.42 }
@@ -45,6 +47,7 @@ return {
             if rl <= sp then g.hx, g.hy = g.tx, g.ty else g.hx, g.hy = g.hx + rx / rl * sp, g.hy + ry / rl * sp end
             -- the tips snag the first ant they touch
             local e = Combat.collect(world, g.hx, g.hy, 7)[1]
+            local snag = not e and Grab.collect(world, g.hx, g.hy, 5, function(o) return o.isProp end)[1]
             if e then
                 g.ant = e
                 g.hx, g.hy = e.x, e.y
@@ -52,6 +55,13 @@ return {
                 world.particles:burst(e.x, e.y, 6, { { 1, 0.85, 0.6 } }, 70, 12, { glow = true })
                 Audio.play("hit", { pitch = 2.4, volume = 0.8 })
                 haul(player, g, params)
+            elseif snag then
+                -- the tips lash a pebble or twig: it is cracked back to you, bowling ants over
+                local o = snag
+                world.props:launch(o, player.x - o.x, player.y - o.y, 330, 110)
+                world.props:struck(o, 1, player.x - o.x, player.y - o.y)
+                Audio.play("hit", { pitch = 2.2, volume = 0.7 })
+                player.grapple = nil
             elseif rl <= sp or g.t > 0.4 then
                 world.particles:burst(g.hx, g.hy, 5, { COLOR }, 50, 10, { grav = 200 })
                 Audio.play("hit", { pitch = 2, volume = 0.5 })
