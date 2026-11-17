@@ -241,33 +241,8 @@ function Hud.draw(game, covered)
                 Theme.printShadow(table.concat(desc, "  "), 0, h * 0.3 + u(100), { 1, 0.95, 0.85, k * alpha * 0.9 }, "center", w)
             end
         end
-        -- A new species this wave: what it is and how to deal with it, while it walks in alone
-        local def = sp.newSpecies
-        local t0, t1 = 1.9, 11     -- after the big WAVE N has faded
-        if def and sp.phase == "wave" and sp.waveTime > t0 and sp.waveTime < t1 and not covered then
-            local t = sp.waveTime
-            local k = math.min(1, (t - t0) / 0.3, (t1 - t) / 0.8) * alpha
-            local bw2 = math.min(w - u(40), u(470))
-            lg.setFont(Theme.font(15))
-            local _, dl = lg.getFont():getWrap(def.description or "", bw2 - u(28))
-            local _, tl = lg.getFont():getWrap(def.tip or "", bw2 - u(28))
-            local bh2 = u(72) + (#dl + #tl) * u(19)
-            local bx, by = math.floor((w - bw2) / 2), math.floor(u(76) - (1 - math.min(1, (t - t0) / 0.3)) * u(10))
-            lg.setColor(0.06, 0.045, 0.04, 0.88 * k)
-            lg.rectangle("fill", bx, by, bw2, bh2, u(4))
-            lg.setColor(0.95, 0.7, 0.3, k)
-            lg.rectangle("fill", bx, by, bw2, u(3))
-            lg.setFont(Theme.font(13, "bold"))
-            lg.setColor(0.95, 0.7, 0.3, k)
-            lg.printf(sp.wave == 1 and "MEET THE COLONY" or "NEW SPECIES", bx, by + u(10), bw2, "center")
-            lg.setFont(Theme.font(24, "bold"))
-            Theme.printShadow(def.name, bx, by + u(26), { 1, 0.95, 0.85, k }, "center", bw2)
-            lg.setFont(Theme.font(15))
-            lg.setColor(c.text[1], c.text[2], c.text[3], k)
-            lg.printf(def.description or "", bx + u(14), by + u(58), bw2 - u(28), "center")
-            lg.setColor(0.6, 0.85, 0.5, k)
-            lg.printf(def.tip or "", bx + u(14), by + u(60) + #dl * u(19), bw2 - u(28), "center")
-        end
+        -- A new species this wave gets a compact card at the left edge (src/ui/runhud.lua,
+        -- queued from the world's "species_seen" event) instead of a big panel up top.
     end
 
     -- KO counter, Warriors style (then the enemies-left chip under it, src/ui/runhud.lua)
@@ -289,7 +264,8 @@ function Hud.draw(game, covered)
         end
     end
 
-    RunHud.drawEnemyCount(world, w - u(16), countY, alpha)
+    -- the frenzy meter and streaks (src/game/rewards.lua) stack under whatever ends lowest here
+    Hud.rightY = RunHud.drawEnemyCount(world, w - u(16), countY, alpha)
     -- during a break: what the next wave brings; and first sightings of a species
     RunHud.drawPreview(world, covered, u(72), alpha)
     RunHud.drawSighting(world, covered, alpha)
