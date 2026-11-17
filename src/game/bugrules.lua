@@ -5,7 +5,13 @@ local Rules = require("src.config.bugrules")
 
 local BugRules = {}
 
-function BugRules.of(player) return player and player.def and Rules[player.def.id] end
+-- (a custom bug can borrow a built-in bug's rule: rules = "dung_beetle")
+function BugRules.of(player)
+    local d = player and player.def
+    if not d then return nil end
+    if d.custom then return d.rules and Rules[d.rules] end
+    return Rules[d.id]
+end
 
 function BugRules.attach(world)
     world.ruleState = world.ruleState or {}

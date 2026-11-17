@@ -106,6 +106,12 @@ end
 
 function Skills.treeFor(charId)
     local Content = require("src.content")
+    -- a custom bug can borrow a built-in bug's tree (skillTree = "mantis")
+    local c = Content.characters:get(charId)
+    if c and c.custom then
+        if not c.skillTree then return nil end
+        charId = c.skillTree
+    end
     for _, t in ipairs(Content.skilltrees:all()) do
         if t.character == charId then return t end
     end

@@ -685,6 +685,7 @@ local function script(flags)
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
     if flags["--arttour"] then require("src.debug.selftest_arttour")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
+    if flags["--creator"] then require("src.debug.selftest_creator")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end

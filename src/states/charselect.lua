@@ -96,7 +96,8 @@ function CharSelect:list()
     local out = {}
     for i, def in ipairs(Content.characters:all()) do
         local f = self.filter
-        local keep = f == "all" or (f == "favourites" and Prefs.isFavourite(def.id)) or def.playstyle == f
+        local keep = f == "all" or (f == "favourites" and Prefs.isFavourite(def.id)) or (f == "custom" and def.custom)
+            or def.playstyle == f
         if keep then out[#out + 1] = { def = def, i = i, fav = Prefs.isFavourite(def.id) } end
     end
     table.sort(out, function(a, b)
@@ -224,7 +225,7 @@ function CharSelect:draw()
         -- the bug in action: its special and dash on a loop (a wide, short strip so the stats still fit)
         bh = math.min(bh, math.floor(bw * 0.26))
         -- room at the bottom of the panel for the danger picker, mastery and rule (or the lock)
-        local reserve = not Unlocks.bug(def.id) and Theme.u(84) or (Theme.u(78) + (BugRules[def.id] and Theme.u(24) or 0))
+        local reserve = not Unlocks.bug(def.id) and Theme.u(84) or (Theme.u(78) + (BugRules[def.custom and (def.rules or "") or def.id] and Theme.u(24) or 0))
         bh = math.max(Theme.u(50), bh - reserve)
         self.preview:draw(bx, by, bw, bh)
         ty = by + bh + Theme.u(22)
@@ -377,7 +378,7 @@ function CharSelect:drawMastery(def, px, py, pw, ph)
         Menu.star(sx + (i - 1) * u(20), ly - u(16), sr, i <= best and util.hex(Danger[i].color) or { 0.3, 0.26, 0.22, 1 })
     end
     -- the bug's own item rule
-    local rule = BugRules[def.id]
+    local rule = BugRules[def.custom and (def.rules or "") or def.id]
     if rule then
         lg.setFont(Theme.font(15))
         lg.setColor(1, 1, 1, 1)

@@ -308,6 +308,15 @@ Specials are attacks in `content/attacks` like any other; ones with a held part 
 the mantis snatch) also have `update(player, world, dt, params, held, pointerX, pointerY)` and
 can `draw`. `src/game/grab.lua` holds and throws ants for grab specials.
 
+## Bug Creator (custom bugs)
+
+Main menu > **Bug Creator** makes your own playable bugs: **Mix Parts** (one bug's body, another's
+attack, special and dash, plus size, colour, stats, an item rule and a skill tree, with a live
+preview) or **Write a Script** (a bug is a small sandboxed Lua script; start from
+`content/characters/_custom_blueprint.lua`). Scripts can be pasted in, dropped on the window,
+copied out to share, and live in the save folder's `custom_bugs/`. Every field, move type and
+safety limit is in **[docs/CUSTOM_BUGS.md](docs/CUSTOM_BUGS.md)**. Test: `love . --selftest --creator`.
+
 ## Skill trees
 
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
