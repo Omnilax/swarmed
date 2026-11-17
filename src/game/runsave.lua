@@ -29,6 +29,8 @@ end
 function RunSave.snapshot(game)
     local w = game.world
     local p, sp = w.player, w.spawner
+    -- locked shop offers come back after a resume
+    if w.economy then require("src.game.economy").remember(w) end
     local snap = {
         version = RunSave.VERSION,
         character = p.def.id, gameMode = w.gameMode, stage = w.stage.id,

@@ -33,5 +33,6 @@ return {
         },
     },
     -- Optional hook when picked up: onAdd = function(player, stacks) end,
+    -- shopSpeed = 0.25,           -- the nectar shop restocks 25% faster per copy (src/game/economy.lua)
     tags = {},
 }

@@ -47,6 +47,26 @@ function Hud.waveLabel(sp)
 end
 
 -- covered: a menu (pause, bag, results) is open on top, so passing banners stay hidden.
+-- The nectar shop's clock under the nectar count (src/game/economy.lua): when the stock turns
+-- over, and a pulsing "NEW STOCK" until the SHOP tab has been looked at.
+function Hud.shopClock(world, x, y, alpha)
+    local Economy = require("src.game.economy")
+    local s = world.economy
+    if not Economy.open(world) or not (s and s.shop) then return end
+    local u = Theme.u
+    local lg = love.graphics
+    local key = require("src.core.touch").enabled() and "BAG" or "{inventory}"
+    lg.setFont(Theme.font(14, "bold"))
+    if not s.shop.seen and s.shop.stock > 1 then
+        local pulse = 0.7 + 0.3 * math.sin(love.timer.getTime() * 6)
+        Theme.rich("NEW STOCK " .. key, x, y, u(120), "left", { 1, 0.8, 0.35 }, alpha * pulse)
+    else
+        local left = math.ceil(Economy.timeLeft(world))
+        lg.setColor(0.8, 0.68, 0.45, 0.85 * alpha)
+        lg.print(("shop %d:%02d"):format(math.floor(left / 60), left % 60), x, y)
+    end
+end
+
 function Hud.draw(game, covered)
     local lg = love.graphics
     local world = game.world
@@ -98,6 +118,7 @@ function Hud.draw(game, covered)
         lg.circle("fill", nx - r * 0.35, ny - r * 0.35, r * 0.3, 8)
         lg.setFont(Theme.font(20, "bold"))
         Theme.printShadow(tostring(amount), nx + u(12), ny - u(12), { 1, 0.85, 0.4, alpha })
+        Hud.shopClock(world, nx - r, ny + u(14), alpha)
     end
     -- Stamina: one bar for every dash, hold mode and block (src/game/stamina.lua)
     local st = p.stamina
@@ -165,13 +186,13 @@ function Hud.draw(game, covered)
         if waiting > 0 then
             local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 6)
             lg.setFont(Theme.font(15, "bold"))
-            Theme.printShadow((waiting == 1 and "LEVEL UP!" or ("LEVEL UP x" .. waiting)) .. "  ·  cards at wave end", 0, nudgeY, { 1, 0.88, 0.45, alpha * pulse }, "center", w)
+            Theme.printShadow((waiting == 1 and "LEVEL UP!" or ("LEVEL UP x" .. waiting)) .. (Settings.get("levelUpWhen") == "wave" and "  ·  cards in the wave's reward bloom" or ""), 0, nudgeY, { 1, 0.88, 0.45, alpha * pulse }, "center", w)
             nudgeY = nudgeY - u(20)
             lg.setFont(Theme.font(13))
         end
         if sk.points > 0 then
             local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 5)
-            local key = require("src.core.input").lastDevice == "gamepad" and "{inventory}, then {pad:rightshoulder}" or "{inventory}, then {key:Tab}"
+            local key = require("src.core.input").lastDevice == "gamepad" and "{inventory}, then {pad:rightshoulder}" or "{inventory}, then {key:E}"
             if require("src.core.touch").enabled() then key = "BAG" end
             Theme.rich(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, nudgeY, w, "center",
                 { 0.55, 0.9, 1 }, alpha * (sk.flashT > 0 and 1 or pulse))
@@ -202,6 +223,10 @@ function Hud.draw(game, covered)
             if require("src.core.touch").enabled() then key = "TAP HERE" end
             sub = sp:waiting() and ("press " .. key .. " to start the next wave")
                 or ("next wave in " .. math.max(1, math.ceil(sp.timer)) .. "  ·  " .. key .. " to start now")
+            -- the wave's rewards are waiting in the bloom: that comes first
+            if world.pendingChoice and not world.pendingChoice.opened and world.rewardFlow and world.rewardFlow:bloom() then
+                sub = "walk into the reward bloom  ·  " .. key .. " brings it to you"
+            end
         end
         if Settings.get("showTimer") then
             local t = math.floor(world.time)
@@ -328,6 +353,9 @@ function Hud.draw(game, covered)
             if x > x0 + (size + u(4)) * 7 then x, y = x0, y + size + u(4) end
         end
     end
+
+    -- rewards flying in from the bloom, and the "NEW ITEM" cards (src/game/rewardflow.lua)
+    require("src.game.rewardflow").drawHud(game, covered)
 
     -- frenzy meter, streak buffs, mini-goal, route tunnels (src/game/rewards.lua)
     require("src.game.rewards").drawHud(game, covered)

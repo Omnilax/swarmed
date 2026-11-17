@@ -76,7 +76,8 @@ return {
     end,
     drawAir = function(world, ev)
         local st, lg = ev.st, love.graphics
-        if st.phase ~= "cut" then return end
+        -- (the first frame of the pass is drawn before update has placed the deck)
+        if st.phase ~= "cut" or not st.bx then return end
         -- the mower deck: a red box with a spinning glint
         local sx, sy = Iso.toScreen(st.bx, st.by, 10)
         lg.setColor(0, 0, 0, 0.4)

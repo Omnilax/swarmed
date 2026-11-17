@@ -1,4 +1,4 @@
--- Inventory screen (I / B), modelled on FATE: a small grid bag (10x3, +1 row per 15 waves) where items come in shapes
+-- Inventory screen (TAB / I, pad Y; the BAG tab of the inventory window, src/states/bagtabs.lua), modelled on FATE: a small grid bag (10x3, +1 row per 15 waves) where items come in shapes
 -- (bars, L's, T's, blocks) and only fit if you can puzzle them in. There is nothing to equip:
 -- everything in the bag affects your bug and copies stack. The game is paused while it is open.
 --
@@ -129,12 +129,11 @@ function Inv:layout()
         side = { x = px + pad, y = top, w = sideW, h = bagH },
         bag = { x = px + pad + sideW + pad, y = top, w = bagW, h = bagH },
     }
-    -- BAG / SKILLS tabs in the header (the skill tree is src/states/skilltree.lua)
+    -- BAG / SKILLS / SHOP tabs in the header (src/states/bagtabs.lua)
     local f = Theme.font(18, "bold")
     local tx, ty = px + pad, py + math.floor(pad * 0.25)
     local th = math.min(f:getHeight() + u(6), top - ty - u(4))
-    self.L.tabs = { { id = "bag", x = tx, y = ty, w = f:getWidth("BAG") + u(20), h = th } }
-    self.L.tabs[2] = { id = "skills", x = tx + self.L.tabs[1].w + u(6), y = ty, w = f:getWidth("SKILLS") + u(20), h = th }
+    self.L.tabs = require("src.states.bagtabs").layout(self.game, tx, ty, th)
     -- SORT button in the header, left of the cell meter
     local sf = Theme.font(14, "bold")
     local sw = sf:getWidth("SORT") + u(20)
@@ -267,12 +266,12 @@ end
 
 function Inv:update(dt)
     self.t = self.t + dt
-    if Input.pressed("inventory") or Input.pressed("ui_back") or Input.pressed("pause") then
-        Input.consume("pause")
+    local Tabs = require("src.states.bagtabs")
+    if Tabs.closing() then
         self:close()
         return
     end
-    if Input.pressed("ui_tab_next") then require("src.states.skilltree").openFrom(self) return end
+    if Tabs.cycle(self, "bag") then return end
     if Input.pressed("ui_left") then self:moveCursor(-1, 0) end
     if Input.pressed("ui_right") then self:moveCursor(1, 0) end
     if Input.pressed("ui_up") then self:moveCursor(0, -1) end
@@ -291,9 +290,9 @@ end
 
 function Inv:mousepressed(x, y, b, istouch)
     self:layout()
-    local sk = self.L.tabs[2]
-    if x >= sk.x and x < sk.x + sk.w and y >= sk.y and y < sk.y + sk.h then
-        require("src.states.skilltree").openFrom(self)
+    local tab = require("src.states.bagtabs").hit(self.L.tabs, x, y)
+    if tab then
+        if tab ~= "bag" then require("src.states.bagtabs").open(self, tab) end
         return
     end
     local so = self.L.sort
@@ -458,7 +457,7 @@ function Inv:draw()
     local P = L.panel
     plate(P.x, P.y, P.w, P.h, COL.frame, true)
     -- header: name on the left, a meter of used cells on the right
-    require("src.states.skilltree").drawTabs(L.tabs, "bag", self.world.player.skills and self.world.player.skills.points)
+    require("src.states.bagtabs").draw(L.tabs, "bag", self.game)
     local used, total = inv:usedCells(), inv.cols * inv.rows
     local mw = math.floor(C * 2.2)
     local mxp = L.bag.x + L.bag.w - mw
@@ -657,9 +656,9 @@ end
 -- Key hints under the case: little key caps and a word each.
 function Inv:drawHints(x, y, w)
     local u = Theme.u
-    local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "R3", "Scrap" }, { "L3", "Sort" }, { "RB", "Skills" }, { "B", "Close" } }
+    local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "R3", "Scrap" }, { "L3", "Sort" }, { "RB", "Next tab" }, { "B", "Close" } }
         or Input.lastDevice == "touch" and { { "Tap", "Pick up / put down" }, { "TURN", "Turn held" }, { "EAT", "Eat held" }, { "SCRAP", "For nectar" }, { "SORT", "Tidy up" } }
-        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Drag out", "Eat" }, { (Input.getKeys("inventory_scrap")[1] or "G"):upper(), "Scrap" }, { "T", "Sort" }, { "Tab", "Skills" }, { (Input.getKeys("inventory")[1] or "I"):upper(), "Close" } }
+        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Drag out", "Eat" }, { (Input.getKeys("inventory_scrap")[1] or "G"):upper(), "Scrap" }, { "T", "Sort" }, { "E / Q", "Tabs" }, { (Input.getKeys("inventory")[1] or "tab"):upper(), "Close" } }
     local f = Theme.font(13)
     lg.setFont(f)
     local parts, total = {}, 0

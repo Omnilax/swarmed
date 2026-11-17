@@ -142,21 +142,19 @@ return function(wait, shot)
     assert(Economy.interestPreview(world) == 0, "no savings, no interest")
 
     ------------------------------------------------------------------------------------------
-    -- Shop
+    -- Shop: the SHOP tab of the inventory window, restocking on a timer
     inv:clear()
     world.nectar = 2000
     world.economy.shop = nil
-    local c = State.push(Choice.new(game, { count = 3, wave = 4 }))
-    assert(Economy.nectar(world) > 2000, "interest was not paid on open")
-    wait(1.0)
-    assert(c.hasShop and c.shop and #c.shop.offers == 3, "shop should have 3 offers")
-    for _, o in ipairs(c.shop.offers) do
-        assert(o.price > 0, "offer has no price")
-        if o.kind == "item" then for _, it in ipairs(c.items) do assert(it.id ~= o.item.id, "shop repeats a free card") end end
-    end
-    c:setTab("shop")
-    assert(c.tab == "shop", "shop tab did not open")
-    wait(0.2)
+    -- interest is paid when a wave is cleared, not when a screen opens
+    world.spawner.wave = 4
+    world.events:emit("wave_cleared", 4)
+    assert(Economy.nectar(world) > 2000, "interest was not paid on wave clear")
+    local Shop = require("src.states.shop")
+    local c = State.push(Shop.new(game))
+    wait(0.5)
+    assert(c.shop and #c.shop.offers == 4, "shop should have 4 offers (got " .. #c.shop.offers .. ")")
+    for _, o in ipairs(c.shop.offers) do assert(o.price > 0, "offer has no price") end
     shot("economy_shop")
     -- buy a boost: two presses, nectar goes down, the stat goes up
     local bi
@@ -175,42 +173,51 @@ return function(wait, shot)
     local io = c.shop.offers[ii]
     c:activate(ii); c:activate(ii)
     assert(io.sold and inv:count(io.item.id) >= 1, "item purchase failed")
-    -- lock the other item, reroll: price climbs, locked and sold stay
+    -- lock one, reroll: price climbs, locked and sold stay
     local li
     for i, o in ipairs(c.shop.offers) do if o.kind == "item" and not o.sold then li = i end end
+    c:toggleLock(li)
+    local lockedKey = c.shop.offers[li].key
     local p1 = Economy.rerollPrice(world)
     local nr = Economy.nectar(world)
     assert(c:reroll(), "shop reroll failed")
     assert(Economy.nectar(world) == nr - p1 and Economy.rerollPrice(world) > p1, "reroll should cost and get dearer")
     assert(c.shop.offers[ii].sold and c.shop.offers[bi].sold, "reroll moved a sold offer")
-    -- everything sold or locked: nothing to reroll
-    local lockedKey = c.shop.offers[li].key
-    c:toggleLock(li)
-    assert(not c:reroll(), "reroll with every offer kept should fail")
+    assert(c.shop.offers[li].key == lockedKey, "reroll replaced a locked offer")
     wait(0.3)
     shot("economy_shop_after")
-    -- poor: can't buy
     world.nectar = 0
     assert(not c:reroll(), "reroll with no nectar should fail")
-    -- back to the free pick, take a card: nothing affordable, so the screen closes
-    c:setTab("pick")
-    c:activate(1); c:activate(1)
-    assert(State.top() ~= c, "taking the free pick with nothing to buy should close")
-    -- the locked offer comes back in the next shop
-    world.spawner.wave = 5
+    -- tabs: E goes round BAG > SKILLS > SHOP
+    local Tabs = require("src.states.bagtabs")
+    assert(#Tabs.ids(game) == 3, "the inventory window should have a SHOP tab in a run")
+    Tabs.open(c, "bag")
+    assert(State.top().inv, "the BAG tab did not open")
+    State.pop()
+    -- the stock turns over after a minute of play; the locked offer stays
+    local shop = Economy.state(world).shop
+    local at = shop.restockAt
+    assert(math.abs(at - world.time - 60) < 61 and at > world.time, "restock should be about a minute away")
+    world.time = at + 0.01
+    Economy.update(world, 0)
+    local shop2 = Economy.state(world).shop
+    assert(shop2 ~= shop and not shop2.seen and shop2.rerolls == 0, "the shop did not restock")
     local found = false
-    for _, o in ipairs(Economy.shop(world).offers) do if o.key == lockedKey and o.locked then found = true end end
-    assert(found, "locked shop offer did not come back")
-    -- with nectar left, the free pick moves on to the shop
-    world.spawner.wave = 6
-    world.nectar = 5000
-    local c2 = State.push(Choice.new(game, { count = 3, wave = 6 }))
-    wait(1.0)
-    c2:activate(1); c2:activate(1)
-    assert(State.top() == c2 and c2.tab == "shop" and c2.picked, "pick should move on to the shop")
-    shot("economy_shop_done")
-    c2:activate(c2:skipIndex())
-    assert(State.top() ~= c2, "DONE should close the shop")
+    for _, o in ipairs(shop2.offers) do if o.key == lockedKey and o.locked then found = true end end
+    assert(found, "locked offer did not survive the restock")
+    -- shopSpeed items pull the next restock closer
+    local base = Economy.restockTime(world)
+    inv:add("honeypot_ant")
+    assert(math.abs(Economy.restockTime(world) - base / 1.4) < 0.01, "Honeypot Ant should restock 40% faster")
+    Economy.update(world, 0)
+    assert(Economy.timeLeft(world) <= base / 1.4 + 0.01, "a faster bag should pull the restock closer")
+    inv:add("foragers_leaf")
+    assert(math.abs(Economy.restockTime(world) - base / 1.65) < 0.01, "shop speed should add up")
+    inv:clear()
+    -- the item choice no longer has a shop tab
+    local Choice = require("src.states.itemchoice")
+    local ch = Choice.new(game, { count = 3, wave = 4 })
+    assert(ch.tab == nil and ch.shop == nil, "the item choice still has a shop")
     print("[economy] shop OK")
 
     ------------------------------------------------------------------------------------------

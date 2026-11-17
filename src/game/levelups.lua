@@ -1,14 +1,14 @@
--- Level-up cards. Every level (XP from World:grantXP -> Skills:gainXP) queues a pick of 3 cards:
+-- Level-up cards. Every level (XP from World:grantXP -> Skills:gainXP) opens a pick of 3 cards
+-- right away, mid-wave (setting "levelUpWhen" = "wave" saves them for the wave's reward bloom):
 -- nodes from the bug's own skill tree and global stat cards (content/levelcards). Stat cards
--- roll a rarity (common x1 .. legendary x2, Luck tilts the odds). The picks wait until the wave
--- is over and come right before the item choice (setting "levelUpTiming": or right away).
+-- roll a rarity (common x1 .. legendary x2, Luck tilts the odds).
 -- Setting "levelUps" = "points" brings back the old way: levels give skill points to spend.
 -- Numbers: src/config/levelups.lua (a mode can override them with `levelUps = {...}`).
 --
 -- Other systems can hand out picks too (brood cell chests, shrines...):
 --     require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })
 -- queues n picks. source: shown on the cards screen; minRarity: floor for every stat card's
--- rarity; now: show at the next free moment, even mid-wave (default: with the level-ups).
+-- rarity; now: show at the next free moment, even mid-wave (default: like level-ups, per setting).
 local Settings = require("src.core.settings")
 local Audio = require("src.core.audio")
 
@@ -54,7 +54,7 @@ function LevelUps:pending() return #self.queue end
 -- A level was reached (Skills:gainXP, not silent).
 function LevelUps:onLevel(level)
     local w = self.world
-    local instant = Settings.get("levelUpTiming") == "instant"
+    local instant = Settings.get("levelUpWhen") == "instant"
     self.queue[#self.queue + 1] = { source = "level", level = level, now = instant or nil,
         at = instant and (w.time + self.cfg.instantDelay) or nil }
     w.events:emit("levelup_queued", level)
@@ -72,7 +72,7 @@ function LevelUps.grantSelf(self, n, opts)
     n = math.max(0, math.floor(n or 1))
     local sk = self.world.player and self.world.player.skills
     for _ = 1, n do
-        self.queue[#self.queue + 1] = { source = opts.source or "bonus", minRarity = opts.minRarity, now = opts.now or nil,
+        self.queue[#self.queue + 1] = { source = opts.source or "bonus", minRarity = opts.minRarity, now = opts.now or (Settings.get("levelUpWhen") ~= "wave") or nil,
             level = sk and sk.level or 0 }
     end
     if n > 0 then self.world.events:emit("levelup_queued", nil, opts.source) end

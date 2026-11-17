@@ -61,7 +61,7 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Attack (when Auto Attack is off) | Left mouse / J | RB / X |
 | Special attack | Right mouse / K | B |
 | Aim (when Aim Mode = Mouse) | Mouse | Right stick (always) |
-| Inventory | I / B | Y |
+| Inventory / Shop | Tab / I | Y |
 | Next wave now (or send the rest of a wave in early) | E / N | Back |
 | Unleash Frenzy (when the meter is full) | Q / C | Right or left stick click |
 | Pause | Esc / P | Start |
@@ -145,12 +145,14 @@ Test: `love . --selftest --nectar`.
 
 ## Nectar shop, interest, scrapper and cursed items
 
-- **Shop**: the wave-clear screen has FREE PICK and SHOP tabs (Tab / H / pad LB, or click them).
-  The shop has 2 items and 1 stat boost for nectar, two presses to buy. LOCK keeps an offer for the
-  next shop; REROLL costs nectar and gets dearer each time in the same shop. Prices rise every wave.
-  Taking (or skipping) the free pick closes the screen, unless you can still afford something:
-  then it moves to the shop and DONE closes it.
-- **Savings interest**: when the screen opens, banked nectar earns 10% (capped, the cap grows each wave).
+- **Shop**: the SHOP tab of the inventory window (Tab, then E / RB or click the tab; screen
+  `src/states/shop.lua`). It is open the whole run (the window pauses the game). 3 items and 1 stat
+  boost for nectar, two presses to buy. The stock **restocks every minute of play**; the HUD shows
+  the clock under the nectar count and "NEW STOCK" until you look. Items with `shopSpeed` restock it
+  faster (Forager's Leaf +25%, Honeypot Ant +40%, they add up; never under 15 s). LOCK keeps an
+  offer through restocks; REROLL costs nectar and gets dearer until the next restock. Prices rise
+  every wave. A bought item that doesn't fit opens the BAG tab holding it.
+- **Savings interest**: the moment a wave is cleared, banked nectar earns 10% (capped, the cap grows each wave).
 - **Scrapper**: SCRAP in the bag's header (drop or click a held item on it, G, pad right stick
   click, or the SCRAP touch button) turns an item into nectar. Rare or better items also give back a
   free-pick reroll.
@@ -309,13 +311,35 @@ can `draw`. `src/game/grab.lua` holds and throws ants for grab specials.
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
 engine `src/game/skills.lua`). Every kill is 1 XP (gilded elites give bonus XP); each level is a
 skill point, shown on the thin XP bar at the bottom of the screen. Spend points in the bag's
-**SKILLS** tab (I, then Tab / RB, or tap the tab). Each tree has three branches (attack, special,
+**SKILLS** tab (Tab, then E / RB, or tap the tab). Each tree has three branches (attack, special,
 dash/body) with five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger
 upgrade and a capstone that changes how a move plays (echoes, fans of extra copies, every-Nth
 empowered strikes, thrown ants that land as explosions, procs on kills and hits...). A whole tree
 costs more points than a long run earns, so every run builds the bug differently. The sandbox's
 Player tab has **+5 skill points** and **Reset skill tree**; `love . --selftest --skills` buys every
 node of every tree (both fork sides) and fights with it.
+
+## Wave rewards: the reward bloom
+
+A cleared wave's rewards are a moment in the arena, not a pile of screens (`src/game/rewardflow.lua`,
+prop `content/props/reward_bloom.lua`, numbers `src/config/bloom.lua`):
+
+1. A glowing **reward bloom** sprouts next to your bug, labelled with what is inside ("an item";
+   with Level-Up Cards: At Wave End, also "2 level-ups"). Walk into it to open it. Next Wave (E) brings it to you, and left alone it rolls to you
+   after 5 s. The break before the next wave waits for it.
+2. It bursts and the item choice opens (with At Wave End level-ups, a **steps strip** at the top,
+   LEVEL 7 > LEVEL 8 > ITEM, shows where you are and what is left).
+3. What you took **flies out of the bloom into your bug**, and a card on the left of the screen says
+   what you got and what it does (NEW ITEM, LEVEL CARD, SKILL, BOUGHT...). Shop buys and level-ups
+   outside the bloom use the same cards.
+
+Setting **Wave Rewards: Open at Once** skips the walk. Test: `love . --selftest --rewards`.
+
+## Inventory window
+
+**Tab** (or I, pad Y, the BAG touch button, or Pause > Inventory & Shop) opens one window with three
+tabs: **BAG**, **SKILLS** and **SHOP** (`src/states/bagtabs.lua`). E / Q (pad RB / LB) or a click
+switches tabs; Tab, Esc or pad B closes it. The sandbox panel moved to F2.
 
 ## Level-up cards
 
@@ -324,9 +348,9 @@ in `src/config/levelups.lua`): nodes from your bug's skill tree (bought outright
 global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
 common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
 The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
-Levels play a chime, half a second of slow motion and a ring of light; the picks wait for the end
-of the wave and come right before the item choice (setting **Level-Up Cards: Right Away** opens
-them at once). Instead of a card you can bank a skill point for the SKILLS tab. Setting
+Levels play a chime, half a second of slow motion and a ring of light; the cards open right
+there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
+At Wave End** saves them for the wave's reward bloom instead). Instead of a card you can bank a skill point for the SKILLS tab. Setting
 **Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
@@ -547,7 +571,7 @@ are in `src/game/hazards.lua`. A behaviour can also define `onHit` (react to bei
 
 On by default while we build (Settings > Developer). It adds:
 
-- **Sandbox** on the main menu, a tabbed panel (keys 1-5, Tab hides it) for testing everything:
+- **Sandbox** on the main menu, a tabbed panel (keys 1-5, F2 hides it) for testing everything:
   - *Spawn*: any ant (normal, a chosen elite or a random one) in any amount, with a health
     multiplier (one-hit to x1000 training dummies); march a real column in from the edge; every
     elite of one species; every species at once; any queen; middle click spawns at the cursor.

@@ -107,9 +107,12 @@ add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "cho
 add { key = "levelUps", category = "Gameplay", label = "Level-Ups", type = "choice", default = "cards",
     options = { { value = "cards", label = "Pick a Card" }, { value = "points", label = "Skill Points" } },
     desc = "Pick a Card: every level offers 3 cards (skill tree nodes of your bug, or stat boosts that roll a rarity; Luck makes rare ones likelier). Skill Points: every level gives a point to spend in the bag's SKILLS tab." }
-add { key = "levelUpTiming", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "wave",
-    options = { { value = "wave", label = "At Wave End" }, { value = "instant", label = "Right Away" } },
-    desc = "At Wave End: level-ups wait and come just before the item choice, so a fight is never interrupted. Right Away: the cards pause the game as soon as you level up." }
+add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type = "choice", default = "bloom",
+    options = { { value = "bloom", label = "Walk to the Bloom" }, { value = "instant", label = "Open at Once" } },
+    desc = "Walk to the Bloom: a cleared wave's rewards (level-up cards, then the item) sprout as a glowing bloom next to you; walk into it to open it (Next Wave brings it to you, and it rolls to you by itself after a few seconds). Open at Once: the reward screens pop up right after the wave." }
+add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "instant",
+    options = { { value = "instant", label = "Right Away" }, { value = "wave", label = "At Wave End" } },
+    desc = "Right Away: the moment you level up, the cards open (after a short fanfare) and you pick your reward on the spot; the wave's reward bloom then holds only the item. At Wave End: level-ups wait in the reward bloom and come just before the item choice." }
 add { key = "waveOverlap", category = "Gameplay", label = "Overlapping Waves", type = "toggle", default = true,
     desc = "When a wave is down to its last few ants, you pick your item and the next wave marches in while they are still about. Off: every ant must die first. (Never with Next Wave set to When I Press.)" }
 add { key = "waveModifiers", category = "Gameplay", label = "Wave Modifiers", type = "toggle", default = true,
