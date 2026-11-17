@@ -3,6 +3,7 @@ return {
     description = "+5% Crit Chance. Hits have a 20% chance to sting the ant for 4 damage a second (+4 per stack) for 2 seconds.",
     effect = "Hits have a 20% chance to sting the ant for 4 damage a second (+4 per stack) for 2 seconds.",
     rarity = "uncommon",
+    category = "elemental",
     size = { 2, 1 },
     stats = { critChance = 5 },
     procs = {

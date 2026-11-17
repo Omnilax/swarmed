@@ -6,6 +6,7 @@ return {
     description = "+6 Armor. Once per wave (+1 per stack), falling below 30% HP makes you molt: untouchable for 1.5 seconds and healed for 25% of Max HP.",
     effect = "Once per wave (+1 per stack), falling below 30% HP makes you molt: untouchable for 1.5 seconds and healed for 25% of Max HP.",
     rarity = "rare",
+    category = "guard",
     size = { 2, 2 },
     stats = { armor = 6 },
     procs = {

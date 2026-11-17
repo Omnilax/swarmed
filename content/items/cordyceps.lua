@@ -5,6 +5,7 @@ return {
     name = "Cordyceps",
     description = "Killing a poisoned ant bursts it into spores, poisoning every ant within reach for 6 damage a second (+6 per stack) for 3 seconds.",
     rarity = "rare",
+    category = "elemental",
     shape = { "X", "X", "X" },
     procs = {
         {

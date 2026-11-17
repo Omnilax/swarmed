@@ -4,6 +4,7 @@ return {
     description = "+15% Damage, +10% Crit Chance. Every hit poisons the ant for 6 damage a second (+6 per stack) for 3 seconds; critical hits for twice that.",
     effect = "Every hit poisons the ant for 6 damage a second (+6 per stack) for 3 seconds; critical hits for twice that.",
     rarity = "molted",
+    category = "elemental",
     shape = { "X.", "XX" },
     stats = { damage = 15, critChance = 10 },
     procs = {

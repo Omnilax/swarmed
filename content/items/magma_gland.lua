@@ -5,6 +5,7 @@ return {
     name = "Magma Gland",
     description = "Kills have a 30% chance to erupt for 30 damage (+30 per stack). Dashing leaves a 40 damage blast behind you (+40 per stack).",
     rarity = "molted",
+    category = "elemental",
     size = { 2, 1 },
     procs = {
         {

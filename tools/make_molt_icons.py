@@ -8,7 +8,7 @@
 import math, sys
 import numpy as np
 import make_item_icons as base
-from icon_render import Icon, quantize, rgb
+from icon_render import Icon, quantize, rgb, render_fit
 from make_item_icons import hairs, in_ell, leg, speck
 
 FNS = {iid: fn for iid, _, _, _, _, fn in base.ICONS}
@@ -202,9 +202,7 @@ def build(only=None):
     previews = []
     for iid, cols, rows, shape, seed, fn in ICONS:
         if only and iid not in only: continue
-        I = Icon(cols, rows, shape, seed)
-        fn(I)
-        grid, pal = quantize(I.render())
+        grid, pal = quantize(render_fit(cols, rows, shape, seed, fn))
         previews.append((iid, grid, pal))
         out.append("    {")
         out.append(f'        id = "icon_{iid}",')

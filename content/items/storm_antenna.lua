@@ -7,6 +7,7 @@ return {
     description = "+12% Crit Chance. Hits have a 20% chance to zap 6 ants (+2 per stack) for 12 damage (+12 per stack). Critical hits arc to 4 more ants for the full damage.",
     effect = "Hits have a 20% chance to zap 6 ants (+2 per stack) for 12 damage (+12 per stack). Critical hits arc to 4 more ants for the full damage.",
     rarity = "molted",
+    category = "elemental",
     size = { 1, 2 },
     stats = { critChance = 12 },
     procs = {

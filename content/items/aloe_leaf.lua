@@ -3,6 +3,7 @@ return {
     description = "+0.3 HP Regen. Each wave starts by healing 15% of your Max HP (+15% per stack).",
     effect = "Each wave starts by healing 15% of your Max HP (+15% per stack).",
     rarity = "uncommon",
+    category = "mend",
     size = { 1, 3 },
     stats = { hpRegen = 0.3 },
     procs = {

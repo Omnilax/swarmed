@@ -2,6 +2,7 @@ return {
     name = "Burdock Burr",
     description = "Every hit sticks a burr on the ant, slowing it by 30% for 1 second (+0.5 per stack).",
     rarity = "uncommon",
+    category = "control",
     size = { 1, 1 },
     procs = {
         {

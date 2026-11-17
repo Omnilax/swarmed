@@ -3,6 +3,7 @@ return {
     name = "Pine Cone",
     description = "Hits have a 6% chance to lob a pine cone that bursts into 6 scales, each hitting for 8 damage (+8 per stack).",
     rarity = "rare",
+    category = "elemental",
     size = { 2, 2 },
     procs = {
         {

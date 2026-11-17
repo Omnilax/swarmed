@@ -6,6 +6,10 @@ return {
     description = "What it does, shown in the shop.",
     -- effect = "...",             -- what its procs do, in words (the inventory shows this under the stats)
     rarity = "common",              -- common | uncommon | rare | legendary (src/config/rarities.lua)
+    -- What the item is FOR, one of: attack | elemental | guard | mend | move | control | fortune | cursed
+    -- (src/config/categories.lua). The bag sorts by it and the shop / catalogue group by it.
+    -- Left out, it is guessed from rarity and tags.
+    category = "attack",
     price = 25,
     -- Cells it takes in the bag grid { wide, tall }. Everything in the bag counts and copies stack,
     -- so space is the only limit: give bigger items more power for the room they take.

@@ -6,6 +6,7 @@ return {
     name = "Fulgurite",
     description = "Every 3 seconds lightning strikes an ant near you for 20 damage (+20 per stack) and arcs to 2 more.",
     rarity = "rare",
+    category = "elemental",
     shape = { "X.", "XX", "X." },
     procs = {
         {

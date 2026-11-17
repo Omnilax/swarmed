@@ -5,6 +5,7 @@ return {
     name = "Venus Flytrap",
     description = "Every 3 seconds the trap snaps shut on the nearest ant for 30 damage (+30 per stack) and digests it for 2 HP.",
     rarity = "rare",
+    category = "mend",
     shape = { "X.X", "XXX" },
     procs = {
         {

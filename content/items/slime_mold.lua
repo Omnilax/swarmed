@@ -6,6 +6,7 @@ return {
     name = "Slime Mold",
     description = "Every 2 seconds a slime tendril lashes the nearest ant within reach for 10 damage (+10 per stack) and gums it up for 2 seconds.",
     rarity = "rare",
+    category = "elemental",
     shape = { "X.", "XX", ".X" },
     procs = {
         {

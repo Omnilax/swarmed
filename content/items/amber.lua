@@ -6,6 +6,7 @@ return {
     name = "Amber",
     description = "Every 10 seconds, every ant near you is sealed in resin, frozen for 1.5 seconds (+0.5 per stack).",
     rarity = "legendary",
+    category = "control",
     size = { 2, 1 },
     procs = {
         {
