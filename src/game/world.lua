@@ -277,7 +277,7 @@ function World:killEnemy(e)
         require("src.game.choices").onQueen(self)   -- and some item choice rerolls back
         self:floatText(e.x, e.y - 20, "+1 ITEM CHOICE", { 1, 0.9, 0.4 }, true)
         self.milestone = { text = def.name:upper() .. " SLAIN", t = 0 }
-        self.hitstop = 0.12
+        self.hitstop = math.max(self.hitstop, self.rewards.cfg.feel.queenStop)
         self.camera:shake(0.6)
         Audio.play("boom", { pitch = 0.6 })
         if decals then
@@ -497,6 +497,13 @@ function World:procContext(target, damage, crit, depth)
 end
 
 ----------------------------------------------------------------------------------------------
+-- A short freeze for a heavy hit (big punches, molts, encounters). Respects the Hit Stop
+-- setting and is scaled down by rewards feel.stopScale so freezes stay rare and brief.
+function World:hitStop(t)
+    if not Settings.get("hitstop") then return end
+    self.hitstop = math.max(self.hitstop or 0, t * (self.rewards.cfg.feel.stopScale or 1))
+end
+
 -- Update
 
 function World:update(dt)
@@ -569,9 +576,10 @@ function World:update(dt)
     end
     -- Cooldown so constant mass kills give a punchy beat now and then instead of a stutter.
     if self.hitstopCd > 0 then self.hitstopCd = self.hitstopCd - dt end
-    if self.killsThisFrame >= 5 and Settings.get("hitstop") and self.hitstopCd <= 0 then
-        self.hitstop = math.min(0.07, 0.025 + self.killsThisFrame * 0.003)
-        self.hitstopCd = 0.6
+    local feel = self.rewards.cfg.feel
+    if self.killsThisFrame >= feel.stopKills and Settings.get("hitstop") and self.hitstopCd <= 0 then
+        self.hitstop = math.min(feel.stopMax, feel.stopMin + self.killsThisFrame * feel.stopPerKill)
+        self.hitstopCd = feel.stopCooldown
         self.camera:shake(math.min(0.4, self.killsThisFrame * 0.02))
     end
     for j = #self.fx, 1, -1 do

@@ -226,7 +226,7 @@ function Molting.afterQueenWave(world)
     Audio.play("ui_confirm", { pitch = 0.7 })
     Audio.play("equip", { pitch = 0.8 })
     world.camera:shake(0.25)
-    world.hitstop = math.max(world.hitstop or 0, 0.08)
+    world:hitStop(0.08)
     for i, d in ipairs(done) do
         local names = {}
         for _, id in ipairs(d.recipe.from) do names[#names + 1] = Content.items:require(id).name end

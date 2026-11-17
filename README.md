@@ -106,6 +106,9 @@ the numbers in `src/config/rewards.lua` (a game mode can override them with `rew
   (Bloodrush, Rage, Flurry, Fortune; Carnage from a 150 combo).
 - **Big moments**: on top of the hitstop, a huge multi-kill, a queen falling and the frenzy move
   get slow motion (Settings > Gameplay > Slow Motion) and a quick camera zoom punch.
+  Freezes are kept rare: the multi-kill hitstop needs 15 kills in one frame and then waits 4 s,
+  the slow-mo needs 30 and waits 10 s, and heavy hits use `World:hitStop(t)`, which respects the
+  Hit Stop setting and scales by `feel.stopScale`. All the numbers are in `src/config/rewards.lua`.
 - **Mini-goals**: from wave 2, some waves come with an optional side task from `content/goals`:
   stop the courier ant before it crosses the arena, guard the aphid (some ants go for it),
   reach a combo, or get a burst of KOs in a few seconds. Success pays bonus XP and frenzy.
