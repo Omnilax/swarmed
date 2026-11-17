@@ -167,10 +167,15 @@ add { name = "event", usage = "[id]", help = "Start a mid-wave event now (honeyd
     out("Event: " .. def.name)
 end }
 
-add { name = "encounter", usage = "[id]", help = "Bring in a boss encounter now (anteater, antlion, sparrow)", run = function(args, game, out)
+add { name = "encounter", usage = "[id]", help = "Bring in a boss encounter now (anteater, antlion, sparrow; off sends a hazard away)", run = function(args, game, out)
     if not needGame(game, out) then return end
+    if args[1] == "off" then
+        game.world.director:endHazard(false)
+        out("Hazard gone")
+        return
+    end
     local def = Content.bosses:get(args[1] or "")
-    if not def then out("Encounters: " .. table.concat(Content.bosses:ids(), ", ")) return end
+    if not def then out("Encounters: " .. table.concat(Content.bosses:ids(), ", ") .. ", off") return end
     game.world.director:startBoss(def)
     out("Encounter: " .. def.name)
 end }

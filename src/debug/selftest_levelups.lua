@@ -25,9 +25,9 @@ return function(wait, shot)
     assert(run >= 30 and run <= 40, "a 15-wave run should give 30-40 levels (got " .. run .. ")")
     print(("[levelups] curve: %d levels from wave 1, %d from a full run"):format(w1, run))
 
-    local slowSetting, timing = Settings.get("slowMotion"), Settings.get("levelUpTiming")
+    local slowSetting, timing = Settings.get("slowMotion"), Settings.get("levelUpWhen")
     Settings.set("slowMotion", true)
-    Settings.set("levelUpTiming", "wave")
+    Settings.set("levelUpWhen", "wave")
     local game = State.switch(Game.new({ mode = "run", character = "rhino_beetle" }))
     local world = game.world
     world.flags.god = true
@@ -151,7 +151,7 @@ return function(wait, shot)
     w2.levelups.queue = {}
 
     -- "Right Away" timing opens the cards mid-wave, a beat after the level
-    Settings.set("levelUpTiming", "instant")
+    Settings.set("levelUpWhen", "instant")
     world = w2
     world.flags.god = true
     world.spawner.enabled, world.spawner.phase = true, "wave"
@@ -165,6 +165,6 @@ return function(wait, shot)
     world.spawner.enabled = false
 
     Settings.set("slowMotion", slowSetting)
-    Settings.set("levelUpTiming", timing)
+    Settings.set("levelUpWhen", timing)
     print("[levelups] OK")
 end

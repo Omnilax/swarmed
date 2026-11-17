@@ -35,9 +35,36 @@ local Theme = {
     },
 }
 
--- Nothing is drawn smaller than this (design pixels); tiny text looked cluttered and was hard
--- to read on phones.
+-- Nothing is drawn smaller than this (design pixels, before the HUD zoom below); tiny text looked
+-- cluttered and was hard to read on phones.
 Theme.MIN_TEXT = 14
+
+-- Every piece of text is drawn at this share of its named size (2026-11-17: text was taking up
+-- too much of the screen). Layout units (Theme.u) are not affected outside the HUD.
+Theme.TEXT_SCALE = 0.9
+
+-- Zoom for whatever is drawn between Theme.pushZoom / Theme.popZoom: the in-run HUD, banners
+-- and floating numbers use it (Settings "HUD Size") so the fight keeps most of the screen.
+-- It scales both text and layout units, so HUD pieces shrink together and keep their spacing.
+Theme.zoom = 1
+local zoomStack = {}
+
+function Theme.pushZoom(k)
+    zoomStack[#zoomStack + 1] = Theme.zoom
+    Theme.zoom = Theme.zoom * (k or 1)
+end
+
+function Theme.popZoom()
+    Theme.zoom = table.remove(zoomStack) or 1
+end
+
+-- The zoom the in-run HUD uses: the HUD Size setting, a little bigger on phones (whose small
+-- screens already get a bigger UI through refHeight, see src/core/touch.lua).
+function Theme.hudZoom()
+    local k = (Settings.get("hudScale") or 75) / 100
+    if require("src.core.touch").mobile then k = math.min(1, k * 1.2) end
+    return k
+end
 
 local cache = {}
 
@@ -54,7 +81,7 @@ local FONTS = { regular = "assets/fonts/PixelifySans-Regular.ttf", bold = "asset
 -- Theme.size. weight: nil | "bold"
 function Theme.font(size, weight)
     if type(size) == "string" then size = Theme.size[size] or Theme.size.body end
-    size = math.max(size, Theme.MIN_TEXT)
+    size = math.max(size, Theme.MIN_TEXT) * Theme.TEXT_SCALE * Theme.zoom
     local h = love.graphics.getHeight()
     local px = math.max(8, math.floor(size * Theme.scale() * math.max(0.75, h / Theme.refHeight) + 0.5))
     local pixel = Settings.get("uiFont") ~= "smooth"
@@ -76,7 +103,7 @@ end
 
 -- Layout unit: design pixels -> window pixels.
 function Theme.u(v)
-    return v * Theme.scale() * math.max(0.75, love.graphics.getHeight() / Theme.refHeight)
+    return v * Theme.scale() * Theme.zoom * math.max(0.75, love.graphics.getHeight() / Theme.refHeight)
 end
 
 -- A bevelled chitin plate (the same look as the bag): dark outline, light top-left edge,

@@ -110,6 +110,23 @@ function Env.strikeLane(world, x1, y1, x2, y2, w, dmg, opts)
     return kills
 end
 
+-- Shove every ant within r of (x, y) away from it (a wing beat, a landing). No damage; force
+-- falls off toward the rim. Returns how many were shoved.
+function Env.pushCircle(world, x, y, r, force)
+    local n = 0
+    for _, e in ipairs(Combat.collect(world, x, y, r)) do
+        local def = e.def
+        if not def.encounter and not e.dropH and not e.held and (e.z or 0) < 8 then
+            local dx, dy = e.x - x, e.y - y
+            local d = sqrt(dx * dx + dy * dy) + 0.0001
+            local k = force * (1 - 0.6 * math.min(1, d / r)) / (e.mass or 1) * (def.boss and 0.3 or 1)
+            e.kvx, e.kvy = (e.kvx or 0) + dx / d * k, (e.kvy or 0) + dy / d * k
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- A point on the arena edge and the opposite one, for things that cross the whole arena
 -- through (or near) a target point.
 function Env.crossing(world, tx, ty, spread)

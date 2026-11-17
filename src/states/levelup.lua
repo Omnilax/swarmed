@@ -52,8 +52,7 @@ function LevelUp:close()
     self.lu:pop(self.entry)
     State.pop()
     local w = self.world
-    local pc = w.pendingChoice
-    local nxt = not w.player.dead and self.lu:nextToShow(pc and w.time >= (pc.at or 0))
+    local nxt = not w.player.dead and self.lu:nextToShow(require("src.game.rewardflow").ready(w))
     if nxt and State.top() == self.game then State.push(LevelUp.new(self.game, nxt)) end
 end
 
@@ -62,17 +61,24 @@ function LevelUp:take(i)
     if not c then return end
     self.lu:take(c)
     Audio.play("equip", { pitch = 1.2 })
-    local p = self.world.player
     local col = c.kind == "node" and SKILL_COL or LevelUp.rarityColor(c.rarity)
-    self.world:floatText(p.x, p.y, c.name, col, true)
+    -- the card flies out of the reward bloom into your bug, and a card on the left says what it was
+    local flow = self.world.rewardFlow
+    if flow then
+        flow:gain({ title = c.kind == "node" and "SKILL" or "LEVEL CARD", name = c.name, color = col,
+            line = c.description, fromBloom = flow:stepOf(self.entry) ~= nil })
+    end
     self:close()
 end
 
 function LevelUp:bank()
     self.lu:take({ kind = "point", id = "skill_point", name = "Skill point" })
     Audio.play("ui_confirm", { pitch = 1.3 })
-    local p = self.world.player
-    self.world:floatText(p.x, p.y, "+1 SKILL POINT", SKILL_COL, true)
+    local flow = self.world.rewardFlow
+    if flow then
+        flow:gain({ title = "BANKED", name = "+1 Skill Point", color = SKILL_COL, line = "Spend it in the inventory's SKILLS tab",
+            fromBloom = flow:stepOf(self.entry) ~= nil })
+    end
     self:close()
 end
 
@@ -186,10 +192,12 @@ function LevelUp:draw()
         title = (e.source == "chest" and "BROOD CELL" or e.source:upper()) .. "  ·  PICK A CARD"
     end
     Theme.printShadow(title, 0, rects[1].y - u(76), GOLD, "center", w)
+    -- the wave's rewards, step by step (src/game/rewardflow.lua)
+    local inFlow = require("src.game.rewardflow").drawSteps(self.world, e, math.max(u(8), rects[1].y - u(116))) > 0
     lg.setFont(Theme.font(16))
     lg.setColor(COL.dim)
     local more = #self.lu.queue - 1
-    local sub = "Pick one card" .. (more > 0 and ("  ·  " .. more .. " more after this") or "")
+    local sub = "Pick one card" .. ((more > 0 and not inFlow) and ("  ·  " .. more .. " more after this") or "")
     lg.printf(sub, 0, rects[1].y - u(36), w, "center")
 
     local ready = self:ready()

@@ -8,6 +8,7 @@ local util = require("src.core.util")
 local RunHud = {}
 
 local SIGHT_TIME = 5        -- seconds a sighting card stays up
+local INTRO_TIME = 7        -- ... and the card for the species a wave introduces
 local SIGHT_FADE = 0.35
 
 -- Draw sprite `id` scaled to fit a size x size box centred on (cx, cy). False if it has none.
@@ -42,14 +43,19 @@ function RunHud.attach(world)
     world.events:on("species_seen", function(def)
         local mode = Settings.get("speciesPopups")
         if mode == "off" or world.mode ~= "run" or world.flags.demo then return end
-        -- species meeting the colony on their own wave already get the big NEW SPECIES card
         local sp = world.spawner
         local Records = require("src.game.records")
         local profile = Records.get()
         profile.seen = profile.seen or {}
         local first = not profile.seen[def.id]
         if not Records.noSave then profile.seen[def.id] = true end
-        if sp and sp.newSpecies == def then return end
+        -- the species this wave introduces: always shown (first in line, a bit longer), once the
+        -- big WAVE N banner has faded
+        if sp and sp.newSpecies == def then
+            table.insert(st.queue, 1, { def = def, t = 0, first = first, wait = 1.6, intro = INTRO_TIME,
+                label = sp.wave == 1 and "MEET THE COLONY" or "NEW SPECIES" })
+            return
+        end
         if mode == "new" and not first then return end
         st.queue[#st.queue + 1] = { def = def, t = 0, first = first }
     end)
@@ -60,9 +66,11 @@ local function updateSightings(st, dt)
     if not st.cur and #st.queue > 0 then st.cur = table.remove(st.queue, 1) end
     local c = st.cur
     if c then
+        if (c.wait or 0) > 0 then c.wait = c.wait - dt return end
         c.t = c.t + dt
         -- hurry along when more are waiting
-        local life = #st.queue > 0 and SIGHT_TIME * 0.6 or SIGHT_TIME
+        local base = c.intro or SIGHT_TIME
+        local life = #st.queue > 0 and base * 0.6 or base
         if c.t > life then st.cur = nil end
         c.life = life
     end
@@ -73,7 +81,7 @@ function RunHud.drawSighting(world, covered, alpha)
     if not st then return end
     updateSightings(st, love.timer.getDelta())
     local c = st.cur
-    if not c or covered then return end
+    if not c or covered or (c.wait or 0) > 0 then return end
     local lg = love.graphics
     local u = Theme.u
     local w, h = lg.getDimensions()
@@ -97,7 +105,7 @@ function RunHud.drawSighting(world, covered, alpha)
     end
     lg.setFont(Theme.font("small"))
     lg.setColor(col[1], col[2], col[3], k)
-    lg.print(c.first and "FIRST SIGHTING" or "NEW THIS RUN", x + u(60), y + u(7))
+    lg.print(c.label or (c.first and "FIRST SIGHTING" or "NEW THIS RUN"), x + u(60), y + u(7))
     lg.setFont(Theme.font("label", "bold"))
     Theme.printShadow(c.def.name, x + u(60), y + u(22), { 1, 0.95, 0.85, k })
     lg.setFont(Theme.font("small"))

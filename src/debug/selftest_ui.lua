@@ -41,6 +41,10 @@ return function(wait, shot)
         if sk then sk.points = 6 end
         return require("src.states.skilltree").new(game)
     end)
+    tour("shop", function()
+        game.world.nectar = 400
+        return require("src.states.shop").new(game)
+    end, 0.6)
     tour("itemchoice", function()
         game.world.pendingChoice = nil
         return require("src.states.itemchoice").new(game, { count = 3, wave = 3 })

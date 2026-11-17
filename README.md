@@ -18,9 +18,12 @@ love . --roster       # model viewer: every bug walking in place
 love . --anims        # attack animation viewer (--shot saves anims_<id>.png contact sheets)
 love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
+love . --selftest --arttour     # pictures of every bug, prop and the antlion for an art check
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
 love . --selftest --happenings  # just mid-wave events, boss encounters, stages, weather effects, props
+love . --selftest --props       # rocks and sticks: hit physics, blasts, collisions, every grab attack on them
+love . --selftest --hazards     # the sparrow and anteater hazards hunting a run, a screenshot per attack
 love . --selftest --gambles     # just map gambles: dewdrop shrine, challenge bell, gamble flower
 love . --profile      # scripted massacre; prints where frame time goes, then quits
 love . --profile --crowd --nojit --cpudraw   # repeatable crowd benchmark, phone-like (no JIT), Lua cost only
@@ -60,7 +63,7 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Attack (when Auto Attack is off) | Left mouse / J | RB / X |
 | Special attack | Right mouse / K | B |
 | Aim (when Aim Mode = Mouse) | Mouse | Right stick (always) |
-| Inventory | I / B | Y |
+| Inventory / Shop | Tab / I | Y |
 | Next wave now (or send the rest of a wave in early) | E / N | Back |
 | Unleash Frenzy (when the meter is full) | Q / C | Right or left stick click |
 | Pause | Esc / P | Start |
@@ -106,6 +109,9 @@ the numbers in `src/config/rewards.lua` (a game mode can override them with `rew
   (Bloodrush, Rage, Flurry, Fortune; Carnage from a 150 combo).
 - **Big moments**: on top of the hitstop, a huge multi-kill, a queen falling and the frenzy move
   get slow motion (Settings > Gameplay > Slow Motion) and a quick camera zoom punch.
+  Freezes are kept rare: the multi-kill hitstop needs 15 kills in one frame and then waits 4 s,
+  the slow-mo needs 30 and waits 10 s, and heavy hits use `World:hitStop(t)`, which respects the
+  Hit Stop setting and scales by `feel.stopScale`. All the numbers are in `src/config/rewards.lua`.
 - **Mini-goals**: from wave 2, some waves come with an optional side task from `content/goals`:
   stop the courier ant before it crosses the arena, guard the aphid (some ants go for it),
   reach a combo, or get a burst of KOs in a few seconds. Success pays bonus XP and frenzy.
@@ -129,8 +135,9 @@ Test: `love . --selftest --combat`.
 - **Wave-end magnet**: when a wave is cleared every bead left on the floor flies to you, with a
   chime that climbs note by note. Nothing is ever lost.
 - **Pickups** (glowing tokens, never items): a rare **Nectar Magnet** from any ant pulls in the
-  whole floor; elites sometimes drop **Frost Dew** (the swarm freezes solid for 3 s: no moving,
-  no biting) or **Royal Jelly** (frenzy meter full). Uncollected pickups blink, then fade.
+  whole floor; elites sometimes drop **Royal Jelly** (frenzy meter full) or, rarely, **Frost Dew**
+  (the swarm freezes solid for 2 s: no moving, no biting; only from wave 4, the least likely elite
+  pickup, and never again for 60 s after a freeze or while one is lying around). Uncollected pickups blink, then fade.
 - Settings > Gameplay > **Auto Collect Nectar**: beads and pickups fly to you from anywhere.
 - Console: `nectar [n]`, `pickup <id>`. Numbers: `src/config/nectar.lua`.
 - For code that spends nectar (shop, shrines), the API is at the top of `src/game/nectar.lua`:
@@ -140,12 +147,14 @@ Test: `love . --selftest --nectar`.
 
 ## Nectar shop, interest, scrapper and cursed items
 
-- **Shop**: the wave-clear screen has FREE PICK and SHOP tabs (Tab / H / pad LB, or click them).
-  The shop has 2 items and 1 stat boost for nectar, two presses to buy. LOCK keeps an offer for the
-  next shop; REROLL costs nectar and gets dearer each time in the same shop. Prices rise every wave.
-  Taking (or skipping) the free pick closes the screen, unless you can still afford something:
-  then it moves to the shop and DONE closes it.
-- **Savings interest**: when the screen opens, banked nectar earns 10% (capped, the cap grows each wave).
+- **Shop**: the SHOP tab of the inventory window (Tab, then E / RB or click the tab; screen
+  `src/states/shop.lua`). It is open the whole run (the window pauses the game). 3 items and 1 stat
+  boost for nectar, two presses to buy. The stock **restocks every minute of play**; the HUD shows
+  the clock under the nectar count and "NEW STOCK" until you look. Items with `shopSpeed` restock it
+  faster (Forager's Leaf +25%, Honeypot Ant +40%, they add up; never under 15 s). LOCK keeps an
+  offer through restocks; REROLL costs nectar and gets dearer until the next restock. Prices rise
+  every wave. A bought item that doesn't fit opens the BAG tab holding it.
+- **Savings interest**: the moment a wave is cleared, banked nectar earns 10% (capped, the cap grows each wave).
 - **Scrapper**: SCRAP in the bag's header (drop or click a held item on it, G, pad right stick
   click, or the SCRAP touch button) turns an item into nectar. Rare or better items also give back a
   free-pick reroll.
@@ -304,13 +313,35 @@ can `draw`. `src/game/grab.lua` holds and throws ants for grab specials.
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
 engine `src/game/skills.lua`). Every kill is 1 XP (gilded elites give bonus XP); each level is a
 skill point, shown on the thin XP bar at the bottom of the screen. Spend points in the bag's
-**SKILLS** tab (I, then Tab / RB, or tap the tab). Each tree has three branches (attack, special,
+**SKILLS** tab (Tab, then E / RB, or tap the tab). Each tree has three branches (attack, special,
 dash/body) with five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger
 upgrade and a capstone that changes how a move plays (echoes, fans of extra copies, every-Nth
 empowered strikes, thrown ants that land as explosions, procs on kills and hits...). A whole tree
 costs more points than a long run earns, so every run builds the bug differently. The sandbox's
 Player tab has **+5 skill points** and **Reset skill tree**; `love . --selftest --skills` buys every
 node of every tree (both fork sides) and fights with it.
+
+## Wave rewards: the reward bloom
+
+A cleared wave's rewards are a moment in the arena, not a pile of screens (`src/game/rewardflow.lua`,
+prop `content/props/reward_bloom.lua`, numbers `src/config/bloom.lua`):
+
+1. A glowing **reward bloom** sprouts next to your bug, labelled with what is inside ("an item";
+   with Level-Up Cards: At Wave End, also "2 level-ups"). Walk into it to open it. Next Wave (E) brings it to you, and left alone it rolls to you
+   after 5 s. The break before the next wave waits for it.
+2. It bursts and the item choice opens (with At Wave End level-ups, a **steps strip** at the top,
+   LEVEL 7 > LEVEL 8 > ITEM, shows where you are and what is left).
+3. What you took **flies out of the bloom into your bug**, and a card on the left of the screen says
+   what you got and what it does (NEW ITEM, LEVEL CARD, SKILL, BOUGHT...). Shop buys and level-ups
+   outside the bloom use the same cards.
+
+Setting **Wave Rewards: Open at Once** skips the walk. Test: `love . --selftest --rewards`.
+
+## Inventory window
+
+**Tab** (or I, pad Y, the BAG touch button, or Pause > Inventory & Shop) opens one window with three
+tabs: **BAG**, **SKILLS** and **SHOP** (`src/states/bagtabs.lua`). E / Q (pad RB / LB) or a click
+switches tabs; Tab, Esc or pad B closes it. The sandbox panel moved to F2.
 
 ## Level-up cards
 
@@ -319,9 +350,9 @@ in `src/config/levelups.lua`): nodes from your bug's skill tree (bought outright
 global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
 common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
 The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
-Levels play a chime, half a second of slow motion and a ring of light; the picks wait for the end
-of the wave and come right before the item choice (setting **Level-Up Cards: Right Away** opens
-them at once). Instead of a card you can bank a skill point for the SKILLS tab. Setting
+Levels play a chime, half a second of slow motion and a ring of light; the cards open right
+there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
+At Wave End** saves them for the wave's reward bloom instead). Instead of a card you can bank a skill point for the SKILLS tab. Setting
 **Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
@@ -406,6 +437,19 @@ and brass while a queen is out, and a slowed-down fade when you fall. Stems are 
 per frame at start-up and cached as .wav files in the save folder (`music/`); change the score,
 then bump `CACHE` so they render again. Sound effects live in `src/core/audio.lua`.
 
+The music also changes with the bug you play. Each body plan (spiders and other arachnids,
+beetles, crustaceans, centipedes and millipedes, flyers, other insects) has its own band: while
+you play, the shared arp, lead and drums are swapped for that band's versions of the same song
+(spiders: half-time drums and a cold glassy lead with a creeping grace note; beetles: double
+kicks, organ stabs and brass; crustaceans: a clave groove on wood blocks and marimba rolls;
+myriapods: four on the floor under a 16th-note rattle; flyers: brushes and a breathy flute;
+other insects: claps, bells and a buzzing reed), plus a signature stem. On top of that every
+bug has its own riff, made from its id (so it never changes and no two bugs share one) on its
+band's instrument; it is loudest between waves and on the character select, which previews the
+bug's band, riff and key. A character file can pick its band with `music = "chug"` or
+`music = { theme = "chug", key = -2 }`. Band and riff stems render the first time a bug is
+picked and are cached like the rest.
+
 `src/game/feedback.lua` plays the big-moment sounds (wave horn, wave cleared chime, a queen's
 arrival, victory, defeat, a heartbeat under 30% health), draws arrows at the screen edge for
 queens and elites out of view (setting **Off-screen Markers**), and runs the first-run hints in
@@ -428,11 +472,22 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   it is around; walk into it to buy, the item goes straight into the bag). A stage's
   `events = { id = weight }` and a mode's `eventWeights` / `events = false` change the odds.
 - **Boss encounters** (`content/bosses`, setting **Boss Encounters**): every 5th wave except the
-  final one, a predator joins the queen: the anteater (licks lanes), the antlion (a sand pit that
-  drags everything to its jaws, throws sand) or the sparrow (a shadow overhead, swoops down a line,
-  lands to peck, which is when it can be hit). They are real enemies (`content/enemies/predators.lua`,
-  `encounter = true`, drawn by `drawBody`), so the wave lasts until they fall; hazards don't hurt
-  them. A mode can say `encounters = false`.
+  final one, something big joins the queen. Bugs are fights: the antlion (a sand pit that drags
+  everything to its jaws, throws sand) is a real enemy (`content/enemies/predators.lua`,
+  `encounter = true`, drawn by `drawBody`), so the wave lasts until it falls; hazards don't hurt it.
+  Animals far too big to fight are **stage hazards** (`hazard = true`): no enemy, nothing to hit,
+  they don't hold the wave up. They hunt the arena until the wave is cleared, then leave (bonus XP),
+  and everything they do kills ants and hurts you alike. The HUD shows their name and what they are
+  doing instead of a health bar, and they speed up the longer the wave lasts.
+  - **Sparrow**: soars overhead as a shadow, swoops down a lane across the whole arena (sometimes
+    straight back again), lands on a marked spot, hops after you pecking at marked circles, then
+    takes off with a wing beat that blasts everything away.
+  - **Giant Anteater**: lies at an arena edge with its head and forelegs reaching in. Tongue
+    flicks down red lanes (you get dragged toward the snout), a tongue sweep across a whole fan,
+    a claw rake (three gouges), and it shuffles along the edge after you or comes in at another
+    side.
+  Their pictures are painted in code (`src/gfx/beasts.lua`: feathers, streaks, coarse fur, the
+  anteater's shoulder stripe) and drawn at full size. A mode can say `encounters = false`.
 - **Stage mechanics** (`content/mechanics`): Puddled Patio (a puddle that rises through each wave),
   Overgrown Lawn (the long grass closes in during a wave), Dappled Garden (drifting sun patches
   speed everyone up, shade slows ants). Pick them in Cosmetics > Location like the other stages.
@@ -442,6 +497,14 @@ wave up: a wave still ends only when every enemy is dead, and events still going
 - **Props** (`content/props`, `src/game/props.lua`): pebbles and twigs lie about every stage
   (`props = { pebble = 6, twig = 3 }`). Walk into one to roll it, dash or attack to launch it; while
   it moves fast it flattens every ant it rolls over. Props are not enemies.
+  Hits are physical: a struck pebble pops off the ground and bounces (harder moves bat it
+  further), squashes, flashes and chips; a twig hit near one end spins; blasts scatter them; and
+  a rolling pebble knocks a resting one on like a marble. **Grab attacks work on them too**
+  (`Grab.collect` in `src/game/grab.lua`): the mantis snatches and flings them, the stag beetle
+  clubs with a twig, the dragonfly bombs with an acorn, the emperor scorpion slams one, the
+  vinegaroon acid-bombs one, the jumping spider reels one in, the rhino scoops one onto its horn
+  and the whip scorpion cracks one back. A thrown prop crashes down and rolls on through the
+  crowd. Test: `love . --selftest --props`.
 - **Nest holes** can be sealed: hit one three times or dash over it, and the groups still waiting
   in it never come out.
 - **Map gambles** (`src/game/gambles.lua`, numbers in `src/config/gambles.lua`, setting **Map
@@ -458,7 +521,7 @@ wave up: a wave still ends only when every enemy is dead, and events still going
 Everything that changes movement goes through `world.env` (player / enemy speed, drift, the
 player's inset from the walls, and a per-spot speed `field`). Raw hazard damage that skips player
 stats and procs is in `src/game/envfx.lua`, with the shared warning-lane and shadow drawing.
-Dev console: `event <id>`, `encounter <id>`, `prop <id> [n]`. `love . --selftest --happenings`
+Dev console: `event <id>`, `encounter <id>` (`encounter off` sends a hazard away), `prop <id> [n]`. `love . --selftest --happenings`
 checks it all.
 
 ## Enemies and damage
@@ -534,7 +597,7 @@ are in `src/game/hazards.lua`. A behaviour can also define `onHit` (react to bei
 
 On by default while we build (Settings > Developer). It adds:
 
-- **Sandbox** on the main menu, a tabbed panel (keys 1-5, Tab hides it) for testing everything:
+- **Sandbox** on the main menu, a tabbed panel (keys 1-5, F2 hides it) for testing everything:
   - *Spawn*: any ant (normal, a chosen elite or a random one) in any amount, with a health
     multiplier (one-hit to x1000 training dummies); march a real column in from the edge; every
     elite of one species; every species at once; any queen; middle click spawns at the cursor.
@@ -585,7 +648,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/wavemods` | wave modifiers (Swarm, Ambush, Shield Wall...): multipliers, formation, ambush | wave banner, next-wave preview |
 | `content/molts` | molting recipes: `from` (2-3 item ids that must touch), `into` (a molted item), `hint` | bag after a queen wave, Records > Recipes |
 | `content/events` | mid-wave events and moving hazards (`start`, `update`, `field`, `drawGround`...) | src/game/director.lua |
-| `content/bosses` | boss encounters: a predator from content/enemies joins every 5th wave | src/game/director.lua |
+| `content/bosses` | boss encounters every 5th wave: a bug from content/enemies to fight, or a stage hazard (`hazard = true`) | src/game/director.lua, src/gfx/beasts.lua |
 | `content/mechanics` | stage rules a stage turns on with `mechanic = { type = ... }` | src/game/director.lua |
 | `content/props` | pebbles, twigs, acorns, cocoons, freed allies, the merchant | src/game/props.lua |
 
@@ -657,6 +720,26 @@ Sprites are simple top-down text grids (one character per pixel), facing right. 
 body segments, lines for legs), and `python3 tools/preview_sprites.py out.png content/sprites/bugs.lua`
 previews any sprite file (needs `luajit` and Pillow).
 
+## Art style guide
+
+Everything in the world shares one look: small pixels with rich per-pixel detail, shaded like
+the bug sprites. Each material is a 4-5 colour ramp (dark .. light), the light comes from the
+upper left, a little noise keeps big areas from looking flat, and every shape gets the soft,
+slightly see-through dark outline. Colours sit in the dusky, natural range of the cast: real
+animals' colours, but not candy-bright (`tools/tone_palette.py` pulled the loudest crustaceans
+and the centipede back in line).
+
+- **Bugs** are text-grid sprites from the `tools/make_*_sprites.py` generators, baked into the
+  atlas in 32 turns.
+- **Anything else in the world** (props, the antlion and its pit, map gambles) is painted in Lua
+  at runtime with `src/gfx/paint.lua` (`Paint.pic`, `p:blob`, `p:stroke`, `p:outline`,
+  `Paint.get` caches it) and drawn with `Paint.draw`; the prop pictures live in
+  `src/gfx/propart.lua`. Don't draw world objects with flat `love.graphics.ellipse` /
+  `polygon` fills: those read as a different game. Flat primitives are fine for effects (glows,
+  rings, arcs, telegraphs) and shadows.
+- `love . --selftest --arttour` saves `selftest_art_*.png` (catalogue walls, a line-up of each
+  family, every prop, the antlion) so the whole cast can be checked side by side.
+
 ## Performance notes
 
 - All sprites, shadows, particles and health bars come from one generated texture atlas, so
@@ -682,6 +765,11 @@ use them instead of drawing your own. Check by eye with `love . --selftest --uit
 - **Type**: use the named sizes, `Theme.font("title")`, `"heading"`, `"body"`, `"label"`,
   `"small"`. Nothing is drawn below `Theme.MIN_TEXT` (14): if text doesn't fit, cut words, don't
   shrink it. Bold is for names and card titles, not whole paragraphs.
+- **HUD size**: everything is drawn at `Theme.TEXT_SCALE` (90%) of its named size, and the
+  in-run HUD (`Game:draw`) sits inside `Theme.pushZoom(Theme.hudZoom())`, which scales text and
+  `Theme.u` together (Settings "HUD Size", default 75%). New HUD pieces drawn from `Hud.draw`
+  get it for free; keep them small and at the screen edges so the fight stays visible
+  (`love . --selftest --hudsize`).
 - **Screen titles**: `Theme.title("Bug catalogue")` (top-left) or `Theme.title("Settings", w)`
   (centred). Short, one or two words, no colons.
 - **Panels**: `Theme.panel(x, y, w, h, rivets)`: the bevelled plate the bag uses. Square corners,

@@ -49,7 +49,7 @@ return {
         local reach = (params.reach or 40) * (1 + player.stats:get("area") / 100)
         local ang = math.atan2(ay, ax)
         local best, bd = nil, math.huge
-        for _, e in ipairs(Combat.collect(world, player.x, player.y, reach, function(e, dx, dy)
+        for _, e in ipairs(Grab.collect(world, player.x, player.y, reach, function(e, dx, dy)
             return not e.held and not e.def.boss and math.abs(util.angleDiff(ang, math.atan2(dy, dx))) < 0.9 end)) do
             local d = (e.x - player.x) ^ 2 + (e.y - player.y) ^ 2
             if d < bd then best, bd = e, d end

@@ -18,6 +18,6 @@ return {
         { id = "legendary", weight = 4, mult = 2 },
     },
     -- the moment you level up: a chime, half a second of slow motion and a ring of light
-    fanfare = { slow = 0.35, slowTime = 0.5, ring = 70, color = { 1, 0.9, 0.45 } },
+    fanfare = { slow = 0.6, slowTime = 0.25, ring = 70, color = { 1, 0.9, 0.45 } },
     instantDelay = 0.45,    -- "Right Away" timing: the cards open this long after the level
 }

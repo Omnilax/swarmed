@@ -135,6 +135,8 @@ local function steer(world, bot)
         bot.holdT = (bot.holdT or 0) + 1 / 60
         if bot.holdT > 2.5 then bot.holdT = 0 end
         Input.virtualDown.dash = (close >= 6 and bot.holdT < 1) or nil
+        -- bugs that can't walk (dragonfly: groundSpeed 0) fly whenever they can
+        if p.dashParams.groundSpeed == 0 then Input.virtualDown.dash = true end
     end
     if p.secondary and p.secondary.timer <= 0 and near then Input.press("secondary") end
     Input.virtualDown.secondary = near ~= nil or nil

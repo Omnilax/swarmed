@@ -42,7 +42,7 @@ return {
         if not c or c.kind ~= "horn" or not hit then return end
         local fx, fy = util.normalize(player.dashX, player.dashY)
         local hx, hy = player.x + fx * (player.radius + 5), player.y + fy * (player.radius + 5)
-        for _, e in ipairs(Combat.collect(world, hx, hy, 6)) do
+        for _, e in ipairs(Grab.collect(world, hx, hy, 6)) do
             if not hit[e] and not e.held then
                 hit[e] = true
                 if #c.list < (params.carry or 3) and not e.def.boss and (e.mass or 1) <= 4 then

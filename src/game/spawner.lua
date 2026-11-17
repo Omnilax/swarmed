@@ -236,6 +236,8 @@ function Spawner:update(dt)
     if self.endless then return self:updateEndless(dt) end
     local cfg = self.cfg
     if self.phase == "break" then
+        -- the break waits while the wave's rewards do (the reward bloom, src/game/rewardflow.lua)
+        if self.world.pendingChoice then return end
         self.timer = self.timer - dt
         -- an overlapped wave marches in as soon as the item is picked
         if self.timer <= 0 and not (self.overlapped and self.world.pendingChoice) then self:startWave() end

@@ -1,6 +1,7 @@
 -- Swing & hurl (stag beetle): clamps the biggest ant in reach in its antler-jaws, lifts it and
 -- swings it round in a full circle, clubbing every ant around with it, then hurls it where you
--- point. The thrown ant bowls through the crowd and crashes down with a thud.
+-- point. The thrown ant bowls through the crowd and crashes down with a thud. A twig or pebble
+-- in reach makes a fine club too.
 -- params: damage (thrown ant's impact; the swing does 60%), cooldown, reach (grab, 36),
 --         swing (seconds for the turn, 0.45), arm (swing radius, 22), distance (throw, 130),
 --         radius (landing area, 34)
@@ -15,7 +16,7 @@ return {
     fire = function(player, world, ax, ay, params)
         -- the biggest ant within reach in front (it makes the best club)
         local best, bestR
-        for _, e in ipairs(Combat.collect(world, player.x + ax * 12, player.y + ay * 12, params.reach or 36)) do
+        for _, e in ipairs(Grab.collect(world, player.x + ax * 12, player.y + ay * 12, params.reach or 36)) do
             if not e.held and not e.def.boss and (not bestR or e.radius > bestR) then best, bestR = e, e.radius end
         end
         if not best then

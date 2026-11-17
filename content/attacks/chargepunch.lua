@@ -83,7 +83,7 @@ local ChargePunch = {
             end
             world:addFx({ kind = "streak", x = player.x, y = player.y, x2 = player.x + ax * far, y2 = player.y + ay * far, w = 6, life = 0.25, color = { 0.8, 0.95, 1 } })
             world:floatText(ix, iy, "SMASH!", { 1, 0.6, 0.4 }, true)
-            world.hitstop = math.max(world.hitstop or 0, 0.06)
+            world:hitStop(0.06)
         end
         world.camera:shake(0.05 + f * 0.2)
         Audio.play("hit", { pitch = 0.9 - f * 0.4, volume = 0.6 + f * 0.4 })

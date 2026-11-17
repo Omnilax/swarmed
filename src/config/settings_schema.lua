@@ -82,7 +82,7 @@ add { key = "mapGambles", category = "Gameplay", label = "Map Gambles", type = "
     options = { { value = "often", label = "Often" }, { value = "normal", label = "Normal" }, { value = "off", label = "Off" } },
     desc = "Risky spots that pop up in a wave: a dewdrop shrine to stand in for a blessing, a challenge bell that calls a tough pack, a gamble flower to spin with nectar." }
 add { key = "bossEncounters", category = "Gameplay", label = "Boss Encounters", type = "toggle", default = true,
-    desc = "Every 5th wave a predator joins the queen: an anteater, an antlion's pit or a bird swooping down." }
+    desc = "Every 5th wave something big joins the queen: an antlion's pit to fight, or a sparrow or giant anteater hunting the arena as a stage hazard." }
 add { key = "weatherEffects", category = "Gameplay", label = "Weather Effects", type = "toggle", default = true,
     desc = "Wind pushes everyone, rain slows the fight down, a heatwave speeds it up." }
 
@@ -107,9 +107,12 @@ add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "cho
 add { key = "levelUps", category = "Gameplay", label = "Level-Ups", type = "choice", default = "cards",
     options = { { value = "cards", label = "Pick a Card" }, { value = "points", label = "Skill Points" } },
     desc = "Pick a Card: every level offers 3 cards (skill tree nodes of your bug, or stat boosts that roll a rarity; Luck makes rare ones likelier). Skill Points: every level gives a point to spend in the bag's SKILLS tab." }
-add { key = "levelUpTiming", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "wave",
-    options = { { value = "wave", label = "At Wave End" }, { value = "instant", label = "Right Away" } },
-    desc = "At Wave End: level-ups wait and come just before the item choice, so a fight is never interrupted. Right Away: the cards pause the game as soon as you level up." }
+add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type = "choice", default = "bloom",
+    options = { { value = "bloom", label = "Walk to the Bloom" }, { value = "instant", label = "Open at Once" } },
+    desc = "Walk to the Bloom: a cleared wave's rewards (level-up cards, then the item) sprout as a glowing bloom next to you; walk into it to open it (Next Wave brings it to you, and it rolls to you by itself after a few seconds). Open at Once: the reward screens pop up right after the wave." }
+add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "instant",
+    options = { { value = "instant", label = "Right Away" }, { value = "wave", label = "At Wave End" } },
+    desc = "Right Away: the moment you level up, the cards open (after a short fanfare) and you pick your reward on the spot; the wave's reward bloom then holds only the item. At Wave End: level-ups wait in the reward bloom and come just before the item choice." }
 add { key = "waveOverlap", category = "Gameplay", label = "Overlapping Waves", type = "toggle", default = true,
     desc = "When a wave is down to its last few ants, you pick your item and the next wave marches in while they are still about. Off: every ant must die first. (Never with Next Wave set to When I Press.)" }
 add { key = "waveModifiers", category = "Gameplay", label = "Wave Modifiers", type = "toggle", default = true,
@@ -165,6 +168,8 @@ add { key = "uiFont", category = "Interface", label = "Font", type = "choice", d
     options = { { value = "pixel", label = "Pixel" }, { value = "smooth", label = "Smooth" } },
     desc = "Pixel matches the game's art. Smooth is easier to read at small sizes." }
 add { key = "uiScale", category = "Interface", label = "Interface Scale", type = "slider", default = 100, min = 75, max = 150, step = 5, format = percent }
+add { key = "hudScale", category = "Interface", label = "HUD Size", type = "slider", default = 75, min = 50, max = 125, step = 5, format = percent,
+    desc = "Size of everything drawn over the fight: health, wave line, KO count, banners, species cards, tips and damage numbers. Smaller leaves more of the screen for the game." }
 add { key = "hudOpacity", category = "Interface", label = "HUD Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent }
 add { key = "showTimer", category = "Interface", label = "Show Run Timer", type = "toggle", default = true }
 add { key = "showEnemyCount", category = "Interface", label = "Enemies Left", type = "toggle", default = true,
@@ -173,7 +178,7 @@ add { key = "nextWavePreview", category = "Interface", label = "Next Wave Previe
     desc = "During the break, show what the next wave brings: a queen, a new species, wave modifiers." }
 add { key = "speciesPopups", category = "Interface", label = "First Sighting Popups", type = "choice", default = "new",
     options = { { value = "new", label = "First Time Ever" }, { value = "run", label = "Every Run" }, { value = "off", label = "Off" } },
-    desc = "A card with a species' name and what it does the first time it shows up (species introduced by a wave already get the big card)." }
+    desc = "A card with a species' name and what it does the first time it shows up (a species a wave introduces always gets its card, unless this is Off)." }
 add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Markers", type = "toggle", default = true,
     desc = "Arrows at the screen edge pointing at queens and elites you cannot see." }
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }

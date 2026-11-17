@@ -147,7 +147,7 @@ function Player:releaseAttack(ax, ay, extra)
     if atk.timer > 0 then return false end
     local params = self.skills:before("attack", atk.params)
     atk.type.fire(self, self.world, ax, ay, params, extra)
-    if self.world.director then self.world.director:playerAttacked(ax, ay) end
+    if self.world.director then self.world.director:playerAttacked(ax, ay, params) end
     self.skills:after("attack", ax, ay, nil, nil, params)
     Anim.move(self, "attack", atk.params)
     Player.swingSound(atk.params, false)
@@ -164,7 +164,7 @@ function Player:releaseSecondary(ax, ay, px, py, extra)
     if not sec or sec.timer > 0 then return false end
     local params = self.skills:before("secondary", sec.params)
     sec.type.fire(self, self.world, ax, ay, params, px, py, extra)
-    if self.world.director then self.world.director:playerAttacked(ax, ay) end
+    if self.world.director then self.world.director:playerAttacked(ax, ay, params) end
     self.skills:after("secondary", ax, ay, px, py, params)
     Anim.move(self, "secondary", sec.params)
     Player.swingSound(sec.params, true)
@@ -361,7 +361,7 @@ function Player:update(dt)
             self.aimX, self.aimY = ax, ay
             local params = self.skills:before("secondary", sec.params)
             sec.type.fire(self, world, ax, ay, params, px, py)
-            if world.director then world.director:playerAttacked(ax, ay) end
+            if world.director then world.director:playerAttacked(ax, ay, params) end
             self.skills:after("secondary", ax, ay, px, py, params)
             Anim.move(self, "secondary", sec.params)
             Player.swingSound(sec.params, true)
@@ -393,7 +393,7 @@ function Player:update(dt)
         if want then
             local params = self.skills:before("attack", atk.params)
             atk.type.fire(self, world, self.aimX, self.aimY, params)
-            if world.director then world.director:playerAttacked(self.aimX, self.aimY) end
+            if world.director then world.director:playerAttacked(self.aimX, self.aimY, params) end
             self.skills:after("attack", self.aimX, self.aimY, nil, nil, params)
             Anim.move(self, "attack", atk.params)
             Player.swingSound(atk.params, false)

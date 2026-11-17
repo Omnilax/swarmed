@@ -836,6 +836,35 @@ def fulgurite(I):               # a branching tube of lightning-fused sand, glas
 
 # --- Cursed items (round: nectar economy). Pale, sickly or gilded, with a violet glow.
 
+@icon("honeypot_ant", 1, 1)
+def honeypot_ant(I):            # a honeypot ant: a tiny dark head and thorax on a swollen amber belly
+    I.add(I.E(0.56, 0.6, 0.34, 0.3), "#c07812", gloss=1.7, shin=50, op=0.85, emit="#2a1400")
+    I.paint(I.E(0.6, 0.66, 0.24, 0.2), "#f0b438", amt=0.6, soft=1)
+    for k in range(3):
+        I.carve(I.T([(0.3 + k * 0.17, 0.33 + k * 0.02), (0.36 + k * 0.17, 0.88 - k * 0.02)], 0.012), 0.015)
+    I.add(I.E(0.22, 0.34, 0.1, 0.08), "#2a1a12", gloss=0.9, shin=30)
+    I.add(I.E(0.1, 0.26, 0.08, 0.07), "#24160e", gloss=0.9, shin=30)
+    for a, b in (((0.2, 0.38), (0.12, 0.56)), ((0.24, 0.38), (0.3, 0.56)), ((0.16, 0.3), (0.04, 0.44))):
+        I.add(I.T([a, b], [0.02, 0.012]), "#2a1a12", gloss=0.5)
+    I.add(I.T([(0.06, 0.22), (0.02, 0.08)], [0.012, 0.006]), "#2a1a12", gloss=0.5)
+    I.add(I.E(0.46, 0.44, 0.07, 0.04, rot=-0.5), "#fff0c0", mode="on", gloss=1, emit="#b08040")
+
+@icon("foragers_leaf", 2, 1)
+def foragers_leaf(I):           # a leaf scout ants have marked: a chewed edge and a dotted scent trail
+    pts = []
+    for t in np.linspace(0, 1, 24):
+        x = 0.1 + t * 1.8
+        w = 0.38 * math.sin(t * pi) ** 0.75
+        pts.append((x, 0.5 - w))
+    pts += [(x, 1.0 - y) for (x, y) in reversed(pts)]
+    I.add(I.P(pts, bevel=0.1, z=0.04), "#4e7a2c", gloss=0.35, mottle=0.2)
+    I.carve(I.T([(0.1, 0.5), (1.9, 0.5)], 0.02), 0.03)
+    for x in (1.2, 1.38, 1.56):
+        I.carve(I.E(x, 0.16, 0.09, 0.07), 0.06)
+        I.paint(I.E(x, 0.16, 0.1, 0.08), "#8a6a2a", amt=0.7, soft=0.5)
+    for k, x in enumerate(np.linspace(0.3, 1.65, 8)):
+        I.add(I.E(x, 0.62 + 0.06 * math.sin(k * 1.3), 0.035, 0.03), "#f0d070", mode="on", gloss=1.2, emit="#604000")
+
 @icon("hungry_tapeworm", 3, 1, ["XXX"])
 def hungry_tapeworm(I):         # a long pale segmented tapeworm, coiled, with a hooked head
     pts = [(0.15 + t * 2.7, 0.5 + math.sin(t * 9.0) * 0.22) for t in np.linspace(0, 1, 24)]

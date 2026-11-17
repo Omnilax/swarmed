@@ -104,6 +104,8 @@ function World.new(opts)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- wave rewards as moments in the arena: the reward bloom, rewards flying in, gain cards
+    self.rewardFlow = require("src.game.rewardflow").new(self)
     -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
     require("src.game.dashtech").attach(self)
     require("src.game.bugrules").attach(self)
@@ -277,7 +279,7 @@ function World:killEnemy(e)
         require("src.game.choices").onQueen(self)   -- and some item choice rerolls back
         self:floatText(e.x, e.y - 20, "+1 ITEM CHOICE", { 1, 0.9, 0.4 }, true)
         self.milestone = { text = def.name:upper() .. " SLAIN", t = 0 }
-        self.hitstop = 0.12
+        self.hitstop = math.max(self.hitstop, self.rewards.cfg.feel.queenStop)
         self.camera:shake(0.6)
         Audio.play("boom", { pitch = 0.6 })
         if decals then
@@ -471,7 +473,8 @@ function World:dropPickup(id, x, y) return self.beads:dropPickup(id, x, y) end
 -- Every enemy freezes stiff for `t` seconds (no moving, no biting).
 function World:freezeEnemies(t)
     local was = self.freezeT > 0
-    self.freezeT = math.max(self.freezeT, t or 3)
+    self.freezeT = math.max(self.freezeT, t or 2)
+    self.frostAt = self.time        -- Frost Dew won't drop again for a while (content/pickups/freeze.lua)
     if not was then
         local p = self.player
         self:addFx({ kind = "ring", x = p.x, y = p.y, r = 160, life = 0.5, color = { 0.6, 0.9, 1 } })
@@ -497,6 +500,13 @@ function World:procContext(target, damage, crit, depth)
 end
 
 ----------------------------------------------------------------------------------------------
+-- A short freeze for a heavy hit (big punches, molts, encounters). Respects the Hit Stop
+-- setting and is scaled down by rewards feel.stopScale so freezes stay rare and brief.
+function World:hitStop(t)
+    if not Settings.get("hitstop") then return end
+    self.hitstop = math.max(self.hitstop or 0, t * (self.rewards.cfg.feel.stopScale or 1))
+end
+
 -- Update
 
 function World:update(dt)
@@ -536,6 +546,8 @@ function World:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    self.rewardFlow:update(dt)
+    require("src.game.economy").update(self, dt)     -- the shop restocks every minute or so
     if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
     self:pushPlayerOutOfSolids()
 
@@ -569,9 +581,10 @@ function World:update(dt)
     end
     -- Cooldown so constant mass kills give a punchy beat now and then instead of a stutter.
     if self.hitstopCd > 0 then self.hitstopCd = self.hitstopCd - dt end
-    if self.killsThisFrame >= 5 and Settings.get("hitstop") and self.hitstopCd <= 0 then
-        self.hitstop = math.min(0.07, 0.025 + self.killsThisFrame * 0.003)
-        self.hitstopCd = 0.6
+    local feel = self.rewards.cfg.feel
+    if self.killsThisFrame >= feel.stopKills and Settings.get("hitstop") and self.hitstopCd <= 0 then
+        self.hitstop = math.min(feel.stopMax, feel.stopMin + self.killsThisFrame * feel.stopPerKill)
+        self.hitstopCd = feel.stopCooldown
         self.camera:shake(math.min(0.4, self.killsThisFrame * 0.02))
     end
     for j = #self.fx, 1, -1 do
