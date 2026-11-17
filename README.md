@@ -132,8 +132,9 @@ Test: `love . --selftest --combat`.
 - **Wave-end magnet**: when a wave is cleared every bead left on the floor flies to you, with a
   chime that climbs note by note. Nothing is ever lost.
 - **Pickups** (glowing tokens, never items): a rare **Nectar Magnet** from any ant pulls in the
-  whole floor; elites sometimes drop **Frost Dew** (the swarm freezes solid for 3 s: no moving,
-  no biting) or **Royal Jelly** (frenzy meter full). Uncollected pickups blink, then fade.
+  whole floor; elites sometimes drop **Royal Jelly** (frenzy meter full) or, rarely, **Frost Dew**
+  (the swarm freezes solid for 2 s: no moving, no biting; only from wave 4, the least likely elite
+  pickup, and never again for 60 s after a freeze or while one is lying around). Uncollected pickups blink, then fade.
 - Settings > Gameplay > **Auto Collect Nectar**: beads and pickups fly to you from anywhere.
 - Console: `nectar [n]`, `pickup <id>`. Numbers: `src/config/nectar.lua`.
 - For code that spends nectar (shop, shrines), the API is at the top of `src/game/nectar.lua`:

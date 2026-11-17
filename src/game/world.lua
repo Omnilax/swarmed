@@ -471,7 +471,8 @@ function World:dropPickup(id, x, y) return self.beads:dropPickup(id, x, y) end
 -- Every enemy freezes stiff for `t` seconds (no moving, no biting).
 function World:freezeEnemies(t)
     local was = self.freezeT > 0
-    self.freezeT = math.max(self.freezeT, t or 3)
+    self.freezeT = math.max(self.freezeT, t or 2)
+    self.frostAt = self.time        -- Frost Dew won't drop again for a while (content/pickups/freeze.lua)
     if not was then
         local p = self.player
         self:addFx({ kind = "ring", x = p.x, y = p.y, r = 160, life = 0.5, color = { 0.6, 0.9, 1 } })
