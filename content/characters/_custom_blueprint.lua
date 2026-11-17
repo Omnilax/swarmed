@@ -10,8 +10,8 @@
 --      `require`, `load`, `os` and `io` do not exist here.
 --    * Helpers: bug("scorpion") gives a copy of a built-in bug's data to start from;
 --      bugs, attacks, dashes, items, statIds are lists of every id.
---    * Only data comes out, plus the functions of moves written in code (type = "scripted"),
---      which run in the same sandbox. Numbers are kept in sane ranges (the Creator says what
+--    * Only data comes out, plus the functions of the bug's own code (moves, hooks, skill
+--      tree procs), which run in the same sandbox. Numbers are kept in sane ranges (the Creator says what
 --      it changed).
 --    * Want a completely new bug? See "A BRAND-NEW BUG" at the bottom: own pixel art and legs,
 --      moves written as code.
@@ -34,8 +34,8 @@ return {
     --      emperor_scorpion whip_scorpion vinegaroon centipede millipede crab hermit_crab
     --      lobster mantis_shrimp pistol_shrimp dragonfly assassin_bug hissing_roach stink_bug
     look = "rhino_beetle",
-    scale = 1.1,                -- drawn size, 0.7 (tiny) .. 1.6 (huge). The hitbox follows.
-    -- radius = 8,              -- hitbox in pixels (4 .. 16) if you want to set it yourself
+    scale = 1.1,                -- drawn size, 0.5 (tiny) .. 2 (huge). The hitbox follows.
+    -- radius = 8,              -- hitbox in pixels (3 .. 22) if you want to set it yourself
     -- Recolour, like a skin: hue turns colours round the wheel (degrees), saturation and
     -- brightness multiply, tint ("#rrggbb") is laid over the top.
     colors = { hue = 140, saturation = 1.2 },
@@ -43,11 +43,11 @@ return {
     playstyle = "brawler",
 
     -- STATS: set any of these (they replace the defaults; leave one out for the default).
-    --   maxHp 10..250 (50)        hpRegen 0..5 (0)          armor -5..15 (0)
-    --   dodge 0..40 % (0)         moveSpeed 40..240 (100)   damage -50..60 % (0)
-    --   attackSpeed -50..60 % (0) area -50..60 % (0)        knockback -50..120 % (0)
-    --   critChance 0..40 % (5)    critDamage 100..300 % (150) luck -50..60 % (0)
-    --   lifesteal 0..10 % (0)     pickupRange 10..150 (40)  dashCooldown 0.3..5 s (1.2)
+    --   maxHp 5..500 (50)         hpRegen 0..10 (0)         armor -10..30 (0)
+    --   dodge 0..60 % (0)         moveSpeed 30..300 (100)   damage -80..150 % (0)
+    --   attackSpeed -60..150 % (0) area -60..150 % (0)      knockback -80..200 % (0)
+    --   critChance 0..80 % (5)    critDamage 100..400 % (150) luck -80..150 % (0)
+    --   lifesteal 0..25 % (0)     pickupRange 5..250 (40)   dashCooldown 0.2..8 s (1.2)
     stats = { maxHp = 70, armor = 3, moveSpeed = 110, critChance = 10 },
 
     -- MOVES. Each one can be:
@@ -91,8 +91,19 @@ return {
 --          fire = function(me) me.hitArc({ radius = 50, arc = 1.6, damage = 8 }) end },
 --      dash = { type = "scripted", name = "Vault", start = function(me) me.lunge(80) end },
 --
---  The whole worked example: content/characters/_example_stick_insect.lua
---  (in the game: Bug Creator > Example: Stick Insect). Every toolkit call: docs/CUSTOM_BUGS.md
+--  More that a script can hold (all in docs/CUSTOM_BUGS.md):
+--      art.limbs = { ... }        claws, tails, stingers, feelers drawn in 3D
+--      art.chain = { ... }        a segmented body (head + trailing segments)
+--      anims = { attack = { time = 0.3, keys = { { 0 }, { 0.3, lunge = 4 }, { 1 } } } }
+--      sounds = { zap = { wave = "square", freq = 600, to = 200, duration = 0.15 } }
+--      hooks = { onKill = function(me, ev) ... end, onHurt = ..., onTick = ... }
+--      skillTree = { branches = { { name = "...", nodes = { ... } } } }   its own tree
+--      attack = { release = function(me, charge) ... end }   hold to charge
+--      dash = { mode = true, enter = ..., tick = ..., exit = ... }    a stamina mode
+--
+--  Worked examples (Bug Creator > Examples):
+--      content/characters/_example_stick_insect.lua   own art + three moves in code
+--      content/characters/_example_velvet_worm.lua    everything else
 -- ===========================================================================================
 
 -- ===========================================================================================

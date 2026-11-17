@@ -314,7 +314,10 @@ Main menu > **Bug Creator** makes your own playable bugs: **Mix Parts** (one bug
 attack, special and dash, plus size, colour, stats, an item rule and a skill tree, with a live
 preview) or **Write a Script** (a bug is a small sandboxed Lua script; start from
 `content/characters/_custom_blueprint.lua`). Scripts can be pasted in, dropped on the window,
-copied out to share, and live in the save folder's `custom_bugs/`. Every field, move type and
+copied out to share, and live in the save folder's `custom_bugs/`. A script can make a completely
+new bug: its own pixel art, legs, claws and tails or a segmented body, moves written in code
+(press, hold-to-charge, hold, stamina modes), code on game events, its own animations, sounds and
+skill tree (examples: Stick Insect, Velvet Worm). Every field, move type and
 safety limit is in **[docs/CUSTOM_BUGS.md](docs/CUSTOM_BUGS.md)**. Test: `love . --selftest --creator`.
 
 ## Skill trees

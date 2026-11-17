@@ -10,12 +10,16 @@ Swarmed has a **Bug Creator** (main menu > Bug Creator). It makes custom playabl
   **completely new bug**: its own pixel art and legs, and moves written in code. The worked
   example is the **Stick Insect** (Bug Creator > Example: Stick Insect, or
   [`content/characters/_example_stick_insect.lua`](../content/characters/_example_stick_insect.lua)).
+  The **Velvet Worm** ([`_example_velvet_worm.lua`](../content/characters/_example_velvet_worm.lua))
+  uses everything else: a segmented body with feelers, a hold-to-charge attack, a stamina mode,
+  code that runs when it kills or gets hurt, its own sounds, animations and skill tree.
+* **Tweak** – a bug with its own art or code opens the mixer in tweak mode: change its name,
+  size, colour and stats, and the script stays word for word with a few lines added after it.
 
 Custom bugs join the bug select screen with the others (Show: **Custom Bugs**). They are just for
 fun: they don't count towards the play-every-bug achievements and never come up as the daily bug.
 
-> This is a first version, to grow from: per-part colours, animations for scripted moves,
-> hold-to-charge and stamina moves in code, sharing codes. Ideas welcome.
+The Creator shows how each custom bug has done (runs, wins, best wave).
 
 ## Sharing a bug
 
@@ -88,14 +92,16 @@ to see what a move type understands.
 
 | Stat | Allowed | Default | | Stat | Allowed | Default |
 |---|---|---|---|---|---|---|
-| `maxHp` | 10 .. 250 | 50 | | `attackSpeed` | -50 .. 60 % | 0 |
-| `hpRegen` | 0 .. 5 /s | 0 | | `area` | -50 .. 60 % | 0 |
-| `armor` | -5 .. 15 | 0 | | `knockback` | -50 .. 120 % | 0 |
-| `dodge` | 0 .. 40 % | 0 | | `critChance` | 0 .. 40 % | 5 |
-| `moveSpeed` | 40 .. 240 | 100 | | `critDamage` | 100 .. 300 % | 150 |
-| `damage` | -50 .. 60 % | 0 | | `luck` | -50 .. 60 % | 0 |
-| `lifesteal` | 0 .. 10 % | 0 | | `pickupRange` | 10 .. 150 | 40 |
-| `dashCooldown` | 0.3 .. 5 s | 1.2 | | | | |
+| `maxHp` | 5 .. 500 | 50 | | `attackSpeed` | -60 .. 150 % | 0 |
+| `hpRegen` | 0 .. 10 /s | 0 | | `area` | -60 .. 150 % | 0 |
+| `armor` | -10 .. 30 | 0 | | `knockback` | -80 .. 200 % | 0 |
+| `dodge` | 0 .. 60 % | 0 | | `critChance` | 0 .. 80 % | 5 |
+| `moveSpeed` | 30 .. 300 | 100 | | `critDamage` | 100 .. 400 % | 150 |
+| `damage` | -80 .. 150 % | 0 | | `luck` | -80 .. 150 % | 0 |
+| `lifesteal` | 0 .. 25 % | 0 | | `pickupRange` | 5 .. 250 | 40 |
+| `dashCooldown` | 0.2 .. 8 s | 1.2 | | | | |
+
+`scale` (drawn size) goes from 0.5 to 2, `radius` (hitbox) from 3 to 22.
 
 Numbers outside the range are moved back inside it, and the Creator says so in a note.
 
@@ -107,13 +113,14 @@ body is stacked into a raised 3D shell and the legs are jointed lines that walk.
 ```lua
 art = {
     palette = { o = "#1c140ab0", a = "#4a3a1e", b = "#94784a", g = "#6a8a3a" },
-    -- top-down, FACING RIGHT, one letter per pixel ("." = empty). Up to 64 x 48 pixels.
+    -- top-down, FACING RIGHT, one letter per pixel ("." = empty). Up to 96 x 64 pixels.
     body = {
         ".oooooooooooooo.",
         "oaabbbbbbggggbbo",
         ".oooooooooooooo.",
     },
-    -- frames = { {rows}, {rows} }  instead of body for up to 4 animation frames (fps = 8)
+    -- frames = { {rows}, {rows} }  instead of body for up to 8 animation frames (fps = 8):
+    --   flapping wings, a pulsing glow, a wagging tail
     -- legs for ONE side (mirrored): { hipU, hipV, kneeU, kneeV, footU, footV } with
     -- u = pixels forward from the middle of the drawing, v = pixels to the side (negative)
     legs = { { 4, -1, 8, -6, 12, -9 }, { 0, -1, 0, -7, -2, -11 }, { -4, -1, -8, -6, -12, -9 } },
@@ -126,13 +133,93 @@ art = {
 ```
 
 Colours are `#rrggbb`, or `#rrggbbaa` for see-through (the built-in outlines use `b0`). The
-hitbox is worked out from the drawing (and `scale` / `radius` still work). Up to 8 legs a side,
+hitbox is worked out from the drawing (and `scale` / `radius` still work). Up to 10 legs a side,
 each with 2 to 4 joints.
+
+**Extra limbs** (claws, pincers, tails, stingers, fangs, feelers, horns) are jointed and drawn
+in 3D like the lobster's claws. They are always there, and animations can swing them:
+
+```lua
+art = {
+    ...,
+    limbs = {
+        -- attach point (u forward, v sideways, z height), then segments { length, yaw, pitch }
+        -- (radians, each relative to the one before). No `side` = a mirrored pair.
+        { u = 6, v = 3, segs = { { 4, 0.8, 0.2 }, { 4, -0.6, 0 } }, width = 2, color = "c", tip = "pincer" },
+        -- side = 1 or -1: only on one side. tip: pincer, crusher, blade, sting, fang, club
+        { u = -8, v = 0, side = 1, segs = { { 5, 3.1, 0.6 }, { 5, 0, 0.8 }, { 4, 0, 0.8 } }, tip = "sting" },
+    },
+},
+```
+
+`color` is a palette letter or `#rrggbb`; `width` 1 .. 4; up to 12 limbs.
+
+**A segmented body** (centipede, millipede, worm): give `art.chain` and the bug becomes a head
+followed by segments that trail behind it, each with a pair of legs:
+
+```lua
+art = {
+    palette = { ... },
+    chain = {
+        head = { "rows" }, segment = { "rows" }, segment2 = { "rows" },   -- segment2: every other one
+        segments = 9,          -- 2 .. 40
+        spacing = 3,           -- pixels between segments
+        wave = 0.12,           -- how far behind each pair of legs steps
+        leg = { 0, -2, -0.4, -4, -1, -5.5 },   -- one leg (hip, knee, foot), or false for none
+    },
+    legColor = "#6a3a48", height = 3, lift = 1,
+},
+```
+
+### Animations
+
+`anims` gives the bug its own body animations. `attack`, `secondary` and `dash` play by
+themselves when that move is used; any other name plays with `me.anim("name")`. A clip is a list
+of keys over its time (`t` from 0 to 1); channels a key leaves out are 0 there.
+
+```lua
+anims = {
+    attack = { time = 0.3, keys = { { 0, rear = 2, lunge = -2 }, { 0.3, lunge = 4, stretch = 0.2 }, { 1 } } },
+    spin = { time = 0.5, keys = { { 0 }, { 0.5, spin = 3.14 }, { 1, spin = 6.28 } } },
+    dash = "jumping_spider.dash",    -- or a built-in bug's animation by name
+},
+```
+
+Channels: `lunge` (px forward), `side`, `rear` (up), `twist`, `spin` (radians), `stretch`
+(0.2 = 20% longer), `reach` (front feet forward), `spread` (wider stance), `shake`. A clip can
+carry `limbs` (as above) with a `strike` pose and `ch = "<channel>"` naming the channel that
+blends rest to strike, `mirror = true` (left, right, left...) and `hold = "charge"`, `"block"`,
+`"mode"` or `"hold"` to keep the pose while that goes on.
+
+### Own sounds
+
+```lua
+sounds = {
+    squirt = { wave = "noise", freq = 900, to = 300, duration = 0.14, volume = 0.45 },
+    chirp = { wave = "triangle", notes = { 520, 660, 880 }, duration = 0.25 },   -- an arpeggio
+},
+-- then in code: me.sound("squirt")
+```
+
+`wave`: `sine`, `square`, `saw`, `triangle` or `noise`. Also `noise` (0..1 mixed in), `decay`
+(how fast it fades, 0.2..8), `attack` (fade-in seconds), `vibrato = { rate, depth }`. Up to 16.
+
 
 ### Moves written in code
 
-Any move can be `type = "scripted"` with a function. The function gets `me`, a toolkit for
-acting on the ants around the bug:
+Any move can be written as code: give it functions instead of a `type` (or `type = "scripted"`).
+The functions get `me`, a toolkit for acting on the ants around the bug. What the move has
+decides how it works:
+
+| A move with | Works like |
+|---|---|
+| `fire = function(me)` | Attack / special: used when pressed (or on its cooldown with auto-attack). |
+| `hold = function(me, dt, charge)`, `release = function(me, charge)`, `charge = seconds` | Attack / special: **hold to charge**, let go to use. `charge` is 0 .. 1. Auto-attack charges to `autoCharge` (0.5). |
+| `start = function(me)`, `tick = function(me, dt)` | Dash: pressed, uses a stamina charge (`charges`); tick runs while the bug moves. |
+| `hold = function(me, dt, held)` | Dash: runs every frame, `held` = Shift down. Blocks (`me.block`), sprints, flights, aim modes. |
+| `mode = true`, `enter(me)`, `tick(me, dt)`, `exit(me, dry)`, `speed`, `stamina` | Dash: a **stamina mode** like the tiger beetle's run: on while Shift is held, it burns the bar. |
+
+For example:
 
 ```lua
 attack = {
@@ -156,29 +243,122 @@ dash = {
 },
 ```
 
-| In `me` | What it does |
+**Reading the bug**
+
+| In `me` | What it is |
 |---|---|
 | `x`, `y`, `aimX`, `aimY`, `angle` | Where the bug is and where it aims (a unit vector, and in radians). |
 | `moveX`, `moveY` | Dash only: the direction the bug is moving. |
-| `hp`, `maxHp`, `time`, `params` | Health, seconds into the run, and this move's own table (your extra fields too). |
-| `state` | A table kept for the whole run: counters, combos, anything. |
-| `hitArc{ radius, arc, damage, ... }` | Hits ants in a cone in front (`arc` in radians, 0.1 .. 6.28). Returns how many it hit. |
-| `hitCircle{ radius, damage, ahead, x, y, ... }` | Hits ants in a circle around the bug, `ahead` pixels along the aim, or at `x, y`. |
-| `hitLine{ length, width, damage, ... }` | Hits every ant in a straight line along the aim. |
-| `shoot{ speed, range, damage, size, pierce, burst = { radius, damage }, ... }` | Fires a projectile; `burst` explodes where it stops. 12 per call. |
-| `lunge(distance, turn)` | Dashes the bug along the aim (0 .. 200 pixels). |
-| `after(seconds, function(me) ... end)` | Runs a function later (combos, delayed blasts). 16 waiting at most. |
-| `heal(n)` | Heals up to 50 HP. |
-| `ring{ radius, color, x, y }`, `shake(amount)`, `sound(name, pitch)` | Effects. Sounds: `hit`, `swing`, `special`, `zap`, `boom`, `dash`, `chime`, `drop`. |
-| `count(radius)`, `nearest(radius)` | How many ants are near; the x, y of the nearest one (or nil). |
+| `hp`, `maxHp`, `time`, `wave`, `level` | Health, seconds into the run, the wave, the skill level. |
+| `moving`, `flying`, `blocking` | true / false. |
+| `params` | This move's own table (your extra fields too). |
+| `state` | A table kept for the whole run: counters, combos, anything. Shared by all the bug's code. |
 
-Every hit takes the same extras: `knockback` (0 .. 600), `poison = { dps, seconds }`,
-`slow = { speedMultiplier, seconds }`, `stun = seconds`, `color = { r, g, b }` (0..1) and
-`turn` (radians to turn away from the aim: fans of shots). Damage goes through the bug's
-stats and items like any other move: crits, damage %, area % and procs all apply.
+**Hitting ants** (each returns how many it hit; damage goes through the bug's stats and items:
+crits, damage %, area %, lifesteal and item procs all apply)
 
-Move code runs in the sandbox too, with a budget for every call. If a move breaks or gets stuck
-it switches off for the rest of the run (the Creator shows the error), and saving runs a test
+| Call | What it does |
+|---|---|
+| `hitArc{ radius, arc, damage }` | A cone in front (`arc` in radians, 0.1 .. 6.28). |
+| `hitCircle{ radius, damage, ahead, x, y }` | A circle around the bug, `ahead` pixels along the aim, or at `x, y`. |
+| `hitLine{ length, width, damage }` | Every ant in a straight line along the aim. |
+| `hitNearest{ radius, damage }` | The nearest ant only. |
+| `chain{ damage, jumps, range, radius }` | Lightning that jumps from ant to ant. |
+| `shoot{ speed, range, damage, size, pierce, arc, burst = { radius, damage }, pool = { ... } }` | A projectile. `arc = true` lobs it. `burst` explodes where it stops, `pool` leaves a puddle there. 30 per call. |
+| `push{ radius, strength }`, `pull{ radius, strength }` | Shove ants away / drag them in. |
+
+Every hit and shot takes the same extras: `knockback` (0 .. 900), `poison = { dps, seconds }`,
+`slow = { speedMultiplier, seconds }`, `corrode = { damageTakenMultiplier, seconds }`,
+`stun = seconds`, `color = { r, g, b }` (0..1), `turn` (radians away from the aim: fans of shots),
+`fx = false` (no flash).
+
+**Shaping the ground, grabbing, helpers**
+
+| Call | What it does |
+|---|---|
+| `pool{ radius, life, dps, slow, pull, ahead, x, y, color }` | A puddle that hurts / slows / sucks in ants inside it. 12 at once. |
+| `wall{ length, ahead, life, strength, hold, damage }` | A sticky wall across the aim that catches ants (like the orb weaver's web). |
+| `grab(radius)` | Lifts the nearest ant (not queens or bosses) over your head. true if it got one. |
+| `throw{ distance, damage, landDamage, landRadius, height }` | Hurls the held ant along the aim. `holding()` says if you hold one. |
+| `summon{ count, life, damage, speed, bites, size, poison, color }` | Little helpers that run down ants and bite. 60 at once. |
+
+**The bug itself**
+
+| Call | What it does |
+|---|---|
+| `lunge(distance, turn)` | Dashes the bug along the aim (0 .. 400 pixels). |
+| `jump(height)` | During a dash: hop over things (high hops can't be hit). |
+| `speed(multiplier, seconds)` | Faster or slower for a while (0.1 .. 4). |
+| `shield(seconds)` | Nothing can hurt the bug for a moment (5 s at most). |
+| `block(on, shove)` | While on, every hit is blocked and the attacker is shoved back. |
+| `cloak(seconds)` | Camouflage: ants lose track of the bug. |
+| `fly(on, height)` | Up off the ground: walking ants can't reach it. |
+| `heal(n)` | Heals (500 at most per call). |
+| `stamina()`, `useStamina(amount)` | The stamina bar (0..1); spend some of it (false if there's not enough). |
+
+**Timing, looks and senses**
+
+| Call | What it does |
+|---|---|
+| `after(seconds, function(me) ... end)` | Runs a function later (combos, delayed blasts). 32 waiting at most. |
+| `anim(name)` | Plays one of the bug's own animations. |
+| `sound(name, pitch, volume)` | Your own sounds, or `hit`, `swing`, `special`, `zap`, `boom`, `dash`, `chime`, `drop`, `kill`, `pickup`, `equip`, `bell`, `hurt`. |
+| `ring{ radius, color, x, y, life }`, `particles{ count, color, speed, glow }`, `shake(amount)`, `say(text, color)` | Effects and floating text. |
+| `count(radius)`, `nearest(radius)`, `enemies(radius)` | How many ants are near; x, y of the nearest; a list of up to 40 `{ x, y, hp, maxHp, boss }`. |
+
+### Code on game events
+
+`hooks` runs code when things happen, for the bug's own rules ("every 10th kill...", a
+counter-attack when hurt, a buff every wave):
+
+```lua
+hooks = {
+    onStart = function(me) end,                -- the run begins
+    onTick = function(me, dt) end,             -- every frame
+    onHit = function(me, ev) end,              -- the bug hit an ant (ev.x, ev.y, ev.damage, ev.crit, ev.boss)
+    onKill = function(me, ev) end,             -- an ant died to the bug
+    onHurt = function(me, ev) end,             -- the bug was hit (ev.damage)
+    onDodge = function(me, ev) end, onBlock = function(me, ev) end,
+    onAttack = function(me, ev) end, onSpecial = function(me, ev) end,
+    onDash = function(me, ev) end, onDashEnd = function(me, ev) end,
+    onWaveStart = function(me, ev) end,        -- ev.wave
+    onEat = function(me, ev) end,              -- the bug ate an item
+},
+```
+
+Hits made by event code can set off more events, a few deep, so nothing loops forever.
+
+### An own skill tree
+
+`skillTree` can be a bug id to borrow, or a whole tree of its own (points come from skipping
+level-up cards, like every bug):
+
+```lua
+skillTree = {
+    branches = {
+        { name = "Glue", color = { 0.95, 0.9, 0.6 }, nodes = {
+            { id = "thick", tier = 1, ranks = 3, name = "Thick Glue", desc = "+15% damage per rank.",
+              stats = { damage = 15 } },
+            { id = "quick", tier = 2, name = "Quick Squirt", desc = "Charges 30% faster.",
+              attack = { charge = { mul = -0.3 } } },          -- change a move's number
+            { id = "sticky", tier = 3, name = "Sticky End", desc = "Kills leave glue.",
+              procs = { { trigger = "onKill", chance = 0.4, effect = function(me, ev, rank)
+                  me.pool({ x = ev.x, y = ev.y, radius = 18, dps = 4 })
+              end } } },
+        } },
+    },
+},
+```
+
+Nodes on the same tier are a fork (taking one locks the others). Up to 4 branches and 40 nodes.
+Node fields: `id`, `name`, `desc`, `tier` (1..6), `ranks`, `cost`, `col` (-1, 0, 1),
+`requires` / `excludes` (other node ids), `stats` / `statsMult`, `attack` / `secondary` / `dash`
+(move number changes: a number is added, or `{ add, mul, set }`), `echo`, `fan`, `empower` (see
+`content/skilltrees/_template.lua`), and `procs` with code (`trigger`, `chance`, `cooldown`,
+`move`, `effect(me, ev, rank)`, `condition(me, ev, rank)`).
+
+All this code runs in the sandbox too, with a budget for every call. If a function breaks or gets
+stuck it switches off for the rest of the run (the Creator shows the error), and saving runs a test
 fight first, so most mistakes are caught before you play.
 
 ### Safety limits
@@ -187,12 +367,13 @@ Scripts can't harm the game or your computer:
 
 * They run in a **sandbox**: `math`, `string`, `table`, `pairs`, `ipairs`, `print`... work; files,
   `love`, `require`, `load`, `os`, `io`, `debug` and metatables don't exist.
-* A script gets a budget of about two million steps and 64 MB to build its table, so a loop that
+* A script gets a budget of about a million steps and 32 MB to build its table, so a loop that
   never ends stops with an error instead of freezing the game. Compiled bytecode is refused.
-* Only **data** comes out, plus the functions of `scripted` moves, which only ever run inside the
-  sandbox with a budget per call and only see the `me` toolkit. Every field is checked,
-  and numbers are kept in sane ranges (move damage at most 200, cooldowns at least 0.05 s,
-  projectile and hit counts at most 24).
+  Scripts can be 256 KB long, and up to 200 custom bugs can be saved.
+* Only **data** comes out, plus the functions the bug's code is made of (moves, hooks, skill
+  procs), which only ever run inside the sandbox with a budget per call and only see the `me`
+  toolkit. Every field is checked, and numbers are kept in ranges that can't break the game
+  (move damage at most 500, cooldowns at least 0.03 s, counts at most 40 per move).
 * Custom bugs can't replace a built-in bug: their ids always start with `custom_`.
 
 ### Helpers inside a script
@@ -364,8 +545,12 @@ each one does.
 
 * Loader and sandbox: [`src/game/custombugs.lua`](../src/game/custombugs.lua) (`CustomBugs.run`,
   `.build`, `.save`, `.loadAll`, `.toSource`, `.trial`).
-* Moves in code: [`src/game/scriptmoves.lua`](../src/game/scriptmoves.lua) (the `me` toolkit),
-  with the `scripted` types in `content/attacks/scripted.lua` and `content/dashes/scripted.lua`.
+* Code in scripts: [`src/game/scriptmoves.lua`](../src/game/scriptmoves.lua) (the `me` toolkit;
+  hooks through `SM.event` from `Inventory:trigger`, `SM.tick` from `Player:update`, helpers drawn
+  by `SM.draw`), with the move types `content/attacks/scripted.lua`, `scripted_charge.lua` and
+  `content/dashes/scripted.lua`, `scripted_hold.lua`, `scripted_mode.lua`. Own sounds:
+  `Audio.addSynth`. Own skill trees: `def.ownTree`, returned by `Skills.treeFor`. Tweak mode:
+  `CustomBugs.tweakSource` / `.untweaked`.
   Own art: `Sprites.buildSet` makes a small image of its own per bug (no atlas rebuild).
 * Screens: [`src/states/creator.lua`](../src/states/creator.lua) (hub),
   [`src/states/bugmixer.lua`](../src/states/bugmixer.lua) (mix parts),

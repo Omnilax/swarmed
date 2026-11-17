@@ -19,8 +19,8 @@ local NONE = "__none"
 
 -- the stats the mixer has sliders for: { id, min, max, step }
 local SLIDERS = {
-    { "maxHp", 10, 250, 5 }, { "moveSpeed", 40, 240, 5 }, { "armor", -5, 15, 1 },
-    { "damage", -50, 60, 5 }, { "attackSpeed", -50, 60, 5 }, { "critChance", 0, 40, 1 }, { "hpRegen", 0, 5, 0.5 },
+    { "maxHp", 5, 500, 5 }, { "moveSpeed", 30, 300, 5 }, { "armor", -10, 30, 1 },
+    { "damage", -80, 150, 5 }, { "attackSpeed", -60, 150, 5 }, { "critChance", 0, 80, 1 }, { "hpRegen", 0, 10, 0.5 },
 }
 
 local function builtins()
@@ -61,6 +61,13 @@ function Mixer.new(opts)
         self.replaces = def.id
         if (def.description or ""):find("^The body of the ") then self.autoDesc = def.description end
         self.fromCode = entry.source and not entry.source:find("^%-%- Made with the Bug Creator") or false
+        -- own art, code, sounds...: only name, size, colour and stats can change here (tweak mode)
+        if CustomBugs.coded(def) and entry.source then
+            -- compared with the script without earlier tweaks, so those are kept
+            local inner = CustomBugs.untweaked(entry.source)
+            self.tweak = { source = inner, def = (inner ~= entry.source and CustomBugs.compile(inner)) or def }
+            self.fromCode = false
+        end
     else
         local base = Content.characters:get("rhino_beetle") or builtins()[1]
         m.name = "My Bug"
@@ -137,7 +144,26 @@ function Mixer:raw()
     return raw
 end
 
-function Mixer:source() return CustomBugs.toSource(self:raw()) end
+function Mixer:source()
+    if not self.tweak then return CustomBugs.toSource(self:raw()) end
+    -- tweak mode: the script stays, a few lines after it change what was changed here
+    local m, d = self.m, self.tweak.def
+    local t = { stats = {} }
+    if m.name ~= d.name then t.name = m.name end
+    if m.size ~= math.floor(d.scale * 20 + 0.5) * 5 then t.scale = m.size / 100 end
+    if m.hue ~= (d.colors and d.colors.hue or 0) then
+        local c = {}
+        for k, v in pairs(d.colors or {}) do c[k] = v end
+        c.hue = m.hue ~= 0 and m.hue or nil
+        t.colors = next(c) and c or false
+    end
+    for k, v in pairs(m.stats) do
+        if v ~= statOf(d, k) then t.stats[k] = v end
+    end
+    if not (t.name or t.scale or t.colors ~= nil or next(t.stats)) then return self.tweak.source end
+    -- the name is always written once it differs, so the file keeps its name after a rename
+    return CustomBugs.tweakSource(self.tweak.source, t)
+end
 
 ----------------------------------------------------------------------------------------------
 -- Menu
@@ -166,12 +192,15 @@ function Mixer:build(keep)
             return self.naming and (m.name .. ((self.t % 1 < 0.6) and "_" or " ")) or m.name
         end, desc = "Type a name (Enter when done).",
         onActivate = function() self:startNaming() end }
-    items[#items + 1] = { type = "choice", label = "Body", options = bugOpts, get = get("look"), set = set("look"),
-        desc = "Whose body, model and animations it has." }
-    items[#items + 1] = { type = "slider", label = "Size", min = 70, max = 160, step = 5, get = get("size"), set = set("size"),
+    if not self.tweak then
+        items[#items + 1] = { type = "choice", label = "Body", options = bugOpts, get = get("look"), set = set("look"),
+            desc = "Whose body, model and animations it has." }
+    end
+    items[#items + 1] = { type = "slider", label = "Size", min = 50, max = 200, step = 5, get = get("size"), set = set("size"),
         format = function(v) return v .. "%" end, desc = "Drawn size. Bigger bugs have a bigger hitbox and get shoved less." }
     items[#items + 1] = { type = "slider", label = "Colour", min = 0, max = 350, step = 10, get = get("hue"), set = set("hue"),
         format = function(v) return v == 0 and "Natural" or (v .. "°") end, desc = "Turns every colour round the colour wheel." }
+    if not self.tweak then
     items[#items + 1] = { type = "header", label = "Moves" }
     items[#items + 1] = { type = "choice", label = "Attack", options = withOwn(bugOpts, "attack"), get = get("attack"),
         set = set("attack"), desc = "The main attack (left click) of this bug." }
@@ -179,15 +208,16 @@ function Mixer:build(keep)
         get = get("secondary"), set = set("secondary"), desc = "The special (right click) of this bug." }
     items[#items + 1] = { type = "choice", label = "Dash", options = withOwn(dashOpts, "dash", "Plain dash"), get = get("dash"),
         set = set("dash"), desc = "The Shift move of this bug." }
+    end
     items[#items + 1] = { type = "header", label = "Stats" }
-    items[#items + 1] = { type = "choice", label = "Copy stats of", options = bugOpts,
+    items[#items + 1] = not self.tweak and { type = "choice", label = "Copy stats of", options = bugOpts,
         get = function() return self.statsFrom or m.look end,
         set = function(v)
             self.statsFrom = v
             local d = Content.characters:get(v)
             for _, s in ipairs(SLIDERS) do m.stats[s[1]] = statOf(d, s[1]) end
             self:refresh()
-        end, desc = "Sets every slider below to that bug's stats." }
+        end, desc = "Sets every slider below to that bug's stats." } or nil
     for _, s in ipairs(SLIDERS) do
         local st = Stats.byId[s[1]]
         items[#items + 1] = { type = "slider", label = st and st.label or s[1], min = s[2], max = s[3], step = s[4],
@@ -196,6 +226,7 @@ function Mixer:build(keep)
             format = function(v) return (st and st.percent) and (v .. "%") or tostring(v) end,
             desc = st and st.info and st.info(m.stats[s[1]] or st.default) or nil }
     end
+    if not self.tweak then
     items[#items + 1] = { type = "header", label = "Extras" }
     local ruleOpts, treeOpts = { { value = NONE, label = "None" } }, { { value = NONE, label = "None" } }
     local Rules = require("src.config.bugrules")
@@ -208,6 +239,7 @@ function Mixer:build(keep)
         desc = "Borrow a bug's special item rule." }
     items[#items + 1] = { type = "choice", label = "Skill tree", options = treeOpts, get = get("skillTree"), set = set("skillTree"),
         desc = "Borrow a bug's skill tree. Its upgrades work best with that bug's own moves." }
+    end
     items[#items + 1] = { type = "header", label = "" }
     items[#items + 1] = { type = "button", label = "Save", onActivate = function() self:save(false) end,
         desc = "Save it. It joins the bug select screen (Show: Custom Bugs)." }
@@ -261,7 +293,15 @@ end
 
 function Mixer:rebuildPreview()
     self.pending = false
-    local def, errs, warns = CustomBugs.build(self:raw())
+    local def, errs, warns
+    if self.tweak then
+        local info
+        def, info = CustomBugs.compile(self:source(), "tweak")
+        errs, warns = info.errors, info.warnings
+        if def then CustomBugs.prepareArt(def) end
+    else
+        def, errs, warns = CustomBugs.build(self:raw())
+    end
     self.errors, self.warnings = errs, warns
     if self.preview then self.preview:release() self.preview = nil end
     if Content.characters:get(PREVIEW_ID) then Content.characters:unregister(PREVIEW_ID) end
@@ -349,7 +389,7 @@ function Mixer:draw()
         lg.setColor(c.panelEdge)
         lg.rectangle("line", bx, by, bw, bh)
     end
-    Theme.title(self.replaces and "Mix Parts" or "New Bug")
+    Theme.title(self.tweak and "Tweak" or self.replaces and "Mix Parts" or "New Bug")
     self.menu:draw()
 
     local d = self.def
@@ -372,7 +412,9 @@ function Mixer:draw()
     -- help for the focused row, then any problem
     local it = self.menu:focused()
     local desc = it and it.desc
-    if self.fromCode then
+    if self.tweak then
+        desc = (desc and desc .. "\n\n" or "") .. "This bug has its own art or code, so its script is kept as it is: what you change here is added as a few lines after it."
+    elseif self.fromCode then
         desc = (desc and desc .. "\n\n" or "") .. "This bug was written as code: saving here rewrites its script from these settings."
     end
     if desc then

@@ -59,6 +59,11 @@ function Creator:build(focusKey)
                 title = "Example Bug" }))
         end,
         desc = "A brand-new bug made only from a script: its own pixel art and legs, and three moves written in code. Open it, read it, press Save to play it, or use it as a starting point." }
+    items[#items + 1] = { type = "button", label = "Example: Velvet Worm", onActivate = function()
+            State.push(Editor().new({ text = love.filesystem.read("content/characters/_example_velvet_worm.lua"),
+                title = "Example Bug" }))
+        end,
+        desc = "Everything a script can do: a segmented body with feelers, a hold-to-charge glue squirt, a sticky wall, a stamina mode, code that runs when it kills or gets hurt, its own sounds, animations and skill tree." }
 
     local bugs = CustomBugs.all()
     items[#items + 1] = { type = "header", label = ("Your bugs  (%d)"):format(#bugs) }
@@ -75,10 +80,10 @@ function Creator:build(focusKey)
                 items[#items + 1] = { type = "button", label = "     " .. label, entry = e, onActivate = fn, desc = desc }
             end
             act("Play", function() playBug(e.id) end)
-            -- (a bug with its own art or move code is edited as code: the mixer would drop them)
-            if not (e.def.art or e.def.scripted) then
-                act("Mix Parts", function() State.push(Mixer().new({ from = e })) end)
-            end
+            -- a bug with its own art or code opens the mixer in tweak mode: name, size, colour
+            -- and stats change, the rest of its script stays as it is
+            act(CustomBugs.coded(e.def) and "Tweak" or "Mix Parts",
+                function() State.push(Mixer().new({ from = e })) end)
             act("Edit Code", function() State.push(Editor().new({ text = e.source, replaces = e.id, title = "Bug Script" })) end)
             act("Copy Code", function()
                 local ok = pcall(love.system.setClipboardText, e.source or "")
@@ -252,6 +257,16 @@ function Creator:draw()
             local st = Stats.byId[k]
             rows[#rows + 1] = { st.label, tostring(def.stats[k] or st.default) }
         end
+        -- what's in the script besides the basics
+        local extras = {}
+        if def.hooks then extras[#extras + 1] = "event code" end
+        if def.ownTree then extras[#extras + 1] = "own skill tree" end
+        if def.sounds then extras[#extras + 1] = "own sounds" end
+        if def.mix.anims then extras[#extras + 1] = "own animations" end
+        if #extras > 0 and not small then rows[#rows + 1] = { "Extras", table.concat(extras, ", ") } end
+        -- how it has done (Records keeps every bug's runs, custom ones too)
+        local rec = require("src.game.records").get().characters[def.id]
+        rows[#rows + 1] = { "Runs", rec and ("%d played, %d won, best wave %d"):format(rec.runs or 0, rec.wins or 0, rec.bestWave or 0) or "not played yet" }
         local lh = lg.getFont():getHeight() + u(4)
         for i, r in ipairs(rows) do
             lg.setColor(c.accent)

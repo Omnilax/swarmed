@@ -109,6 +109,7 @@ function Skills.treeFor(charId)
     -- a custom bug can borrow a built-in bug's tree (skillTree = "mantis")
     local c = Content.characters:get(charId)
     if c and c.custom then
+        if c.ownTree then return c.ownTree end      -- its own, written in its script
         if not c.skillTree then return nil end
         charId = c.skillTree
     end
@@ -402,7 +403,9 @@ function Skills:trigger(name, ctx)
         if self.flashT > 0 then self.flashT = self.flashT - ctx.dt end
         if self.dashing and p.dashT <= 0 and not p.grapple and not p.holdMode then
             self.dashing = false
-            self:trigger("onDashEnd", { world = ctx.world, player = p, procDepth = 0 })
+            local ectx = { world = ctx.world, player = p, procDepth = 0 }
+            self:trigger("onDashEnd", ectx)
+            if p.def.hooks then require("src.game.scriptmoves").event(p, "onDashEnd", ectx) end
         end
     elseif name == "onDash" then
         self.dashing = true

@@ -57,8 +57,8 @@ return function(wait, shot)
     local def, inf = ok([[return { name = "Big", stats = { maxHp = 99999, moveSpeed = -5 },
         attack = { type = "arc", damage = 99999, cooldown = 0, radius = 30, arc = 2, count = 5000,
             onHit = function() while true do end end } }]])
-    assert(def.stats.maxHp == 250 and def.stats.moveSpeed == 40, "stats should be clamped")
-    assert(def.attack.damage == 200 and def.attack.cooldown >= 0.05 and def.attack.count == 24, "move params should be clamped")
+    assert(def.stats.maxHp == 500 and def.stats.moveSpeed == 30, "stats should be clamped")
+    assert(def.attack.damage == 500 and def.attack.cooldown >= 0.03 and def.attack.count == 40, "move params should be clamped")
     assert(def.attack.onHit == nil, "functions must not come out of a script")
     assert(#inf.warnings > 0, "clamping should warn")
     assert(def.id == "custom_big" and def.custom, "id should be custom_<name>")
@@ -166,8 +166,88 @@ return function(wait, shot)
         end
         assert(not SM.errors[stick.id], "a Stick Insect move failed: " .. tostring(SM.errors[stick.id]))
         assert(shotsSeen >= 5, "the thorn fan fired no thorns (" .. shotsSeen .. ")")
-        assert((p.scriptState.swings or 0) >= 3, "the scripted attack did not run")
-        print(("[selftest] creator: stick insect fought (swings %d, thorns in flight %d, ants left %d)"):format(p.scriptState.swings, shotsSeen, sw.enemyCount))
+        assert((p._me.state.swings or 0) >= 3, "the scripted attack did not run")
+        print(("[selftest] creator: stick insect fought (swings %d, thorns in flight %d, ants left %d)"):format(p._me.state.swings, shotsSeen, sw.enemyCount))
+    end
+    -- 4c. everything else a script can do (the Velvet Worm example): chain body + limbs, a
+    -- charge attack, a stamina mode, hooks, own sounds / animations / skill tree
+    local wormSrc = assert(love.filesystem.read("content/characters/_example_velvet_worm.lua"))
+    local worm, winfo = CustomBugs.save(wormSrc)
+    assert(worm, "the Velvet Worm example should save: " .. tostring(winfo.errors[1]))
+    assert(#winfo.warnings == 0, "the worm should load without notes: " .. tostring(winfo.warnings[1]))
+    assert(worm.model.kind == "chain" and Sprites.byId[worm.model.head] and worm.model.restLimbs, "chain body / limbs not built")
+    assert(worm.attack.type == "scripted_charge" and worm.dash.type == "scripted_mode", "move kinds not picked from the code")
+    assert(worm.hooks.onKill and worm.anims.rear and worm.sounds.squirt, "hooks / anims / sounds lost")
+    local Skills = require("src.game.skills")
+    assert(Skills.treeFor(worm.id) == worm.ownTree and worm.ownTree.nodes[worm.id .. "_sticky"], "own skill tree not used")
+    do
+        local ww = World.new({ mode = "sandbox", character = worm.id })
+        ww.flags.god = true
+        ww.pilot = { pressed = {}, down = {} }
+        local p = ww.player
+        p.skills.points = 99
+        for _ = 1, 6 do for id in pairs(worm.ownTree.nodes) do p.skills:buy(id) end end
+        assert(p.skills:rank(worm.id .. "_sticky") == 1 and p.skills:rank(worm.id .. "_brood") == 1, "own tree nodes could not be bought")
+        local sawWall, sawPool, sawHelpers, sawCharge, sawMode = false, false, false, false, false
+        for f = 1, 900 do
+            if f % 45 == 1 then ww:spawnRing("worker_ant", 10, p.x, p.y, 50) end
+            local ph = f % 120
+            ww.pilot.pressed = { secondary = ph == 70, dash = ph == 90 }
+            ww.pilot.down = { attack = ph < 60, dash = ph >= 90 and ph < 115 }
+            ww:update(1 / 60)
+            sawCharge = sawCharge or (p.scriptCharge and p.scriptCharge.attack and p.scriptCharge.attack > 0.2)
+            sawMode = sawMode or p.holdMode ~= nil
+            sawWall = sawWall or #ww.hazards.walls > 0
+            for _, z in ipairs(ww.hazards.zones) do if z.scriptPool then sawPool = true end end
+            sawHelpers = sawHelpers or (p.scriptHelpers and #p.scriptHelpers > 0)
+            love.graphics.origin()
+            if f % 90 == 0 then ww:draw() end
+        end
+        assert(not SM.errors[worm.id], "a Velvet Worm script failed: " .. tostring(SM.errors[worm.id]))
+        assert(sawCharge and sawMode and sawWall and sawPool, ("worm moves did not all run (charge %s mode %s wall %s pool %s)")
+            :format(tostring(sawCharge), tostring(sawMode), tostring(sawWall), tostring(sawPool)))
+        assert((p._me.state.kills or 0) >= 12 and sawHelpers, "onKill hook / helpers did not run (kills " .. tostring(p._me.state.kills) .. ")")
+        print(("[selftest] creator: velvet worm fought (kills %d, helpers seen, mode, wall, pools)"):format(p._me.state.kills))
+    end
+    -- every toolkit call, from a hook, in one test fight
+    local kit = assert(CustomBugs.compile([[return { name = "Kitchen Sink", look = "crab",
+        attack = { name = "Sink", cooldown = 0.3, fire = function(me)
+            local k = me.state.k or 0
+            me.state.k = k + 1
+            local m = k % 12
+            if m == 0 then me.hitArc({ damage = 4 }) elseif m == 1 then me.hitCircle({ damage = 4, ahead = 10 })
+            elseif m == 2 then me.hitLine({ damage = 4 }) elseif m == 3 then me.hitNearest({ damage = 4 })
+            elseif m == 4 then me.chain({ damage = 3, jumps = 3 }) elseif m == 5 then me.push({}) me.pull({})
+            elseif m == 6 then if me.grab(60) then me.after(0.2, function(m2) m2.throw({ distance = 90 }) end) end
+            elseif m == 7 then me.speed(1.5, 1) me.shield(0.3) me.cloak(0.5)
+            elseif m == 8 then me.particles({ count = 6 }) me.say("hi") me.ring({}) me.sound("chime")
+            elseif m == 9 then local list = me.enemies(100) me.state.seen = #list me.nearest(100) me.count(50)
+            elseif m == 10 then me.shoot({ arc = true, burst = { radius = 20, damage = 5 } }) me.fly(true) me.fly(false)
+            else me.useStamina(0.1) me.stamina() me.heal(1) me.lunge(10) me.jump(4) end
+        end },
+        dash = { name = "Guard", hold = function(me, dt, held) me.block(held) end },
+        hooks = { onTick = function(me, dt) me.state.t = (me.state.t or 0) + dt end,
+            onStart = function(me) me.state.started = true end,
+            onHit = function(me, ev) me.state.hits = (me.state.hits or 0) + 1 me.hitCircle({ damage = 1, x = ev.x, y = ev.y }) end } } ]]))
+    assert(kit.dash.type == "scripted_hold", "a dash with hold should be a hold move")
+    do
+        CustomBugs.register(kit, "")
+        local kw = World.new({ mode = "sandbox", character = kit.id })
+        kw.flags.god = true
+        kw.pilot = { pressed = {}, down = {} }
+        local p = kw.player
+        for f = 1, 480 do
+            if f % 40 == 1 then kw:spawnRing("worker_ant", 8, p.x, p.y, 45) end
+            kw.pilot.down = { attack = true, dash = f % 100 > 70 }
+            kw:update(1 / 60)
+            love.graphics.origin()
+            if f % 120 == 0 then kw:draw() end
+        end
+        assert(not SM.errors[kit.id], "a toolkit call failed: " .. tostring(SM.errors[kit.id]))
+        local st = p._me.state
+        assert(st.started and (st.t or 0) > 5 and (st.k or 0) >= 12 and (st.hits or 0) > 0, "hooks / toolkit did not run")
+        CustomBugs.unregister(kit.id)
+        print(("[selftest] creator: toolkit ok (%d calls, %d hits seen by onHit)"):format(st.k, st.hits))
     end
     -- move code is sandboxed too: a stuck loop in a move stops that move, not the game
     local loopy, linfo = CustomBugs.compile([[return { name = "Loopy", attack = { type = "scripted", cooldown = 0.5,
@@ -255,6 +335,32 @@ return function(wait, shot)
     assert(again.m.look == "lobster" and again.m.attack == "mantis_shrimp" and again.m.dash == "dragonfly" and again.m.hue == 120,
         "reopening a mix lost its choices")
     again:dropPreview()
+    -- tweak mode: a bug with its own art and code keeps its script; name, size, colour, stats change
+    local tw = State.push(Mixer.new({ from = CustomBugs.get("custom_velvet_worm") }))
+    assert(tw.tweak, "a coded bug should open the mixer in tweak mode")
+    for _, it in ipairs(tw.menu.items) do assert(it.label ~= "Body" and it.label ~= "Attack", "tweak mode should hide the parts rows") end
+    tw.m.name, tw.m.stats.maxHp, tw.m.hue = "Velvet Queen", 120, 60
+    tw:refresh(true)
+    for _ = 1, 30 do wait(1 / 60) if tw.def then break end end
+    assert(tw.def and tw.def.name == "Velvet Queen", "tweak preview failed: " .. tostring(tw.errors and tw.errors[1]))
+    shot("creator_tweak")
+    tw:save(false)
+    State.pop()
+    local vq = Content.characters:get("custom_velvet_queen")
+    assert(vq and not Content.characters:get("custom_velvet_worm"), "tweak rename failed")
+    assert(vq.stats.maxHp == 120 and vq.colors.hue == 60 and vq.hooks.onKill and vq.model.kind == "chain", "tweak lost the script's parts")
+    -- tweak again: the earlier changes stay, the script is wrapped only once
+    local tw2 = Mixer.new({ from = CustomBugs.get("custom_velvet_queen") })
+    tw2.m.size = 150
+    local src2 = tw2:source()
+    tw2:dropPreview()
+    local _, wraps = src2:gsub("%[Bug Creator tweak%]", "")
+    assert(wraps == 1 and src2:find("Velvet Queen", 1, true) and src2:find("maxHp = 120", 1, true), "tweaking twice lost changes")
+    local vq2 = assert(CustomBugs.save(src2, "custom_velvet_queen"))
+    assert(vq2.scale == 1.5 and vq2.stats.maxHp == 120, "second tweak not saved")
+    -- back to the worm for the rest of the test
+    assert(CustomBugs.save(CustomBugs.untweaked(CustomBugs.get("custom_velvet_queen").source), "custom_velvet_queen"))
+    assert(Content.characters:get("custom_velvet_worm"), "untweaking failed")
     -- the editor: type, break it, see the error line, fix it, save
     local ed = State.push(Editor.new({ text = CustomBugs.get("custom_mixed_up").source, replaces = "custom_mixed_up" }))
     wait(0.1)
@@ -301,8 +407,8 @@ return function(wait, shot)
     cs:build()
     local seen = 0
     for _, it in ipairs(cs.menu.items) do if it.character and it.character.custom then seen = seen + 1 end end
-    if seen ~= 3 then for _, e in ipairs(CustomBugs.all()) do print("  custom: " .. e.id) end end
-    assert(seen == 3, "bug select should list the custom bugs (saw " .. seen .. ")")
+    if seen ~= 4 then for _, e in ipairs(CustomBugs.all()) do print("  custom: " .. e.id) end end
+    assert(seen == 4, "bug select should list the custom bugs (saw " .. seen .. ")")
     State.pop()
     -- the stick insect in a real run, close up
     local Game = require("src.states.game")
@@ -316,7 +422,20 @@ return function(wait, shot)
     for _ = 1, 14 do wait(1 / 60) end
     shot("creator_stick_insect")
     Input.virtualDown.attack = nil
+    -- the velvet worm too: chain body, feelers, glue puddles and a sticky wall
+    g = State.switch(Game.new({ mode = "run", character = "custom_velvet_worm", seed = 32 }))
+    g.world.flags.god = true
+    g.world.camera.zoom, g.world.camera.targetZoom = 2, 2
+    g.world:spawnRing("worker_ant", 10, g.world.player.x, g.world.player.y, 55)
+    for _ = 1, 30 do wait(1 / 60) end
+    Input.press("secondary")
+    for _ = 1, 10 do wait(1 / 60) end
+    Input.virtualDown.dash = true
+    for _ = 1, 50 do wait(1 / 60) end
+    Input.virtualDown.dash = nil
+    for _ = 1, 6 do wait(1 / 60) end
+    shot("creator_velvet_worm")
     for _, e in ipairs(CustomBugs.all()) do CustomBugs.delete(e.id) end
-    State.pop()
+    State.switch(require("src.states.menu").new())
     print("[selftest] creator OK")
 end
