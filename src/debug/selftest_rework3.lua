@@ -52,10 +52,10 @@ return function(wait, shot)
     assert(pl.x > x0 + 40 and not pl.grapple, "antenna whip did not haul the bug to the ant")
     print("[rework3] whip scorpion OK")
 
-    -- Dragonfly: walks; flying attack is an untouchable dive; ground attack sweeps; carry + bomb
+    -- Dragonfly: can't walk (flight only); flying attack is an untouchable dive; ground attack sweeps; carry + bomb
     use("dragonfly")
     run(0.1)
-    assert((pl.moveMul or 1) >= 0.7, "dragonfly should walk")
+    assert(pl.moveMul == 0, "dragonfly should not walk on the ground")
     local front, side = ant(30), ant(5, 30)
     run(0.02)
     pl.attack.type.fire(pl, world, 1, 0, pl.attack.params)

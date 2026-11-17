@@ -4,19 +4,19 @@ local BASKET = { u = 4.5, v = 1.5, z = 0, pair = true, ch = "grab", width = 1, c
 
 return {
     name = "Dragonfly",
-    description = "A bomber. On the ground it walks and sweeps ants aside with its wings. Hold Shift to fly: fast, and only flying enemies can touch it; attacks up there are untouchable diving lunges. Hold right click to snatch an ant and carry it as long as you like; let go to drop it like a bomb.",
+    description = "A bomber that never walks: flying is its only way to move. Hold Shift to fly: fast, and only flying enemies can touch it. When it runs out of breath it lands, sweeps ants aside with its wings and takes off again as soon as it can; attacks up there are untouchable diving lunges. Hold right click to snatch an ant and carry it as long as you like; let go to drop it like a bomb.",
     lore = "Dragonflies catch up to 95% of the prey they chase, more than any lion or shark.",
     sprite = "dragonfly",
     model = { legs = "dragonfly_legs", body = "dragonfly_body", height = 2, lift = 3 },
     order = 18,
     playstyle = "speedster",          -- src/config/playstyles.lua
-    tip = "Hold {dash} to fly: only flying enemies can reach you up there. Hold {secondary} to snatch an ant, then let go to drop it as a bomb.",
+    tip = "It can't walk: hold {dash} to fly and steer. Only flying enemies can reach you up there. Hold {secondary} to snatch an ant, then let go to drop it as a bomb.",
     radius = 6,
     scale = 0.95,
     stats = { maxHp = 30, moveSpeed = 200, dodge = 12, pickupRange = 70 },
     attack = { type = "dragonstrike", damage = 13, cooldown = 0.45, gust = 46, arc = 3.4, gustMult = 0.9, reach = 70, lungeSpeed = 1.7, knockback = 90, color = { 0.5, 0.85, 1 } },
     secondary = { type = "dragongrab", cooldown = 1, reach = 34, bomb = 26, radius = 34, groundMult = 0.6, squeeze = 0, color = { 0.5, 0.85, 1 } },
-    dash = { type = "wingflight", stamina = 4, regen = 1, speed = 1, groundSpeed = 0.8, height = 12, downdraft = 8, radius = 40 },
+    dash = { type = "wingflight", stamina = 5, regen = 2.5, minStart = 0.15, speed = 1, groundSpeed = 0, height = 12, downdraft = 8, radius = 40 },
     anims = {
         attack = { time = 0.24, limbs = { BASKET }, build = function(params, p)
             if p.airborne then

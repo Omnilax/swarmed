@@ -1,10 +1,12 @@
--- Take wing (dragonfly): hold Shift to fly, burning stamina (src/game/stamina.lua). On the ground
--- it walks a little slower than it flies. In the air it flies fast and free, and up
+-- Take wing (dragonfly): hold Shift to fly, burning stamina (src/game/stamina.lua). Flying is
+-- the dragonfly's only way to move: on the ground it can't walk at all (groundSpeed 0), it just
+-- rests, strikes and refills. Keep Shift held and it hops back up by itself as soon as it has
+-- caught its breath (params.minStart of the bar), so flying feels like steering. In the air it flies fast and free, and up
 -- there only flying enemies (bees, wasps, hornets, flying ants) can touch it, while its own
 -- strikes still reach everything. Letting go (or running dry) lands it with a downdraft that
 -- blows ants back. Stamina only refills on the ground.
 -- params: stamina (seconds of flight, 4), regen (1/s), speed (x in the air, 1), groundSpeed
---         (x walking on the ground, 0.8), height (12), downdraft (landing damage, 8), radius (landing gust, 40)
+--         (x walking on the ground, 0 = can't walk), height (12), downdraft (landing damage, 8), radius (landing gust, 40)
 local Stamina = require("src.game.stamina")
 local Combat = require("src.game.combat")
 local Iso = require("src.core.iso")
@@ -48,7 +50,7 @@ end
 
 local def = Stamina.mode({
     name = "Take Wing",
-    description = "Hold to fly, burning stamina: fast, and only flying enemies can reach you. Landing blows ants back.",
+    description = "Hold to fly: your only way to move. Burns stamina; only flying enemies can reach you up there. Landing blows ants back, and you take off again as soon as you have rested.",
     speed = 1,
     enter = function(player, world, params)
         state(player)
@@ -68,7 +70,7 @@ local def = Stamina.mode({
         Audio.play("dash", { pitch = 0.8 })
     end,
     idle = function(player, world, dt, params)
-        player.moveMul = params.groundSpeed or 0.8
+        player.moveMul = params.groundSpeed or 0
         lift(player, dt, params)
     end,
     draw = function(player, world, params)
