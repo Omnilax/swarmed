@@ -19,6 +19,7 @@ function Pause.new(game)
     local RunSave = require("src.game.runsave")
     local items = {
         { type = "button", label = "Resume", onActivate = function() State.pop() end },
+        { type = "button", label = "Inventory & Shop", onActivate = function() Pause.openInventory(game) end },
         { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
         { type = "button", label = "Settings", onActivate = function() State.push(require("src.states.settings").new()) end },
         { type = "button", label = "Restart", onActivate = function() game:restart() end },
@@ -53,9 +54,17 @@ end
 
 function Pause:enter() love.mouse.setVisible(true) end
 
+-- Swap the pause screen for the inventory window (TAB here does the same).
+function Pause.openInventory(game)
+    if game.world.player.dead then return end
+    State.pop()
+    State.push(require("src.states.inventory").new(game))
+end
+
 function Pause:update(dt)
     -- Pause key also resumes (ui_back already covers Escape).
     if Input.pressed("pause") and not Input.pressed("ui_back") then State.pop() return end
+    if Input.pressed("inventory") and not Input.pressed("quick_restart") then Pause.openInventory(self.game) return end
     if Input.pressed("quick_restart") then self.game:restart() return end
     self.menu:update(dt)
 end
@@ -217,7 +226,10 @@ function Pause.hints()
         local g = Input.glyph(id)
         return g.pad and ({ a = "A", b = "B", x = "X", y = "Y", start = "START", back = "BACK" })[g.pad] or g.key or "?"
     end
-    return { { cap("ui_confirm"), "Choose" }, { cap("quick_restart"), "Quick Restart" }, { cap("pause"), "Resume" } }
+    local inv = Input.lastDevice ~= "gamepad" and { cap("inventory"), "Inventory" } or nil
+    local out = { { cap("ui_confirm"), "Choose" }, { cap("quick_restart"), "Quick Restart" }, { cap("pause"), "Resume" } }
+    if inv then table.insert(out, 2, inv) end
+    return out
 end
 
 function Pause:mousemoved(x, y) self.menu:mousemoved(x, y) end

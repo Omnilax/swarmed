@@ -8,7 +8,7 @@ local Dev = { console = { open = false, input = "", lines = {}, history = {}, hi
 
 local HOTKEYS = {
     { "F1", "Show this help" },
-    { "F2 / Tab", "Toggle sandbox panel (sandbox mode)" },
+    { "F2", "Toggle sandbox panel (sandbox mode)" },
     { "F3", "Performance overlay" },
     { "F4", "Hitboxes" },
     { "F5", "Spatial grid" },

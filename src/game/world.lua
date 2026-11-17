@@ -104,6 +104,8 @@ function World.new(opts)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- wave rewards as moments in the arena: the reward bloom, rewards flying in, gain cards
+    self.rewardFlow = require("src.game.rewardflow").new(self)
     -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
     require("src.game.dashtech").attach(self)
     require("src.game.bugrules").attach(self)
@@ -536,6 +538,8 @@ function World:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    self.rewardFlow:update(dt)
+    require("src.game.economy").update(self, dt)     -- the shop restocks every minute or so
     if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
     self:pushPlayerOutOfSolids()
 

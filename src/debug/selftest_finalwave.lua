@@ -71,6 +71,11 @@ return function(wait, shot)
     top.menu.items[1].onActivate()
     assert(State.top() == game and world.continued, "keep going should return to the game")
     game:update(1 / 60)
+    -- the wave's rewards wait in the reward bloom: walk into it
+    assert(world.pendingChoice and not world.pendingChoice.opened, "the rewards should wait in the bloom")
+    world.rewardFlow:open(world.pendingChoice, pl.x, pl.y)
+    world.time = world.time + 1
+    game:update(1 / 60)
     -- (level-up cards earned in the final wave come first)
     for _ = 1, 40 do
         local t = State.top()

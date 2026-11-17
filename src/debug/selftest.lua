@@ -674,6 +674,7 @@ local function script(flags)
     if flags["--gambles"] then require("src.debug.selftest_gambles")(wait, shot) love.event.quit() return end
     if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--rewards"] then require("src.debug.selftest_rewards")(wait, shot) love.event.quit() return end
     if flags["--economy"] then require("src.debug.selftest_economy")(wait, shot) love.event.quit() return end
     if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
     if flags["--molts"] then require("src.debug.selftest_molts")(wait, shot) love.event.quit() return end
@@ -779,8 +780,14 @@ local function script(flags)
     wait(0.5)
     assert(sp.phase == "break", "wave did not end after clearing it")
     shot("wave_break")
-    -- the item choice pops up a moment later; take the first card
+    -- the wave's rewards sprout as a bloom next to the bug; walking into it opens them
     wait(1.2)
+    local bloom = game.world.rewardFlow:bloom()
+    assert(bloom, "no reward bloom after the wave")
+    assert(State.top() == game, "reward screens opened before the bloom was touched")
+    shot("reward_bloom")
+    game.world.player.x, game.world.player.y = bloom.x, bloom.y
+    wait(1.0)
     -- level-up cards earned in the wave come first, right before the item choice
     for _ = 1, 20 do
         local top = State.top()
@@ -804,11 +811,6 @@ local function script(flags)
     assert(State.top() == choice and choice.armed == 1, "first press should only pick the card")
     shot("item_choice")
     choice:activate(1)
-    -- with nectar to spend, the screen moves on to the shop; DONE closes it
-    if State.top() == choice then
-        assert(choice.tab == "shop" and choice.picked, "item choice stayed open but not on the shop")
-        choice:shopBack()
-    end
     assert(State.top() == game and #game.world.player.inventory.bag == before + 1, "taking an item failed")
     print("[selftest] item choice OK")
     wait(sp.timer + 0.6)

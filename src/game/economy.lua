@@ -1,14 +1,21 @@
--- The nectar economy: the shop beside the free item pick (src/states/itemchoice.lua SHOP tab),
+-- The nectar economy: the shop (the SHOP tab of the inventory window, src/states/shop.lua),
 -- savings interest, the scrapper (the SCRAP bin in the bag, src/states/inventory.lua) and the
 -- stat boosts the shop sells. Numbers live in src/config/shop.lua; a mode can override them
 -- with `shop = { ... }` or turn the economy off with `shop = false`.
+--
+-- The shop is open the whole run (opening the inventory pauses the game). Its stock restocks
+-- every minute of play (cfg.restock seconds of world time); items with `shopSpeed = 0.25` make
+-- it restock 25% faster (they add up: 60 / (1 + total) seconds, never under cfg.restockMin).
+-- A restock keeps LOCKED offers and replaces the rest; REROLL replaces them now, for nectar.
+-- Savings interest is paid the moment a wave is cleared (src/game/rewardflow.lua).
 --
 -- Nectar itself (beads, the balance) is src/game/nectar.lua: World:addNectar(n, x, y),
 -- World:spendNectar(n) -> bool, world.nectar. The wallet helpers below are the only place
 -- this file touches it.
 --
 -- world.economy = { boosts = { [stat] = add }, locked = { "item:<id>" | "boost:<stat>", ... },
---   shop = { wave, offers = { ... }, rerolls }, interestPaid, scrapped, growth = { [id] = n } }
+--   shop = { offers = { ... }, rerolls, restockAt, stock, seen }, interestPaid, scrapped,
+--   growth = { [id] = n } }
 local Content = require("src.content")
 local Config = require("src.config.shop")
 local Rarities = require("src.config.rarities")
@@ -173,13 +180,27 @@ local function roll(world, keep, avoid, notIds)
     return list
 end
 
--- The shop for this wave clear (made once per wave; locked offers from last time come back
--- first, at today's price). notIds: item ids not to offer (the free pick's cards).
+-- Seconds between restocks for this bag (items with `shopSpeed` shorten it).
+function Economy.restockTime(world)
+    local c = Economy.cfg(world)
+    local inv = world.player and world.player.inventory
+    local speed = math.max(0, inv and inv:sum("shopSpeed") or 0)
+    return math.max(c.restockMin or 15, (c.restock or 60) / (1 + speed))
+end
+
+-- Seconds until the next restock.
+function Economy.timeLeft(world)
+    local shop = Economy.state(world).shop
+    if not shop then return Economy.restockTime(world) end
+    return math.max(0, (shop.restockAt or 0) - (world.time or 0))
+end
+
+-- The shop as it stands (made the first time it is asked for; locked offers from before come
+-- back first, at today's price). notIds: item ids not to offer.
 function Economy.shop(world, notIds)
     local s = Economy.state(world)
-    local w = wave(world)
-    if s.shop and s.shop.wave == w then return s.shop end
-    local keep, slot = {}, 0
+    if s.shop then return s.shop end
+    local keep = {}
     local c = Economy.cfg(world)
     local lockedItems, lockedBoosts = {}, {}
     for _, key in ipairs(s.locked) do
@@ -198,11 +219,39 @@ function Economy.shop(world, notIds)
         keep[c.items + i] = o
     end
     s.locked = {}
-    s.shop = { wave = w, rerolls = 0, offers = roll(world, keep, nil, notIds) }
+    s.stock = (s.stock or 0) + 1
+    s.shop = { rerolls = 0, offers = roll(world, keep, nil, notIds), stock = s.stock,
+        restockAt = (world.time or 0) + Economy.restockTime(world) }
     return s.shop
 end
 
--- Remember locked offers for the next shop (call when the screen closes).
+-- New stock now: locked offers stay (at today's price), everything else is replaced.
+function Economy.restock(world)
+    Economy.remember(world)
+    local s = Economy.state(world)
+    s.shop = nil
+    local shop = Economy.shop(world)
+    world.events:emit("shop_restocked", shop)
+    return shop
+end
+
+-- Every frame (World:update): restock when the timer runs out. A faster bag (a shopSpeed item
+-- just picked up) pulls the next restock closer at once.
+function Economy.update(world, dt)
+    if not Economy.open(world) then return end
+    local s = Economy.state(world)
+    local shop = s.shop or Economy.shop(world)
+    local due = (world.time or 0) + Economy.restockTime(world)
+    if shop.restockAt > due then shop.restockAt = due end
+    if world.time >= shop.restockAt then Economy.restock(world) end
+end
+
+-- Whether this run has a shop at all (real runs with the economy on).
+function Economy.open(world)
+    return Economy.enabled(world) and world.mode == "run" and not (world.flags and world.flags.demo)
+end
+
+-- Remember locked offers for the next stock (a restock, or a save).
 function Economy.remember(world)
     local s = Economy.state(world)
     s.locked = {}
@@ -291,7 +340,7 @@ function Economy.interestCap(world)
     return math.floor(c.cap + c.capPerWave * (wave(world) - 1))
 end
 
--- Pay interest once per wave clear (the item choice calls it as it opens). Returns the amount.
+-- Pay interest once per wave clear (src/game/rewardflow.lua, on wave_cleared). Returns the amount.
 function Economy.payInterest(world)
     local s = Economy.state(world)
     local w = wave(world)

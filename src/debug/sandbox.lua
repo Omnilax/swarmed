@@ -235,7 +235,7 @@ function Sandbox:playerTab()
             set = function(v) self:setCharacter(v) end },
         { type = "toggle", label = "God mode", get = function() return world.flags.god end, set = function(v) world.flags.god = v end },
         { type = "button", label = "Heal", onActivate = function() world.player.hp = world.player.stats:get("maxHp") end },
-        { type = "button", label = "+5 skill points", desc = "Grants XP up to 5 more levels (spend them in the bag: I, then Tab)", onActivate = function()
+        { type = "button", label = "+5 skill points", desc = "Grants XP up to 5 more levels (spend them in the inventory: Tab, then E)", onActivate = function()
             local sk = world.player.skills
             for _ = 1, 5 do world:grantXP(sk.toNext - sk.into) end
         end },
@@ -559,8 +559,8 @@ function Sandbox:draw()
     self:drawReadouts()
     if self.placing then self:drawPlacing() end
     lg.setFont(Theme.font(14))
-    local hint = self.visible and "Middle click: spawn at cursor  |  V: enemies  |  C: items  |  1-5: tabs  |  Tab: hide panel  |  F1: hotkeys"
-        or "Tab: show sandbox panel  |  V: enemies  |  C: items"
+    local hint = self.visible and "Middle click: spawn at cursor  |  V: enemies  |  C: items  |  1-5: tabs  |  F2: hide panel  |  F1: hotkeys"
+        or "F2: show sandbox panel  |  V: enemies  |  C: items"
     Theme.printShadow(hint, u(14), lg.getHeight() - u(26), Theme.colors.text)
     if not self.visible then return end
     local px, py, pw, ph = self:panelRect()
@@ -639,7 +639,7 @@ function Sandbox:wheelmoved(x, y)
 end
 
 function Sandbox:keypressed(key)
-    if key == "tab" or key == "f2" then
+    if key == "f2" then
         self.visible = not self.visible
         self.game:applyCursor()
     elseif key == "c" then

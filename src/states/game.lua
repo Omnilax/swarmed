@@ -136,17 +136,19 @@ function Game:update(dt)
         end
     end
     -- level-up cards: queued ones come at the end of the wave, right before the item choice
+    -- (a wave's rewards wait in the reward bloom until you walk into it: src/game/rewardflow.lua)
     local choice = self.world.pendingChoice
+    local RewardFlow = require("src.game.rewardflow")
     local lu = self.world.levelups
     if lu and #lu.queue > 0 and not self.world.player.dead then
-        local e = lu:nextToShow(choice and self.world.time >= (choice.at or 0))
+        local e = lu:nextToShow(RewardFlow.ready(self.world))
         if e then
             State.push(require("src.states.levelup").new(self, e))
             return
         end
     end
-    -- wave cleared: choose an item (a beat after the last kill)
-    if choice and self.world.time >= (choice.at or 0) then
+    -- wave cleared and its bloom opened: choose an item
+    if choice and RewardFlow.ready(self.world) then
         self.world.pendingChoice = nil
         if not self.world.player.dead then
             State.push(require("src.states.itemchoice").new(self, choice))
@@ -220,6 +222,11 @@ end
 function Game:nextWave()
     local sp = self.world.spawner
     if self.mode ~= "run" or self.world.player.dead or not sp then return end
+    -- the wave's reward bloom is still waiting: it comes to you first
+    if self.world.rewardFlow and self.world.rewardFlow:pull() then
+        require("src.core.audio").play("ui_confirm", { pitch = 1.3 })
+        return
+    end
     if sp:nextWave() then require("src.core.audio").play("ui_confirm") end
 end
 
