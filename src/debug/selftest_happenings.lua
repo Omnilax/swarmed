@@ -40,15 +40,23 @@ return function(wait, shot)
         pl.x, pl.y, pl.kvx, pl.kvy = world.size / 2, world.size / 2, 0, 0
     end
 
-    -- every event starts, runs and ends cleanly
+    -- every event starts, runs and ends cleanly, drawn after every update: a phase change in
+    -- update can leave fields that only the next update fills (the lawnmower crashed that way)
+    local function stepDrawn(n)
+        for _ = 1, n do
+            world:update(1 / 60)
+            love.graphics.clear()
+            game:draw()
+        end
+    end
     for _, def in ipairs(Content.events:all()) do
         world:clearEnemies()
         crowd(pl.x + 60, pl.y, 20, 30)
         local ev = dir:start(def.id)
-        step(60)
+        stepDrawn(60)
         if def.id == "boot_stomp" or def.id == "acorns" then shot("event_" .. def.id) end
         for _ = 1, 40 do
-            step(30)
+            stepDrawn(30)
             if not dir:isActive(def.id) then break end
         end
         dir:stop(ev)
