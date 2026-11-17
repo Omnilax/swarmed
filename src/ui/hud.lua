@@ -186,7 +186,7 @@ function Hud.draw(game, covered)
         if waiting > 0 then
             local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 6)
             lg.setFont(Theme.font(15, "bold"))
-            Theme.printShadow((waiting == 1 and "LEVEL UP!" or ("LEVEL UP x" .. waiting)) .. "  ·  cards in the wave's reward bloom", 0, nudgeY, { 1, 0.88, 0.45, alpha * pulse }, "center", w)
+            Theme.printShadow((waiting == 1 and "LEVEL UP!" or ("LEVEL UP x" .. waiting)) .. (Settings.get("levelUpWhen") == "wave" and "  ·  cards in the wave's reward bloom" or ""), 0, nudgeY, { 1, 0.88, 0.45, alpha * pulse }, "center", w)
             nudgeY = nudgeY - u(20)
             lg.setFont(Theme.font(13))
         end

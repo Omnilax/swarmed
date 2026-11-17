@@ -15,6 +15,8 @@ return function(wait, shot)
     local sp = world.spawner
     local p = world.player
 
+    -- clear a wave with two level-ups saved for its end (setting At Wave End)
+    Settings.set("levelUpWhen", "wave")
     -- clear a wave with two level-ups waiting
     local function clearWave()
         if sp.phase ~= "wave" then sp:startWave() end
@@ -125,6 +127,42 @@ return function(wait, shot)
     wait(0.1)
     assert(State.top() == game, "TAB should close the window")
     print("[rewards] TAB window OK")
+
+    -- Right Away (the default): a level opens its cards mid-wave, and the bloom holds only the item
+    Settings.set("levelUpWhen", "instant")
+    sp:startWave()
+    for _ = 1, 30 do wait(1 / 60) end
+    local sk = p.skills
+    world:grantXP(sk.toNext - sk.into)
+    for _ = 1, 120 do
+        wait(1 / 60)
+        if State.top() ~= game then break end
+    end
+    assert(State.top().lu and sp.phase == "wave", "Right Away: the level-up cards should open mid-wave")
+    local lu = State.top()
+    assert(flow:stepOf(lu.entry) == nil, "a mid-wave level-up is not part of the bloom")
+    shot("rewards_levelup_midwave")
+    lu.t = 10
+    lu:activate(1); lu:activate(1)
+    wait(0.1)
+    assert(State.top() == game and #world.levelups.queue == 0, "the pick should close back to the fight")
+    assert(flow.toasts[1].g.title == "LEVEL CARD" or flow.toasts[1].g.title == "SKILL", "the pick should get a gain card")
+    clearWave()
+    for _ = 1, 120 do
+        wait(1 / 60)
+        if flow:bloom() then break end
+    end
+    assert(flow:contents() == "an item", "the bloom should hold only the item (got " .. flow:contents() .. ")")
+    p.x, p.y = flow:bloom().x, flow:bloom().y
+    for _ = 1, 120 do
+        wait(1 / 60)
+        if State.top() ~= game then break end
+    end
+    assert(State.top().items, "the bloom should open straight to the item")
+    State.top().t = 10
+    State.top():activate(1); State.top():activate(1)
+    wait(0.1)
+    print("[rewards] level-ups right away OK")
 
     -- Open at Once: the screens follow the wave without a bloom
     Settings.set("waveRewards", "instant")

@@ -83,7 +83,8 @@ end
 function RewardFlow:contents()
     local w = self.world
     local lu = w.levelups
-    local n = lu and #lu.queue or 0
+    local n = 0
+    for _, e in ipairs(lu and lu.queue or {}) do if not e.now then n = n + 1 end end
     local parts = {}
     if n > 0 then parts[#parts + 1] = n == 1 and "a level-up" or (n .. " level-ups") end
     local pc = w.pendingChoice

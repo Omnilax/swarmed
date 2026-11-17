@@ -1143,6 +1143,9 @@ local function script(flags)
 end
 
 function Selftest.start(flags)
+    -- most tests step through waves without clicking cards: level-ups wait for the wave's end
+    -- (tests of the Right Away flow set "levelUpWhen" themselves)
+    require("src.core.settings").set("levelUpWhen", "wave")
     co = coroutine.create(function() script(flags) end)
 end
 
