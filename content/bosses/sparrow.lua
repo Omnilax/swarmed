@@ -21,14 +21,14 @@ local REACH = 48         -- how far ahead of its body the beak strikes
 local FLAP = { "sparrow_up", "sparrow_glide", "sparrow_down", "sparrow_tuck", "sparrow_down", "sparrow_glide" }
 
 local P = {
-    circle = { 2.4, 3.4 },  -- seconds soaring between attacks
-    swoopWarn = 1.25, swoopSpeed = 640, swoopWidth = 24, swoopDamage = 15,
-    landWarn = 1.1, landR = 34, landDamage = 10,
-    pecks = 5, peckWarn = 0.6, peckR = 17, peckDamage = 11,
+    circle = { 3.2, 4.4 },  -- seconds soaring between attacks
+    swoopWarn = 1.5, swoopSpeed = 600, swoopWidth = 22, swoopDamage = 10,
+    landWarn = 1.3, landR = 32, landDamage = 7,
+    pecks = 4, peckWarn = 0.75, peckR = 16, peckDamage = 7,
     gustWarn = 0.7, gustR = 135,
 }
 
-local function tempo(h) return 1 + math.min(0.6, h.t / 55) end
+local function tempo(h) return 1 + math.min(0.3, h.t / 60) end
 
 local function setMode(h, mode, label, danger)
     local st = h.st
@@ -133,7 +133,9 @@ return {
     description = "A sparrow hunts the arena. You can't fight it: dodge its swoops and pecks, and feed it ants.",
     hazard = true,
     pictures = Beasts.SPARROW,
-    weight = 10, minWave = 5,
+    weight = 10, minWave = 10,
+    stay = 24,              -- seconds it hunts before flying off (or until the wave is cleared)
+    arrive = 8,
     xp = 30,
     survived = "THE SPARROW FLIES OFF",
     color = { 1, 0.6, 0.35 },

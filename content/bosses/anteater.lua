@@ -21,12 +21,12 @@ local REST_OUT, LEAN_OUT, GONE_OUT = 70, 36, 420
 
 local P = {
     idle = { 0.9, 1.5 },
-    flickWarn = 0.85, flickWidth = 10, flickReach = 400, flickDamage = 13,
-    sweepWarn = 1.3, sweepTime = 1.0, sweepSpan = 0.8, sweepReach = 330, sweepWidth = 9, sweepDamage = 14,
-    rakeWarn = 1.0, rakeReach = 270, rakeDamage = 18, rakeLen = 95, rakeGap = 14,
+    flickWarn = 1.05, flickWidth = 10, flickReach = 380, flickDamage = 8,
+    sweepWarn = 1.5, sweepTime = 1.15, sweepSpan = 0.7, sweepReach = 300, sweepWidth = 9, sweepDamage = 9,
+    rakeWarn = 1.2, rakeReach = 250, rakeDamage = 12, rakeLen = 90, rakeGap = 14,
 }
 
-local function tempo(h) return 1 + math.min(0.6, h.t / 55) end
+local function tempo(h) return 1 + math.min(0.3, h.t / 60) end
 local function wrap(a) return (a + math.pi) % (math.pi * 2) - math.pi end
 
 local function setMode(h, mode, label, danger)
@@ -185,7 +185,7 @@ local function pickAttack(world, h)
     end
     st.last = pick
     if pick == "flicks" then
-        st.flicks = 2 + math.floor(tempo(h) * 1.5)
+        st.flicks = 2 + (tempo(h) > 1.2 and 1 or 0)
         aimFlick(world, h)
     elseif pick == "sweep" then
         aimSweep(world, h)
@@ -205,7 +205,9 @@ return {
     description = "A giant anteater feeds at the edge. You can't fight it: dodge its tongue and claws, and lead the ants in.",
     hazard = true,
     pictures = Beasts.ANTEATER,
-    weight = 10, minWave = 5,
+    weight = 10, minWave = 10,
+    stay = 24,              -- seconds it feeds before wandering off (or until the wave is cleared)
+    arrive = 8,
     xp = 30,
     survived = "THE ANTEATER WANDERS OFF",
     color = { 1, 0.5, 0.4 },

@@ -145,8 +145,20 @@ function Director:onWaveStart(n)
     local sp = world.spawner
     if self.mechanic and self.mechanic.def.onWaveStart then self.mechanic.def.onWaveStart(world, self.mechanic, n) end
     self.gambles:onWaveStart(n)
+    -- a predator joins the queen on boss waves (not the run's final wave)
+    local every = self.cfg.encounterEvery
+    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n)) then
+        local boss = self:pickBoss(n)
+        if boss then
+            self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
+            -- paint the hazard's pictures now rather than on the frame it arrives
+            if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
+        end
+    end
     if self:eventsOn() then
         local count = self:eventCount(n)
+        -- a stage hazard is a wave's worth of trouble on its own: no other events with it
+        if self.pendingBoss and self.pendingBoss.def.hazard then count = 0 end
         local at = self.cfg.eventAt
         for i = 1, count do
             local def = util.weightedPick(Content.events:all(), function(d) return eventWeight(self, d, n) end)
@@ -156,16 +168,6 @@ function Director:onWaveStart(n)
                 if math.abs(s.at - t) < self.cfg.eventGap then t = s.at + self.cfg.eventGap end
             end
             self.schedule[#self.schedule + 1] = { def = def, at = t }
-        end
-    end
-    -- a predator joins the queen on boss waves (not the run's final wave)
-    local every = self.cfg.encounterEvery
-    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n)) then
-        local boss = self:pickBoss(n)
-        if boss then
-            self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
-            -- paint the hazard's pictures now rather than on the frame it arrives
-            if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
         end
     end
 end
@@ -387,6 +389,8 @@ function Director:update(dt)
         else
             if h.def.update then h.def.update(world, h, dt) end
             if h.def.env then h.def.env(world, h, env) end
+            -- it only stays a while: after `stay` seconds it has eaten its fill and moves on
+            if h.def.stay and h.t >= h.def.stay and not h.leaving then self:endHazard(true) end
         end
         Env.current = nil
     end

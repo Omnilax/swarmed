@@ -476,7 +476,8 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   everything to its jaws, throws sand) is a real enemy (`content/enemies/predators.lua`,
   `encounter = true`, drawn by `drawBody`), so the wave lasts until it falls; hazards don't hurt it.
   Animals far too big to fight are **stage hazards** (`hazard = true`): no enemy, nothing to hit,
-  they don't hold the wave up. They hunt the arena until the wave is cleared, then leave (bonus XP),
+  they don't hold the wave up. They only come from wave 10, arrive 8 s in, never share a wave with
+  mid-wave events, and hunt for 24 s at most (or until the wave is cleared), then leave (bonus XP),
   and everything they do kills ants and hurts you alike. The HUD shows their name and what they are
   doing instead of a health bar, and they speed up the longer the wave lasts.
   - **Sparrow**: soars overhead as a shadow, swoops down a lane across the whole arena (sometimes

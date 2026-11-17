@@ -27,7 +27,7 @@ return {
     description = "A tongue licks across the red lane. Lead the ants into it!",
     color = { 1, 0.55, 0.45 },
     kind = "hazard",
-    weight = 9, minWave = 3,
+    weight = 7, minWave = 5,
     start = function(world, ev) Beasts.prepare(Beasts.ANTEATER) ev.st.licks = 0 aim(world, ev.st) end,
     update = function(world, ev, dt)
         local st = ev.st
@@ -41,14 +41,14 @@ return {
             if eaten >= 5 then world:floatText(st.x2, st.y2, eaten .. " LICKED UP", { 1, 0.6, 0.6 }, true) end
             if Env.playerInLane(world, st.x1, st.y1, st.x2, st.y2, WIDTH) then
                 local p = world.player
-                if Env.hurtPlayer(world, 14, p.x, p.y) then p:knock(st.x1 - p.x, st.y1 - p.y, 160) end
+                if Env.hurtPlayer(world, 10, p.x, p.y) then p:knock(st.x1 - p.x, st.y1 - p.y, 160) end
             end
             world.camera:shake(0.15)
         elseif st.phase == "hold" and st.pt >= HOLD then
             st.phase, st.pt = "back", 0
         elseif st.phase == "back" and st.pt >= BACK then
             st.licks = st.licks + 1
-            if st.licks >= (ev.opts.licks or 3) then ev.done = true else st.phase, st.pt = "rest", 0 end
+            if st.licks >= (ev.opts.licks or 2) then ev.done = true else st.phase, st.pt = "rest", 0 end
         elseif st.phase == "rest" and st.pt >= 1.2 then
             aim(world, st)
         end
