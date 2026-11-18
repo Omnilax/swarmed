@@ -5,6 +5,7 @@ function love.conf(t)
     t.console = false
 
     t.window.title = "Swarmed"
+    t.window.icon = "assets/icon/icon_256.png"   -- taskbar / dock / window icon (tools/make_icons.py)
     t.window.width = 1280
     t.window.height = 720
     t.window.resizable = true

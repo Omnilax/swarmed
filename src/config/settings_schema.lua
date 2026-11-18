@@ -190,6 +190,8 @@ add { key = "speciesPopups", category = "Interface", label = "First Sighting Pop
 add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Markers", type = "toggle", default = true,
     desc = "Arrows at the screen edge pointing at queens and elites you cannot see." }
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }
+add { key = "discordStatus", category = "Interface", label = "Discord Status", type = "toggle", default = true,
+    desc = "Shows what you're playing on your Discord profile (bug, wave and mode) while the Discord app is open. PC only." }
 add { key = "cursorStyle", category = "Interface", label = "Cursor", type = "choice", default = "crosshair",
     options = { { value = "crosshair", label = "Crosshair" }, { value = "system", label = "System" }, { value = "hidden", label = "Hidden In Game" } } }
 

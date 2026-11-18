@@ -641,6 +641,26 @@ Enemy behaviours live in `content/behaviors` (helpers in `src/game/ai.lua`); hon
 are in `src/game/hazards.lua`. A behaviour can also define `onHit` (react to being hit), `draw`
 (warnings, shown with Attack Warnings on) and `drawUnder` (things in the world, always drawn).
 
+## Game icon and Discord status
+
+**Icon.** `assets/icon/` holds the game icon (a bombardier beetle ringed by worker ants, painted
+with the game's own models). The window, taskbar and dock use `icon_256.png` (`conf.lua`), the web
+build uses it as the browser tab and phone home-screen icon, and `swarmed.ico` / `swarmed.icns`
+are for desktop shortcuts and packaged builds (Windows: right-click the shortcut > Properties >
+Change Icon > pick `swarmed.ico`). To repaint it: `love . --makeicon`, copy `icon/icon_128.png`
+and `icon/icon_32.png` from the save folder into `assets/icon/`, then `python3 tools/make_icons.py`.
+
+**Discord.** While the Discord desktop app is open, your profile shows "Playing Swarmed" with what
+you're doing: the bug, the wave, the mode and danger level, and how long the run has gone on
+(menus, the Bug Creator and the sandbox get their own lines). It talks to Discord's local pipe
+directly (`src/core/discord.lua`, no DLLs to ship), and turns itself off quietly on the web, on
+phones, in tests, when Discord isn't running, or with Settings > Interface > Discord Status off.
+It needs the Application ID of a "Swarmed" app from the
+[Discord Developer Portal](https://discord.com/developers/applications) in
+`src/config/discord.lua` (or `SWARMED_DISCORD_APP_ID` in the environment); with none it stays off.
+Test without Discord: `python3 tools/fake_discord.py`, then
+`SWARMED_DISCORD_APP_ID=1 love . --selftest --discord`.
+
 ## Developer mode
 
 On by default while we build (Settings > Developer). It adds:
