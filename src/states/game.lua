@@ -222,6 +222,7 @@ end
 function Game:draw()
     self.world:flushDecals()
     Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera:viewZoom(), true)
+    Screen.gradeWorld = self.world
     self.world:draw()
     Screen.endWorld()
     -- the HUD, banners and floating numbers draw at the HUD Size zoom (Theme.hudZoom)

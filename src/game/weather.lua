@@ -86,7 +86,7 @@ function Weather:update(dt)
     for _, p in ipairs(self.parts) do
         p.t = p.t + dt
         local sway = p.sway and math.sin(self.world.time * p.sway + p.seed) * 12 or 0
-        p.x = p.x + (p.vx + wind[1] + sway) * dt
+        p.x = p.x + (p.vx + wind[1] + sway + (self.world.windGust or 0) * 25) * dt
         p.y = p.y + (p.vy + wind[2]) * dt
         if p.spin then p.a = p.a + p.spin * dt end
     end

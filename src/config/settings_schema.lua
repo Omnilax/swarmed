@@ -258,6 +258,25 @@ add { key = "lowHealthPulse", category = "Interface", label = "Low Health Pulse"
 add { key = "dangerCompass", category = "Interface", label = "Danger Compass", type = "toggle", default = false,
     desc = "Little wedges on the ground around your bug point at the nearest boss, elite or incoming shot." }
 
+-- Art and atmosphere (src/gfx/ambience.lua): in the Lighting tab
+add { key = "windGusts", category = "Lighting", label = "Wind Gusts", type = "toggle", default = true,
+    desc = "One shared wind with slow gusts: falling leaves, foreground grass and weather all lean the same way." }
+add { key = "hordeTracks", category = "Lighting", label = "Horde Tracks", type = "toggle", default = false,
+    desc = "Ants leave faint tracks on the ground that fade after a few seconds." }
+add { key = "squashStretch", category = "Lighting", label = "Squash & Stretch", type = "toggle", default = true,
+    desc = "Ants squash for a moment when they are hit." }
+add { key = "deathStyles", category = "Lighting", label = "Death Styles", type = "toggle", default = true,
+    desc = "Bodies fall by family: ants curl up, termites flip over, bees and wasps spiral down." }
+add { key = "colourGrade", category = "Lighting", label = "Colour Grade", type = "choice", default = "off",
+    options = { { value = "off", label = "Off" }, { value = "map", label = "Per Map" }, { value = "act", label = "Per Act" } },
+    desc = "A gentle colour grade: each map its own mood, or lush green for act 1, dry gold for act 2 and dusky violet for act 3." }
+add { key = "heatHaze", category = "Lighting", label = "Heat Haze", type = "toggle", default = true,
+    desc = "A soft shimmer on desert maps at midday and in heatwaves. Off with Reduce Flashing." }
+add { key = "fallingLeaves", category = "Lighting", label = "Falling Leaves", type = "toggle", default = true,
+    desc = "A few leaves drift through the view (dust motes in the desert)." }
+add { key = "glowDecor", category = "Lighting", label = "Night Glow Decor", type = "toggle", default = true,
+    desc = "Glowing mushrooms come out at night on the leafy maps and light the ground around them." }
+
 -- Camera (src/game/camera.lua, src/gfx/camfx.lua) ----------------------------------------
 add { key = "zoomKeys", category = "Camera", label = "Zoom Keys", type = "toggle", default = true,
     desc = "+ and - zoom in and out, 0 goes back to 1x." }

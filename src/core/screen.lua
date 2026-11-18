@@ -14,9 +14,15 @@ local POST = [[
 extern number brightness;
 extern number cbOn;
 extern mat3 cb;
+extern vec4 grade;      // tint rgb, saturation (Colour Grade)
+extern number haze;     // Heat Haze amount
+extern number htime;
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
+    if (haze > 0.0) tc.x += sin(tc.y * 140.0 + htime * 3.0) * 0.0009 * haze * (1.0 - tc.y * 0.5);
     vec4 c = Texel(tex, tc) * color;
     vec3 rgb = c.rgb;
+    float l = dot(rgb, vec3(0.299, 0.587, 0.114));
+    rgb = clamp(mix(vec3(l), rgb, grade.a) * grade.rgb, 0.0, 1.0);
     if (cbOn > 0.5) {
         vec3 sim = cb * rgb;
         vec3 err = rgb - sim;
@@ -35,6 +41,8 @@ local CB = {
 
 function Screen.init()
     Screen.post = love.graphics.newShader(POST)
+    Screen.post:send("grade", { 1, 1, 1, 1 })
+    Screen.post:send("haze", 0)
     Screen.setResolution(Settings.get("renderResolution"))
 end
 
@@ -138,6 +146,13 @@ function Screen.endWorld()
     Screen.post:send("brightness", Settings.get("brightness") / 100)
     Screen.post:send("cbOn", CB[mode] and 1 or 0)
     Screen.post:send("cb", CB[mode] or CB.protanopia)
+    -- Colour Grade and Heat Haze come from the arena being drawn (src/gfx/ambience.lua)
+    local w = Screen.worldView and Screen.gradeWorld
+    local Amb = require("src.gfx.ambience")
+    local r, g, b, sat = Amb.grade(w)
+    Screen.post:send("grade", { r, g, b, sat })
+    Screen.post:send("haze", w and Amb.haze(w) or 0)
+    Screen.post:send("htime", love.timer.getTime())
     love.graphics.setShader(Screen.post)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(Screen.canvas, Screen.quad, Screen.ox, Screen.oy, 0,
@@ -156,7 +171,16 @@ function Screen.endWorldInto(x, y, w, h, srcW, srcH)
     local mode = Settings.get("colorblindMode")
     Screen.post:send("brightness", Settings.get("brightness") / 100)
     Screen.post:send("cbOn", CB[mode] and 1 or 0)
+    Screen.post:send("grade", { 1, 1, 1, 1 })
+    Screen.post:send("haze", 0)
     Screen.post:send("cb", CB[mode] or CB.protanopia)
+    -- Colour Grade and Heat Haze come from the arena being drawn (src/gfx/ambience.lua)
+    local w = Screen.worldView and Screen.gradeWorld
+    local Amb = require("src.gfx.ambience")
+    local r, g, b, sat = Amb.grade(w)
+    Screen.post:send("grade", { r, g, b, sat })
+    Screen.post:send("haze", w and Amb.haze(w) or 0)
+    Screen.post:send("htime", love.timer.getTime())
     love.graphics.setShader(Screen.post)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(Screen.canvas, Screen.boxQuad, x, y, 0, w / srcW, h / srcH)

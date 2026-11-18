@@ -26,6 +26,7 @@ local Lighting = require("src.gfx.lighting")
 local Shading = require("src.gfx.shading")
 local Clarity = require("src.gfx.clarity")
 local CamFx = require("src.gfx.camfx")
+local Ambience = require("src.gfx.ambience")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
 local RunStats = require("src.game.runstats")
@@ -294,6 +295,7 @@ function World:killEnemy(e)
             sprite = e.sprite, x = e.x, y = e.y, z = 2, angle = e.angle, scale = e.scale,
             vx = nx * speed, vy = ny * speed, vz = 60 + love.math.random() * 50,
             spin = (love.math.random() - 0.5) * 30, t = 0, life = 0.6, shadow = e.shadow, mark = mark,
+            style = Ambience.styleOf(e.def),
         }
     end
     Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008 })
@@ -572,6 +574,7 @@ function World:update(dt)
     self.time = self.time + dt
     Lighting.update(self, dt)
     Shading.update(self, dt)
+    Ambience.update(self, dt)
     self.killsThisFrame = 0
     -- last frame's kills become visible to behaviours; start a fresh list
     self.recentDeaths, self.deathsNow = self.deathsNow, self.recentDeaths
@@ -1028,6 +1031,8 @@ function World:draw()
     self.ground:draw()
     if gsh then lg.setShader() end
     Shading.drawWet(self, ox, oy, vw, vh)           -- Wet Ground after rain
+    Ambience.drawGround(self)                       -- Horde Tracks
+    Ambience.drawDecor(self)                        -- Night Glow Decor
     self.hazards:drawGround()
     Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
     self.rewards:drawGround()                       -- route tunnels, guarded critters
@@ -1164,7 +1169,8 @@ function World:draw()
             local k = math.min(1, c.t / (c.life * 0.6))
             local v = 0.8 - k * 0.38
             lg.setColor(v, v * 0.92, v * 0.88, 1)
-            Sprites.draw(c.sprite, 1, sx, sy, c.angle, false, c.scale)
+            local ca, csx, csy = Ambience.corpseStyle(c)         -- Death Styles
+            Sprites.draw(c.sprite, 1, sx, sy, ca, false, csx, csy)
         end
     end
     lg.setColor(1, 1, 1, 1)
@@ -1173,6 +1179,7 @@ function World:draw()
     Clarity.drawOutlines(self, list, n)             -- Threat Outlines
     Shading.drawRims(self, list, n)                 -- Rim Light (enemies, one batch)
     local hordeDepth = Settings.get("hordeDepth")
+    local squash = Settings.get("squashStretch")
     local sheens, nSheen = self.sheens, 0
     if not sheens then sheens = {} self.sheens = sheens end
     for i = 1, n do
@@ -1294,6 +1301,7 @@ function World:draw()
                 o._dk = true
             end
             local fy = o._sy - (o.z or 0) - (o.dropH or 0)
+            if squash and (o.flash or 0) > 0 then sxs, sys = sxs * 1.14, sys * 0.86 end     -- Squash & Stretch
             Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, flash, sxs, sys)
             if el then
                 -- the sheen is drawn after the crowd in one additive batch (switching blend modes
@@ -1355,6 +1363,7 @@ function World:draw()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
     Shading.drawRays(self, ox, oy, vw, vh)          -- Sun Rays at golden hour and dawn
+    Ambience.drawLeaves(self, ox, oy, vw, vh)       -- Falling Leaves
     CamFx.drawForeground(self, ox, oy, vw, vh)      -- Foreground Grass
     self.weather:drawGlow(ox, oy, vw, vh)
     if self.freezeT > 0 then
@@ -1454,6 +1463,7 @@ function World:drawLighting(ox, oy, list, n)
     end
     self.hazards:lights(light)
     Lighting.extras(self, light, list, n)
+    Ambience.lights(self, light)
     for _, l in ipairs(self.ground.decorLights or {}) do
         local tw = l.twinkle and (0.75 + 0.25 * math.sin(self.time * l.twinkle + l.x)) or 1
         light(l.x, l.y, l.radius, l.color[1], l.color[2], l.color[3], (l.intensity or 0.5) * tw)

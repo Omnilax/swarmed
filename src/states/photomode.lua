@@ -105,6 +105,7 @@ function PhotoMode:draw()
     local game = self.game
     game.world:flushDecals()
     Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.zoom, true)
+    Screen.gradeWorld = game.world
     game.world:draw()
     Screen.endWorld()
     if self.hud then
