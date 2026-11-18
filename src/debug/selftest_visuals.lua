@@ -35,7 +35,7 @@ return function(wait, shot)
             Settings.set(s.key, was)
         end
     end
-    local times = os.getenv("VIS") or "night,day"
+    local times = os.getenv("VIS") or "night,day,sunset"
     for t in times:gmatch("[^,]+") do
         Settings.set("timeOfDay", t)
         Settings.set("lightStyle", "soft")

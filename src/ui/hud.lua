@@ -95,6 +95,7 @@ function Hud.draw(game, covered)
 
     -- Health
     local maxHp = p.stats:get("maxHp")
+    require("src.gfx.clarity").drawLowHealth(p, maxHp, w, h)     -- Low Health Pulse
     local bw = u(260)
     bar(u(20), u(20), bw, u(22), p.hp / maxHp, { c.hp[1], c.hp[2], c.hp[3], alpha })
     lg.setFont(Theme.font(16))

@@ -23,6 +23,8 @@ local Combat = require("src.game.combat")
 local Grab = require("src.game.grab")
 local Daylight = require("src.game.daylight")
 local Lighting = require("src.gfx.lighting")
+local Shading = require("src.gfx.shading")
+local Clarity = require("src.gfx.clarity")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
 local RunStats = require("src.game.runstats")
@@ -566,6 +568,7 @@ function World:update(dt)
     end
     self.time = self.time + dt
     Lighting.update(self, dt)
+    Shading.update(self, dt)
     self.killsThisFrame = 0
     -- last frame's kills become visible to behaviours; start a fresh list
     self.recentDeaths, self.deathsNow = self.deathsNow, self.recentDeaths
@@ -1016,7 +1019,11 @@ function World:draw()
     lg.push()
     lg.translate(-ox, -oy)
 
+    local gsh = Clarity.groundShader()           -- Background Dim / Actors Pop
+    if gsh then lg.setShader(gsh) end
     self.ground:draw()
+    if gsh then lg.setShader() end
+    Shading.drawWet(self, ox, oy, vw, vh)           -- Wet Ground after rain
     self.hazards:drawGround()
     Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
     self.rewards:drawGround()                       -- route tunnels, guarded critters
@@ -1078,6 +1085,8 @@ function World:draw()
         end
     end
 
+    -- Sun Shadows and Contact Shadows (src/gfx/shading.lua)
+    Shading.drawGround(self, list, n)
     -- Shadows first (all one texture -> batched).
     lg.setColor(1, 1, 1, 1)
     for i = 1, n do
@@ -1091,6 +1100,7 @@ function World:draw()
         lg.setColor(1, 1, 1, 1)
     end
 
+    Clarity.drawCompass(self)                       -- Danger Compass
     -- Pebbles, twigs, cocoons, allies, the merchant (src/game/props.lua)
     self.director:drawProps()
 
@@ -1156,6 +1166,9 @@ function World:draw()
     lg.setColor(1, 1, 1, 1)
 
     local flashOk = Settings.get("hitFlash") and not Settings.get("reduceFlashing")
+    Clarity.drawOutlines(self, list, n)             -- Threat Outlines
+    Shading.drawRims(self, list, n)                 -- Rim Light (enemies, one batch)
+    local hordeDepth = Settings.get("hordeDepth")
     local sheens, nSheen = self.sheens, 0
     if not sheens then sheens = {} self.sheens = sheens end
     for i = 1, n do
@@ -1252,6 +1265,7 @@ function World:draw()
             local facing = o.reversed and o.wangle + math.pi or o.wangle
             Anim.applyTo(pose, Anim.sample(o), facing, sxs, sys)    -- attack clips (src/gfx/anim.lua)
             if o.lungeT > 0.09 then sxs, sys = sxs * 1.06, sys * 0.94 end
+            if o == p and not p.alpha then Shading.drawPlayerRim(self, o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, sxs, sys, pose) end
             Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, flash, sxs, sys, a, pose)
         elseif o ~= p and o.def.drawBody then
             -- big creatures drawn by their own code (encounter bosses: content/enemies/predators.lua)
@@ -1268,6 +1282,13 @@ function World:draw()
             elseif alpha < 1 then
                 lg.setColor(1, 1, 1, alpha)
             end
+            -- Horde Depth: the back of a big pack a little darker than the front
+            local dk = hordeDepth and not el and Clarity.depthShade(math.sqrt((o.x - p.x) ^ 2 + (o.y - p.y) ^ 2))
+            if dk then
+                local r, g, b, a2 = lg.getColor()
+                lg.setColor(r * dk, g * dk, b * dk, a2)
+                o._dk = true
+            end
             local fy = o._sy - (o.z or 0) - (o.dropH or 0)
             Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, flash, sxs, sys)
             if el then
@@ -1281,7 +1302,7 @@ function World:draw()
         end
         if skinShader then lg.setShader() end
         -- plain ants leave the colour white; skip the reset for them (it adds up in a horde)
-        if o == p or o.model or o.elite or o.tint or (o.alpha or 1) < 1 or o.def.drawBody then lg.setColor(1, 1, 1, 1) end
+        if o == p or o.model or o.elite or o.tint or (o.alpha or 1) < 1 or o.def.drawBody or o._dk then lg.setColor(1, 1, 1, 1) o._dk = nil end
     end
 
     if nSheen > 0 then
@@ -1329,6 +1350,7 @@ function World:draw()
     self.director:drawAir()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
+    Shading.drawRays(self, ox, oy, vw, vh)          -- Sun Rays at golden hour and dawn
     self.weather:drawGlow(ox, oy, vw, vh)
     if self.freezeT > 0 then
         -- frost pickup: a cold blue wash over the arena while the swarm is frozen
@@ -1351,6 +1373,8 @@ function World:draw()
     self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
     if fxLayer then Lighting.endFx() end
+    if Settings.get("shotsOnTop") then self.hazards:drawAir(true) end     -- Enemy Shots On Top
+    Clarity.drawSilhouette(self)                    -- See-Through Silhouettes
     if Settings.get("showHitboxes") then self:drawHitboxes(list, n) end
     if Settings.get("showSpatialGrid") then self:drawGrid() end
     lg.pop()
@@ -1393,6 +1417,13 @@ function World:drawLighting(ox, oy, list, n)
     lg.origin()
     lg.scale(1 / div)
     lg.translate(-ox, -oy)
+    -- Cloud Shadows: soft dark shapes taken out of the light (src/gfx/shading.lua)
+    lg.setBlendMode("subtract")
+    Shading.clouds(self, function(x, y, r, k)
+        lg.setColor(1, 1, 1, k * am)
+        lg.draw(L, x, y, 0, r / 64, r / 128, 64, 64)
+    end, ox, oy, Screen.viewW, Screen.viewH)
+    lg.setBlendMode("add")
     local p = self.player
     if not p.dead then
         local px, py = Iso.toScreen(p.x, p.y)
@@ -1618,7 +1649,7 @@ function World:drawText(fonts)
     for _, t in ipairs(self.texts) do
         local wx, wy = self:toWindow(t.x, t.y, t.z)
         local f = t.big and fonts.big or fonts.small
-        local a = 1 - math.max(0, (t.t / t.life - 0.6) / 0.4)
+        local a = (1 - math.max(0, (t.t / t.life - 0.6) / 0.4)) * Clarity.textFade(self, wx, wy)
         lg.setFont(f)
         local w = f:getWidth(t.text)
         lg.setColor(0, 0, 0, 0.8 * a)

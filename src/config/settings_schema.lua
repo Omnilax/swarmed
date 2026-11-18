@@ -223,6 +223,41 @@ add { key = "nightLantern", category = "Lighting", label = "Night Lantern", type
 add { key = "killLights", category = "Lighting", label = "Kill Light Pops", type = "toggle", default = false,
     desc = "Elites, queens and bosses light up the area for a moment when they die." }
 
+add { key = "sunShadows", category = "Lighting", label = "Sun Shadows", type = "toggle", default = true,
+    desc = "Bugs and props cast a soft shadow away from the sun: short at noon, long at sunrise and sunset, and away from your light at night." }
+add { key = "contactShadows", category = "Lighting", label = "Contact Shadows", type = "toggle", default = true,
+    desc = "A dark spot right under each bug and prop so it sits on the ground." }
+add { key = "rimLight", category = "Lighting", label = "Rim Light", type = "toggle", default = true,
+    desc = "A thin bright edge on the side of each bug facing the light, so bugs stand out from the ground." }
+add { key = "cloudShadows", category = "Lighting", label = "Cloud Shadows", type = "choice", default = "weather",
+    options = { { value = "off", label = "Off" }, { value = "weather", label = "Cloudy Weather" }, { value = "always", label = "Always" } },
+    desc = "Big soft cloud shadows drift across the arena by day." }
+add { key = "sunRays", category = "Lighting", label = "Sun Rays", type = "toggle", default = false,
+    desc = "Faint shafts of light at golden hour and dawn." }
+add { key = "wetGround", category = "Lighting", label = "Wet Ground", type = "toggle", default = true,
+    desc = "Rain darkens the ground and leaves puddles that shine, drying slowly afterwards." }
+
+-- Visibility (src/gfx/clarity.lua): also in the Lighting tab
+add { key = "actorsPop", category = "Lighting", label = "Actors Pop", type = "toggle", default = true,
+    desc = "The ground is drawn a touch greyer so bugs stand out against it." }
+add { key = "backgroundDim", category = "Lighting", label = "Background Dim", type = "slider", default = 0, min = 0, max = 50, step = 5, format = percent,
+    desc = "Darken and grey the ground and its decor on busy maps, so only the fight is bright." }
+add { key = "silhouettes", category = "Lighting", label = "See-Through Silhouettes", type = "toggle", default = true,
+    desc = "When your bug is buried in a crowd, behind a big beast or inside your own effects, its outline shows through on top." }
+add { key = "threatOutlines", category = "Lighting", label = "Threat Outlines", type = "choice", default = "off",
+    options = { { value = "off", label = "Off" }, { value = "elites", label = "Elites" }, { value = "all", label = "Elites & Queens" } },
+    desc = "A thin gold outline on elites (and red on queens), so the dangerous ones are easy to pick out." }
+add { key = "shotsOnTop", category = "Lighting", label = "Enemy Shots On Top", type = "toggle", default = true,
+    desc = "Enemy projectiles are drawn over your own effects so a spit or a stone is never lost in your flurry." }
+add { key = "hordeDepth", category = "Lighting", label = "Horde Depth", type = "toggle", default = false,
+    desc = "Ants further from you are drawn slightly darker, so the front line you'll touch next stands out." }
+add { key = "clearSpace", category = "Interface", label = "Clear Space Around You", type = "toggle", default = true,
+    desc = "Damage numbers fade right around your bug so they never cover it." }
+add { key = "lowHealthPulse", category = "Interface", label = "Low Health Pulse", type = "toggle", default = true,
+    desc = "A soft red edge that beats like a heart below 25% health." }
+add { key = "dangerCompass", category = "Interface", label = "Danger Compass", type = "toggle", default = false,
+    desc = "Little wedges on the ground around your bug point at the nearest boss, elite or incoming shot." }
+
 -- Accessibility -------------------------------------------------------------------------
 add { key = "reduceFlashing", category = "Accessibility", label = "Reduce Flashing", type = "toggle", default = false,
     desc = "Disables white hit flashes and bright screen effects." }
