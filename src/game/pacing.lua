@@ -87,6 +87,7 @@ function Pacing.modifiersFor(sp, n)
     if not cfg or sp.endless or Settings.get("waveModifiers") == false then return out end
     local boss = sp.cfg.bossEvery > 0 and n % sp.cfg.bossEvery == 0
     if n < (cfg.from or 3) or boss or sp:isFinal(n) then return out end
+    if not require("src.game.onramp").allows(sp.world, "wavemods", n) then return out end
     local rng = sp.rng
     local count = 0
     if rng:random() < (cfg.chance or 0.55) then count = 1 end

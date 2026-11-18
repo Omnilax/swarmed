@@ -38,6 +38,7 @@ function Goals:waveStarted(n, id)
     else
         if not Settings.get("miniGoals") or n < cfg.fromWave or love.math.random() >= cfg.chance then return end
         if self.world.spawner.finalThisWave then return end
+        if not require("src.game.onramp").allows(self.world, "goals", n) then return end
         def = Content.goals:pickWeighted(function(d) return d.weight end, function(d)
             return d.minWave <= n and (not d.allowed or d.allowed(self.world, n) ~= false)
         end)

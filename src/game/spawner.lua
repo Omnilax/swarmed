@@ -637,8 +637,11 @@ function Spawner:spawnGroup(def, count, x, y, opts)
 end
 
 -- The mode's elite settings, with the current route's elite multiplier on top.
+local NO_ELITES = { chance = 0 }
 function Spawner:eliteMode()
     -- the wave's elite chances (wave modifiers, src/game/pacing.lua), scaled by a route gate
+    -- Gentle Start (src/game/onramp.lua): no elites in a new player's first waves
+    if not require("src.game.onramp").allows(self.world, "elites", self.wave) then return NO_ELITES end
     local m, route = self.eliteCfg or self.mode.elites, self.world.route
     local dk = self.world.danger and self.world.danger.eliteMul or 1     -- danger levels (src/config/danger.lua)
     if (not route or route.eliteMul == 1) and dk == 1 then return m end

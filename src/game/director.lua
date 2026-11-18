@@ -132,6 +132,10 @@ end
 function Director:eventCount(wave)
     local often = Settings.get("midWaveEvents") == "often"
     if wave < self.cfg.eventsFrom then return 0 end
+    -- Gentle Start (src/game/onramp.lua): none at first, then one at a time, never beside a visitor
+    local OnRamp = require("src.game.onramp")
+    if not OnRamp.allows(self.world, "events", wave) then return 0 end
+    if OnRamp.calm(self.world) then return self.pendingBoss and 0 or 1 end
     local n = 0
     if often or love.math.random() < math.min(0.9, 0.55 + wave * 0.03) then n = 1 end
     if wave >= (often and 3 or 6) and love.math.random() < (often and 0.7 or 0.35) then n = n + 1 end
@@ -150,7 +154,8 @@ function Director:onWaveStart(n)
     if sw then return self:scriptedWave(sw) end
     -- a predator joins the queen on boss waves (not the run's final wave)
     local every = self.cfg.encounterEvery
-    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n)) then
+    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n))
+        and require("src.game.onramp").allows(world, "encounters", n) then
         local boss = self:pickBoss(n)
         if boss then
             self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }

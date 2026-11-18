@@ -100,8 +100,9 @@ function Hud.draw(game, covered)
     lg.setFont(Theme.font(16))
     lg.setColor(1, 1, 1, alpha)
     lg.print(math.ceil(p.hp) .. " / " .. math.floor(maxHp), u(28), u(21))
-    -- Nectar: the run's currency (src/game/nectar.lua); the bead swells for a moment on a pickup
-    do
+    -- Nectar: the run's currency (src/game/nectar.lua); the bead swells for a moment on a pickup.
+    -- Hidden until Gentle Start opens the shop (src/game/onramp.lua): nothing to spend it on yet.
+    if require("src.game.onramp").allows(world, "shop") then
         local nx, ny = u(20) + bw + u(18), u(31)
         local amount = math.floor(world.nectar or 0)
         if amount ~= Hud.lastNectar then

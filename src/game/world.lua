@@ -109,6 +109,10 @@ function World.new(opts)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- Gentle Start: systems held back over a new player's first runs, with a "NEW" card each
+    require("src.game.onramp").attach(self)
+    -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
+    require("src.game.playlog").attach(self)
     -- wave rewards as moments in the arena: the reward bloom, rewards flying in, gain cards
     self.rewardFlow = require("src.game.rewardflow").new(self)
     -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
@@ -162,6 +166,7 @@ function World:spawnEnemy(def, x, y, elite)
         rs.seen[def.id] = true
         self.events:emit("species_seen", def, e)
     end
+    if elite then self.events:emit("elite_spawned", e) end
     return e
 end
 

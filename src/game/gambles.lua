@@ -91,6 +91,7 @@ function Gambles:onWaveStart(n)
         end
     end
     if not self:on() or n < self.cfg.from then return end
+    if not require("src.game.onramp").allows(world, "gambles", n) then return end
     local often = Settings.get("mapGambles") == "often"
     local count = 0
     if love.math.random() < (often and self.cfg.oftenChance or self.cfg.chance) then count = 1 end

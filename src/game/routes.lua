@@ -29,6 +29,7 @@ function Routes:offer(next)
     local cfg = self.rewards.cfg.routes
     self.gates = nil
     if not Settings.get("routeGates") or next < cfg.fromWave or sp:isFinal(next) or sp.timer <= 0 then return end
+    if not require("src.game.onramp").allows(w, "routes", next) then return end
     local safe, hard = pick("safe", next), pick("hard", next)
     if not safe or not hard then return end
     local p, S = w.player, w.size

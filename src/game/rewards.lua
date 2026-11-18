@@ -105,7 +105,8 @@ function Rewards:waveStarted(n)
     -- now and then a treasure ant shows up partway through the wave
     local tc = self.cfg.treasure
     self.treasureAt = nil
-    if tc and n >= tc.fromWave and love.math.random() < tc.chance and not self.world.spawner.finalThisWave then
+    if tc and n >= tc.fromWave and love.math.random() < tc.chance and not self.world.spawner.finalThisWave
+        and require("src.game.onramp").allows(self.world, "treasure", n) then
         self.treasureAt = tc.delay[1] + love.math.random() * (tc.delay[2] - tc.delay[1])
     end
 end

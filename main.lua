@@ -56,6 +56,8 @@ function love.load(args)
     -- tests and the balance bot run without hints (the polish selftest turns them on itself)
     require("src.game.tutorial").noSave = Records.noSave
     require("src.game.tutorial").off = Records.noSave or flags["--balance"] or false
+    -- Gentle Start (src/game/onramp.lua) holds nothing back in tests or for the balance bot
+    require("src.game.onramp").off = Records.noSave or flags["--balance"] or false
     Music.init()
     Sprites.build(Content.sprites)
 

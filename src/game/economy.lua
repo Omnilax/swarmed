@@ -261,6 +261,7 @@ end
 -- Whether this run has a shop at all (real runs with the economy on).
 function Economy.open(world)
     return Economy.enabled(world) and world.mode == "run" and not (world.flags and world.flags.demo)
+        and require("src.game.onramp").allows(world, "shop")
 end
 
 -- Remember locked offers for the next stock (a restock, or a save).

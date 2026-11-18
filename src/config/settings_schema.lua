@@ -156,6 +156,8 @@ add { key = "combineDamageNumbers", category = "Gameplay", label = "Combine Dama
     desc = "Quick hits on the same enemy add up into one number that keeps counting, instead of a spray of small ones." }
 add { key = "showKoCounter", category = "Gameplay", label = "KO Counter", type = "toggle", default = true,
     desc = "Show the running KO count and combo." }
+add { key = "gentleStart", category = "Gameplay", label = "Gentle Start", type = "toggle", default = true,
+    desc = "New players meet the game a piece at a time: elites, the shop, events, gambles, routes and big visitors join over the first runs, each with a short card. Off: everything from the first wave." }
 add { key = "tutorialHints", category = "Gameplay", label = "Tutorial Hints", type = "toggle", default = true,
     desc = "Short tips the first time something comes up in a run. Turning it back on shows them all again." }
 add { key = "pauseOnFocusLost", category = "Gameplay", label = "Pause When Unfocused", type = "toggle", default = true,
@@ -234,6 +236,8 @@ add { key = "touchAimSpecial", category = "Controls", label = "Touch Special Aim
 -- Developer -----------------------------------------------------------------------------
 add { key = "devMode", category = "Developer", label = "Developer Mode", type = "toggle", default = true,
     desc = "Enables the sandbox, console (`), overlay (F3) and debug hotkeys (F1 lists them)." }
+add { key = "playtestLog", category = "Developer", label = "Playtest Log", type = "toggle", default = false,
+    desc = "Write one line per wave (time, damage taken, KOs, level, items, nectar) to playtest_log.csv in the save folder, for comparing test runs." }
 add { key = "showHitboxes", category = "Developer", label = "Show Hitboxes", type = "toggle", default = false }
 add { key = "showSpatialGrid", category = "Developer", label = "Show Spatial Grid", type = "toggle", default = false }
 add { key = "showOverlay", category = "Developer", label = "Performance Overlay", type = "toggle", default = false }

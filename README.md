@@ -404,6 +404,22 @@ the only way to earn skill points. Setting
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
 
+## Gentle Start (new players)
+
+A new player meets the game a piece at a time (`src/game/onramp.lua`, numbers and card text in
+`src/config/onramp.lua`). In the first run: no elites before wave 4, the treasure ant from wave 3,
+and the nectar shop (with the nectar counter) from wave 3. Mini-goals, wave twists, garden events
+and map gambles join in run 2, route tunnels and big visitors in run 3, and until run 4 a wave has
+at most one event and never one beside a visitor. The first time each system shows up, a short
+"NEW" card explains it; from then on it is never held back again. Saves with 6+ runs count as
+met everything. Practice, the daily run, custom waves and modes with `onramp = false` skip it.
+Setting: Gameplay > **Gentle Start**. Systems ask `OnRamp.allows(world, id, wave)`.
+
+**Playtest Log** (Developer): one CSV line per cleared wave and at the end of a run (time, damage
+taken, KOs, level, items, nectar) in `playtest_log.csv` in the save folder (`src/game/playlog.lua`).
+
+Test: `love . --selftest --gentle`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

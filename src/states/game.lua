@@ -23,7 +23,10 @@ function Game.new(params)
         gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil,
         seed = params.seed, daily = params.daily, danger = params.danger, customWaves = params.customWaves })
     if params.resume then RunSave.restore(self.world, params.resume) end
-    if params.practice then require("src.states.practice").apply(self.world, params.practice) end
+    if params.practice then
+        self.world.flags.practice = true
+        require("src.states.practice").apply(self.world, params.practice)
+    end
 
     if self.mode == "sandbox" then
         self.world.flags.god = true
