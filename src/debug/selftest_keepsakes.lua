@@ -50,12 +50,28 @@ return function(wait, shot)
     wait(0.1)
     assert(g.world.keepsake == nil, "the daily run takes no keepsake")
 
+    -- the weekly challenge: two artifacts on, no keepsake, no acts, a week key
+    local Daily = require("src.game.daily")
+    local wp = Daily.weekParams()
+    local gw = State.switch(Game.new(wp))
+    wait(0.1)
+    assert(#gw.world.artifacts == 2, "the weekly challenge has two artifacts on")
+    assert(gw.world.keepsake == nil, "the weekly challenge takes no keepsake")
+    assert(gw.world.daily and gw.world.daily:find("W"), "the weekly challenge keeps its week key")
+    assert(not require("src.game.acts").enabled(gw.world), "the weekly challenge stays on one map")
+    local wk2 = Daily.weekInfo()
+    assert(wk2.seed == Daily.weekInfo().seed and wk2.artifacts[1] == wp.artifacts[1], "same week, same challenge")
+    print("[selftest] weekly " .. gw.world.daily .. ": " .. require("src.game.artifacts").names(gw.world.artifacts))
+
     -- the row in mode select
     State.switch(require("src.states.modeselect").new())
     local ms = State.top()
     for i, it in ipairs(ms.menu.items) do if it.keepsake then ms.menu.focus = i end end
     wait(0.3)
     shot("keepsake_row")
+    for i, it in ipairs(ms.menu.items) do if it.label == "Weekly Challenge" then ms.menu.focus = i end end
+    wait(0.3)
+    shot("weekly")
     local b = require("src.states.burrow").new()
     State.switch(b)
     wait(0.2)

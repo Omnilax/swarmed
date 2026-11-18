@@ -543,6 +543,13 @@ gain: Snail Shell (more health, slower), Wasp Sting (more damage, less health), 
 nectar), Pill Bug Plate (bites hurt less, slower attacks). A saved run keeps its keepsake; the
 daily run, practice and the tutorial take none.
 
+## Weekly challenge
+
+Mode select > **Weekly Challenge**: a new one every Monday (src/game/daily.lua `Daily.weekInfo`).
+The week's seed picks the bug, the map and two artifacts, which are on whether you own them or
+not, so it is a taste of rules you may not have bought yet. Colony rules, no keepsake, one map
+all run. Your best is kept with the daily results under the week's key ("2026-W46").
+
 Test: `love . --selftest --keepsakes`.
 
 ## Records and achievements

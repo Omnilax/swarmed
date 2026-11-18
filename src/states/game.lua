@@ -26,6 +26,7 @@ function Game.new(params)
         gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil,
         seed = params.seed, daily = params.daily, danger = params.danger, customWaves = params.customWaves,
         artifacts = params.artifacts, keepsake = params.keepsake })
+    self.world.weekly = params.weekly or nil
     if params.resume then RunSave.restore(self.world, params.resume) end
     -- acts: the run's route of maps, and moving on after waves 5 and 10 (src/game/acts.lua)
     if self.mode == "run" and not params.practice then

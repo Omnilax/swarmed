@@ -47,6 +47,8 @@ end
 -- Game.new: fill params.artifacts (a new run takes what is switched on; a resumed run keeps its
 -- own) and let artifacts change the params (Metamorphosis picks the bug).
 function Artifacts.prepare(params)
+    -- the weekly challenge brings its own (src/game/daily.lua), owned or not
+    if params.weekly and type(params.artifacts) == "table" then return params end
     if not Artifacts.allowed(params) then params.artifacts = nil return params end
     if params.artifacts == nil then params.artifacts = Artifacts.active() end
     if not params.resume then

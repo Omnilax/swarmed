@@ -155,6 +155,22 @@ function ModeSelect.new()
     items[#items + 1] = { type = "button", label = "Daily Run", mode = dailyMode, onActivate = function()
         State.switch(require("src.states.game").new(Daily.params()))
     end }
+    -- the weekly challenge: a week's seed, with two artifacts on (src/game/daily.lua)
+    do
+        local wk = Daily.weekInfo()
+        local wc, ws = Content.characters:get(wk.character), Content.stages:get(wk.stage)
+        local arts = require("src.game.artifacts").names(wk.artifacts) or "None"
+        local b = Daily.best(wk.key)
+        local weekMode = { name = "Weekly Challenge",
+            tagline = "A new challenge every Monday, with two artifacts on.",
+            description = "This week's seed picks your bug, the map and two artifacts, which are on whether you own them or not. Colony rules, one map all run.",
+            facts = { { "Week", wk.key }, { "Bug", wc and wc.name or wk.character }, { "Map", ws and ws.name or wk.stage },
+                { "Artifacts", arts },
+                { "Your best", b and (("Wave %d, %d KOs%s"):format(b.wave, b.kos, b.won and ", won" or "")) or "Not played yet" } } }
+        items[#items + 1] = { type = "button", label = "Weekly Challenge", mode = weekMode, onActivate = function()
+            State.switch(require("src.states.game").new(Daily.weekParams()))
+        end }
+    end
     -- artifacts: run rules for any mode, bought with amber (src/states/artifactpicker.lua)
     local Artifacts = require("src.game.artifacts")
     local artifactInfo = { name = "Artifacts", tagline = "Bend the rules of any mode.",

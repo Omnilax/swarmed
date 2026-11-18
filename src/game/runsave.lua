@@ -60,6 +60,7 @@ function RunSave.snapshot(game)
         danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
         artifacts = util.deepcopy(w.artifacts),
         keepsake = w.keepsake,
+        weekly = w.weekly,
         -- blessings and curses from map gambles (src/game/gambles.lua)
         blessings = util.deepcopy(w.blessings),
     }
@@ -139,7 +140,7 @@ function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
         startItems = snap.startItems, customWaves = snap.customWaves, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
         danger = tonumber(snap.danger) or 0, artifacts = type(snap.artifacts) == "table" and snap.artifacts or {},
-        keepsake = type(snap.keepsake) == "string" and snap.keepsake or false }
+        keepsake = type(snap.keepsake) == "string" and snap.keepsake or false, weekly = snap.weekly == true or nil }
 end
 
 -- Put a fresh world into the saved run's state.
