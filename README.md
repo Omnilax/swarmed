@@ -998,6 +998,13 @@ use them instead of drawing your own. Check by eye with `love . --selftest --uit
 - **Transitions**: the state stack fades every non-transparent screen in; overlays
   (`transparent = true`) dim the game behind them to about 70% black.
 
+Menus with pictures: any Menu row can take `icon = Menu.sprite(spriteId, turn)` (a bug, enemy or
+item sprite on a round chitin badge; `turn` tips side-on bugs 45 degrees). When some rows have an
+icon every row keeps the room, so labels line up. Game modes name an enemy as their `icon`.
+Title-screen rows carry a `desc` shown under the list. List screens end with
+`Theme.navFooter(pick)` (Arrows / Enter / Esc, or the pad's buttons; nothing on touch). Mode
+select is grouped under headers: Your run, Modes (bought ones first), Challenges, More.
+
 ## Layout
 
 ```

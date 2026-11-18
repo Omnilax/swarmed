@@ -2,6 +2,7 @@
 -- how many, how hard, and when the run ends. Everything is optional except name; leave a
 -- field out to get the standard game (content/modes/colony.lua has no overrides at all).
 return {
+    -- icon = "worker_ant",   -- an enemy sprite to show for the mode in mode select
     name = "My Mode",
     tagline = "One short line for the mode list.",
     description = "A sentence or two shown on the mode select screen.",

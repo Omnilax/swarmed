@@ -106,6 +106,7 @@ function Burrow:draw()
     local w, h = lg.getDimensions()
     lg.clear(c.bg)
     Theme.title("The Burrow")
+    Theme.navFooter("Buy")
     -- the balance, top right
     lg.setFont(Theme.font("heading", "bold"))
     local bal = tostring(Amber.balance())

@@ -105,13 +105,16 @@ end
 
 function ModeSelect.new()
     local self = setmetatable({ t = 0 }, ModeSelect)
-    local items, focus = {}, 2
+    local Amber = require("src.game.amber")
+    local Daily = require("src.game.daily")
+    -- four groups, each under a header: your run's setup, the modes, challenges, and practice
+    local setup, modes, challenges, other = {}, {}, {}, {}
     -- the map: any open location (bought in the Burrow); also in Cosmetics > Location
     do
         local Cosmetics = require("src.game.cosmetics")
         local opts = {}
         for _, s in ipairs(Cosmetics.locations()) do opts[#opts + 1] = { value = s.id, label = s.name } end
-        items[#items + 1] = { type = "choice", label = "Map", options = opts, map = true,
+        setup[#setup + 1] = { type = "choice", label = "Map", options = opts, map = true,
             get = Cosmetics.location, set = Cosmetics.setLocation }
     end
     -- a keepsake: one small trade carried into the run, bought in the Burrow (src/game/keepsakes.lua)
@@ -122,17 +125,31 @@ function ModeSelect.new()
             if Keepsakes.owned(k.id) then opts[#opts + 1] = { value = k.id, label = k.name } end
         end
         if #opts > 1 then
-            items[#items + 1] = { type = "choice", label = "Keepsake", options = opts, keepsake = true,
+            setup[#setup + 1] = { type = "choice", label = "Keepsake", options = opts, keepsake = true,
                 get = function() return Keepsakes.chosen() or "none" end,
                 set = function(v) Keepsakes.choose(v ~= "none" and v or nil) end }
-            focus = focus + 1
         end
     end
-    for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden end)) do
-        local Amber = require("src.game.amber")
-        local open = Amber.modeOpen(m.id)
-        items[#items + 1] = { type = "button", label = m.name, mode = m, locked = not open,
-            value = not open and function() return "locked" end or nil, onActivate = function()
+    -- artifacts: run rules for any mode, bought with amber (src/states/artifactpicker.lua)
+    local Artifacts = require("src.game.artifacts")
+    local artifactInfo = { name = "Artifacts", tagline = "Bend the rules of any mode.",
+        description = "Artifacts change how a run plays: glass shells, giant ants, twin queens and more. Buy them in the Burrow with amber, then switch them on here. They stay on until you switch them off." }
+    setup[#setup + 1] = { type = "button", label = "Artifacts", mode = artifactInfo,
+        value = function() local n = #Artifacts.active() return n > 0 and (n .. " on") or "" end,
+        onActivate = function() State.push(require("src.states.artifactpicker").new()) end }
+
+    -- the modes, each with its enemy's picture; ones still to buy come last
+    local list = Content.modes:filter(function(d) return not d.hidden end)
+    local open, shut = {}, {}
+    for _, m in ipairs(list) do
+        if Amber.modeOpen(m.id) then open[#open + 1] = m else shut[#shut + 1] = m end
+    end
+    for _, m in ipairs(shut) do open[#open + 1] = m end
+    for _, m in ipairs(open) do
+        local isOpen = Amber.modeOpen(m.id)
+        modes[#modes + 1] = { type = "button", label = m.name, mode = m, locked = not isOpen,
+            icon = m.icon and Menu.sprite(Content.enemies:get(m.icon) and Content.enemies:get(m.icon).sprite, true),
+            value = not isOpen and function() return "locked" end or nil, onActivate = function()
             -- not bought yet: the Burrow sells it for amber (src/game/amber.lua)
             if not Amber.modeOpen(m.id) then require("src.core.audio").play("ui_back") return end
             lastMode = m.id
@@ -142,32 +159,33 @@ function ModeSelect.new()
                 State.push(require("src.states.charselect").new({ gameMode = m.id }))
             end
         end }
-        if m.id == lastMode then focus = #items end
     end
+
     -- the daily run: today's seed picks the bug, stage, species order and wave modifiers
-    local Daily = require("src.game.daily")
     local d = Daily.info()
     local dc, ds = Content.characters:get(d.character), Content.stages:get(d.stage)
-    local dailyMode = { name = "Daily Run", daily = d,
+    local dailyMode = { name = "Daily Run", daily = d, iconSprite = dc and dc.sprite,
         tagline = "Same bug, same waves, for everyone today.",
         description = "Today's seed picks your bug, the stage, the order the species arrive in and every wave modifier. Colony rules. A new run every day.",
         dailyFacts = { { "Date", d.key }, { "Bug", dc and dc.name or d.character }, { "Stage", ds and ds.name or d.stage } } }
-    items[#items + 1] = { type = "button", label = "Daily Run", mode = dailyMode, onActivate = function()
+    challenges[#challenges + 1] = { type = "button", label = "Daily Run", mode = dailyMode,
+        icon = Menu.sprite(dc and dc.sprite, true), onActivate = function()
         State.switch(require("src.states.game").new(Daily.params()))
     end }
     -- the weekly challenge: a week's seed, with two artifacts on (src/game/daily.lua)
     do
         local wk = Daily.weekInfo()
         local wc, ws = Content.characters:get(wk.character), Content.stages:get(wk.stage)
-        local arts = require("src.game.artifacts").names(wk.artifacts) or "None"
+        local arts = Artifacts.names(wk.artifacts) or "None"
         local b = Daily.best(wk.key)
-        local weekMode = { name = "Weekly Challenge",
+        local weekMode = { name = "Weekly Challenge", iconSprite = wc and wc.sprite,
             tagline = "A new challenge every Monday, with two artifacts on.",
             description = "This week's seed picks your bug, the map and two artifacts, which are on whether you own them or not. Colony rules, one map all run.",
             facts = { { "Week", wk.key }, { "Bug", wc and wc.name or wk.character }, { "Map", ws and ws.name or wk.stage },
                 { "Artifacts", arts },
                 { "Your best", b and (("Wave %d, %d KOs%s"):format(b.wave, b.kos, b.won and ", won" or "")) or "Not played yet" } } }
-        items[#items + 1] = { type = "button", label = "Weekly Challenge", mode = weekMode, onActivate = function()
+        challenges[#challenges + 1] = { type = "button", label = "Weekly Challenge", mode = weekMode,
+            icon = Menu.sprite(wc and wc.sprite, true), onActivate = function()
             State.switch(require("src.states.game").new(Daily.weekParams()))
         end }
     end
@@ -176,8 +194,7 @@ function ModeSelect.new()
         local codeInfo = { name = "Play a Run Code", tagline = "The same run a friend played.",
             description = "Copy a run code (from the game over or victory screen), then press this. You get the same bug, map, mode, danger, seed and artifacts.",
             facts = {} }
-        local it
-        it = { type = "button", label = "Play a Run Code", mode = codeInfo, onActivate = function()
+        challenges[#challenges + 1] = { type = "button", label = "Play a Run Code", mode = codeInfo, onActivate = function()
             local ok, text = pcall(love.system.getClipboardText)
             local params, why = require("src.game.runcode").decode(ok and text or nil)
             if not params then
@@ -187,21 +204,27 @@ function ModeSelect.new()
             end
             State.switch(require("src.states.game").new(params))
         end }
-        items[#items + 1] = it
     end
-    -- artifacts: run rules for any mode, bought with amber (src/states/artifactpicker.lua)
-    local Artifacts = require("src.game.artifacts")
-    local artifactInfo = { name = "Artifacts", tagline = "Bend the rules of any mode.",
-        description = "Artifacts change how a run plays: glass shells, giant ants, twin queens and more. Buy them in the Burrow with amber, then switch them on here. They stay on until you switch them off." }
-    items[#items + 1] = { type = "button", label = "Artifacts", mode = artifactInfo,
-        value = function() local n = #Artifacts.active() return n > 0 and (n .. " on") or "" end,
-        onActivate = function() State.push(require("src.states.artifactpicker").new()) end }
     -- practice: any bug, mode, wave and species, nothing counts (src/states/practice.lua)
-    items[#items + 1] = { type = "button", label = "Practice", mode = { name = "Practice",
+    other[#other + 1] = { type = "button", label = "Practice", mode = { name = "Practice",
         tagline = "Try anything. Nothing counts.",
         description = "Pick a bug, mode, starting wave and one species (or a boss), with the items a real run would have by then, and invincibility if you like. Practice never counts toward records and is never saved.",
         facts = {} }, onActivate = function() State.push(require("src.states.practice").new()) end }
-    items[#items + 1] = { type = "button", label = "Back", onActivate = function() State.pop() end }
+    other[#other + 1] = { type = "button", label = "Back", onActivate = function() State.pop() end }
+
+    local items, focus = {}, nil
+    local function group(title, rows)
+        items[#items + 1] = { type = "header", label = title }
+        for _, r in ipairs(rows) do items[#items + 1] = r end
+    end
+    group("Your run", setup)
+    group("Modes", modes)
+    group("Challenges", challenges)
+    group("More", other)
+    -- start on the mode played last, else Colony
+    for i, it in ipairs(items) do
+        if it.mode and it.mode.id == (lastMode or "colony") then focus = i end
+    end
     self.menu = Menu.new({
         items = items,
         onBack = function() State.pop() end,
@@ -211,7 +234,7 @@ function ModeSelect.new()
             return Theme.u(60), Theme.u(120), math.min(Theme.u(320), w * 0.32), h - Theme.u(200)
         end,
     })
-    self.menu.focus = focus
+    self.menu.focus = focus or 2
     return self
 end
 
@@ -228,6 +251,7 @@ function ModeSelect:draw()
     lg.clear(c.bg)
     Theme.title("Game Mode")
     self.menu:draw()
+    Theme.navFooter("Choose")
 
     local it = self.menu:focused()
     local m = it and (it.map and ModeSelect.mapInfo() or it.keepsake and ModeSelect.keepsakeInfo() or it.mode)
@@ -237,17 +261,21 @@ function ModeSelect:draw()
     Theme.panel(px, u(120), pw, ph)
     local x, y, iw = px + u(32), u(150), pw - u(64)
 
+    -- the mode's picture, top right of the panel
+    local spriteId = m.iconSprite or (m.icon and Content.enemies:get(m.icon) and Content.enemies:get(m.icon).sprite)
+    if spriteId then Menu.sprite(spriteId, true)(px + pw - u(70), u(190), u(84), true) end
+    local tw = spriteId and iw - u(110) or iw      -- text keeps clear of the picture
     lg.setFont(Theme.font("title", "bold"))
     Theme.printShadow(m.name:upper(), x, y, c.focus)
     y = y + lg.getFont():getHeight() + u(6)
     lg.setFont(Theme.font("body"))
     lg.setColor(c.accent)
-    local _, tl = lg.getFont():getWrap(m.tagline, iw)
-    lg.printf(m.tagline, x, y, iw)
+    local _, tl = lg.getFont():getWrap(m.tagline, tw)
+    lg.printf(m.tagline, x, y, tw)
     y = y + #tl * lg.getFont():getHeight() + u(18)
     lg.setColor(c.text)
-    local _, dl = lg.getFont():getWrap(m.description, iw)
-    lg.printf(m.description, x, y, iw)
+    local _, dl = lg.getFont():getWrap(m.description, tw)
+    lg.printf(m.description, x, y, tw)
     y = y + #dl * lg.getFont():getHeight() + u(28)
 
     -- facts: a thin rule, then label / value rows

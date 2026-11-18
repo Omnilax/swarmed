@@ -93,6 +93,7 @@ function FieldGuide:draw()
         lg.clear(c.bg)
     end
     Theme.title("Field Guide")
+    Theme.navFooter("Open")
     self.menu:draw()
     local it = self.menu:focused()
     local page = it and it.page

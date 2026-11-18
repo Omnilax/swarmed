@@ -58,6 +58,8 @@ function love.load(args)
     require("src.game.tutorial").off = Records.noSave or flags["--balance"] or false
     -- Gentle Start (src/game/onramp.lua) holds nothing back in tests or for the balance bot
     require("src.game.onramp").off = Records.noSave or flags["--balance"] or false
+    -- tests and the balance bot drive one world: no moving to a new map between acts
+    require("src.game.acts").off = Records.noSave or flags["--balance"] or false
     Music.init()
     Sprites.build(Content.sprites)
 

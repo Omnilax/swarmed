@@ -19,7 +19,7 @@ function Pause.new(game)
     local RunSave = require("src.game.runsave")
     local items = {
         { type = "button", label = "Resume", onActivate = function() State.pop() end },
-        { type = "button", label = "Inventory & Shop", onActivate = function() Pause.openInventory(game) end },
+        { type = "button", label = "Bag & Shop", onActivate = function() Pause.openInventory(game) end },
         { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
         { type = "button", label = "Field Guide", onActivate = function() State.push(require("src.states.fieldguide").new({ inRun = true })) end },
         { type = "button", label = "Settings", onActivate = function() State.push(require("src.states.settings").new()) end },
@@ -227,7 +227,7 @@ function Pause.hints()
         local g = Input.glyph(id)
         return g.pad and ({ a = "A", b = "B", x = "X", y = "Y", start = "START", back = "BACK" })[g.pad] or g.key or "?"
     end
-    local inv = Input.lastDevice ~= "gamepad" and { cap("inventory"), "Inventory" } or nil
+    local inv = Input.lastDevice ~= "gamepad" and { cap("inventory"), "Bag" } or nil
     local out = { { cap("ui_confirm"), "Choose" }, { cap("quick_restart"), "Quick Restart" }, { cap("pause"), "Resume" } }
     if inv then table.insert(out, 2, inv) end
     return out

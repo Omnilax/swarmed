@@ -17,7 +17,7 @@ local Acts = { LENGTH = 5, COUNT = 3 }
 
 -- Does this world travel between acts?
 function Acts.enabled(world)
-    if not world or world.mode ~= "run" then return false end
+    if Acts.off or not world or world.mode ~= "run" then return false end
     local f = world.flags or {}
     if f.demo or f.practice or world.daily or world.lessons then return false end
     if Settings.get("travelActs") == false then return false end

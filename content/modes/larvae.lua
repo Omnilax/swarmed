@@ -1,5 +1,6 @@
 -- Beginner mode: smaller, slower waves with long breathers and no elites.
 return {
+    icon = "ichneumon_larva",          -- the enemy sprite shown for the mode in mode select
     name = "Larvae",
     tagline = "Learn the ropes. Gentler waves, long breaks.",
     description = "Smaller columns, weaker ants and plenty of time between waves. New species arrive every other wave and elites never show up.",

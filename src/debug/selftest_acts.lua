@@ -11,6 +11,8 @@ return function(wait, shot)
     RunSave.noSave = true
     local Game = require("src.states.game")
     local Acts = require("src.game.acts")
+    local savedOff = Acts.off
+    Acts.off = false
     local game = State.switch(Game.new({ mode = "run", character = "rhino_beetle", stage = "backyard", seed = 99 }))
     wait(0.2)
     local w = game.world
@@ -66,5 +68,6 @@ return function(wait, shot)
     g3:nextWave()
     assert(State.top() == g3 and g3.world.stage.id == "backyard", "Travel Between Acts off should keep the map")
     Settings.set("travelActs", true)
+    Acts.off = savedOff
     print("[selftest] acts OK")
 end

@@ -41,9 +41,9 @@ return function(wait, shot)
     print(("[maps] honeypot rank dunes %.1f / backyard %.1f, termite soldier log %.1f / backyard %.1f"):format(dune, yard, log, yard2))
     -- mode select: a map row with who lives there
     local ms = State.switch(require("src.states.modeselect").new())
-    assert(ms.menu.items[1].map, "mode select should open with a map row")
+    assert(ms.menu.items[2].map, "mode select should open with a map row under its header")
     require("src.game.cosmetics").setLocation("dune_field")
-    ms.menu.focus = 1
+    ms.menu.focus = 2
     wait(0.2)
     shot("maps_modeselect")
     local info = require("src.states.modeselect").mapInfo()

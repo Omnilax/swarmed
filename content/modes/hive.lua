@@ -1,5 +1,6 @@
 -- Bees, wasps and hornets only. They have no queens yet, so boss waves bring the biggest hunters.
 return {
+    icon = "honey_bee",          -- the enemy sprite shown for the mode in mode select
     name = "Hive",
     tagline = "Bees, wasps and hornets. Watch the sky.",
     description = "Only stinging flyers: swarming bees, hunting wasps and armoured hornets. Boss waves bring the giant hornets and tarantula hawks.",

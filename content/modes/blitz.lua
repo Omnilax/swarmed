@@ -1,5 +1,6 @@
 -- Short and fast: eight huge waves with no rest.
 return {
+    icon = "desert_ant",          -- the enemy sprite shown for the mode in mode select
     name = "Blitz",
     tagline = "Eight huge waves, no rest. A quick run.",
     description = "A short run for when you have ten minutes: eight waves, each far bigger than the last, coming in from every side with no breather between them. Two new species a wave, frail ants, and level-ups come fast.",
