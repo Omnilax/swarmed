@@ -33,6 +33,7 @@ local lg = love.graphics
 Choice.ARM_TIME = 0.8     -- seconds before the cards accept any input
 local LOCK_COL = { 1, 0.82, 0.35 }
 local NECTAR_COL = { 1, 0.8, 0.3 }
+local SEALED_COL = { 0.93, 0.86, 0.66 }   -- a sealed cocoon card (Choices.seal)
 Choice.NECTAR_COL = NECTAR_COL
 local BAN_COL = { 1, 0.45, 0.4 }
 local CURSE_COL = { 0.8, 0.5, 1 }
@@ -102,7 +103,7 @@ end
 function Choice:take(i)
     local item = self.items[i]
     if not item then return end
-    item.locked = nil
+    item.locked, item.sealed = nil, nil
     Choices.remember(self.world, self.items, item)
     self.world.events:emit("item_taken", item)
     self:close()
@@ -305,6 +306,39 @@ local function button(r, text, font, opts)
     lg.printf(text, r.x, r.y + math.floor((r.h - font:getHeight()) / 2), r.w, "center")
 end
 
+-- A sealed card: a silk cocoon and a promise, no name, shape or stats.
+
+function Choice.drawSealed(self, i, x, y, c, areaH, rc, ready, ctx, pad, touch)
+    local u = Theme.u
+    local cx, cy = x + c.w / 2, y + u(34) + areaH / 2
+    local wob = math.sin(self.t * 2.4 + i) * u(2)
+    lg.setColor(0.25, 0.22, 0.18, 0.9)
+    lg.ellipse("fill", cx, cy + u(4), u(26), u(40))
+    lg.setColor(0.86, 0.8, 0.66, 1)
+    lg.ellipse("fill", cx + wob * 0.3, cy, u(24), u(38))
+    lg.setColor(0.7, 0.62, 0.48, 1)
+    for k = -3, 3 do lg.line(cx - u(22), cy + k * u(9), cx + u(22), cy + k * u(9) + u(4)) end
+    lg.setColor(1, 0.95, 0.75, 0.35 + 0.2 * math.sin(self.t * 3))
+    lg.ellipse("line", cx, cy, u(28), u(42))
+    local ty = y + u(138)
+    lg.setFont(Theme.font(19, "bold"))
+    Theme.printShadow("Sealed Cocoon", x, ty, rc, "center", c.w)
+    lg.setFont(Theme.font(14))
+    lg.setColor(InvState.COL.dim)
+    lg.printf("Rare or better  ·  ? cells", x, ty + u(26), c.w, "center")
+    lg.setColor(Theme.colors.text)
+    lg.printf("Something good is wrapped up inside. You'll only see what once it's yours.", x + u(10), ty + u(56), c.w - u(20), "center")
+    if self.armed == i then
+        lg.setFont(Theme.font(16, "bold"))
+        local text = pad and "PRESS {pad:a} AGAIN TO TAKE" or touch and "TAP AGAIN TO TAKE" or "CLICK AGAIN TO TAKE"
+        Theme.rich(text, x - u(20), y + c.h + u(10), c.w + u(40), "center", rc, 0.75 + 0.25 * math.sin(self.t * 8))
+    end
+    if not ready then
+        lg.setColor(0.02, 0.015, 0.02, 0.55 * (1 - self.t / (ctx.armTime or Choice.ARM_TIME)))
+        lg.rectangle("fill", x, y, c.w, c.h)
+    end
+end
+
 -- One card: an item (the free pick) or a shop offer (src/states/shop.lua draws its stock with
 -- this too). self is the screen: focus, t, armed, armedBan, flashT, previews, tags, world, run
 -- (bans; nil in the shop), ready(). c: the card's rect with .ban / .lock chips.
@@ -324,7 +358,9 @@ function Choice.drawCard(self, i, entry, c, ctx)
     local def = entry.def
     local rc = InvState.rarityColor(def)
     if offer and offer.kind == "boost" then rc = NECTAR_COL end
-    local cursed = def.curse ~= nil or def.rarity == "cursed"
+    local sealed = entry.sealed and not offer        -- a sealed cocoon (Choices.seal): nothing shows
+    if sealed then rc = SEALED_COL end
+    local cursed = not sealed and (def.curse ~= nil or def.rarity == "cursed")
     local focus = i == self.focus
     local lift = focus and math.floor(u(8) * math.min(1, self.t * 6)) or 0
     local x, y = c.x, c.y - lift
@@ -368,6 +404,7 @@ function Choice.drawCard(self, i, entry, c, ctx)
             { color = LOCK_COL, lit = entry.locked, hover = hoverWhat == "lock" and hoverI == i })
     end
     local areaH = u(96)
+    if sealed then return Choice.drawSealed(self, i, x, y, c, areaH, rc, ready, ctx, pad, touch) end
     if item then
         -- the item drawn on its own little grid, so you can see its shape
         local bw, bh = Inventory.size(item)

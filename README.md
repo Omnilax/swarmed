@@ -562,6 +562,12 @@ are left out. Practice, custom waves and the tutorial have no code (src/game/run
 
 Test: `love . --selftest --runcode`.
 
+## Sealed cocoons
+
+From wave 4, an item choice sometimes (15%) deals one card as a **Sealed Cocoon**: rare or
+better, but its name, shape and stats stay hidden until you take it (`Choices.seal`,
+`Choices.SEALED` in src/game/choices.lua). Locked cards are never sealed.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

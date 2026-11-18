@@ -109,7 +109,25 @@ function Choices.deal(world, n, minRarity)
     if not next(keep) then
         for i = #items, 2, -1 do local j = love.math.random(i); items[i], items[j] = items[j], items[i] end
     end
+    Choices.seal(world, items)
     return items
+end
+
+-- Sometimes one card comes sealed in a cocoon: rare or better, but you don't see what it is
+-- until you take it. Not before wave SEALED.wave, and never a locked card.
+Choices.SEALED = { chance = 0.15, wave = 4, rarity = "rare" }
+function Choices.seal(world, items, force)
+    local S = Choices.SEALED
+    if not force and (wave(world) < S.wave or love.math.random() >= S.chance) then return end
+    local free = {}
+    for i, it in ipairs(items) do if not it.locked then free[#free + 1] = i end end
+    if #free == 0 then return end
+    local avoid = {}
+    for _, it in ipairs(items) do avoid[it.id] = true end
+    local got = Choices.roll(world, 1, S.rarity, nil, avoid)[1]
+    if not got or Rarities[got.def.rarity].order < Rarities[S.rarity].order then return end
+    got.sealed = true
+    items[free[love.math.random(#free)]] = got
 end
 
 -- Cards the player locked, remembered for the next choice (call when the screen closes).

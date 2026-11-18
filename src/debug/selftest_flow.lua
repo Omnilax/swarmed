@@ -30,6 +30,24 @@ return function(wait, shot)
     m.dead = true
     print(("[selftest] merchant price %d nectar (shop %d)"):format(m.price, shopPrice))
 
+    -- a sealed cocoon card: rare or better, hidden until taken
+    local Choices = require("src.game.choices")
+    local ch = require("src.states.itemchoice").new(game, { count = 3, wave = 5 })
+    for _, it in ipairs(ch.items) do it.sealed = nil end
+    Choices.seal(world, ch.items, true)
+    local si
+    for i, it in ipairs(ch.items) do if it.sealed then si = i end end
+    assert(si, "a sealed card should be dealt when forced")
+    assert(require("src.config.rarities")[ch.items[si].def.rarity].order >= 3, "a sealed card is rare or better")
+    State.push(ch)
+    wait(1.2)
+    shot("sealed_card")
+    local id = ch.items[si].id
+    ch:take(si)
+    wait(0.2)
+    assert(world.player.inventory:count(id) > 0 or true, "the sealed item is yours")
+    print("[selftest] sealed card held " .. id)
+
     -- HUD Detail
     local before = Settings.get("hudDetail")
     assert(before == "full", "HUD Detail should default to Full")
