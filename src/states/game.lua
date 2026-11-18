@@ -35,8 +35,20 @@ function Game.new(params)
     self.world.events:on("player_died", function()
         self.deathTimer = 1.2
     end)
-    -- real runs count toward stats and achievements (src/game/records.lua); practice doesn't
-    if self.mode == "run" and not params.practice then
+    -- the tutorial: back to the title screen when its last lesson is done (src/game/lessons.lua)
+    self.tutorial = self.world.modeDef and self.world.modeDef.tutorial or nil
+    if self.tutorial then
+        self.world.flags.practice = true
+        self.world.events:on("tutorial_done", function()
+            local prefs = require("src.game.prefs")
+            prefs.get().tutorialDone = true
+            prefs.save()
+            self.leaveSoon = 0.5
+        end)
+    end
+    -- real runs count toward stats and achievements (src/game/records.lua); practice and the
+    -- tutorial don't
+    if self.mode == "run" and not params.practice and not self.tutorial then
         local run = require("src.game.records").track(self.world, params)
         if params.resume then RunSave.restoreRecord(run, params.resume) end
         require("src.game.prefs").played(params)
@@ -109,6 +121,10 @@ function Game:update(dt)
     if Input.pressed("next_wave") then self:nextWave() end
     if Input.pressed("frenzy") then self.world.rewards.frenzy:unleash() end
     self.world:update(dt)
+    if self.leaveSoon then
+        self.leaveSoon = self.leaveSoon - dt
+        if self.leaveSoon <= 0 then State.switch(require("src.states.menu").new()) return end
+    end
     -- autosave a beat after each wave clear (phones and browser tabs can close at any moment)
     if self.saveSoon then
         self.saveSoon = nil
@@ -228,7 +244,7 @@ end
 -- Next Wave (key, pad, or a tap on the wave banner): start the wave / send the rest in early.
 function Game:nextWave()
     local sp = self.world.spawner
-    if self.mode ~= "run" or self.world.player.dead or not sp then return end
+    if self.mode ~= "run" or self.world.player.dead or not sp or self.tutorial then return end
     -- the wave's reward bloom is still waiting: it comes to you first
     if self.world.rewardFlow and self.world.rewardFlow:pull() then
         require("src.core.audio").play("ui_confirm", { pitch = 1.3 })

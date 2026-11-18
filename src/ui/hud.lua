@@ -200,8 +200,8 @@ function Hud.draw(game, covered)
         end
     end
 
-    -- Wave and timer
-    if world.mode == "run" then
+    -- Wave and timer (not in the tutorial: its lesson panel sits there instead)
+    if world.mode == "run" and not world.lessons then
         local sp = world.spawner
         lg.setFont(Theme.font(24))
         local sub

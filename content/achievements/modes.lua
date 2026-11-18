@@ -5,7 +5,7 @@ local reg = Content.modes
 if not reg then return list end
 for _, m in ipairs(reg:all()) do
     local id = m.id
-    if m.custom then
+    if m.custom or m.hidden then
         -- (Custom Waves can be made as easy as you like, so it has no achievement)
     elseif m.endless or id == "endless" then
         list[#list + 1] = { id = "mode_" .. id, name = m.name .. ": 30", description = "Reach level 30 in " .. m.name .. ".",

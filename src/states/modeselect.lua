@@ -64,7 +64,7 @@ end
 function ModeSelect.new()
     local self = setmetatable({ t = 0 }, ModeSelect)
     local items, focus = {}, 1
-    for _, m in ipairs(Content.modes:all()) do
+    for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden end)) do
         items[#items + 1] = { type = "button", label = m.name, mode = m, onActivate = function()
             lastMode = m.id
             if m.custom then

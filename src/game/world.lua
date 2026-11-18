@@ -113,6 +113,8 @@ function World.new(opts)
     require("src.game.onramp").attach(self)
     -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
     require("src.game.playlog").attach(self)
+    -- the guided tutorial (content/modes/tutorial.lua): lessons instead of waves
+    require("src.game.lessons").attach(self)
     -- wave rewards as moments in the arena: the reward bloom, rewards flying in, gain cards
     self.rewardFlow = require("src.game.rewardflow").new(self)
     -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)

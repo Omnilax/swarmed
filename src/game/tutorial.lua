@@ -112,7 +112,8 @@ end
 function Tutorial.update(world, dt)
     local run = Tutorial.run
     if not run or run.world ~= world then return end
-    if Tutorial.off or not Settings.get("tutorialHints") or world.mode ~= "run" or world.flags.demo then
+    if Tutorial.off or not Settings.get("tutorialHints") or world.mode ~= "run" or world.flags.demo
+        or (world.modeDef and world.modeDef.tutorial) then
         Tutorial.current = nil
         return
     end

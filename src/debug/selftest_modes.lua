@@ -102,7 +102,7 @@ return function(wait, shot)
     local reachWave = function(n) return function(w) return w.spawner.wave >= n and w.spawner.phase == "break" end end
 
     for _, m in ipairs(Content.modes:all()) do
-        if not m.endless then
+        if not m.endless and not m.tutorial then
             local seen = play(m.id, 600, reachWave(6))
             assert(seen.wave >= 6, m.id .. ": stuck at wave " .. seen.wave)
             assert(seen.spawned > 0, m.id .. ": nothing spawned")

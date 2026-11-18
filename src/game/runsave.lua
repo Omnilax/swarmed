@@ -23,7 +23,7 @@ local RECORD_FIELDS = { "kills", "elites", "queens", "killsBy", "killsByFamily",
 -- Can this game be saved? (a real run that's still going)
 function RunSave.allowed(game)
     local w = game and game.world
-    return w ~= nil and game.mode == "run" and not game.params.practice and not w.player.dead and not w.flags.demo
+    return w ~= nil and game.mode == "run" and not game.params.practice and not game.tutorial and not w.player.dead and not w.flags.demo
 end
 
 function RunSave.snapshot(game)

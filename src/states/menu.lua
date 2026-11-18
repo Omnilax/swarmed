@@ -79,6 +79,11 @@ function MainMenu:buildItems()
             MainMenu.quickStart(lc.id, lm.id)
         end }
     end
+    -- the guided tutorial: called out until it has been finished once
+    local fresh = not require("src.game.prefs").get().tutorialDone
+    items[#items + 1] = { type = "button", label = fresh and "Tutorial (start here)" or "Tutorial", onActivate = function()
+        State.switch(require("src.states.game").new({ mode = "run", character = "rhino_beetle", gameMode = "tutorial" }))
+    end }
     items[#items + 1] = { type = "button", label = "Practice", onActivate = function()
         State.push(require("src.states.practice").new())
     end }
@@ -90,11 +95,9 @@ function MainMenu:buildItems()
             State.switch(require("src.states.game").new({ mode = "sandbox" }))
         end }
     end
-    items[#items + 1] = { type = "button", label = "Bug Catalogue", onActivate = function()
-        State.push(require("src.states.catalogue").new())
-    end }
-    items[#items + 1] = { type = "button", label = "Item Catalogue", onActivate = function()
-        State.push(require("src.states.itemcatalogue").new())
+    -- how everything works, plus the bug and item catalogues (src/states/fieldguide.lua)
+    items[#items + 1] = { type = "button", label = "Field Guide", onActivate = function()
+        State.push(require("src.states.fieldguide").new())
     end }
     items[#items + 1] = { type = "button", label = "Records", onActivate = function()
         State.push(require("src.states.records").new())

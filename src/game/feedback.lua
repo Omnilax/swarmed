@@ -91,6 +91,7 @@ function Feedback.update(dt)
         Feedback.beatT = 0
     end
     Tutorial.update(world, dt)
+    require("src.game.lessons").update(world, dt)
 end
 
 -- Arrows at the screen edge for queens and elites that are out of view, and for every ant
@@ -140,6 +141,7 @@ end
 function Feedback.drawHud(game, covered)
     Feedback.drawMarkers(game.world, covered)
     Tutorial.draw(game.world, covered)
+    require("src.game.lessons").draw(game.world, covered)
 end
 
 return Feedback

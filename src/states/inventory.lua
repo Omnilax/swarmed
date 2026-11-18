@@ -46,6 +46,7 @@ end
 function Inv.new(game, opts)
     local self = setmetatable({ game = game, world = game.world, t = 0 }, Inv)
     self.inv = game.world.player.inventory
+    game.world.events:emit("bag_opened")
     self.cursor = { kind = "bag", x = 0, y = 0 }
     self.held = nil         -- { item, from = { x, y, rot } | nil (new item) }
     if opts and opts.held then

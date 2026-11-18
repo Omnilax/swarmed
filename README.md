@@ -420,6 +420,20 @@ taken, KOs, level, items, nectar) in `playtest_log.csv` in the save folder (`src
 
 Test: `love . --selftest --gentle`.
 
+## Tutorial and Field Guide
+
+- **Tutorial** (main menu; "Tutorial (start here)" until it is finished once): a guided fight
+  in `content/modes/tutorial.lua` (a hidden mode) run by `src/game/lessons.lua`. The colony's
+  own waves are off; 14 lessons each bring in what they need and move on when done: move,
+  attack, dash, special, the swarm, nectar, a level-up, an item choice, the bag, the shop,
+  frenzy, an elite, a queen. A panel at the top shows the current lesson. Nobody can fall in
+  it, it isn't tracked or saved, and it ends back on the title screen.
+- **Field Guide** (main menu and pause): one short page for every system
+  (`src/config/guide.lua`), a set-bonus page written from `src/config/tags.lua`, and the bug
+  and item catalogues. Pages for systems Gentle Start hasn't shown yet read "? ? ?" until met.
+
+Test: `love . --selftest --tutorial`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

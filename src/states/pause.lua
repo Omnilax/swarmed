@@ -21,6 +21,7 @@ function Pause.new(game)
         { type = "button", label = "Resume", onActivate = function() State.pop() end },
         { type = "button", label = "Inventory & Shop", onActivate = function() Pause.openInventory(game) end },
         { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
+        { type = "button", label = "Field Guide", onActivate = function() State.push(require("src.states.fieldguide").new({ inRun = true })) end },
         { type = "button", label = "Settings", onActivate = function() State.push(require("src.states.settings").new()) end },
         { type = "button", label = "Restart", onActivate = function() game:restart() end },
     }
