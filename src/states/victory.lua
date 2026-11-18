@@ -101,6 +101,8 @@ function Victory:draw()
         note = note .. "  Danger " .. world.danger.level .. " beaten."
     end
     Theme.printShadow(note, 0, h * 0.34 + Theme.u(88), { 0.62, 0.85, 1, k }, "center", w)
+    local amber = require("src.game.amber").runLine(world)
+    if amber then Theme.printShadow(amber, 0, h * 0.34 + Theme.u(118), { 1, 0.75, 0.3, k }, "center", w) end
     if self:ready() then self.menu:draw() end
 end
 

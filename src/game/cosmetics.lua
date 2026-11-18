@@ -36,6 +36,8 @@ function Cosmetics.save()
 end
 
 function Cosmetics.isUnlocked(def)
+    -- maps bought with amber in the Burrow (src/game/amber.lua)
+    if def.palette and not require("src.game.amber").stageOpen(def.id) then return false end
     return not def.locked or Cosmetics.data.unlocked[def.id] == true
 end
 
@@ -57,7 +59,8 @@ function Cosmetics.location()
     local id = Cosmetics.data.location
     local def = id and Content.stages:get(id)
     if def and Cosmetics.isUnlocked(def) then return id end
-    return Content.stages:all()[1].id
+    local open = Cosmetics.locations()
+    return (open[1] or Content.stages:all()[1]).id
 end
 
 function Cosmetics.setLocation(id)

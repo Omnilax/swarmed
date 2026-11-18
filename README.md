@@ -434,6 +434,26 @@ Test: `love . --selftest --gentle`.
 
 Test: `love . --selftest --tutorial`.
 
+## Amber and the Burrow
+
+**Amber** is the currency kept between runs (`src/game/amber.lua`, numbers and stock in
+`src/config/amber.lua`, kept in the records save). Every run that got going pays some when it
+ends, won or lost: 2 a wave cleared, 4 a queen, 1 per 10 elites, 1 per 200 KOs, 20 for a win
+(Custom Waves pay half). The defeat and victory screens show what the run paid and how much more
+the next unlock needs. A save that already had 6+ runs gets a one-time head start (5 a run, up to 250).
+
+**The Burrow** (main menu, `src/states/burrow.lua`) spends it on new things to find, never on raw
+power: item packs (their items stay out of every item choice and the shop until bought), maps
+(Cosmetics > Location), modes (shown as locked in mode select until bought; a mode played before
+amber stays open) and, from the next step, artifacts. Press once to look, twice to buy. Unlock
+Everything opens it all. API: `Amber.owns/itemOpen/stageOpen/modeOpen/buy/next/runLine`.
+
+The main menu is shorter: the bug and item catalogues live in the Field Guide, Practice moved
+into mode select, and the Tutorial button shows until the tutorial is finished once (then it is
+in the Field Guide).
+
+Test: `love . --selftest --amber`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

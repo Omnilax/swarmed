@@ -76,6 +76,13 @@ function GameOver:draw()
         lg.printf(cell[2], x, y0 + u(34), cw, "center")
     end
     local ry = y0 + u(66)
+    -- what the run paid toward the Burrow (src/game/amber.lua): no run is wasted
+    local amber = require("src.game.amber").runLine(world)
+    if amber then
+        lg.setFont(Theme.font("body"))
+        Theme.printShadow(amber, 0, ry, { 1, 0.75, 0.3 }, "center", w)
+        ry = ry + u(30)
+    end
     if world.won then
         lg.setFont(Theme.font("body"))
         Theme.printShadow("The colony was broken. You went down fighting past it.", 0, ry, Theme.colors.text, "center", w)

@@ -56,6 +56,10 @@ function MainMenu.quickStart(character, gameMode)
     end
 end
 
+function MainMenu.tutorial()
+    State.switch(require("src.states.game").new({ mode = "run", character = "rhino_beetle", gameMode = "tutorial" }))
+end
+
 function MainMenu:buildItems()
     local items = {}
     -- a run left with Save & Quit (or closed mid-run) carries on from where it was
@@ -70,6 +74,11 @@ function MainMenu:buildItems()
     items[#items + 1] = { type = "button", label = "Play", onActivate = function()
         State.push(require("src.states.modeselect").new())
     end }
+    -- the guided tutorial: called out until it has been finished once
+    -- (once finished it moves to the Field Guide; Practice lives in mode select)
+    if not require("src.game.prefs").get().tutorialDone then
+        items[#items + 1] = { type = "button", label = "Tutorial (start here)", onActivate = MainMenu.tutorial }
+    end
     -- the last bug and mode played, one press away
     local last = require("src.game.prefs").get().last
     local lc = last and Content.characters:get(last.character)
@@ -79,14 +88,10 @@ function MainMenu:buildItems()
             MainMenu.quickStart(lc.id, lm.id)
         end }
     end
-    -- the guided tutorial: called out until it has been finished once
-    local fresh = not require("src.game.prefs").get().tutorialDone
-    items[#items + 1] = { type = "button", label = fresh and "Tutorial (start here)" or "Tutorial", onActivate = function()
-        State.switch(require("src.states.game").new({ mode = "run", character = "rhino_beetle", gameMode = "tutorial" }))
-    end }
-    items[#items + 1] = { type = "button", label = "Practice", onActivate = function()
-        State.push(require("src.states.practice").new())
-    end }
+    -- the Burrow: spend amber on new item packs, maps, modes and artifacts (src/states/burrow.lua)
+    local Amber = require("src.game.amber")
+    items[#items + 1] = { type = "button", label = "The Burrow  ·  " .. Amber.balance() .. " amber",
+        onActivate = function() State.push(require("src.states.burrow").new()) end }
     items[#items + 1] = { type = "button", label = "Bug Creator", onActivate = function()
         State.push(require("src.states.creator").new())
     end }

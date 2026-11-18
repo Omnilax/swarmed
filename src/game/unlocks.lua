@@ -42,7 +42,10 @@ function Unlocks.bug(id)
 end
 
 function Unlocks.item(id)
-    if Unlocks.all() or not Config.items[id] then return true end
+    if Unlocks.all() then return true end
+    -- item packs bought with amber in the Burrow (src/game/amber.lua)
+    if not require("src.game.amber").itemOpen(id) then return false end
+    if not Config.items[id] then return true end
     return Records().get().achievements[Unlocks.itemAchievement(id)] ~= nil
 end
 

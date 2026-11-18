@@ -22,6 +22,12 @@ local function percent(v) return math.floor(v * 100 + 0.5) .. "%" end
 
 -- The handful of facts that tell modes apart, worked out from the mode's own data.
 function ModeSelect.facts(m)
+    local Amber = require("src.game.amber")
+    if m.facts then return m.facts end
+    if not m.daily and not Amber.modeOpen(m.id) then
+        local u = Amber.modeUnlock(m.id)
+        return { { "Locked", ("Unlock it in the Burrow for %d amber (you have %d)."):format(u.cost, Amber.balance()) } }
+    end
     if m.daily then
         local f = {}
         for _, x in ipairs(m.dailyFacts) do f[#f + 1] = x end
@@ -65,7 +71,12 @@ function ModeSelect.new()
     local self = setmetatable({ t = 0 }, ModeSelect)
     local items, focus = {}, 1
     for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden end)) do
-        items[#items + 1] = { type = "button", label = m.name, mode = m, onActivate = function()
+        local Amber = require("src.game.amber")
+        local open = Amber.modeOpen(m.id)
+        items[#items + 1] = { type = "button", label = m.name, mode = m, locked = not open,
+            value = not open and function() return "locked" end or nil, onActivate = function()
+            -- not bought yet: the Burrow sells it for amber (src/game/amber.lua)
+            if not Amber.modeOpen(m.id) then require("src.core.audio").play("ui_back") return end
             lastMode = m.id
             if m.custom then
                 State.push(require("src.states.wavebuilder").new())     -- build or pick a set first
@@ -86,6 +97,11 @@ function ModeSelect.new()
     items[#items + 1] = { type = "button", label = "Daily Run", mode = dailyMode, onActivate = function()
         State.switch(require("src.states.game").new(Daily.params()))
     end }
+    -- practice: any bug, mode, wave and species, nothing counts (src/states/practice.lua)
+    items[#items + 1] = { type = "button", label = "Practice", mode = { name = "Practice",
+        tagline = "Try anything. Nothing counts.",
+        description = "Pick a bug, mode, starting wave and one species (or a boss), with the items a real run would have by then, and invincibility if you like. Practice never counts toward records and is never saved.",
+        facts = {} }, onActivate = function() State.push(require("src.states.practice").new()) end }
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() State.pop() end }
     self.menu = Menu.new({
         items = items,

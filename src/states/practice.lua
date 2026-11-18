@@ -77,7 +77,8 @@ function Practice.new()
     local chars = {}
     for _, d in ipairs(Content.characters:all()) do chars[#chars + 1] = { value = d.id, label = d.name } end
     local modes = {}
-    for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden end)) do modes[#modes + 1] = { value = m.id, label = m.name } end
+    local Amber = require("src.game.amber")
+    for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden and Amber.modeOpen(d.id) end)) do modes[#modes + 1] = { value = m.id, label = m.name } end
     local function valid(list, v, fallback)
         for _, o in ipairs(list) do if o.value == v then return v end end
         return fallback

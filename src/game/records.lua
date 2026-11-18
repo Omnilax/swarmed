@@ -31,6 +31,8 @@ local function blankProfile()
         moltCount = 0, chestsOpened = 0, duplicated = 0,
         seen = {},           -- enemy id -> true once met (first-sighting popups, src/ui/runhud.lua)
         swarmsSurvived = 0,  -- Final Swarms lived through (src/game/finalswarm.lua)
+        -- amber, the currency kept between runs (src/game/amber.lua)
+        amber = 0, amberEarned = 0, amberOwned = {}, amberStarted = false,
         -- characters[id] also gets `danger` (highest danger level won, src/config/danger.lua)
         -- and `swarmKills` (most kills in a Final Swarm) once they happen
     }
@@ -289,6 +291,8 @@ function Records.endRun(outcome)
             top = top, topN = topN, items = items, danger = run.danger,
         })
         while #p.history > HISTORY do table.remove(p.history) end
+        -- amber for the Burrow (src/game/amber.lua): every run that got going pays something
+        require("src.game.amber").award(run)
     end
     Records.check()
     Records.save()

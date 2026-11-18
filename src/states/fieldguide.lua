@@ -40,6 +40,11 @@ end
 function FieldGuide.new(opts)
     local self = setmetatable({ t = 0, opts = opts or {} }, FieldGuide)
     local items = {}
+    if not self.opts.inRun then
+        items[#items + 1] = { type = "button", label = "Play the tutorial", known = true,
+            page = { title = "Tutorial", text = "A guided first fight, one lesson at a time: moving, attacking, dashing, specials, nectar, level-ups, items, the bag, the shop, frenzy, elites and a queen." },
+            onActivate = function() require("src.states.menu").tutorial() end }
+    end
     for _, g in ipairs(Guide) do
         items[#items + 1] = { type = "header", label = g.group }
         for _, page in ipairs(g.pages) do

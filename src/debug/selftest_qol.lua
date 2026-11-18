@@ -231,7 +231,12 @@ return function(wait, shot)
     local menu = State.switch(require("src.states.menu").new())
     local found = {}
     for _, it in ipairs(menu.menu.items) do found[it.label:match("^[^:]+")] = true end
-    assert(found["Play Again"] and found.Practice, "title shortcuts")
+    assert(found["Play Again"], "title shortcuts")
+    -- practice moved into mode select (next to the daily run)
+    local ms = require("src.states.modeselect").new()
+    local hasPractice = false
+    for _, it in ipairs(ms.menu.items) do if it.label == "Practice" then hasPractice = true end end
+    assert(hasPractice, "practice should be in mode select")
     wait(0.3)
     shot("qol_title")
     print("[qol] all OK")
