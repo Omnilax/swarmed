@@ -68,6 +68,21 @@ function Victory:enter()
     Audio.play("ui_confirm", { pitch = 0.8 })
 end
 
+-- One line that closes the story of the run: the maps it crossed and how it ended.
+function Victory.ending(world, info)
+    if info.swarm or info.first == false then return nil end
+    local Content = require("src.content")
+    local names = {}
+    for _, id in ipairs(world.actRoute or {}) do
+        local st = Content.stages:get(id)
+        if st and names[#names] ~= st.name then names[#names + 1] = st.name end
+    end
+    local path = #names > 1 and ("From " .. table.concat(names, " to ") .. ". ") or ""
+    local m = world.modeDef
+    if m and m.ending then return path .. m.ending end
+    return path .. "The Empress has fallen."
+end
+
 function Victory:update(dt)
     self.t = self.t + dt
     if self:ready() then self.menu:update(dt) end
@@ -84,6 +99,13 @@ function Victory:draw()
     local sw = self.info.swarm
     local title = sw and "SWARM SURVIVED" or (self.info.first ~= false and "COLONY BROKEN" or "STILL STANDING")
     Theme.printShadow(title, 0, h * 0.17, { 1, 0.84, 0.4, k }, "center", w)
+    -- the ending: where the run went, and who fell (src/game/acts.lua, src/game/bosses.lua)
+    local ending = Victory.ending(world, self.info)
+    if ending then
+        lg.setFont(Theme.font(18))
+        local mw = math.min(w - Theme.u(80), Theme.u(640))
+        Theme.printShadow(ending, (w - mw) / 2, h * 0.17 + Theme.u(64), { 0.95, 0.8, 0.9, k }, "center", mw)
+    end
     lg.setFont(Theme.font(22))
     local t = math.floor(world.time)
     local lines = {

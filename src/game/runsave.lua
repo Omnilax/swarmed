@@ -34,7 +34,7 @@ function RunSave.snapshot(game)
     local snap = {
         version = RunSave.VERSION,
         character = p.def.id, gameMode = w.gameMode, stage = w.stage.id,
-        route = w.route and util.deepcopy(w.route), act = w.act,
+        route = w.actRoute and util.deepcopy(w.actRoute), act = w.act,
         startItems = game.params.startItems,
         customWaves = util.deepcopy(w.customWaves),     -- the Custom Waves set, as it was when the run began
         -- waves fully behind you: a wave still going is played again

@@ -513,6 +513,9 @@ Not in practice, the daily run, endless, custom or scripted waves, or modes with
 Gentle Start holds it back until the second run. Settings > Gameplay > **Travel Between Acts**
 off keeps a run on one map.
 
+The victory screen closes the story with the maps the run crossed ("From Backyard Patio to Dune
+Field to Mossy Flagstones. The Empress has fallen."); a mode can set its own `ending`.
+
 Test: `love . --selftest --acts`.
 
 ## Queens, the Empress and champions

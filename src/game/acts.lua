@@ -55,25 +55,25 @@ end
 
 -- Starting wave n means moving to a new map first?
 function Acts.travelsBefore(world, n)
-    if not Acts.enabled(world) or not world.route then return false end
+    if not Acts.enabled(world) or not world.actRoute then return false end
     if n <= 1 or (n - 1) % Acts.LENGTH ~= 0 then return false end
     local act = Acts.actOf(n)
     if act <= (world.act or 1) then return false end
     local final = world.spawner:finalWave()
     if final and n > final then return false end
     if not require("src.game.onramp").allows(world, "acts", n) then return false end
-    local nextStage = world.route[act]
+    local nextStage = world.actRoute[act]
     return nextStage ~= nil and nextStage ~= world.stage.id
 end
 
 -- Set up a world for acts: a new run plans its route, a resumed one keeps its own.
 function Acts.attach(world, snap)
     if snap and type(snap.route) == "table" then
-        world.route, world.act = snap.route, tonumber(snap.act) or 1
+        world.actRoute, world.act = snap.route, tonumber(snap.act) or 1
     elseif not snap then
-        world.route, world.act = Acts.plan(world), 1
+        world.actRoute, world.act = Acts.plan(world), 1
     else
-        world.route, world.act = { world.stage.id }, 1
+        world.actRoute, world.act = { world.stage.id }, 1
     end
     -- just arrived on a new map: a title card, and the NEW card the first time
     if snap and snap.travelled then
@@ -91,7 +91,7 @@ function Acts.nextLine(world)
     if not sp or sp.phase ~= "break" then return nil end
     local n = sp.wave + 1
     if not Acts.travelsBefore(world, n) then return nil end
-    local def = Content.stages:get(world.route[Acts.actOf(n)])
+    local def = Content.stages:get(world.actRoute[Acts.actOf(n)])
     return def and ("the colony moves on: act %d is %s"):format(Acts.actOf(n), def.name) or nil
 end
 

@@ -85,7 +85,7 @@ function Game:travel()
     if not RunSave.allowed(self) then return end
     local snap = RunSave.snapshot(self)
     local act = Acts.actOf(w.spawner.wave + 1)
-    snap.stage, snap.act, snap.travelled = w.route[act], act, true
+    snap.stage, snap.act, snap.travelled = w.actRoute[act], act, true
     self.travelling = true
     RunSave.write(snap)
     require("src.game.records").suspend()
