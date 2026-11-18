@@ -65,6 +65,71 @@ return function(wait, shot)
     wait(1.2)
     shot("itemorg_choice")
     State.pop()
+    -- batch-2 item hooks (2026-11-18)
+    do
+        local world, p = game.world, game.world.player
+        local ItemFx = require("src.game.itemfx")
+        -- Cuckoo Wasp Shell: the first reroll after a restock is free
+        pcall(inv.add, inv, "cuckoo_wasp_shell", 1)
+        Economy.restock(world)
+        check(Economy.rerollPrice(world) == 0, "cuckoo wasp shell: first reroll not free")
+        world.nectar = 0
+        Economy.rerollShop(world)
+        check(Economy.rerollPrice(world) > 0, "cuckoo wasp shell: second reroll should cost")
+        -- Seed Cache: nectar at each wave clear
+        pcall(inv.add, inv, "seed_cache", 1)
+        local s = Economy.state(world)
+        s.interestWave = -1
+        local before = Economy.nectar(world)
+        Economy.payInterest(world)
+        check(Economy.nectar(world) >= before + 3, "seed cache paid nothing at the wave clear")
+        -- Pill Bug Plates' guard: bites hurt far less while curled
+        world.flags.god = false
+        p.iframes = 0; p.hp = 100
+        p:hurt(20, "test")
+        local plain = 100 - p.hp
+        ItemFx.guard(p, 0.3, 3)
+        p.iframes = 0; p.hp = 100
+        p:hurt(20, "test")
+        local curled = 100 - p.hp
+        check(curled < plain * 0.5, ("guard did not cut damage (%.1f vs %.1f)"):format(curled, plain))
+        p.itemGuardT = 0
+        world.flags.god = true
+        p.hp = p.stats:get("maxHp")
+        -- Ladybug Shell: with enough copies every card rolls above common
+        local Choices = require("src.game.choices")
+        inv.sums = nil
+        inv.counts.ladybug_spots = 10
+        inv.order[#inv.order + 1] = "ladybug_spots"
+        inv.sums = nil
+        local commons = 0
+        for _ = 1, 20 do
+            for _, it in pairs(Choices.roll(world, 3)) do if it.def.rarity == "common" then commons = commons + 1 end end
+        end
+        check(commons == 0, "ladybug shell: " .. commons .. " common cards with a full bump")
+        inv:recount()
+        -- Cuckoo Egg hatches into a legendary after 3 more waves
+        pcall(inv.add, inv, "cuckoo_egg", 1)
+        check(inv:count("cuckoo_egg") == 1, "cuckoo egg did not go in the bag")
+        for k = 1, 4 do inv:trigger("onWaveStart", { world = world, player = p, wave = k, procDepth = 0 }) end
+        wait(0.3)
+        check(inv:count("cuckoo_egg") == 0, "cuckoo egg did not hatch")
+        local legend = false
+        for _, e in ipairs(inv.bag) do if e.item.def.rarity == "legendary" then legend = true end end
+        check(legend, "cuckoo egg hatched no legendary")
+        -- every new item's icon exists and fills its cells
+        local Sprites = require("src.gfx.sprites")
+        for _, id in ipairs({ "flea_legs", "springtail_tail", "snail_slime", "nymph_gill", "thistle_down", "monarch_wing",
+            "spittlebug_foam", "sundew_leaf", "antlion_sand", "bolas_thread", "pea_pod", "seed_cache", "pollen_basket",
+            "ladybug_spots", "cuckoo_wasp_shell", "truffle", "hercules_horn", "tiger_beetle_jaw", "velvet_ant_sting",
+            "smoldering_bark", "pill_bug_plates", "oak_gall", "aphid_herd", "bee_bread", "cuckoo_egg", "zombie_fungus",
+            "driver_ant_mandible" }) do
+            local def = Content.items.byId[id]
+            check(def, "missing item " .. id)
+            if def then check(Sprites.get(def.icon), "missing icon for " .. id) end
+        end
+        print("[itemorg] batch-2 hooks checked")
+    end
     State.push(require("src.states.itemcatalogue").new())
     wait(0.5)
     shot("itemorg_catalogue")

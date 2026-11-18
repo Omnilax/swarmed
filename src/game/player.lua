@@ -640,7 +640,8 @@ function Player:hurt(amount, source)
     -- No invulnerability after a hit: every bite lands, so a bigger crowd hurts more.
     -- Only dashing (and dodge) avoid damage. Feedback is throttled so swarms don't spam it.
     local dmg = math.max(0.5, amount * armorMultiplier(self.stats:get("armor")) * (self.guardMul or 1)
-        * (type(source) == "table" and source.cWeak or 1))
+        * (type(source) == "table" and source.cWeak or 1)
+        * require("src.game.itemfx").guardMul(self))
     self.hp = self.hp - dmg
     if self.dmgAccum == 0 then self.dmgShowT = 0.3 end
     self.dmgAccum = self.dmgAccum + dmg

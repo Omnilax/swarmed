@@ -238,6 +238,13 @@ function Nectar:onKill(e)
     local def = e.def
     local value = def.xp or 1
     if e.elite and e.elite.bonusXP then value = value + e.elite.bonusXP end
+    -- `beadValue` items (Pollen Basket) make every kill's beads worth more; the fraction rolls
+    local inv = self.world.player and self.world.player.inventory
+    local more = inv and inv:sum("beadValue") or 0
+    if more > 0 then
+        local v = value * (1 + more)
+        value = math.floor(v) + (love.math.random() < v - math.floor(v) and 1 or 0)
+    end
     self:drop(e.x, e.y, value)
     local cfg = self.cfg
     local w = self.world
