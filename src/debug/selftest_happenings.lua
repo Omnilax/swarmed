@@ -6,6 +6,7 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Env = require("src.game.envfx")
 
 return function(wait, shot)
@@ -240,10 +241,10 @@ return function(wait, shot)
     w.t = 10
     step(2)
     assert(world.env.enemySpeed > 1.1 and world.env.playerSpeed > 1.05, "a heatwave should speed things up")
-    Settings.set("weatherEffects", false)
+    Rules.set("weatherEffects", false)
     step(2)
     assert(world.env.enemySpeed == 1, "Weather Effects off should leave speeds alone")
-    Settings.set("weatherEffects", true)
+    Rules.set("weatherEffects", true)
     w:set(Content.weather:require("clear"), 60)
 
     -- boss encounters. Bugs (the antlion) are real enemies the wave waits for; animals too big
@@ -315,7 +316,7 @@ return function(wait, shot)
     local function bossWave(n, want)
         world:clearEnemies()
         sp.enabled = true
-        Settings.set("bossEncounters", true)
+        Rules.set("bossEncounters", true)
         dir.usedBosses = {}
         for _, b in ipairs(Content.bosses:all()) do if b.id ~= want then dir.usedBosses[b.id] = true end end
         sp:startWave(n)
@@ -378,13 +379,13 @@ return function(wait, shot)
     sp.enabled = false
 
     -- scheduling: normal setting gives some waves events, off gives none
-    Settings.set("midWaveEvents", "off")
+    Rules.set("midWaveEvents", "off")
     dir:onWaveStart(6)
     assert(#dir.schedule == 0, "Mid-Wave Events off should schedule nothing")
-    Settings.set("midWaveEvents", "often")
+    Rules.set("midWaveEvents", "often")
     dir:onWaveStart(6)
     assert(#dir.schedule >= 1, "Often should line up at least one event")
-    Settings.set("midWaveEvents", "normal")
+    Rules.set("midWaveEvents", "normal")
     dir.schedule, dir.pendingBoss = {}, nil
 
     -- stages: each mechanic changes play

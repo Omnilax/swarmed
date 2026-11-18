@@ -3,10 +3,10 @@
 -- wave that way: the hard one has more / tougher ants and pays a better reward when it is
 -- cleared (bonus XP, frenzy, a rarer item card). Ignore them, or press Next Wave, for a normal
 -- wave. They only show while there is a break (Settings > Gameplay > Next Wave not "Right Away"),
--- never before the final wave, and can be turned off (Settings > Gameplay > Route Gates).
+-- never before the final wave, and can be turned off in a Custom Waves set (run rule "routeGates").
 -- The chosen route is world.route while its wave runs (Spawner and World:hpScale read it).
 local Content = require("src.content")
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Audio = require("src.core.audio")
 local Theme = require("src.ui.theme")
 local Iso = require("src.core.iso")
@@ -28,7 +28,7 @@ function Routes:offer(next)
     local w, sp = self.world, self.world.spawner
     local cfg = self.rewards.cfg.routes
     self.gates = nil
-    if not Settings.get("routeGates") or next < cfg.fromWave or sp:isFinal(next) or sp.timer <= 0 then return end
+    if not Rules.get("routeGates") or next < cfg.fromWave or sp:isFinal(next) or sp.timer <= 0 then return end
     if not require("src.game.onramp").allows(w, "routes", next) then return end
     local safe, hard = pick("safe", next), pick("hard", next)
     if not safe or not hard then return end

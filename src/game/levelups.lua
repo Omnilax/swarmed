@@ -3,7 +3,7 @@
 -- global stat cards (content/levelcards) that roll a rarity (common x1 .. legendary x2, Luck tilts
 -- the odds). The skill tree is never on the cards: SKIPPING a pick banks one skill point to spend
 -- in the bag's SKILLS tab, so each level is a boost now or a step down the tree.
--- Setting "levelUps" = "points" brings back the old way: levels give skill points to spend.
+-- Run rule "levelUps" = "points" (a Custom Waves set) brings back the old way: levels give skill points to spend.
 -- Numbers: src/config/levelups.lua (a mode can override them with `levelUps = {...}`).
 --
 -- Other systems can hand out picks too (brood cell chests, shrines...):
@@ -11,6 +11,7 @@
 -- queues n picks. source: shown on the cards screen; minRarity: floor for every stat card's
 -- rarity; now: show at the next free moment, even mid-wave (default: like level-ups, per setting).
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Audio = require("src.core.audio")
 
 local LevelUps = {}
@@ -44,7 +45,7 @@ end
 -- Do levels give cards in this world? (Real runs only, unless something grants picks.)
 function LevelUps:enabled()
     local w = self.world
-    return not self.disabled and w.mode == "run" and not w.flags.demo and Settings.get("levelUps") ~= "points"
+    return not self.disabled and w.mode == "run" and not w.flags.demo and Rules.get("levelUps") ~= "points"
 end
 
 function LevelUps:pending() return #self.queue end

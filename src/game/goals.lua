@@ -4,7 +4,7 @@
 -- Also the helpers for "guard this critter" goals (Goals.guarded): a spot some ants go for
 -- instead of the player (enemy.lure, read by World:updateEnemies), drained by ants touching it.
 local Content = require("src.content")
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Audio = require("src.core.audio")
 local Theme = require("src.ui.theme")
 local Iso = require("src.core.iso")
@@ -36,7 +36,7 @@ function Goals:waveStarted(n, id)
     if id then
         def = Content.goals:require(id)
     else
-        if not Settings.get("miniGoals") or n < cfg.fromWave or love.math.random() >= cfg.chance then return end
+        if not Rules.get("miniGoals") or n < cfg.fromWave or love.math.random() >= cfg.chance then return end
         if self.world.spawner.finalThisWave then return end
         if not require("src.game.onramp").allows(self.world, "goals", n) then return end
         def = Content.goals:pickWeighted(function(d) return d.weight end, function(d)

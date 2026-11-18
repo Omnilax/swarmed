@@ -7,6 +7,7 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local util = require("src.core.util")
 
 return function(wait, shot)
@@ -159,10 +160,10 @@ return function(wait, shot)
     run(0.1)
 
     -- scheduling: off places nothing, often places some, and they arrive during the wave
-    Settings.set("mapGambles", "off")
+    Rules.set("mapGambles", "off")
     G:onWaveStart(5)
     assert(#G.schedule == 0, "Map Gambles off should place nothing")
-    Settings.set("mapGambles", "often")
+    Rules.set("mapGambles", "often")
     local got = 0
     for _ = 1, 10 do G:onWaveStart(5) got = got + #G.schedule end
     assert(got >= 5, "Often should line up gambles most waves (" .. got .. "/10)")
@@ -180,7 +181,7 @@ return function(wait, shot)
     local left = 0
     for _, o in ipairs(world.props.list) do if o.def.gamble and not o.dead and not o.leaving then left = left + 1 end end
     assert(left == 0, "unused gambles should leave with the next wave")
-    Settings.set("mapGambles", "normal")
+    Rules.set("mapGambles", "normal")
     G.schedule = {}
 
     -- blessings survive a save

@@ -55,4 +55,8 @@ return {
     -- Before the run, pick starting items from the whole catalogue with a point budget
     -- (cost per rarity, see src/states/loadout.lua).
     chooseItems = nil,          -- e.g. { budget = 12 }
+
+    -- Run rules (src/game/rules.lua): game-changing switches that are never global settings.
+    -- e.g. { difficulty = "soldier", eliteFrequency = 2, mapGambles = "often", routeGates = false }
+    rules = nil,
 }

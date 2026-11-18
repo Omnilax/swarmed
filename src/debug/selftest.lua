@@ -7,6 +7,7 @@ local Content = require("src.content")
 local util = require("src.core.util")
 local util_indexOf = util.indexOf
 local Inventory = require("src.game.inventory")
+local Rules = require("src.game.rules")
 local Input = require("src.core.input")
 
 local Selftest = {}
@@ -882,8 +883,8 @@ local function script(flags)
         world.flags.freezeAI = true
         local lost = 0
         -- (weather can slow the fight down, and a big moment freezes it: keep both out of the count)
-        local weather = Settings.get("weatherEffects")
-        Settings.set("weatherEffects", false)
+        local weather = Rules.test.weatherEffects
+        Rules.set("weatherEffects", false)
         for _ = 1, 120 do
             local full = pl.stats:get("maxHp")
             pl.hp = full           -- keep it alive and measure what each frame takes
@@ -891,7 +892,7 @@ local function script(flags)
             world:update(1 / 60)
             lost = lost + math.max(0, full - pl.hp)
         end
-        Settings.set("weatherEffects", weather)
+        Rules.set("weatherEffects", weather)
         world.flags.freezeAI = false
         world.flags.god = true
         pl.attack.timer = 0

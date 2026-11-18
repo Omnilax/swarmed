@@ -3,13 +3,13 @@
 --   * Mid-wave events (content/events): honeydew rain, an anteater's tongue, a boot stomping
 --     down, a flood, colony wars, dew drops rolling through, falling acorns, a lawnmower, web
 --     cocoons with a bug to free, a merchant beetle. A few are scheduled into each wave from
---     wave 2 on (Settings "Mid-Wave Events"); they never hold a wave up, and whatever is still
+--     wave 2 on (run rule "midWaveEvents", src/game/rules.lua); they never hold a wave up, and whatever is still
 --     going when the last ant falls ends with the wave.
 --   * Boss encounters (content/bosses): every 5th wave (not the final one) something big joins
 --     the queen. Bugs (the antlion in its pit) are real enemies: the wave lasts until it is
 --     killed. Animals far too big to fight (the sparrow, the giant anteater) are stage hazards
 --     instead (def.hazard): godly attacks sweeping the arena that eat ants and hurt you alike.
---     You can't hit them; they hunt until the wave is cleared, then leave. Settings "Boss
+--     You can't hit them; they hunt until the wave is cleared, then leave. Run rule "Boss
 --     Encounters".
 --   * Stage mechanics (content/mechanics): a stage's `mechanic` changes how it plays (a rising
 --     puddle, a lawn that shrinks in, patches of sun and shade).
@@ -17,7 +17,7 @@
 --   * Props (src/game/props.lua): pebbles and twigs to shove into ants, cocoons, allies, the
 --     merchant.
 --   * Map gambles (src/game/gambles.lua): a dewdrop shrine, a challenge bell or a gamble flower
---     may pop up in a wave (Settings "Map Gambles").
+--     may pop up in a wave (run rule "mapGambles", src/game/rules.lua).
 --   * Nest holes (src/game/entries.lua) can be collapsed: hit one three times (or dash over it)
 --     and the groups still waiting in it never come out.
 --
@@ -26,7 +26,7 @@
 --   lighter bugs more), inset (the player is kept this far in from the walls) and field(x, y, who)
 --   (a speed multiplier at a spot: who is "player" or the enemy).
 local Content = require("src.content")
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Audio = require("src.core.audio")
 local Iso = require("src.core.iso")
 local util = require("src.core.util")
@@ -93,20 +93,20 @@ function Director.new(world)
 end
 
 ----------------------------------------------------------------------------------------------
--- Settings / mode switches
+-- Run rules / mode switches
 
 function Director:eventsOn()
     local w = self.world
     if w.mode ~= "run" or w.flags.demo then return false end
     if w.modeDef and w.modeDef.events == false then return false end
-    return Settings.get("midWaveEvents") ~= "off"
+    return Rules.get("midWaveEvents") ~= "off"
 end
 
 function Director:encountersOn()
     local w = self.world
     if w.mode ~= "run" or w.flags.demo or self.cfg.encounterEvery <= 0 then return false end
     if w.modeDef and w.modeDef.encounters == false then return false end
-    return Settings.get("bossEncounters") ~= false
+    return Rules.get("bossEncounters") ~= false
 end
 
 ----------------------------------------------------------------------------------------------
@@ -128,9 +128,9 @@ local function eventWeight(self, def, wave)
     return w
 end
 
--- How many events this wave gets (Settings "Mid-Wave Events": often / normal / off).
+-- How many events this wave gets (run rule "midWaveEvents": often / normal / off).
 function Director:eventCount(wave)
-    local often = Settings.get("midWaveEvents") == "often"
+    local often = Rules.get("midWaveEvents") == "often"
     if wave < self.cfg.eventsFrom then return 0 end
     -- Gentle Start (src/game/onramp.lua): none at first, then one at a time, never beside a visitor
     local OnRamp = require("src.game.onramp")
@@ -349,7 +349,7 @@ end
 function Director:weatherEffects(env)
     local w = self.world.weather
     local eff = w and w.def.effects
-    if not eff or Settings.get("weatherEffects") == false then return end
+    if not eff or Rules.get("weatherEffects") == false then return end
     local k = w:strength()
     if k <= 0 then return end
     if eff.playerSpeed then env.playerSpeed = env.playerSpeed * util.lerp(1, eff.playerSpeed, k) end

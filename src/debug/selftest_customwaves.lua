@@ -8,7 +8,9 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local CustomWaves = require("src.game.customwaves")
+local util = require("src.core.util")
 
 return function(wait, shot)
     local Game = require("src.states.game")
@@ -16,8 +18,8 @@ return function(wait, shot)
     CustomWaves.data = nil
     local saved = {}
     for k, v in pairs({ waveOverlap = false, waveBreak = "auto", midWaveEvents = "normal", bossEncounters = true }) do
-        saved[k] = Settings.get(k)
-        Settings.set(k, v)
+        if Rules.byKey[k] then saved[k] = { Rules.test[k] } Rules.set(k, v)
+        else saved[k] = { Settings.get(k) } Settings.set(k, v) end
     end
 
     -- sets: cleaning and text
@@ -37,6 +39,27 @@ return function(wait, shot)
     assert(not CustomWaves.fromText("hello there"), "pasted nonsense was accepted")
     assert(not CustomWaves.fromText("return { waves = {} }"), "an empty set was accepted")
     print("[selftest] customwaves: sets and text OK")
+
+    -- run rules: game-changing switches live in a set, never in Settings (src/game/rules.lua)
+    for _, r in ipairs(Rules.LIST) do
+        assert(not Settings.byKey[r.key], "run rule " .. r.key .. " is still a global setting")
+    end
+    local ruled = util.deepcopy(set)
+    ruled.rules = { mapGambles = "off", parasites = false, levelUps = "nah", bogus = 1, dashTech = true }
+    local rc = CustomWaves.clean(ruled)
+    assert(rc.rules and rc.rules.mapGambles == "off" and rc.rules.parasites == false, "clean dropped the set's rules")
+    assert(rc.rules.levelUps == nil and rc.rules.bogus == nil and rc.rules.dashTech == nil, "clean kept a bad or default rule")
+    local rb = assert(CustomWaves.fromText(CustomWaves.toText(ruled)), "a set with rules didn't paste back")
+    assert(rb.rules and rb.rules.mapGambles == "off", "pasting lost the set's rules")
+    local m = CustomWaves.modeDef(Content.modes:get("custom"), ruled)
+    assert(m.parasites == false and m.rules.mapGambles == "off", "the set's rules didn't reach its mode")
+    local before = Rules.current
+    Rules.begin(m.rules)
+    assert(Rules.get("mapGambles") == "off" and Rules.get("parasites") == false, "the run doesn't use the set's rules")
+    Rules.begin(nil)
+    assert(Rules.get("mapGambles") == "normal" and Rules.get("difficulty") == "worker", "the main game doesn't use the default rules")
+    Rules.begin(before)
+    print("[selftest] customwaves: run rules OK")
 
     -- the builder screens
     local ms = State.push(require("src.states.modeselect").new())
@@ -212,7 +235,9 @@ return function(wait, shot)
     end
     print("[selftest] customwaves: royal court OK")
 
-    for k, v in pairs(saved) do Settings.set(k, v) end
+    for k, v in pairs(saved) do
+        if Rules.byKey[k] then Rules.set(k, v[1]) else Settings.set(k, v[1]) end
+    end
     CustomWaves.data = nil
     CustomWaves.noSave = nil
     print("[selftest] customwaves OK")

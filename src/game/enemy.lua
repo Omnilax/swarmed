@@ -1,7 +1,7 @@
 -- Enemy instances are plain tables recycled through a pool, so spawning and killing
 -- hundreds of ants per minute creates almost no garbage.
 local Content = require("src.content")
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Sprites = require("src.gfx.sprites")
 local Elites = require("src.game.elites")
 
@@ -20,7 +20,7 @@ Enemy.DIFFICULTY = {
 function Enemy.spawn(world, def, x, y, elite)
     local e = table.remove(pool) or { st = {} }
     for k in pairs(e.st) do e.st[k] = nil end
-    local diff = Enemy.DIFFICULTY[Settings.get("difficulty")] or Enemy.DIFFICULTY.worker
+    local diff = Enemy.DIFFICULTY[Rules.get("difficulty")] or Enemy.DIFFICULTY.worker
     nextUid = nextUid + 1
     e.uid = nextUid
     e.leader, e.leaderUid = nil, nil

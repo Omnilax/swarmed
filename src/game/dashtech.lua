@@ -1,4 +1,4 @@
--- Dash tech: a little extra for players who dash well (Settings > Gameplay > "Dash Tech").
+-- Dash tech: a little extra for players who dash well (run rule "dashTech"; a Custom Waves set can turn it off).
 --   * Kill-dash refund: the first kill made during a pressed dash (or a moment after it ends)
 --     gives back part of the dash's stamina. Chain kills and keep moving.
 --   * Chained dashes: dashing again soon after the last one ended is faster, up to 3 links.
@@ -7,7 +7,7 @@
 -- Only pressed dashes (and hold-and-release ones) count; hold modes and blocks don't. Every
 -- dash's own code is left alone: this scales the dash velocity Player:update moves with.
 -- Kills made in a dash are emitted as "dash_kill" (Records counts them for unlock goals).
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Stamina = require("src.game.stamina")
 
 local DashTech = {
@@ -18,7 +18,7 @@ local DashTech = {
     CHAIN_MAX = 3,
 }
 
-local function on() return Settings.get("dashTech") ~= false end
+local function on() return Rules.get("dashTech") ~= false end
 
 local function state(p)
     local s = p.dashTech

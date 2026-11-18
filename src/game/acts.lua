@@ -8,9 +8,9 @@
 -- With only one map open, the run stays on it.
 --
 -- Off for practice, the daily run, endless, custom and scripted waves, modes with `acts = false`,
--- and with Settings > Gameplay > Travel Between Acts off. Gentle Start holds it back until the
+-- and with the run rule "travelActs" off (src/game/rules.lua). Gentle Start holds it back until the
 -- second run ("acts" in src/config/onramp.lua).
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Content = require("src.content")
 
 local Acts = { LENGTH = 5, COUNT = 3 }
@@ -20,7 +20,7 @@ function Acts.enabled(world)
     if Acts.off or not world or world.mode ~= "run" then return false end
     local f = world.flags or {}
     if f.demo or f.practice or world.daily or world.lessons then return false end
-    if Settings.get("travelActs") == false then return false end
+    if Rules.get("travelActs") == false then return false end
     local m = world.modeDef
     if m and (m.acts == false or m.custom or m.waves or m.endless or m.tutorial) then return false end
     local sp = world.spawner

@@ -5,6 +5,7 @@
 --     enemyHp = 1, enemyDamage = 1,     -- multipliers on every enemy
 --     hpPerWave = 0.12,                 -- extra enemy health per wave
 --     elites = "normal",                -- "none" | "normal" | "double" | "all"
+--     rules = { mapGambles = "off", parasites = false },   -- run rules (src/game/rules.lua), optional
 --     waves = {
 --       { groups = { { "worker_ant", 30 }, { "fire_ant", 12 } },   -- species id, how many
 --         queen = "queen_fire",         -- a boss enemy that comes this wave (optional)
@@ -18,6 +19,7 @@
 -- "customwaves.lua" in the save folder; Copy / Paste in the builder moves them around as text.
 local Content = require("src.content")
 local util = require("src.core.util")
+local Rules = require("src.game.rules")
 
 local CustomWaves = { FILE = "customwaves.lua", data = nil, MAX_WAVES = 40, MAX_GROUPS = 6, MAX_COUNT = 200 }
 
@@ -102,6 +104,7 @@ function CustomWaves.clean(set)
         waves = {},
     }
     for _, e in ipairs(CustomWaves.ELITES) do if e.value == set.elites then out.elites = e.value end end
+    out.rules = Rules.clean(set.rules)
     for _, w in ipairs(type(set.waves) == "table" and set.waves or {}) do
         local cw = CustomWaves.cleanWave(w)
         -- a wave needs someone in it
@@ -168,6 +171,11 @@ function CustomWaves.modeDef(base, set)
     m.finalWave = #set.waves
     m.enemyHp, m.enemyDamage, m.hpPerWave = set.enemyHp, set.enemyDamage, set.hpPerWave
     for _, e in ipairs(CustomWaves.ELITES) do if e.value == set.elites then m.elites = e.cfg end end
+    -- the set's run rules on top of the mode's own (src/game/rules.lua)
+    m.rules = {}
+    for k, v in pairs(base.rules or {}) do m.rules[k] = v end
+    for k, v in pairs(set.rules or {}) do m.rules[k] = v end
+    if m.rules.parasites == false then m.parasites = false end
     return m
 end
 

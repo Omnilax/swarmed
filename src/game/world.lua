@@ -74,6 +74,9 @@ function World.new(opts)
         self.customWaves = self.modeDef.set
     end
     self.gameMode = self.modeDef.id
+    -- run rules (src/game/rules.lua): the main game always plays with the defaults; only a mode
+    -- (a Custom Waves set's rules, a mode file's `rules`) changes them, never Settings
+    require("src.game.rules").begin(self.modeDef.rules)
     -- danger level of this run (src/config/danger.lua): every level adds one rule
     self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)
     -- no stage given: the location picked in Cosmetics

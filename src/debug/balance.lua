@@ -10,6 +10,7 @@
 --   SWARMED_BAL_DIFF  = "worker"                difficulty setting
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Input = require("src.core.input")
 local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
@@ -223,7 +224,7 @@ function Balance.runOne(charId, maxWave)
 end
 
 function Balance.start()
-    Settings.set("difficulty", os.getenv("SWARMED_BAL_DIFF") or "worker")
+    Rules.set("difficulty", os.getenv("SWARMED_BAL_DIFF") or "worker")
     Settings.set("autoAttack", true)
     Settings.set("aimMode", "nearest")
     Input.lastDevice = "keyboard"

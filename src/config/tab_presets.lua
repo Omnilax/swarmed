@@ -51,7 +51,7 @@ return {
     },
     Gameplay = {
         label = "Pace",
-        desc = "How the game flows and helps you, in one go. None of these change how hard the ants are (that's Difficulty).",
+        desc = "How the game flows and helps you, in one go. None of these change the game itself: how hard the ants are and what comes is the same for everyone.",
         list = {
             { id = "relaxed", label = "Relaxed", desc = "Lots of help: nectar collects itself, Frenzy fires itself, rewards open at once, health bars on every ant, all warnings.",
                 values = { autoAttack = true, aimMode = "nearest", autoCollect = true, frenzyAuto = true, waveRewards = "instant",

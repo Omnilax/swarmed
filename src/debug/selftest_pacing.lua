@@ -6,18 +6,22 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Pacing = require("src.game.pacing")
 
 return function(wait, shot)
     -- (settings persist: start from the defaults whatever an earlier test left)
-    for _, k in ipairs({ "waveOverlap", "waveModifiers", "adaptiveWaves" }) do Settings.set(k, true) end
-    Settings.set("speciesOrder", "random")
+    for _, k in ipairs({ "waveOverlap", "waveModifiers", "adaptiveWaves" }) do Rules.set(k, nil) end
+    Rules.set("speciesOrder", "random")
     Settings.set("waveBreak", "auto")
     -- (other things that add ants mid-wave stay out of these counts: events, boss encounters,
     -- mini-goals, route gates, slow motion; the treasure ant is held back in step)
     local others = { midWaveEvents = "off", bossEncounters = false, miniGoals = false, routeGates = false, slowMotion = false }
     local saved = {}
-    for k, v in pairs(others) do saved[k] = Settings.get(k) Settings.set(k, v) end
+    for k, v in pairs(others) do
+        if Rules.byKey[k] then saved[k] = { Rules.test[k] } Rules.set(k, v)
+        else saved[k] = { Settings.get(k) } Settings.set(k, v) end
+    end
     local Game = require("src.states.game")
     local step
     local function newRun(params)
@@ -57,11 +61,11 @@ return function(wait, shot)
     local _, _, s3 = newRun({ mode = "run", character = "rhino_beetle", seed = 999 })
     assert(ids(s3.introOrder, 15) ~= o1, "another seed should shuffle the species differently")
     assert(s1.introOrder[1].id == "worker_ant" and s3.introOrder[1].id == "worker_ant", "workers should always come first")
-    Settings.set("speciesOrder", "classic")
+    Rules.set("speciesOrder", "classic")
     local _, _, sc = newRun()
     local _, _, sc2 = newRun()
     assert(ids(sc.introOrder, 15) == ids(sc2.introOrder, 15), "classic order should not change between runs")
-    Settings.set("speciesOrder", "random")
+    Rules.set("speciesOrder", "random")
     print("[selftest] species order: " .. o1)
 
     -- wave modifiers: rolled ahead, stable, never on queen / final waves, same per seed
@@ -179,14 +183,14 @@ return function(wait, shot)
     world.pendingChoice = nil
     step(2)
     assert(sp.phase == "wave" and sp.wave == 10, "the next wave should start right after the pick")
-    Settings.set("waveOverlap", false)
+    Rules.set("waveOverlap", false)
     sp.queue, sp.streams, sp.portals = {}, {}, {}
     sp.waveSpawned, sp.waveTime, sp.bossWave = 40, 20, false
     world:clearEnemies()
     for i = 1, 3 do world:spawnEnemy("worker_ant", pl.x + 100 + i * 3, pl.y) end
     step(2)
     assert(sp.phase == "wave", "with Overlapping Waves off every ant must die first")
-    Settings.set("waveOverlap", true)
+    Rules.set("waveOverlap", true)
     world:clearEnemies()
     step(2)
     world.pendingChoice = nil
@@ -245,6 +249,8 @@ return function(wait, shot)
     local _, dw = newRun(a)
     assert(dw.seed == a.seed and dw.daily == a.daily and dw.player.def.id == a.character, "the daily run params should reach the world")
     print("[selftest] daily run " .. a.daily .. ": " .. a.character .. " on " .. a.stage)
-    for k, v in pairs(saved) do Settings.set(k, v) end
+    for k, v in pairs(saved) do
+        if Rules.byKey[k] then Rules.set(k, v[1]) else Settings.set(k, v[1]) end
+    end
     print("[selftest] pacing OK")
 end

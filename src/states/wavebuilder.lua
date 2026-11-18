@@ -15,6 +15,7 @@ local Audio = require("src.core.audio")
 local Families = require("src.config.families")
 local util = require("src.core.util")
 local CustomWaves = require("src.game.customwaves")
+local Rules = require("src.game.rules")
 
 local WaveBuilder = {}
 WaveBuilder.__index = WaveBuilder
@@ -191,6 +192,24 @@ function WaveBuilder:build(focus)
         local elites = {}
         for _, e in ipairs(CustomWaves.ELITES) do elites[#elites + 1] = { value = e.value, label = e.label } end
         add(bound({ type = "choice", label = "Elites", options = elites, desc = "How often enemies come as elites." }, "elites"))
+        -- run rules (src/game/rules.lua): game-changing switches live here, not in Settings
+        add({ type = "header", label = "Rules" })
+        for _, r in ipairs(Rules.LIST) do
+            if r.custom then
+                add({ type = r.type, label = r.label, options = r.options, desc = r.desc,
+                    get = function()
+                        local v = s.rules and s.rules[r.key]
+                        if v == nil then return r.default end
+                        return v
+                    end,
+                    set = function(v)
+                        s.rules = s.rules or {}
+                        if v == r.default then s.rules[r.key] = nil else s.rules[r.key] = v end
+                        if next(s.rules) == nil then s.rules = nil end
+                        self:changed()
+                    end })
+            end
+        end
         add({ type = "header", label = "Waves" })
         self.firstWaveRow = #items + 1
         for i, w in ipairs(s.waves) do

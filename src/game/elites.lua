@@ -2,15 +2,16 @@
 -- The affixes themselves are data in content/elites.
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local util = require("src.core.util")
 
 local Elites = {}
 
 -- Chance for a spawned ant to be elite: none on wave 1, rising to a 9% cap.
--- The "Elite Ants" setting scales it (Off / Rare / Normal / Lots).
+-- The run rule "eliteFrequency" scales it (src/game/rules.lua).
 function Elites.chance(wave)
     if wave < 2 then return 0 end
-    return math.min(0.09, 0.012 + (wave - 2) * 0.006) * (Settings.get("eliteFrequency") or 1)
+    return math.min(0.09, 0.012 + (wave - 2) * 0.006) * (Rules.get("eliteFrequency") or 1)
 end
 
 -- mode (optional): a game mode's `elites` table (content/modes/_template.lua).

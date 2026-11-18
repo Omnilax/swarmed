@@ -3,6 +3,7 @@
 --   love . --selftest --acts   (saves selftest_act2.png)
 local State = require("src.core.state")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Records = require("src.game.records")
 local RunSave = require("src.game.runsave")
 
@@ -61,13 +62,13 @@ return function(wait, shot)
     print("[selftest] act 2 on " .. w2.stage.id .. ", route " .. table.concat(w.actRoute, " > "))
 
     -- switched off: the run stays put
-    Settings.set("travelActs", false)
+    Rules.set("travelActs", false)
     local g3 = State.switch(Game.new({ mode = "run", character = "rhino_beetle", stage = "backyard", seed = 99 }))
     wait(0.1)
     g3.world.spawner.wave, g3.world.spawner.phase = 5, "break"
     g3:nextWave()
     assert(State.top() == g3 and g3.world.stage.id == "backyard", "Travel Between Acts off should keep the map")
-    Settings.set("travelActs", true)
+    Rules.set("travelActs", true)
     Acts.off = savedOff
     print("[selftest] acts OK")
 end

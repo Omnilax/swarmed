@@ -15,6 +15,7 @@
 -- Tuning lives in Spawner DEFAULTS (src/game/spawner.lua), so stages and modes can override it.
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Audio = require("src.core.audio")
 
 local Pacing = {}
@@ -43,10 +44,10 @@ end
 
 -- The order this run meets the species: roughly by minWave, but shuffled so every run meets a
 -- different mix (bees, wasps and termites can show up early). The first species (plain workers)
--- stays first. Setting "speciesOrder" = "classic" keeps the fixed order.
+-- stays first. Run rule "speciesOrder" = "classic" keeps the fixed order.
 function Pacing.shuffleOrder(sp, order)
     local jit = sp.cfg.orderJitter
-    if Settings.get("speciesOrder") == "classic" or not jit or #order < 3 then return order end
+    if Rules.get("speciesOrder") == "classic" or not jit or #order < 3 then return order end
     local key = {}
     for i, d in ipairs(order) do
         key[d] = i == 1 and -math.huge or d.spawn.minWave * (jit.scale or 0.6) + sp.rng:random() * (jit.spread or 5)
@@ -87,7 +88,7 @@ function Pacing.modifiersFor(sp, n)
         end
         return out
     end
-    if not cfg or sp.endless or Settings.get("waveModifiers") == false then return out end
+    if not cfg or sp.endless or Rules.get("waveModifiers") == false then return out end
     local boss = sp.cfg.bossEvery > 0 and n % sp.cfg.bossEvery == 0
     if n < (cfg.from or 3) or boss or sp:isFinal(n) then return out end
     if not require("src.game.onramp").allows(sp.world, "wavemods", n) then return out end
@@ -309,7 +310,7 @@ function Pacing.onDeath(sp, e)
     end
 end
 
-local function adaptive() return Settings.get("adaptiveWaves") ~= false end
+local function adaptive() return Rules.get("adaptiveWaves") ~= false end
 
 -- Rescale every live ant's speed / damage when the pace changes (heat, pressure).
 local function setPace(sp, pace, dpace)
@@ -409,7 +410,7 @@ end
 function Pacing.overlapReady(sp)
     local oc = sp.cfg.overlap
     if not oc or sp.endless or sp.bossWave or sp.finalThisWave or sp.crownE then return false end
-    if Settings.get("waveOverlap") == false or Settings.get("waveBreak") == "manual" then return false end
+    if Rules.get("waveOverlap") == false or Settings.get("waveBreak") == "manual" then return false end
     if sp.world.boss and not sp.world.boss.dead then return false end
     if sp.waveTime < (oc.minTime or 6) then return false end
     local left = sp.world.enemyCount
@@ -471,7 +472,7 @@ function Pacing.royalGuard(sp, q)
     local n = (gc.count or 6) + math.floor(sp.wave / 5) * (gc.perChapter or 2)
     -- armored guards, unless this mode or the settings keep elites out
     local me = sp.mode.elites
-    local elitesOk = not (me and me.chance == 0) and (Settings.get("eliteFrequency") or 1) > 0
+    local elitesOk = not (me and me.chance == 0) and (Rules.get("eliteFrequency") or 1) > 0
     local elite = elitesOk and gc.elite and Content.elites:get(gc.elite) or nil
     local guards = 0
     local r = q.radius + (gc.radius or 16)

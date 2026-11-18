@@ -277,6 +277,16 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
   one back (it runs with no globals and a step limit, so pasted text can only be data); the same table
   works as a mode file's `waves`. Clearing the last wave wins; Keep Going loops the set, tougher.
   Custom wins count for the mode's own record only (no bug wins, danger mastery or achievements).
+  Each set also has **Rules**: map gambles, parasites, level-ups (cards or skill points),
+  overlapping waves, wave heat, mini-goals, route gates, weather effects and dash tech.
+
+- **Run rules** (`src/game/rules.lua`): anything that changes the game itself (difficulty, spawns,
+  elites, species order, events, gambles, encounters, pacing, acts, level-ups, dash tech,
+  parasites) is NOT a setting. The main game always plays with the defaults there, so every
+  player's game is the same game. Only a mode changes them: a Custom Waves set's `rules`, or a
+  mode file's `rules = { key = value }`. Code reads them with `Rules.get(key)`; selftests override
+  with `Rules.set(key, value)`. Settings > Gameplay keeps comfort options only (auto attack, aim,
+  health bars, hit stop, wave break, reward timing...).
 
 - **Daily Run** (bottom of the mode list): today's date seeds the bug, the stage, the species order
   and every wave modifier, so everyone gets the same run that day (Colony rules). The best result
@@ -518,8 +528,8 @@ where the colony goes next; starting the next wave carries the whole run there (
 save, as if resumed), with an "Act 2 of 3" card and a breather.
 
 Not in practice, the daily run, endless, custom or scripted waves, or modes with `acts = false`.
-Gentle Start holds it back until the second run. Settings > Gameplay > **Travel Between Acts**
-off keeps a run on one map.
+Gentle Start holds it back until the second run. A mode with `rules = { travelActs = false }`
+keeps a run on one map.
 
 The victory screen closes the story with the maps the run crossed ("From Backyard Patio to Dune
 Field to Mossy Flagstones. The Empress has fallen."); a mode can set its own `ending`.
@@ -611,7 +621,7 @@ achievements on their own. Unlocks slide in at the top right. Run events it list
   won shows as mastery stars and is kept in Records (`characters[id].danger`).
 - **Dash tech.** A kill during a pressed dash (or just after) refunds half its stamina; dashing
   again within 0.45 s of the last one ending is 15% faster per link, up to 3 (`src/game/dashtech.lua`,
-  Settings > Gameplay > Dash Tech).
+  a Custom Waves set's Rules can turn it off).
 - **Final Swarm.** After the wave-15 win, the victory screen offers a last stand: 60 seconds of
   every species met pouring in from every side, lots of elites and a crowned queen halfway
   (`src/game/finalswarm.lua`). Live through it and the run ends with "Swarm survived".
@@ -803,7 +813,7 @@ attacks sooner and further), Gilded (shiny gold, tough, +1 card in the next item
 40% of each hit), Venomous (poisonous bites) or Volatile (bursts into acid on death). They are
 tinted, bigger, glow and stand on a coloured aura. Affixes are files in `content/elites`, and a
 species can give an affix its own twist with `elites = { aggressive = { params = {...} } }`
-(the red green ant sprays a wider, faster, longer-range fan). Settings > Gameplay > Elite Ants.
+(the red green ant sprays a wider, faster, longer-range fan). How often is a run rule (`eliteFrequency`); Custom Waves sets pick their own.
 
 Time of day: Settings > Video > Time of Day picks a day/night cycle (default, Day Length sets how
 long) or a fixed Day, Sunset, Evening or Night. Colours live in `src/game/daylight.lua` and a stage
