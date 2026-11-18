@@ -33,7 +33,8 @@ end
 function SettingsState:build()
     local cat = self.categories[self.tab]
     local items = {}
-    if cat == "Video" then items[#items + 1] = SettingsState.presetItem() end
+    local tp = require("src.config.tab_presets")[cat]
+    if tp then items[#items + 1] = SettingsState.presetItem(tp.list, tp.label, tp.desc) end
     if cat == "Lighting" then items[#items + 1] = SettingsState.presetItem(require("src.config.look_presets"), "Look",
         "Ten ready-made looks that set every Lighting and Camera option (and the time of day) in one go; changing one after makes it Custom. Standard is the default, Classic the look from before, Clarity the easiest to read, Dark always night, Sunny always day.") end
     local group

@@ -101,6 +101,28 @@ return function(wait, shot)
     Settings.set("darkness", 100)
     assert(#require("src.config.look_presets") >= 10, "fewer than 10 looks")
     assert(SS.current(require("src.config.look_presets")).id == "standard", "defaults are not the Standard look")
+    -- every tab's presets: known settings, valid values, and each reads back as itself
+    for tab, tp in pairs(require("src.config.tab_presets")) do
+        assert(#tp.list >= 3, tab .. " has too few presets")
+        for _, pr in ipairs(tp.list) do
+            for k, v in pairs(pr.values) do
+                local def = Settings.byKey[k]
+                assert(def, tab .. " preset " .. pr.id .. " sets unknown " .. k)
+                if def.type == "choice" then
+                    local ok = false
+                    for _, o in ipairs(def.options) do if o.value == v then ok = true end end
+                    assert(ok, tab .. " preset " .. pr.id .. ": bad value for " .. k)
+                elseif def.type == "slider" then
+                    assert(v >= def.min and v <= def.max, tab .. " preset " .. pr.id .. ": " .. k .. " out of range")
+                end
+            end
+            local saved = {}
+            for k in pairs(pr.values) do saved[k] = Settings.get(k) end
+            SS.applyPreset(pr)
+            assert(SS.current(tp.list) == pr, tab .. " preset " .. pr.id .. " does not read back")
+            for k, v in pairs(saved) do Settings.set(k, v) end
+        end
+    end
     -- a picture of each look (VISLOOKS=1)
     if os.getenv("VISLOOKS") then
         for _, lp in ipairs(require("src.config.look_presets")) do
