@@ -1,4 +1,5 @@
--- TEMPLATE. Copy to content/characters/my_bug.lua to add a playable arthropod.
+-- TEMPLATE. Copy to content/characters/my_bug.lua to add a built-in playable arthropod.
+-- (Players make their own bugs in the game instead: see _custom_blueprint.lua and docs/CUSTOM_BUGS.md.)
 return {
     name = "My Bug",
     description = "",

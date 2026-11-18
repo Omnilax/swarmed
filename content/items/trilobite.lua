@@ -6,6 +6,7 @@ return {
     description = "+8 Armor. Gain +1% Damage for every point of Armor you have (+1% per stack).",
     effect = "Gain +1% Damage for every point of Armor you have (+1% per stack).",
     rarity = "legendary",
+    category = "attack",
     size = { 2, 2 },
     stats = { armor = 8 },
     procs = {

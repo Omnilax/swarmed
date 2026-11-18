@@ -69,6 +69,17 @@ function Registry:sort()
     end)
 end
 
+-- Remove a definition (custom bugs are re-registered when edited or deleted).
+function Registry:unregister(id)
+    local def = self.byId[id]
+    if not def then return nil end
+    self.byId[id] = nil
+    for i, d in ipairs(self.list) do
+        if d == def then table.remove(self.list, i) break end
+    end
+    return def
+end
+
 function Registry:get(id) return self.byId[id] end
 
 function Registry:require(id)

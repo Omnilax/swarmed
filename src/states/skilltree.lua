@@ -1,6 +1,7 @@
 -- Skill tree screen: the SKILLS tab of the bag (Tab / RB / the tab at the top switches). Shows
--- the bug's tree (content/skilltrees) as three branches; spend skill points earned from XP.
--- The game is paused while it is open.
+-- the bug's tree (content/skilltrees) as its three own branches plus the kin branch of its
+-- lineage (content/skillbranches) topped by its signature node. Points come from skipping
+-- level-up cards. The game is paused while it is open.
 --
 -- Mouse/touch: click a node to learn it.  Keys/pad: arrows move, Enter / A learns, Tab / RB goes
 -- back to the bag, I / B closes.
@@ -60,7 +61,7 @@ function Tree:layout()
     local colW = area.w / #branches
     local maxTier = 1
     for _, n in pairs(self.tree.nodes) do maxTier = math.max(maxTier, n.tier) end
-    local titleH = math.floor(u(26))
+    local titleH = math.floor(u(50))
     local rowH = (area.h - titleH) / maxTier
     local nodeH = math.floor(math.min(rowH * 0.72, u(58)))
     local nodeW = math.floor(math.min(colW * 0.42, u(150)))
@@ -68,7 +69,7 @@ function Tree:layout()
         local cx = area.x + colW * (bi - 0.5)
         L["branch" .. bi] = { x = area.x + colW * (bi - 1), w = colW, cx = cx }
         for _, n in ipairs(br.nodes) do
-            local x = cx + n.col * colW * 0.25 - nodeW / 2
+            local x = cx + n.col * colW * 0.27 - nodeW / 2
             local y = area.y + titleH + (n.tier - 1) * rowH + (rowH - nodeH) / 2
             L.nodes[n.id] = { x = math.floor(x), y = math.floor(y), w = nodeW, h = nodeH }
         end
@@ -172,7 +173,7 @@ function Tree:mousemoved() self.mouseActive = true end
 -- Drawing
 
 local STATUS_TEXT = {
-    available = "Click to learn", poor = "Not enough skill points", locked = "Learn a node above it first",
+    available = "Click to learn", poor = "Not enough skill points: skip a level-up card to earn one", locked = "Learn a node above it first",
     excluded = "Locked: you took the other side of this fork", maxed = "Learned",
 }
 
@@ -233,8 +234,30 @@ function Tree:draw()
             lg.setColor(COL.frameLo)
             lg.rectangle("fill", math.floor(B.x), A.y + u(4), 2, A.h - u(8))
         end
+        if br.kin then
+            -- the kin branch: a faint wash so it reads as the shared lineage column
+            lg.setColor(c[1], c[2], c[3], 0.05)
+            lg.rectangle("fill", math.floor(B.x) + 2, A.y, B.w - 2, A.h)
+        end
         lg.setFont(Theme.font(16, "bold"))
-        Theme.printShadow(br.name:upper(), B.x, A.y + u(6), c, "center", B.w)
+        local spent = sk:spentIn(bi)
+        local title = br.name:upper()
+        Theme.printShadow(title, B.x, A.y + u(5), c, "center", B.w)
+        if spent > 0 then
+            local tf = lg.getFont()
+            local tw = tf:getWidth(title)
+            lg.setFont(Theme.font(13, "bold"))
+            Theme.printShadow(tostring(spent), math.floor(B.x + B.w / 2 + tw / 2 + u(6)), A.y + u(7), { 1, 0.85, 0.4 })
+        end
+        if br.blurb and br.blurb ~= "" then
+            local bf = Theme.font(13)
+            lg.setFont(bf)
+            local _, lines = bf:getWrap(br.blurb, B.w - u(12))
+            lg.setColor(COL.dim)
+            for li = 1, math.min(2, #lines) do
+                lg.printf(lines[li], B.x + u(6), A.y + u(24) + (li - 1) * math.floor(bf:getHeight() * 0.92), B.w - u(12), "center")
+            end
+        end
         -- links to the nodes each one needs
         for _, n in ipairs(br.nodes) do
             local r = L.nodes[n.id]
@@ -286,13 +309,22 @@ function Tree:draw()
             for _, x in ipairs(n.excludes) do
                 if sk:rank(x) > 0 then txt = "Locked: you took " .. self.tree.nodes[x].name end
             end
+        elseif st == "locked" then
+            local names = {}
+            for _, q in ipairs(n.requires) do names[#names + 1] = self.tree.nodes[q].name end
+            txt = "Needs " .. table.concat(names, " or ") .. " first"
+        elseif st == "available" and #n.excludes > 0 then
+            local names = {}
+            for _, x in ipairs(n.excludes) do names[#names + 1] = self.tree.nodes[x].name end
+            txt = txt .. "  ·  fork: closes " .. table.concat(names, ", ")
         end
+        if n.signature and st ~= "maxed" then txt = "SIGNATURE  ·  " .. txt end
         lg.setColor(stc)
         Theme.rich(txt, I.x + u(12), I.y + I.h - u(22), I.w - u(24), "left", stc)
     else
         lg.setFont(Theme.font(14))
         lg.setColor(COL.dim)
-        lg.printf("Every ant you kill is 1 XP. Each level is a skill point. You can't learn everything in one run, and forks are either/or: choose a path.",
+        lg.printf("Skip a level-up card to bank a skill point. Three branches are your bug's own, the fourth is its kin, topped by its signature. You can't learn everything in one run, and forks are either/or: choose a path.",
             I.x + u(12), I.y + u(16), I.w - u(24))
     end
 
@@ -325,6 +357,13 @@ function Tree:drawNode(n, r, c, focused)
     lg.setLineWidth(owned and 2 or 1)
     lg.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3)
     lg.setLineWidth(1)
+    if n.signature then
+        -- signature: a gold double frame and a little crest on top
+        lg.setColor(1, 0.85, 0.4, owned and 1 or 0.7)
+        lg.rectangle("line", r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3, 4)
+        local cx = r.x + r.w / 2
+        lg.polygon("fill", cx, r.y - u(7), cx + u(6), r.y - 1, cx, r.y + u(5), cx - u(6), r.y - 1)
+    end
     if focused then
         lg.setColor(Theme.colors.focus)
         lg.rectangle("line", r.x - 3.5, r.y - 3.5, r.w + 7, r.h + 7, 5)

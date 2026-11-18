@@ -6,6 +6,7 @@ return {
     description = "+12 Armor, +20 Max HP. Twice per wave (+1 per stack), a killing bite leaves you on 40% HP, untouchable for 2.5 seconds.",
     effect = "Twice per wave (+1 per stack), a killing bite leaves you on 40% HP, untouchable for 2.5 seconds.",
     rarity = "molted",
+    category = "mend",
     size = { 2, 2 },
     stats = { armor = 12, maxHp = 20 },
     procs = {

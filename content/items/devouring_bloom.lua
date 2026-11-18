@@ -6,6 +6,7 @@ return {
     name = "Devouring Bloom",
     description = "Every 2 seconds the bloom snaps at the 2 nearest ants (+1 per stack) within reach for 40 damage (+40 per stack), healing 3 HP for each.",
     rarity = "molted",
+    category = "mend",
     shape = { "X.X", "XXX" },
     procs = {
         {

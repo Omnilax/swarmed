@@ -79,22 +79,22 @@ return function(wait, shot)
     assert(sk:buy(n1.id), "could not buy a tier 1 node")
     assert(pl.attack.params.damage > hpBefore, "buying Heavy Horn did not raise sweep damage")
     assert(Content.characters:get("rhino_beetle").attack.damage == hpBefore, "skill mods leaked into the character def")
-    -- a run can't finish the whole tree by wave ~20: level-up cards offer at most one node a
-    -- pick (chance skillShare); a 15-wave run is ~12-15k XP, wave 20 ~20k
-    local cfg = require("src.config.levelups")
+    -- a run can't finish the whole tree by wave ~20: points only come from skipping level-up
+    -- cards, so even a run that skipped every single pick (~20k XP by wave 20) falls short
     local lv, xp = 0, 20000
     while xp >= Skills.xpFor(lv + 1) do xp = xp - Skills.xpFor(lv + 1); lv = lv + 1 end
-    local offers = math.ceil(lv * cfg.skillShare)
     for _, t in ipairs(Content.skilltrees:all()) do
-        local ranks = 0           -- the cheapest full tree: per tier, the fork side with fewest ranks
+        assert(#t.branches == 4 and t.branches[4].kin, t.id .. " tree should have its kin branch")
+        assert(t.signature and t.nodes[t.signature.id] and t.signature.signature, t.id .. " tree needs a signature node")
+        local cost = 0           -- the cheapest full tree: per tier, the fork side that costs least
         for _, br in ipairs(t.branches) do
             local byTier = {}
-            for _, n in ipairs(br.nodes) do byTier[n.tier] = math.min(byTier[n.tier] or math.huge, n.ranks) end
-            for _, r in pairs(byTier) do ranks = ranks + r end
+            for _, n in ipairs(br.nodes) do byTier[n.tier] = math.min(byTier[n.tier] or math.huge, n.ranks * n.cost) end
+            for _, c in pairs(byTier) do cost = cost + c end
         end
-        assert(ranks > offers, t.id .. " tree (" .. ranks .. " ranks) can be finished in one run (" .. offers .. " node offers)")
+        assert(cost > lv, t.id .. " tree (" .. cost .. " points) can be finished in one run (" .. lv .. " levels)")
     end
-    print(("[selftest] skills: level %d by wave 20, ~%d node offers"):format(lv, offers))
+    print(("[selftest] skills: level %d by wave 20 (every pick skipped = %d points)"):format(lv, lv))
 
     -- the tree screen, via the bag's tab
     world:grantXP(400)

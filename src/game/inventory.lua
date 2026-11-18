@@ -173,6 +173,34 @@ local function rarityOrder(def)
     return r and r.order or 0
 end
 
+local Categories = require("src.config.categories")
+
+local function byName(a, b)
+    if a.id ~= b.id then return a.id < b.id end
+    return a.uid < b.uid
+end
+
+-- The first sort tried, picked by the Bag Sort Order setting; the size sorts below are the
+-- fallbacks when the bag is too full for it.
+local FIRST = {
+    category = function(a, b)   -- by category (src/config/categories.lua), then rarest, biggest
+        local ka, kb = Categories.rank(a.def.category), Categories.rank(b.def.category)
+        if ka ~= kb then return ka < kb end
+        local ra, rb = rarityOrder(a.def), rarityOrder(b.def)
+        if ra ~= rb then return ra > rb end
+        local ca, cb = #a.def.cells, #b.def.cells
+        if ca ~= cb then return ca > cb end
+        return byName(a, b)
+    end,
+    rarity = function(a, b)     -- rarest first, then by category
+        local ra, rb = rarityOrder(a.def), rarityOrder(b.def)
+        if ra ~= rb then return ra > rb end
+        local ka, kb = Categories.rank(a.def.category), Categories.rank(b.def.category)
+        if ka ~= kb then return ka < kb end
+        return byName(a, b)
+    end,
+}
+
 local SORTS = {
     function(a, b)   -- most cells, rarest, by name
         local ca, cb = #a.def.cells, #b.def.cells
@@ -192,10 +220,15 @@ local SORTS = {
     end,
 }
 
-function Inventory:autoSort()
+-- mode: "category" | "rarity" | "size" (default: the Bag Sort Order setting).
+function Inventory:autoSort(mode)
     local old = {}
     for i, e in ipairs(self.bag) do old[i] = { e = e, rot = e.item.rot } end
-    for _, cmp in ipairs(SORTS) do
+    local order = {}
+    local mode = mode or require("src.core.settings").get("bagSort")
+    if FIRST[mode] then order[1] = FIRST[mode] end
+    for _, f in ipairs(SORTS) do order[#order + 1] = f end
+    for _, cmp in ipairs(order) do
         local items = {}
         for i, o in ipairs(old) do items[i] = o.e.item end
         table.sort(items, cmp)
@@ -366,6 +399,8 @@ function Inventory:trigger(name, ctx)
     -- the bug's own rule (src/config/bugrules.lua) sees every trigger and can bend procs
     local BugRules = require("src.game.bugrules")
     BugRules.trigger(self.player, name, ctx)
+    -- a custom bug's own event code (hooks = { onHit = function(me, ev) ... }, src/game/scriptmoves.lua)
+    if self.player.def.hooks and name ~= "onTick" then require("src.game.scriptmoves").event(self.player, name, ctx) end
     local ruled = BugRules.of(self.player) ~= nil
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]

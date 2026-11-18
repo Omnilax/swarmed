@@ -8,7 +8,7 @@ local TOXIN = { 0.95, 0.85, 0.35 }
 return {
     character = "millipede",
     branches = {
-        { name = "Stink Glands", color = TOXIN, nodes = {
+        { name = "Stink Glands", blurb = "Poison every ant that touches you", color = TOXIN, nodes = {
             { id = "mp_glands", tier = 1, ranks = 3, name = "Potent Glands", desc = "+15% gland damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "mp_all", tier = 2, name = "Every Ring", desc = "Every ring of the body puffs toxin, not every other one.",
@@ -24,7 +24,7 @@ return {
                   fx.patch(ctx, ctx.x, ctx.y, 22, 3, 8, 0.7, TOXIN)
               end } } },
         } },
-        { name = "Coil", color = { 0.8, 0.45, 0.35 }, nodes = {
+        { name = "Coil", blurb = "Coil up, then burst out", color = { 0.8, 0.45, 0.35 }, nodes = {
             { id = "mp_burst", tier = 1, ranks = 3, name = "Stored Toxin", desc = "+15% uncoil burst damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "mp_armor", tier = 2, name = "Tight Coil", desc = "Coiled you take 93% less damage and ooze twice as hard.",
@@ -42,7 +42,7 @@ return {
                   fx.nova(ctx, p.x, p.y, 26, 6, TOXIN, { poison = { 6, 3 } })
               end } } },
         } },
-        { name = "Ball Roll", color = { 0.6, 0.45, 0.4 }, nodes = {
+        { name = "Ball Roll", blurb = "Roll through them as a ball", color = { 0.6, 0.45, 0.4 }, nodes = {
             { id = "mp_shell", tier = 1, ranks = 3, name = "Chitin Rings", desc = "+15 max HP and +1 armor per rank.",
               stats = { maxHp = 15, armor = 1 } },
             { id = "mp_heavy", tier = 2, name = "Heavy Ball", desc = "Bumping into ants does +6 damage.",
@@ -61,4 +61,11 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_milli_arthro", name = "Arthropleura", desc = "Grow like the giant of old: +20% max HP, +3 armor, and ants that hit you get spiked.",
+          stats = { armor = 3 }, statsMult = { maxHp = 0.2 },
+          procs = { { trigger = "onHurt", cooldown = 0.5, effect = function(ctx)
+              local p = ctx.player
+              fx.nova(ctx, p.x, p.y, 28, 12, { 0.8, 0.45, 0.35 }, { knockback = 120 })
+          end } } },
 }

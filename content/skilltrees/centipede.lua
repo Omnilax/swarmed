@@ -7,7 +7,7 @@ local TOXIC = { 0.75, 1, 0.3 }
 return {
     character = "centipede",
     branches = {
-        { name = "Venom Jabs", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Venom Jabs", blurb = "A blur of venom jabs", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "cp_fang", tier = 1, ranks = 3, name = "Forcipule Venom", desc = "+15% jab damage and +20% jab venom per rank.",
               attack = { damage = { mul = 0.15 }, ["poison.1"] = { mul = 0.2 } } },
             { id = "cp_reach", tier = 2, name = "Long Forcipules", desc = "Jabs reach further and hit a wider line.",
@@ -25,7 +25,7 @@ return {
                   if ctx.target.poisonT > 0 then fx.shards(ctx, ctx.x, ctx.y, 3, 4, TOXIC, { range = 60, poison = { 4, 3 } }) end
               end } } },
         } },
-        { name = "Tail Hooks", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Tail Hooks", blurb = "Hooked tail stabs behind you", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "cp_hook", tier = 1, ranks = 3, name = "Barbed Hooks", desc = "+15% tail damage and +20% tail venom per rank.",
               secondary = { damage = { mul = 0.15 }, ["poison.1"] = { mul = 0.2 } } },
             { id = "cp_snap", tier = 2, name = "Quick Tail", desc = "Tail Stab recharges 30% faster.",
@@ -47,7 +47,7 @@ return {
                   fx.chain(ctx, ctx.target, 3, 50, 8, TOXIC, { poison = { 6, 3 } })
               end } } },
         } },
-        { name = "Hundred Legs", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Hundred Legs", blurb = "A long body that batters", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "cp_legs", tier = 1, ranks = 3, name = "More Legs", desc = "+6 speed and +6 max HP per rank.",
               stats = { moveSpeed = 6, maxHp = 6 } },
             { id = "cp_ram", tier = 2, name = "Battering Body", desc = "The flip hits 60% harder and throws ants further.",
@@ -69,4 +69,13 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_centi_giant", name = "Giant Scolopendra", desc = "Every 20th jab, venom bursts out of every segment: a toxic ring around you.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_centi", 20) then return end
+              local p = ctx.player
+              fx.nova(ctx, p.x, p.y, 64, 10, { 0.75, 1, 0.3 }, { knockback = 120 })
+              fx.patch(ctx, p.x, p.y, 56, 3, 10, nil, { 0.75, 1, 0.3 })
+              fx.say(ctx, "SCOLOPENDRA!", { 0.75, 1, 0.3 })
+          end } } },
 }

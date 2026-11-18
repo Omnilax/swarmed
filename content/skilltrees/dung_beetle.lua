@@ -7,7 +7,7 @@ local DUNG = { 0.75, 0.55, 0.3 }
 return {
     character = "dung_beetle",
     branches = {
-        { name = "Ball Bash", color = { 0.85, 0.65, 0.4 }, nodes = {
+        { name = "Ball Bash", blurb = "Bash with a growing ball", color = { 0.85, 0.65, 0.4 }, nodes = {
             { id = "db_heavy", tier = 1, ranks = 3, name = "Packed Dung", desc = "+12% bash damage per rank.",
               attack = { damage = { mul = 0.12 } } },
             { id = "db_sticky", tier = 2, name = "Sticky Ball", desc = "Squashed ants make the ball grow twice as fast.",
@@ -30,7 +30,7 @@ return {
                   fx.explode(ctx, p.x + ctx.ax * (r + 16), p.y + ctx.ay * (r + 16), 18 + r * 3, ctx.params.damage * (1 + r / 6), DUNG, { knockback = 200 })
               end } } },
         } },
-        { name = "Ball Hurl", color = { 0.7, 0.5, 0.25 }, nodes = {
+        { name = "Ball Hurl", blurb = "Kick the ball through the crowd", color = { 0.7, 0.5, 0.25 }, nodes = {
             { id = "db_roll", tier = 1, ranks = 3, name = "Roller", desc = "+15% hurl damage and the ball grows 25% faster as you roll it, per rank.",
               secondary = { damage = { mul = 0.15 }, grow = { mul = 0.25 } } },
             { id = "db_huge", tier = 2, name = "Huge Ball", desc = "The ball can grow 30% bigger.",
@@ -48,7 +48,7 @@ return {
                   fx.shards(ctx, p.x, p.y, 4, ctx.params.damage * 0.5, DUNG, { angle = a, spread = 0.8, speed = 280, range = 150, pierce = 4, knockback = 140 })
               end } } },
         } },
-        { name = "Strong Back", color = { 0.6, 0.75, 1 }, nodes = {
+        { name = "Strong Back", blurb = "The strongest back on Earth", color = { 0.6, 0.75, 1 }, nodes = {
             { id = "db_tough", tier = 1, ranks = 3, name = "Tough Shell", desc = "+1.5 armor and +8 max HP per rank.",
               stats = { armor = 1.5, maxHp = 8 } },
             { id = "db_push", tier = 2, name = "Strongest Insect", desc = "+30% knockback, and a big ball slows you down a third less.",
@@ -68,4 +68,12 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_dung_scarab", name = "Sacred Scarab", desc = "Every 4th bash shakes the ground: a shockwave around you at 1.5x damage.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_dung", 4) then return end
+              local p = ctx.player
+              fx.nova(ctx, p.x, p.y, 60, (ctx.params.damage or 10) * 1.5, { 0.85, 0.65, 0.4 }, { knockback = 220 })
+              ctx.world.camera:shake(0.12)
+          end } } },
 }

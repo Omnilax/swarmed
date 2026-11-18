@@ -4,6 +4,7 @@ return {
     description = "+40% Damage. Cursed: eating items no longer heals you.",
     curse = "Eating items no longer heals you.",
     rarity = "cursed",
+    category = "cursed",
     shape = { "XXX" },
     stats = { damage = 40 },
     noEatHeal = true,

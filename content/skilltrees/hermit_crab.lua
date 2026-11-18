@@ -7,7 +7,7 @@ local ANEMONE = { 1, 0.5, 0.75 }
 return {
     character = "hermit_crab",
     branches = {
-        { name = "Pinches", color = { 1, 0.6, 0.75 }, nodes = {
+        { name = "Pinches", blurb = "Small claw quick, big claw crushing", color = { 1, 0.6, 0.75 }, nodes = {
             { id = "hc_grip", tier = 1, ranks = 3, name = "Firm Grip", desc = "+12% pinch damage per rank.",
               attack = { damage = { mul = 0.12 } } },
             { id = "hc_crusher", tier = 2, name = "Crusher Claw", desc = "The big claw hits harder and wider.",
@@ -25,7 +25,7 @@ return {
             { id = "hc_king", tier = 5, name = "King Crab", desc = "Every 4th pinch is a colossal crush that throws everything back.",
               empower = { move = "attack", every = 4, mods = { bigRadius = { mul = 1 }, radius = { mul = 1 }, damage = { mul = 1.5 } }, text = "CRUSH!", shake = 0.15 } },
         } },
-        { name = "Anemones", color = { 1, 0.5, 0.75 }, nodes = {
+        { name = "Anemones", blurb = "Plant stinging sea anemones", color = { 1, 0.5, 0.75 }, nodes = {
             { id = "hc_sting", tier = 1, ranks = 3, name = "Nematocysts", desc = "+20% anemone sting damage per rank.",
               secondary = { damage = { mul = 0.2 } } },
             { id = "hc_long", tier = 2, name = "Hardy Polyps", desc = "Anemones live 4 s longer.",
@@ -46,7 +46,7 @@ return {
                   end
               end } } },
         } },
-        { name = "Shell", color = { 0.95, 0.85, 0.6 }, nodes = {
+        { name = "Shell", blurb = "Hide in a shell that fights back", color = { 0.95, 0.85, 0.6 }, nodes = {
             { id = "hc_thick", tier = 1, ranks = 3, name = "Bigger Shell", desc = "+2 armor and +8 max HP per rank.",
               stats = { armor = 2, maxHp = 8 } },
             { id = "hc_spiny", tier = 2, name = "Spiny Shell", desc = "Ants biting the shell take 3x the nip.",
@@ -71,4 +71,13 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_hermit_fortress", name = "Coconut Fortress", desc = "Hits that land on you or your shell fire a ring of shell shards back (every 1 s).",
+          procs = { { trigger = "onHurt", cooldown = 1, effect = function(ctx)
+              local p = ctx.player
+              fx.shards(ctx, p.x, p.y, 8, 8, { 0.95, 0.85, 0.6 }, { range = 70 })
+          end }, { trigger = "onBlock", cooldown = 1, effect = function(ctx)
+              local p = ctx.player
+              fx.shards(ctx, p.x, p.y, 8, 8, { 0.95, 0.85, 0.6 }, { range = 70 })
+          end } } },
 }

@@ -171,6 +171,13 @@ function Records.track(world, info)
     ev:on("run_won", function()
         if run.won then return end
         run.won = true
+        -- Custom Waves can be as easy as you make them: a win there counts for the mode only
+        -- (no bug wins, no danger mastery, no win achievements)
+        if world.modeDef and world.modeDef.custom then
+            p.modes[run.mode].wins = p.modes[run.mode].wins + 1
+            Records.save()
+            return
+        end
         p.wins = p.wins + 1
         p.characters[charId].wins = p.characters[charId].wins + 1
         -- mastery: the highest danger level won with this bug

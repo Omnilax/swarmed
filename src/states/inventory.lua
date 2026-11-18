@@ -23,6 +23,9 @@ local Stats = require("src.game.stats")
 local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
 local util = require("src.core.util")
+local Settings = require("src.core.settings")
+local Categories = require("src.config.categories")
+local CatGlyph = require("src.ui.catglyph")
 
 local Inv = { transparent = true, touchControls = "inventory", noTouchScroll = true }
 Inv.__index = Inv
@@ -388,6 +391,21 @@ local function itemIcon(item, x, y, w, h, alpha)
     lg.draw(Sprites.atlas, icon.frames[1][1], math.floor(x + w / 2), math.floor(y + h / 2), rot * math.pi / 2, s, s, icon.ox, icon.oy)
 end
 
+local function catColor(def)
+    local cat = Categories.get(def.category)
+    cat._c = cat._c or util.hex(cat.color)
+    return cat._c
+end
+
+-- The cell (in the item's own turned frame) for its category badge: the top-left filled one.
+local function badgeCell(item)
+    local best
+    for _, c in ipairs(Inventory.cells(item)) do
+        if not best or c[2] < best[2] or (c[2] == best[2] and c[1] < best[1]) then best = c end
+    end
+    return best[1], best[2]
+end
+
 -- Fill an item's cells and trace the outline of its shape.
 local function shapeCells(item, x, y, C, fill, edge, inset)
     inset = inset or 2
@@ -526,12 +544,21 @@ function Inv:draw()
     local hoverEntry = (not self.held and focus and focus.kind == "bag") and inv:entryAt(focus.x, focus.y) or nil
     for _, e in ipairs(inv.bag) do
         local c = rarityColor(e.item.def)
+        local k = catColor(e.item.def)
         local x, y = B.x + e.x * C, B.y + e.y * C
         local lit = (e == hoverEntry) or (preview and preview.swap == e)
-        shapeCells(e.item, x, y, C, { c[1] * 0.3, c[2] * 0.3, c[3] * 0.3, lit and 0.95 or 0.7 },
+        -- the fill is the item's category (what it is for), the outline its rarity
+        shapeCells(e.item, x, y, C, { k[1] * 0.24, k[2] * 0.24, k[3] * 0.24, lit and 0.95 or 0.78 },
             { c[1], c[2], c[3], lit and 1 or 0.55 })
         local iw, ih = Inventory.size(e.item)
         itemIcon(e.item, x + 4, y + 4, iw * C - 8, ih * C - 8)
+    end
+    if Settings.get("itemBadges") ~= false then
+        for _, e in ipairs(inv.bag) do
+            local bx, by = badgeCell(e.item)
+            local d = math.floor(C * 0.34)
+            CatGlyph.badge(e.item.def.category, B.x + (e.x + bx) * C + d / 2 + 3, B.y + (e.y + by) * C + d / 2 + 3, d, 0.9)
+        end
     end
     -- glowing seams: touching items that will molt (bright), half a recipe (dim), tag sets (tag colour)
     local seams, ready = require("src.game.molting").seams(inv)
@@ -737,7 +764,9 @@ function Inv:tooltip(item, x, y)
     cy = cy + fName:getHeight() + u(2)
     lg.setFont(fSmall)
     lg.setColor(COL.dim)
-    lg.print(Rarities[def.rarity].label .. "  ·  " .. shapeLabel(def), x + u(10), cy)
+    local chipW = CatGlyph.chip(def.category, x + u(10), cy, lh, fSmall)
+    lg.setColor(COL.dim)
+    lg.print(Rarities[def.rarity].label .. "  ·  " .. shapeLabel(def), x + u(10) + chipW + u(8), cy)
     cy = cy + lh + u(8)
     if tagH > 0 then
         Choices.drawTags(def, tagCounts, x + u(10), cy, tw - u(20), fTag, u)
@@ -872,5 +901,6 @@ end
 
 -- Drawing helpers shared with the item choice screen.
 Inv.plate, Inv.itemIcon, Inv.shapeCells, Inv.statLines, Inv.COL, Inv.rarityColor = plate, itemIcon, shapeCells, statLines, COL, rarityColor
+Inv.catColor, Inv.badgeCell = catColor, badgeCell
 
 return Inv

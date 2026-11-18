@@ -8,6 +8,7 @@ return {
     description = "+15% Knockback. While dashing you gore every ant you touch for 15 damage (+15 per stack) and fling it away.",
     effect = "While dashing you gore every ant you touch for 15 damage (+15 per stack) and fling it away.",
     rarity = "rare",
+    category = "attack",
     shape = { "X.", "XX" },
     stats = { knockback = 15 },
     procs = {

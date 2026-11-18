@@ -43,7 +43,7 @@ P.sortById = {}
 for _, s in ipairs(P.sorts) do P.sortById[s.id] = s end
 
 -- Filters: everything, favourites, then one per playstyle.
-P.filters = { { id = "all", label = "All Bugs" }, { id = "favourites", label = "Favourites" } }
+P.filters = { { id = "all", label = "All Bugs" }, { id = "favourites", label = "Favourites" }, { id = "custom", label = "Custom Bugs" } }
 for _, s in ipairs(P.styles) do P.filters[#P.filters + 1] = { id = s.id, label = s.label, style = s.id } end
 
 return P

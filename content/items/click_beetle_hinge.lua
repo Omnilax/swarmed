@@ -5,6 +5,7 @@ return {
     name = "Click Beetle Hinge",
     description = "The first hit within 1 second of a dash snaps for an extra 150% damage (+100% per stack).",
     rarity = "uncommon",
+    category = "attack",
     size = { 1, 1 },
     procs = {
         { trigger = "onDash", effect = function(ctx) ItemFx.state(ctx.player, "click_beetle_hinge").armed = ctx.world.time + 1 end },

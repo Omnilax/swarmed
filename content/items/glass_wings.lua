@@ -4,6 +4,7 @@ return {
     description = "+30 Speed, +25% Attack Speed. Cursed: -40% Max HP.",
     curse = "-40% Max HP.",
     rarity = "cursed",
+    category = "cursed",
     size = { 2, 1 },
     stats = { moveSpeed = 30, attackSpeed = 25 },
     statsMult = { maxHp = -0.4 },

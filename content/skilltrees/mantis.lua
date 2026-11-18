@@ -7,7 +7,7 @@ local LEAF = { 0.75, 1, 0.5 }
 return {
     character = "mantis",
     branches = {
-        { name = "Twin Scythes", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Twin Scythes", blurb = "Twin scythes, faster than ants", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "mt_edge", tier = 1, ranks = 3, name = "Honed Edge", desc = "+15% slash damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "mt_reach", tier = 2, name = "Long Scythes", desc = "Slashes reach further and wider.",
@@ -28,7 +28,7 @@ return {
                   fx.chain(ctx, ctx.target, 2, 40, 8, LEAF)
               end } } },
         } },
-        { name = "Snatch", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Snatch", blurb = "Grab, munch and hurl ants", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "mt_grip", tier = 1, ranks = 3, name = "Raptorial Grip", desc = "Snatch one more ant and hit 10% harder per rank.",
               secondary = { grabs = 1, damage = { mul = 0.1 } } },
             { id = "mt_feast", tier = 2, name = "Feast", desc = "Munching heals 2 more and bites 3 harder.",
@@ -49,7 +49,7 @@ return {
                   fx.heal(c, 2)
               end } },
         } },
-        { name = "Ambush", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Ambush", blurb = "Sway, dodge and strike back", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "mt_legs", tier = 1, ranks = 3, name = "Light Step", desc = "+6 speed and +2% dodge per rank.",
               stats = { moveSpeed = 6, dodge = 2 } },
             { id = "mt_leap", tier = 2, name = "Wide Sway", desc = "Sways go further, and the sure crit lasts longer.",
@@ -70,4 +70,9 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_mantis_orchid", name = "Orchid Queen", desc = "Kills with your scythes have a 25% chance to fling wind blades in a ring.",
+          procs = { { trigger = "onKill", move = "attack", chance = 0.25, effect = function(ctx)
+              fx.shards(ctx, ctx.x, ctx.y, 6, 8, { 0.95, 0.7, 0.95 }, { range = 80, pierce = 2 })
+          end } } },
 }

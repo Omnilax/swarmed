@@ -5,6 +5,7 @@ return {
     description = "+60% Luck, +10% Crit Chance. Cursed: one card fewer in every free item pick.",
     curse = "One card fewer in every free item pick (2 at least).",
     rarity = "cursed",
+    category = "cursed",
     size = { 1, 1 },
     stats = { luck = 60, critChance = 10 },
     cardsDelta = -1,

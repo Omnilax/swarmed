@@ -191,7 +191,17 @@ dragging an item out of the case eats it, and pointing at a stat explains its nu
 stat's `info` in `src/config/stats.lua`). The pause screen lists every stat and every item's
 full effect. Test: `love . --selftest --choiceqol`. Bag size lives in
 `src/config/equipment.lua`; an item's `shape` (or `size`), `icon` and `effect` text in its file;
-icons are modelled by `tools/make_item_icons.py` (needs numpy) with a small renderer in `tools/icon_render.py`: each item is built from lit 3D shapes with real materials (gloss, grain, translucency), lit by a warm low sun and cool dusk ambient, at 28 px per cell, then reduced to a small palette. `python3 tools/make_item_icons.py --preview out.png [ids]` renders a contact sheet.
+icons are modelled by `tools/make_item_icons.py` (needs numpy) with a small renderer in `tools/icon_render.py`: each item is built from lit 3D shapes with real materials (gloss, grain, translucency), lit by a warm low sun and cool dusk ambient, at 28 px per cell, then reduced to a small palette. `render_fit` zooms each drawing so it fills its cells, and the sun side gets a thin lit edge so dark items still stand out in the dark bag. `python3 tools/make_item_icons.py --preview out.png [ids]` renders a contact sheet.
+
+**Item categories.** Every item has one `category` saying what it is FOR (`src/config/categories.lua`):
+Attack, Elemental, Guard, Mend, Move, Control, Fortune, Cursed. Tags are the many themes an item
+shares for set bonuses; the category is the one big answer. In the bag an item's fill is its
+category colour (its outline is its rarity) with a small category badge (Interface > Item Category
+Badges), SORT lines the bag up by category (Interface > Bag Sort Order: category, rarity or size;
+it falls back to packing by size when the bag is too full), the shop lines its new offers up by
+category, cards and tooltips show a category chip, and the Item Catalogue groups by category or
+rarity (G). An item without `category` gets a guess from its rarity and tags. Test:
+`love . --selftest --itemorg`.
 
 There are 67 items, drawn from Risk of Rain, Isaac and Brotato and themed on things a bug finds
 in the dirt: microbes (tardigrade, nematode, amoeba, rotifer, bacterial bloom, slime mold, gut
@@ -246,6 +256,19 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
 - **Champions**: small groups, every enemy is an elite.
 - **Endless**: pick starting items on a point budget (`src/states/loadout.lua`), then no waves and no
   breaks; the level climbs every 40 s with a new species, a queen every 5 levels, an item choice every 3.
+- **Gauntlet**: ten hand-made scripted waves, the same every run (`waves` in `content/modes/gauntlet.lua`).
+- **Royal Court** (boss rush): a queen every wave for ten waves, a new species each wave too.
+- **Blitz**: a short run, eight huge waves with no breaks, two new species a wave, faster level-ups.
+- **Mayhem**: one or two wave modifiers on every wave from the first, extra mid-wave events, and a
+  boss encounter or stage hazard every third wave.
+- **Custom Waves**: opens the wave builder (`src/states/wavebuilder.lua`) instead of going straight to
+  the bug select. Make sets of waves: for each wave, up to six groups (species and how many), a queen,
+  up to three wave modifiers, up to four events and a boss encounter / stage hazard; per set, enemy
+  health, damage, growth per wave and elites. Sets save to `customwaves.lua` in the save folder
+  (`src/game/customwaves.lua`). Copy Set puts a set on the clipboard as a Lua table and Paste Set reads
+  one back (it runs with no globals and a step limit, so pasted text can only be data); the same table
+  works as a mode file's `waves`. Clearing the last wave wins; Keep Going loops the set, tougher.
+  Custom wins count for the mode's own record only (no bug wins, danger mastery or achievements).
 
 - **Daily Run** (bottom of the mode list): today's date seeds the bug, the stage, the species order
   and every wave modifier, so everyone gets the same run that day (Colony rules). The best result
@@ -253,7 +276,9 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
 
 A mode can override any stage wave setting (`spawn`), restrict enemies (`families`, `enemies`,
 `exclude`), scale enemy health and damage, change elite odds, and set `finalWave` (false = no end).
-`love . --selftest --modes` plays six waves of each mode and checks who came.
+Scripted modes (`waves = {...}`) send exactly what each wave lists instead of the usual one-new-species
+rhythm. `love . --selftest --modes` plays six waves of each mode and checks who came;
+`love . --selftest --customwaves` checks the builder, pasting, a custom run's exact counts and the scripted modes.
 
 ## Characters
 
@@ -308,18 +333,39 @@ Specials are attacks in `content/attacks` like any other; ones with a held part 
 the mantis snatch) also have `update(player, world, dt, params, held, pointerX, pointerY)` and
 can `draw`. `src/game/grab.lua` holds and throws ants for grab specials.
 
+## Bug Creator (custom bugs)
+
+Main menu > **Bug Creator** makes your own playable bugs: **Mix Parts** (one bug's body, another's
+attack, special and dash, plus size, colour, stats, an item rule and a skill tree, with a live
+preview) or **Write a Script** (a bug is a small sandboxed Lua script; start from
+`content/characters/_custom_blueprint.lua`). Scripts can be pasted in, dropped on the window,
+copied out to share, and live in the save folder's `custom_bugs/`. A script can make a completely
+new bug: its own pixel art, legs, claws and tails or a segmented body, moves written in code
+(press, hold-to-charge, hold, stamina modes), code on game events, its own animations, sounds and
+skill tree (examples: Stick Insect, Velvet Worm). Every field, move type and
+safety limit is in **[docs/CUSTOM_BUGS.md](docs/CUSTOM_BUGS.md)**. Test: `love . --selftest --creator`.
+
 ## Skill trees
 
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
-engine `src/game/skills.lua`). Every kill is 1 XP (gilded elites give bonus XP); each level is a
-skill point, shown on the thin XP bar at the bottom of the screen. Spend points in the bag's
-**SKILLS** tab (Tab, then E / RB, or tap the tab). Each tree has three branches (attack, special,
-dash/body) with five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger
-upgrade and a capstone that changes how a move plays (echoes, fans of extra copies, every-Nth
-empowered strikes, thrown ants that land as explosions, procs on kills and hits...). A whole tree
-costs more points than a long run earns, so every run builds the bug differently. The sandbox's
-Player tab has **+5 skill points** and **Reset skill tree**; `love . --selftest --skills` buys every
-node of every tree (both fork sides) and fights with it.
+engine `src/game/skills.lua`). Kills give XP and every level opens a level-up card pick; the cards
+are stat boosts only, and **skipping** a pick is what banks a **skill point** (so each level is a
+boost now or a step down the tree). Spend points in the bag's **SKILLS** tab (Tab, then E / RB, or
+tap the tab). A tree has four branches:
+
+- three of the bug's own (attack, special, dash/body), each with a one-line blurb under its name and
+  five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger upgrade and a capstone
+  that changes how a move plays (echoes, fans of extra copies, every-Nth empowered strikes, thrown
+  ants that land as explosions, procs on kills and hits...);
+- a fourth **kin** branch shared by the bug's lineage (`content/skillbranches`: Beetle, Spider,
+  Arachnid, Tidepool, Myriapod and Insect Kin, matched by character tags and priority), topped by the
+  tree's own **signature** node (`signature = {...}` in the tree file), the bug's own trick.
+
+A whole tree costs ~45 points, more than a run that skipped every pick could earn, so every run
+builds the bug differently. The screen shows points spent per branch, what a locked node needs and
+which fork side a node would close. The sandbox's Player tab has **+5 skill points** and **Reset
+skill tree**; `love . --selftest --skills` buys every node of every tree (both fork sides) and
+fights with it.
 
 ## Wave rewards: the reward bloom
 
@@ -332,7 +378,7 @@ prop `content/props/reward_bloom.lua`, numbers `src/config/bloom.lua`):
 2. It bursts and the item choice opens (with At Wave End level-ups, a **steps strip** at the top,
    LEVEL 7 > LEVEL 8 > ITEM, shows where you are and what is left).
 3. What you took **flies out of the bloom into your bug**, and a card on the left of the screen says
-   what you got and what it does (NEW ITEM, LEVEL CARD, SKILL, BOUGHT...). Shop buys and level-ups
+   what you got and what it does (NEW ITEM, LEVEL CARD, SKIPPED, BOUGHT...). Shop buys and level-ups
    outside the bloom use the same cards.
 
 Setting **Wave Rewards: Open at Once** skips the walk. Test: `love . --selftest --rewards`.
@@ -346,13 +392,14 @@ switches tabs; Tab, Esc or pad B closes it. The sandbox panel moved to F2.
 ## Level-up cards
 
 Each level is a pick of 3 cards (`src/game/levelups.lua`, screen `src/states/levelup.lua`, numbers
-in `src/config/levelups.lua`): nodes from your bug's skill tree (bought outright, no points) and
-global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
+in `src/config/levelups.lua`): global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
 common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
 The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
 Levels play a chime, half a second of slow motion and a ring of light; the cards open right
 there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
-At Wave End** saves them for the wave's reward bloom instead). Instead of a card you can bank a skill point for the SKILLS tab. Setting
+At Wave End** saves them for the wave's reward bloom instead). The skill tree is never on the cards:
+**Skip (+1 skill point)** under the cards takes none of them and banks a point for the SKILLS tab,
+the only way to earn skill points. Setting
 **Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
@@ -476,7 +523,8 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   everything to its jaws, throws sand) is a real enemy (`content/enemies/predators.lua`,
   `encounter = true`, drawn by `drawBody`), so the wave lasts until it falls; hazards don't hurt it.
   Animals far too big to fight are **stage hazards** (`hazard = true`): no enemy, nothing to hit,
-  they don't hold the wave up. They hunt the arena until the wave is cleared, then leave (bonus XP),
+  they don't hold the wave up. They only come from wave 10, arrive 8 s in, never share a wave with
+  mid-wave events, and hunt for 24 s at most (or until the wave is cleared), then leave (bonus XP),
   and everything they do kills ants and hurts you alike. The HUD shows their name and what they are
   doing instead of a health bar, and they speed up the longer the wave lasts.
   - **Sparrow**: soars overhead as a shadow, swoops down a lane across the whole arena (sometimes
@@ -614,8 +662,8 @@ On by default while we build (Settings > Developer). It adds:
   family filter F, search /). Pick one and set variant, amount and health with the chips beside it,
   then *Spawn here*, *March in*, *All elites*, *Play as*, or *Place*: the catalogue closes and every
   click or tap on the arena drops that bug there until *Done* (or right click). Works by touch.
-- **Item Catalogue** (main menu, or C in the sandbox): every item as a wall of icons by rarity, with
-  rarity tabs (Q / E), a kind filter (K: tags and proc triggers), name search (/) and full details.
+- **Item Catalogue** (main menu, or C in the sandbox): every item as a wall of icons grouped by
+  category or by rarity (G switches), with rarity tabs (Q / E), a kind filter (K: tags and proc triggers), name search (/) and full details.
   In the sandbox it gives items (click a picked item again, Enter, Shift for 5) and takes them back
   (right click / Delete). `love . --selftest --sandboxkit` checks both.
 - **Console** with `` ` ``: `help`, `spawn fire_ant 200`, `give ember_gland 3`, `stat damage 50`,
@@ -637,6 +685,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/characters` | playable bugs: stats, attack, starting items | character select |
 | `content/attacks` | attack patterns (`fire`) | characters |
 | `content/skilltrees` | per-character skill trees: nodes mod stats, move params, echoes, procs | bag SKILLS tab |
+| `content/skillbranches` | kin branches: the 4th skill tree branch shared by a lineage, matched by tags | bag SKILLS tab |
 | `content/items` | stat changes and procs (`onHit`, `onKill`, `onHurt`, `onDash`, `onWaveStart`) | shop (step 2), sandbox |
 | `content/stages` | arena size, yard palette, path/fence/dirt look, spawn pacing | runs |
 | `content/sprites` | text-grid pixel art | everything |

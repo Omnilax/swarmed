@@ -8,7 +8,7 @@ local WATER = { 0.55, 0.85, 1 }
 return {
     character = "lobster",
     branches = {
-        { name = "Crusher Claw", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Crusher Claw", blurb = "Charge up one huge crushing snap", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "lb_crush", tier = 1, ranks = 3, name = "Crusher", desc = "+15% snap damage and +10% knockback per rank.",
               attack = { damage = { mul = 0.15 }, knockback = { mul = 0.1 } } },
             { id = "lb_big", tier = 2, name = "Big Claw", desc = "The claw opens wider: a bigger bite at every hold.",
@@ -29,7 +29,7 @@ return {
               empower = { move = "attack", every = 3, text = "TIDAL!", shake = 0.3, color = WATER,
                   mods = { radius = { mul = 0.8 }, damage = { mul = 1.5 }, knockback = { mul = 1 } } } },
         } },
-        { name = "Tail Spin", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Tail Spin", blurb = "Spin your tail into a whirlpool", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "lb_spin", tier = 1, ranks = 3, name = "Powerful Tail", desc = "+15% spin damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "lb_turns", tier = 2, name = "Whirlpool", desc = "Two more turns per spin.",
@@ -52,7 +52,7 @@ return {
                   end
               end } } },
         } },
-        { name = "Shell", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Shell", blurb = "Brace behind an armoured shell", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "lb_shell", tier = 1, ranks = 3, name = "Thick Shell", desc = "+12 max HP and +1 armor per rank.",
               stats = { maxHp = 12, armor = 1 } },
             { id = "lb_molt", tier = 2, name = "Molting", desc = "+0.6 HP regeneration per second.",
@@ -82,4 +82,11 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_lobster_ancient", name = "Ancient Lobster", desc = "Every 3rd snap is a tidal crush: a burst of water around the claw at full damage.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_lobster", 3) then return end
+              local p = ctx.player
+              fx.explode(ctx, p.x + ctx.ax * 30, p.y + ctx.ay * 30, 40, ctx.params.damage or 10, { 0.5, 0.8, 1 })
+          end } } },
 }

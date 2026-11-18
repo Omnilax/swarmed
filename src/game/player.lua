@@ -118,6 +118,9 @@ function Player:setCharacter(def)
     -- batch 1 move state: dragonfly flight, dung ball, stink shield; ward(player, amount, source)
     -- returning true makes Player:hurt ignore a hit
     self.airborne, self.flight, self.dung, self.stinkShieldT, self.ward = nil, nil, nil, nil, nil
+    -- custom bug script state (src/game/scriptmoves.lua)
+    self._me, self._cx, self.scriptHelpers, self.scriptHeld, self.scriptPending = nil, nil, nil, nil, nil
+    self.scriptBlock, self.scriptWardOn, self.scriptSpeed, self.scriptSpeedT, self.scriptStarted = nil, nil, nil, nil, nil
     self.slowT, self.slowAmt = 0, 1                 -- timed slow (pebble daze)
     self.venomT, self.venomDps, self.venomTick = 0, 0, 0   -- poison from venomous bites
     self.stunT, self.blindT, self.gumT, self.gumMul = 0, 0, 0, 1   -- paralysed, blinded, attacks gummed up (bees, wasps)
@@ -283,7 +286,7 @@ function Player:update(dt)
         world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, { 0.6, 0.85, 1 }, 1, { glow = true, grav = 0 })
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
-            * (self.moveMul or 1) * (self.runMul or 1)
+            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1)
         -- the arena (src/game/director.lua): weather, water, sun and shade
         local env = world.env
         if env and not self.def.immune then
@@ -418,6 +421,8 @@ function Player:update(dt)
             self.curMove = nil
         end
     end
+    -- a custom bug's every-frame code, helpers and held ant (src/game/scriptmoves.lua)
+    if self.def.custom then require("src.game.scriptmoves").tick(self, world, dt) end
 
     -- Regen and timers
     local maxHp = self.stats:get("maxHp")

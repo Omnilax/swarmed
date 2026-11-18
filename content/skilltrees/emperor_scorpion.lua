@@ -8,7 +8,7 @@ local CLAW = { 0.6, 0.7, 1 }
 return {
     character = "emperor_scorpion",
     branches = {
-        { name = "Claws", color = { 0.6, 0.7, 1 }, nodes = {
+        { name = "Claws", blurb = "Crush and execute the wounded", color = { 0.6, 0.7, 1 }, nodes = {
             { id = "es_crush", tier = 1, ranks = 3, name = "Crushing Grip", desc = "+12% claw damage and bigger claws per rank.",
               attack = { damage = { mul = 0.12 }, radius = 2 } },
             { id = "es_execute", tier = 2, name = "Executioner", desc = "Wounded ants take far more from the claws.",
@@ -29,7 +29,7 @@ return {
                   fx.explode(ctx, p.x + ctx.ax * 34, p.y + ctx.ay * 34, 40, ctx.params.damage * 1.5, CLAW, { knockback = 220 })
               end } } },
         } },
-        { name = "Grab & Stab", color = { 0.75, 1, 0.4 }, nodes = {
+        { name = "Grab & Stab", blurb = "Grab two ants and sting them", color = { 0.75, 1, 0.4 }, nodes = {
             { id = "es_venom", tier = 1, ranks = 3, name = "Venom Sacs", desc = "+20% sting damage and venom per rank.",
               secondary = { damage = { mul = 0.2 }, ["poison.1"] = { mul = 0.2 } } },
             { id = "es_frenzy", tier = 2, name = "Sting Frenzy", desc = "Stings come 30% faster and you can keep stinging longer.",
@@ -46,7 +46,7 @@ return {
                   fx.chain(ctx, ctx.target, 3, 50, 6, VENOM, { poison = { 8, 3 }, slow = { 0.05, 1.5 } })
               end } } },
         } },
-        { name = "Carapace", color = { 0.5, 0.55, 0.8 }, nodes = {
+        { name = "Carapace", blurb = "Brace, bulldoze, outlast", color = { 0.5, 0.55, 0.8 }, nodes = {
             { id = "es_plate", tier = 1, ranks = 3, name = "Plated", desc = "+2 armor and +8 max HP per rank.",
               stats = { armor = 2, maxHp = 8 } },
             { id = "es_regen", tier = 2, name = "Moult", desc = "+0.8 HP regen.",
@@ -70,4 +70,9 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_emperor_black", name = "Black Emperor", desc = "Ants your claws crush burst into venom that poisons every ant around them.",
+          procs = { { trigger = "onKill", move = "attack", chance = 0.35, effect = function(ctx)
+              fx.patch(ctx, ctx.x, ctx.y, 28, 2.5, 8, nil, { 0.75, 1, 0.4 })
+          end } } },
 }

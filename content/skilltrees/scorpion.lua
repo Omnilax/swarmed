@@ -7,7 +7,7 @@ local VENOM = { 0.8, 1, 0.4 }
 return {
     character = "scorpion",
     branches = {
-        { name = "Pincers", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Pincers", blurb = "Snap, snap, then sting a line", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "sc_claw", tier = 1, ranks = 3, name = "Strong Claws", desc = "+12% pinch and sting damage and longer pincers per rank.",
               attack = { damage = { mul = 0.12 }, radius = 2 } },
             { id = "sc_quick", tier = 2, name = "Quick Snips", desc = "Pinches come 15% faster.",
@@ -26,7 +26,7 @@ return {
                       speed = 300, range = 150, pierce = 3, poison = { 8, 3 } })
               end } } },
         } },
-        { name = "Venom", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Venom", blurb = "Poison that keeps on working", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "sc_potent", tier = 1, ranks = 3, name = "Potent Venom", desc = "+25% venom strength and +10% strike damage per rank.",
               secondary = { ["poison.1"] = { mul = 0.25 }, damage = { mul = 0.1 } } },
             { id = "sc_glands", tier = 2, name = "Big Glands", desc = "Venom Strike recharges 30% faster.",
@@ -45,7 +45,7 @@ return {
                   fx.chain(ctx, ctx.target, 2, 50, 6, VENOM, { poison = { 8, 3 } })
               end } } },
         } },
-        { name = "Exoskeleton", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Exoskeleton", blurb = "Tough plates and quick escapes", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "sc_carapace", tier = 1, ranks = 3, name = "Carapace", desc = "+1.5 armor and +6 max HP per rank.",
               stats = { armor = 1.5, maxHp = 6 } },
             { id = "sc_glow", tier = 2, name = "UV Glow", desc = "+6% crit chance and +25% crit damage.",
@@ -67,4 +67,9 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_scorp_lethal", name = "Lethal Dose", desc = "Poisoned ants you kill have a 40% chance to burst into a cloud of venom.",
+          procs = { { trigger = "onKill", chance = 0.4,
+              condition = function(ctx) return ctx.target and (ctx.target.poisonT or 0) > 0 end,
+              effect = function(ctx) fx.patch(ctx, ctx.x, ctx.y, 26, 2, 8, nil, { 0.8, 1, 0.4 }) end } } },
 }

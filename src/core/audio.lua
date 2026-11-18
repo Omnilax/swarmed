@@ -294,6 +294,46 @@ function Audio.play(name, opts)
     src:play()
 end
 
+-- A sound made from a few numbers (custom bugs' own sounds, src/game/custombugs.lua):
+-- { wave = "sine" | "square" | "saw" | "triangle" | "noise", freq (Hz), to (Hz at the end),
+--   duration (s), volume (0..1), noise (0..1 mixed in), decay (fade curve), vibrato = { rate, depth },
+--   attack (s), notes = { freq, freq, ... } (played one after another, an arpeggio) }
+-- Numbers arrive already clamped. Returns false when there's no audio (headless tests).
+local WAVES = {
+    sine = function(ph) return math.sin(ph * math.pi * 2) end,
+    square = function(ph) return (ph % 1) < 0.5 and 0.6 or -0.6 end,
+    saw = function(ph) return ((ph % 1) * 2 - 1) * 0.7 end,
+    triangle = function(ph) local f = ph % 1 return (f < 0.5 and f * 4 - 1 or 3 - f * 4) end,
+    noise = function() return noise() end,
+}
+function Audio.addSynth(name, spec)
+    if not (love.audio and love.sound) then return false end
+    local wave = WAVES[spec.wave] or WAVES.sine
+    local f0, f1, dur = spec.freq or 440, spec.to or spec.freq or 440, spec.duration or 0.2
+    local mix, decay, attack = spec.noise or 0, spec.decay or 2, spec.attack or 0.005
+    local vr, vd = spec.vibrato and spec.vibrato[1] or 0, spec.vibrato and spec.vibrato[2] or 0
+    local notes = spec.notes
+    local ph = 0
+    local ok, data = pcall(synth, dur, function(t, p)
+        local f
+        if notes and #notes > 0 then f = notes[math.min(#notes, math.floor(p * #notes) + 1)]
+        else f = f0 + (f1 - f0) * p end
+        f = f * (1 + math.sin(t * vr * math.pi * 2) * vd)
+        ph = ph + f / RATE
+        local env = math.min(1, t / attack) * (1 - p) ^ decay
+        return (wave(ph) * (1 - mix) + noise() * mix) * env * 0.8
+    end)
+    if not ok then return false end
+    local def = { bus = "sfx", voices = 4, gap = 0.03, volume = spec.volume or 0.5, pitchVar = spec.pitchVar or 0.1 }
+    local src = love.audio.newSource(data, "static")
+    local pool = { src }
+    for i = 2, def.voices do pool[i] = src:clone() end
+    local old = Audio.sounds[name]
+    if old then for _, s in ipairs(old.pool) do s:stop() end end
+    Audio.sounds[name] = { def = def, pool = pool, next = 1, last = -1 }
+    return true
+end
+
 function Audio.setFocused(f) Audio.focused = f end
 
 return Audio

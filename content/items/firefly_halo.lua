@@ -7,6 +7,7 @@ return {
     description = "+10% Area. 4 fireflies (+2 per stack) circle you, burning ants they touch for 12 damage (+6 per stack) and dazzling them (slowed).",
     effect = "4 fireflies (+2 per stack) circle you, burning ants they touch for 12 damage (+6 per stack) and dazzling them (slowed).",
     rarity = "molted",
+    category = "elemental",
     size = { 1, 1 },
     stats = { area = 10 },
     procs = {

@@ -684,7 +684,9 @@ local function script(flags)
     if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
     if flags["--arttour"] then require("src.debug.selftest_arttour")(wait, shot) love.event.quit() return end
+    if flags["--itemorg"] then require("src.debug.selftest_itemorg")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
+    if flags["--creator"] then require("src.debug.selftest_creator")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
@@ -694,6 +696,7 @@ local function script(flags)
     if flags["--skills"] then require("src.debug.selftest_skills")(wait, shot) love.event.quit() return end
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
     if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
+    if flags["--customwaves"] then require("src.debug.selftest_customwaves")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
     if flags["--mastery"] then require("src.debug.selftest_mastery")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end

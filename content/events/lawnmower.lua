@@ -12,7 +12,7 @@ return {
     description = "Get out of the striped lane before the blades come through.",
     color = { 1, 0.4, 0.3 },
     kind = "hazard",
-    weight = 6, minWave = 5,
+    weight = 6, minWave = 7,
     start = function(world, ev)
         local st, p = ev.st, world.player
         st.x1, st.y1, st.x2, st.y2 = Env.crossing(world, p.x, p.y, 80)
@@ -41,7 +41,7 @@ return {
             if not st.hitPlayer and Env.playerInLane(world, ax, ay, st.bx, st.by, W) then
                 st.hitPlayer = true
                 local p = world.player
-                Env.hurtPlayer(world, 32, p.x - dy / l, p.y + dx / l, { force = 260 })
+                Env.hurtPlayer(world, 22, p.x - dy / l, p.y + dx / l, { force = 260 })
             end
             world.camera:shake(0.25)
             if love.math.random() < 0.8 then

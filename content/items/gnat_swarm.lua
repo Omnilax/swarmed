@@ -6,6 +6,7 @@ return {
     name = "Gnat Swarm",
     description = "2 gnats (+1 per stack) circle you, biting ants they touch for 6 damage (+3 per stack).",
     rarity = "rare",
+    category = "elemental",
     size = { 1, 1 },
     procs = {
         {

@@ -8,7 +8,7 @@ local AIR = { 0.85, 0.95, 1 }
 return {
     character = "hissing_roach",
     branches = {
-        { name = "Headbutt", color = { 1, 0.7, 0.4 }, nodes = {
+        { name = "Headbutt", blurb = "Shove ants back with your head", color = { 1, 0.7, 0.4 }, nodes = {
             { id = "hr_head", tier = 1, ranks = 3, name = "Hard Head", desc = "+15% headbutt damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "hr_heavy", tier = 2, name = "Throw Your Weight", desc = "Every 3rd headbutt is a heavy one (was every 4th).",
@@ -28,7 +28,7 @@ return {
                   fx.line(ctx, p.x, p.y, ctx.ax, ctx.ay, 110, 9, ctx.params.damage * 0.8, { 1, 0.75, 0.45 }, { knockback = 150 })
               end } } },
         } },
-        { name = "Hiss", color = AIR, nodes = {
+        { name = "Hiss", blurb = "Stun everything with a hiss", color = AIR, nodes = {
             { id = "hr_stun", tier = 1, ranks = 3, name = "Shock", desc = "A full hiss stuns 0.4 s longer per rank.",
               secondary = { maxStun = 0.4, stun = 0.15 } },
             { id = "hr_lungs", tier = 2, name = "Big Lungs", desc = "Draw a full breath 40% faster.",
@@ -48,7 +48,7 @@ return {
                   end)
               end } } },
         } },
-        { name = "Survivor", color = { 0.75, 0.55, 0.35 }, nodes = {
+        { name = "Survivor", blurb = "Shrug off anything, keep running", color = { 0.75, 0.55, 0.35 }, nodes = {
             { id = "hr_hp", tier = 1, ranks = 3, name = "Tough Exoskeleton", desc = "+12 max HP and +0.3 HP/s per rank.",
               stats = { maxHp = 12, hpRegen = 0.3 } },
             { id = "hr_scurry", tier = 2, name = "Scurry", desc = "One more dash charge.",
@@ -70,4 +70,10 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_roach_pride", name = "Madagascar's Pride", desc = "After every hiss, +40% damage and +20% speed for 3 s.",
+          procs = { { trigger = "onSpecial", effect = function(ctx)
+              fx.buff(ctx, "sig_roach_dmg", "damage", 40, 0, 3)
+              fx.buff(ctx, "sig_roach_speed", "moveSpeed", 0, 0.2, 3)
+          end } } },
 }

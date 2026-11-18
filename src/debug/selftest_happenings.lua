@@ -279,7 +279,8 @@ return function(wait, shot)
                 end
                 -- keep the player in the middle so the hazard keeps coming at the crowd
                 if (pl.x - world.size / 2) ^ 2 + (pl.y - world.size / 2) ^ 2 > 200 * 200 then center() end
-                if killed >= 15 and hits >= 1 and t > 20 then break end
+                if killed >= 15 and hits >= 1 and t > 12 then break end
+                if dir.hazard ~= h or h.leaving then break end
             end
             Env.hurtPlayer = realHurt
             local modes = {}
@@ -288,9 +289,9 @@ return function(wait, shot)
             print(("[selftest] hazard %s: %d ants killed, %d hits on the player in %.0f s; modes %s"):format(b.id, killed, hits, t, table.concat(modes, " ")))
             assert(killed >= 10, b.id .. " should eat ants")
             assert(hits >= 1, b.id .. " should hit the player")
-            -- it leaves once the wave is cleared, with a bonus
-            dir:endHazard(true)
-            assert(dir.hazard and dir.hazard.leaving, b.id .. " should be leaving")
+            -- it leaves once the wave is cleared (or it has stayed its while), with a bonus
+            if dir.hazard == h and not h.leaving then dir:endHazard(true) end
+            assert(not dir.hazard or dir.hazard.leaving, b.id .. " should be leaving")
             for _ = 1, 60 * 5 do world:update(1 / 60) if not dir.hazard then break end end
             assert(not dir.hazard, b.id .. " should be gone after leaving")
         else
@@ -318,7 +319,7 @@ return function(wait, shot)
         for _, b in ipairs(Content.bosses:all()) do if b.id ~= want then dir.usedBosses[b.id] = true end end
         sp:startWave(n)
         assert(dir.pendingBoss and dir.pendingBoss.def.id == want, "wave " .. n .. " should bring " .. want)
-        for _ = 1, 60 * 8 do
+        for _ = 1, 60 * 20 do
             world:update(1 / 60)
             if dir.encounter or dir.hazard then break end
         end
@@ -360,6 +361,18 @@ return function(wait, shot)
     assert(not dir.hazard or dir.hazard.leaving, "the hazard should leave when the wave is cleared")
     for _ = 1, 60 * 5 do world:update(1 / 60) if not dir.hazard then break end end
     assert(not dir.hazard, "the hazard should be gone after the wave")
+
+    -- a hazard only stays a while, even if the wave goes on
+    world:clearEnemies()
+    local hz = dir:startBoss("anteater")
+    for _ = 1, 60 * 60 do
+        world:update(1 / 60)
+        if dir.hazard ~= hz or hz.leaving then break end
+    end
+    assert(dir.hazard ~= hz or hz.leaving, "a hazard should leave after its stay")
+    assert(hz.t <= hz.def.stay + 1, "it should leave right when its stay is up")
+    for _ = 1, 60 * 5 do world:update(1 / 60) if not dir.hazard then break end end
+    assert(not dir.hazard, "the hazard should be gone after its stay")
     world.pendingChoice = nil
     sp.enabled = false
 

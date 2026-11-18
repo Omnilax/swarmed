@@ -17,7 +17,7 @@ return {
     description = "Get out from under the shadow! Drag the ants in with you.",
     color = { 1, 0.5, 0.35 },
     kind = "hazard",
-    weight = 8, minWave = 3,
+    weight = 8, minWave = 4,
     start = function(world, ev) ev.st.left = ev.opts.stomps or (world.spawner.wave >= 8 and 2 or 1) newStomp(world, ev.st) end,
     update = function(world, ev, dt)
         local st, p = ev.st, world.player
@@ -32,7 +32,7 @@ return {
         elseif st.phase == "lock" and st.pt >= LOCK then
             st.phase, st.pt = "stomp", 0
             local kills = Env.strikeCircle(world, st.x, st.y, R, 999, { bossMul = 0.25 })
-            if Env.playerIn(world, st.x, st.y, R - 4) then Env.hurtPlayer(world, 20, st.x, st.y, { force = 220 }) end
+            if Env.playerIn(world, st.x, st.y, R - 4) then Env.hurtPlayer(world, 15, st.x, st.y, { force = 220 }) end
             world.camera:shake(0.7)
             world:hitStop(0.08)
             Audio.play("boom", { pitch = 0.45 })

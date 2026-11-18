@@ -122,7 +122,9 @@ function Cosmetics.skinFor(charId)
     local id = Cosmetics.data.skins[charId]
     local s = id and Content.skins:get(id)
     if s and Cosmetics.isUnlocked(s) and (not s.character or s.character == charId) then return s end
-    return nil
+    -- custom bugs carry their own colours (same fields as a skin)
+    local c = Content.characters:get(charId)
+    return c and c.custom and c.colors or nil
 end
 
 function Cosmetics.setSkin(charId, skinId)

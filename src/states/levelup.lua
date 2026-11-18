@@ -1,8 +1,9 @@
--- Level-up cards: pick one of three (src/game/levelups.lua). Skill-tree nodes of your bug and
--- stat cards that rolled a rarity. Same feel as the item choice: input waits a moment after it
--- opens (space / A are also dash), and a card needs two presses, one to pick, one to take.
--- The button under the cards banks a skill point instead (spend it in the bag's SKILLS tab);
--- it is two presses too and is focus slot #cards + 1. The game is paused while this is open.
+-- Level-up cards: pick one of three stat cards that rolled a rarity (src/game/levelups.lua).
+-- Same feel as the item choice: input waits a moment after it opens (space / A are also dash),
+-- and a card needs two presses, one to pick, one to take.
+-- The SKIP button under the cards takes no card and banks a skill point instead: the only way to
+-- earn points for the bag's SKILLS tab. It is two presses too and is focus slot #cards + 1.
+-- The game is paused while this is open.
 local State = require("src.core.state")
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
@@ -45,6 +46,7 @@ end
 
 function LevelUp:ready() return self.t >= self.armTime end
 function LevelUp:bankIndex() return #self.cards + 1 end
+LevelUp.skipIndex = LevelUp.bankIndex
 function LevelUp:canBank() return self.world.player.skills ~= nil end
 
 -- Close, and open the next queued pick straight away (no frame of play in between).
@@ -61,26 +63,29 @@ function LevelUp:take(i)
     if not c then return end
     self.lu:take(c)
     Audio.play("equip", { pitch = 1.2 })
-    local col = c.kind == "node" and SKILL_COL or LevelUp.rarityColor(c.rarity)
+    local col = LevelUp.rarityColor(c.rarity)
     -- the card flies out of the reward bloom into your bug, and a card on the left says what it was
     local flow = self.world.rewardFlow
     if flow then
-        flow:gain({ title = c.kind == "node" and "SKILL" or "LEVEL CARD", name = c.name, color = col,
+        flow:gain({ title = "LEVEL CARD", name = c.name, color = col,
             line = c.description, fromBloom = flow:stepOf(self.entry) ~= nil })
     end
     self:close()
 end
 
+-- Skip the cards: +1 skill point.
 function LevelUp:bank()
-    self.lu:take({ kind = "point", id = "skill_point", name = "Skill point" })
+    self.lu:take(require("src.game.levelups").skipCard())
     Audio.play("ui_confirm", { pitch = 1.3 })
     local flow = self.world.rewardFlow
     if flow then
-        flow:gain({ title = "BANKED", name = "+1 Skill Point", color = SKILL_COL, line = "Spend it in the inventory's SKILLS tab",
+        flow:gain({ title = "SKIPPED", name = "+1 Skill Point", color = SKILL_COL, line = "Spend it in the bag's SKILLS tab",
             fromBloom = flow:stepOf(self.entry) ~= nil })
     end
     self:close()
 end
+
+LevelUp.skip = function(self) return self:bank() end
 
 -- One press: the first picks a card (or the bank button), a second press on it takes it.
 function LevelUp:activate(i)
@@ -110,7 +115,7 @@ function LevelUp:layout()
     local y0 = math.floor((h - ch) / 2 - u(4))
     self.rects = {}
     for i = 1, n do self.rects[i] = { x = x0 + (i - 1) * (cw + gap), y = y0, w = cw, h = ch } end
-    local bw, bh = math.floor(u(230)), math.floor(u(34))
+    local bw, bh = math.floor(u(300)), math.floor(u(38))
     self.bankRect = { x = math.floor((w - bw) / 2), y = y0 + ch + u(48), w = bw, h = bh }
     return self.rects
 end
@@ -209,7 +214,7 @@ function LevelUp:draw()
         local appear = math.min(1, math.max(0, (self.t - (i - 1) * 0.06) * 6))
         local lift = focus and math.floor(u(8) * math.min(1, self.t * 6)) or 0
         local x, y = r.x, r.y - lift + math.floor((1 - appear) * u(24))
-        local col = c.kind == "node" and SKILL_COL or LevelUp.rarityColor(c.rarity)
+        local col = LevelUp.rarityColor(c.rarity)
         InvState.plate(x, y, r.w, r.h, focus and { 0.2, 0.15, 0.12 } or COL.frame, true)
         lg.setColor(col)
         lg.rectangle("fill", x + 2, y + 2, r.w - 4, 3)
@@ -228,8 +233,7 @@ function LevelUp:draw()
         local ty = y + u(18)
         lg.setFont(Theme.font(13, "bold"))
         lg.setColor(col)
-        local kindLabel = c.kind == "node" and ("SKILL  ·  " .. (c.branch or ""):upper())
-            or (require("src.config.rarities")[c.rarity] or { label = "" }).label:upper()
+        local kindLabel = (require("src.config.rarities")[c.rarity] or { label = "" }).label:upper()
         lg.printf(kindLabel, x + u(6), ty, r.w - u(12), "center")
         ty = ty + u(26)
         lg.setFont(Theme.font(20, "bold"))
@@ -238,11 +242,7 @@ function LevelUp:draw()
         ty = ty + #nameLines * lg.getFont():getHeight() + u(6)
         lg.setFont(Theme.font(14))
         lg.setColor(COL.dim)
-        if c.kind == "node" then
-            local s = "Tier " .. c.tier .. (c.ranks > 1 and ("  ·  rank " .. c.rank .. "/" .. c.ranks) or "")
-            lg.printf(s, x, ty, r.w, "center")
-            ty = ty + u(22)
-        else
+        do
             local m = c.mult or 1
             lg.printf(m > 1 and ("x" .. (math.floor(m * 100 + 0.5) / 100) .. " roll") or "base roll", x, ty, r.w, "center")
             ty = ty + u(22)
@@ -262,13 +262,6 @@ function LevelUp:draw()
             lg.setFont(f)
             lg.setColor(Theme.colors.text)
             for k, l in ipairs(lines) do lg.printf(l, x + u(12), ty + u(4) + (k - 1) * f:getHeight(), r.w - u(24), "center") end
-        end
-        if c.kind == "node" and c.excludes and #c.excludes > 0 and sk and sk.tree then
-            local names = {}
-            for _, id in ipairs(c.excludes) do names[#names + 1] = sk.tree.nodes[id].name end
-            lg.setFont(Theme.font(12))
-            lg.setColor(1, 0.7, 0.5, 0.85)
-            lg.printf("Fork: closes " .. table.concat(names, ", "), x + u(8), y + r.h - u(24), r.w - u(16), "center")
         end
         if self.armed == i then
             lg.setFont(Theme.font(16, "bold"))
@@ -291,17 +284,23 @@ function LevelUp:draw()
         lg.rectangle("line", br.x + 0.5, br.y + 0.5, br.w - 1, br.h - 1)
         lg.setFont(Theme.font(15, "bold"))
         local key = pad and " (B)" or touch and "" or " (Esc)"
-        lg.printf("BANK A SKILL POINT" .. key, br.x, br.y + math.floor((br.h - lg.getFont():getHeight()) / 2), br.w, "center")
+        lg.printf("SKIP  ·  +1 SKILL POINT" .. key, br.x, br.y + math.floor((br.h - lg.getFont():getHeight()) / 2), br.w, "center")
         if self.armed == self:bankIndex() then
             lg.setFont(Theme.font(14, "bold"))
             local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
-            Theme.printShadow(touch and "TAP AGAIN TO BANK IT" or "PRESS AGAIN TO BANK IT", 0, br.y + br.h + u(8), { SKILL_COL[1], SKILL_COL[2], SKILL_COL[3], pulse }, "center", w)
+            Theme.printShadow(touch and "TAP AGAIN TO SKIP" or "PRESS AGAIN TO SKIP", 0, br.y + br.h + u(8), { SKILL_COL[1], SKILL_COL[2], SKILL_COL[3], pulse }, "center", w)
+        elseif sk and not self.armed then
+            lg.setFont(Theme.font(14))
+            lg.setColor(SKILL_COL[1], SKILL_COL[2], SKILL_COL[3], 0.8)
+            local pts = sk.points
+            lg.printf(pts > 0 and ("You have " .. pts .. (pts == 1 and " skill point" or " skill points") .. " waiting") or "Skill points are only earned by skipping",
+                0, br.y - u(22), w, "center")
         end
     end
     lg.setFont(Theme.font(13))
     Theme.rich(pad and "{pad:dpad} to look, {pad:a} to pick, {pad:a} again to take"
         or touch and "Tap a card to pick it, tap it again to take it"
-        or "Click a card to pick it, click it again to take it  ·  a banked point is spent in the bag (SKILLS tab)",
+        or "Click a card to pick it, click it again to take it  ·  skipped points are spent in the bag (SKILLS tab)",
         0, self.bankRect.y + self.bankRect.h + u(30), w, "center", COL.dim)
     lg.setColor(1, 1, 1, 1)
 end

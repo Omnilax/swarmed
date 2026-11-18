@@ -8,7 +8,7 @@ local SAND = { 1, 0.85, 0.55 }
 return {
     character = "camel_spider",
     branches = {
-        { name = "Piercing Jaws", color = { 1, 0.75, 0.4 }, nodes = {
+        { name = "Piercing Jaws", blurb = "Fast double thrusts that bleed", color = { 1, 0.75, 0.4 }, nodes = {
             { id = "cs_jaws", tier = 1, ranks = 3, name = "Sharp Jaws", desc = "+15% jaw damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "cs_serrated", tier = 2, name = "Serrated Edge", desc = "Jaw bites make ants bleed twice as fast.",
@@ -25,7 +25,7 @@ return {
                   fx.shards(ctx, p.x, p.y, 5, ctx.params.damage * 0.6, SAND, { angle = math.atan2(ctx.ay, ctx.ax), spread = 1.1, range = 90, pierce = 2 })
               end } } },
         } },
-        { name = "Frenzy", color = { 1, 0.45, 0.35 }, nodes = {
+        { name = "Frenzy", blurb = "Dart from ant to ant, biting", color = { 1, 0.45, 0.35 }, nodes = {
             { id = "cs_fdmg", tier = 1, ranks = 3, name = "Bloodlust", desc = "+15% frenzy damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "cs_hops", tier = 2, name = "Relentless", desc = "Frenzy darts to 2 more ants.",
@@ -41,7 +41,7 @@ return {
                   fx.explode(ctx, ctx.x, ctx.y, 30, ctx.params and ctx.params.damage or 12, { 1, 0.4, 0.3 })
               end } } },
         } },
-        { name = "Burrow", color = { 0.9, 0.8, 0.55 }, nodes = {
+        { name = "Burrow", blurb = "Tunnel under, erupt beneath", color = { 0.9, 0.8, 0.55 }, nodes = {
             { id = "cs_legs", tier = 1, ranks = 3, name = "Desert Legs", desc = "+8 max HP and +5% speed per rank.",
               stats = { maxHp = 8 }, statsMult = { moveSpeed = 0.05 } },
             { id = "cs_erupt", tier = 2, name = "Violent Eruption", desc = "Bursting out does +10 damage over a 12 wider area.",
@@ -68,4 +68,10 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_camel_wind", name = "Wind Scorpion", desc = "Kills whip you into a frenzy: +25% speed and +15% damage for 2 s.",
+          procs = { { trigger = "onKill", effect = function(ctx)
+              fx.buff(ctx, "sig_camel_speed", "moveSpeed", 0, 0.25, 2)
+              fx.buff(ctx, "sig_camel_dmg", "damage", 15, 0, 2)
+          end } } },
 }

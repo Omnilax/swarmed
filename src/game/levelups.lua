@@ -1,7 +1,8 @@
 -- Level-up cards. Every level (XP from World:grantXP -> Skills:gainXP) opens a pick of 3 cards
 -- right away, mid-wave (setting "levelUpWhen" = "wave" saves them for the wave's reward bloom):
--- nodes from the bug's own skill tree and global stat cards (content/levelcards). Stat cards
--- roll a rarity (common x1 .. legendary x2, Luck tilts the odds).
+-- global stat cards (content/levelcards) that roll a rarity (common x1 .. legendary x2, Luck tilts
+-- the odds). The skill tree is never on the cards: SKIPPING a pick banks one skill point to spend
+-- in the bag's SKILLS tab, so each level is a boost now or a step down the tree.
 -- Setting "levelUps" = "points" brings back the old way: levels give skill points to spend.
 -- Numbers: src/config/levelups.lua (a mode can override them with `levelUps = {...}`).
 --
@@ -173,27 +174,7 @@ function LevelUps:statCard(def, rarity)
     return c
 end
 
--- Skill-tree nodes that could be taken now (requirements met, fork not closed, ranks left).
-function LevelUps:nodeOptions()
-    local sk = self.world.player and self.world.player.skills
-    if not (sk and sk.tree) then return {} end
-    local out = {}
-    for _, n in pairs(sk.tree.nodes) do
-        local st = sk:status(n)
-        if st == "available" or st == "poor" then out[#out + 1] = n end
-    end
-    table.sort(out, function(a, b) return a.id < b.id end)
-    return out
-end
-
-function LevelUps:nodeCard(node)
-    local sk = self.world.player.skills
-    return { kind = "node", node = node, id = node.id, name = node.name, description = node.desc,
-        rank = sk:rank(node.id) + 1, ranks = node.ranks, branch = sk.tree.branches[node.branch].name, tier = node.tier,
-        excludes = node.excludes }
-end
-
--- Deal the cards for one pick: { card, ... }.
+-- Deal the cards for one pick: { card, ... } (stat cards only; skipping is the skill point).
 function LevelUps:deal(entry, count)
     entry = entry or EMPTY
     local Content = require("src.content")
@@ -201,21 +182,6 @@ function LevelUps:deal(entry, count)
     local level = entry.level or (p.skills and p.skills.level) or 1
     count = count or self.cfg.cards
     local cards, usedIds = {}, {}
-    local nodes = self:nodeOptions()
-    local function pickNode()
-        local opts = {}
-        for _, n in ipairs(nodes) do if not usedIds[n.id] then opts[#opts + 1] = n end end
-        if #opts == 0 then return nil end
-        -- lower tiers a bit likelier, so the tree grows from the root
-        local total = 0
-        for i, n in ipairs(opts) do total = total + 1 / n.tier end
-        local x = love.math.random() * total
-        for _, n in ipairs(opts) do
-            x = x - 1 / n.tier
-            if x <= 0 then return n end
-        end
-        return opts[#opts]
-    end
     local function pickStat()
         local total, opts = 0, {}
         for _, d in ipairs(Content.levelcards:all()) do
@@ -232,29 +198,18 @@ function LevelUps:deal(entry, count)
         end
         return opts[#opts]
     end
-    -- at most one skill node per pick (a chance of skillShare), in a random slot; the rest are
-    -- stat cards (if there aren't enough stat cards, more nodes fill in)
-    local nodeSlot = love.math.random() < self.cfg.skillShare and love.math.random(count) or nil
-    for i = 1, count do
-        local card
-        if i == nodeSlot then
-            local n = pickNode()
-            if n then card = self:nodeCard(n) end
-        end
-        if not card then
-            local d = pickStat()
-            if d then card = self:statCard(d, self:rollRarity(entry.minRarity)) end
-        end
-        if not card then
-            local n = pickNode()
-            if n then card = self:nodeCard(n) end
-        end
-        if not card then break end
+    for _ = 1, count do
+        local d = pickStat()
+        if not d then break end
+        local card = self:statCard(d, self:rollRarity(entry.minRarity))
         usedIds[card.id] = true
         cards[#cards + 1] = card
     end
     return cards
 end
+
+-- The card a skip takes: one skill point (LevelUp screen's skip button, the balance bot).
+function LevelUps.skipCard() return { kind = "point", id = "skill_point", name = "Skill point" } end
 
 ----------------------------------------------------------------------------------------------
 -- Taking a card
@@ -277,13 +232,9 @@ end
 function LevelUps:take(card)
     local p = self.world.player
     self.picks = self.picks + 1
-    if card.kind == "node" then
-        local sk = p.skills
-        sk.ranks[card.id] = sk:rank(card.id) + 1
-        sk.carded = (sk.carded or 0) + 1
-        sk:apply()
-    elseif card.kind == "point" then
+    if card.kind == "point" then
         p.skills.points = p.skills.points + 1
+        p.skills.skipped = (p.skills.skipped or 0) + 1
     else
         local hpBefore = p.stats:get("maxHp")
         for k, v in pairs(card.stats) do
@@ -303,14 +254,17 @@ function LevelUps:take(card)
     self.world.events:emit("levelup_taken", card)
 end
 
--- Take a random card for each queued pick (the balance bot, tests).
-function LevelUps:autoPickAll()
+-- Take a random card for each queued pick (the balance bot, tests); skipChance: how often it
+-- skips for a skill point instead (default cfg.botSkip).
+function LevelUps:autoPickAll(skipChance)
     local n = 0
+    skipChance = skipChance or self.cfg.botSkip or 0
     while #self.queue > 0 and n < 200 do
         local e = self.queue[1]
         local cards = self:deal(e)
         table.remove(self.queue, 1)
-        if #cards > 0 then self:take(cards[love.math.random(#cards)]) end
+        if #cards == 0 or love.math.random() < skipChance then self:take(LevelUps.skipCard())
+        else self:take(cards[love.math.random(#cards)]) end
         n = n + 1
     end
     return n

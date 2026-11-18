@@ -6,6 +6,7 @@ return {
     name = "Hivemind Spore",
     description = "Every kill gives +1.5% Damage until the wave ends, up to 40% (+40% per stack), and bursts into spores that poison ants nearby for 8 damage a second (+8 per stack).",
     rarity = "molted",
+    category = "elemental",
     size = { 1, 3 },
     procs = {
         {

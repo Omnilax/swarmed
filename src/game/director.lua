@@ -136,7 +136,7 @@ function Director:eventCount(wave)
     if often or love.math.random() < math.min(0.9, 0.55 + wave * 0.03) then n = 1 end
     if wave >= (often and 3 or 6) and love.math.random() < (often and 0.7 or 0.35) then n = n + 1 end
     if often and wave >= 8 and love.math.random() < 0.4 then n = n + 1 end
-    return n
+    return n + (self.cfg.eventBonus or 0)      -- a mode can add more (Mayhem)
 end
 
 function Director:onWaveStart(n)
@@ -145,8 +145,23 @@ function Director:onWaveStart(n)
     local sp = world.spawner
     if self.mechanic and self.mechanic.def.onWaveStart then self.mechanic.def.onWaveStart(world, self.mechanic, n) end
     self.gambles:onWaveStart(n)
+    -- a scripted wave (Custom Waves, content/modes `waves`) names its own events and encounter
+    local sw = sp and sp.scriptWave and sp:scriptWave(n)
+    if sw then return self:scriptedWave(sw) end
+    -- a predator joins the queen on boss waves (not the run's final wave)
+    local every = self.cfg.encounterEvery
+    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n)) then
+        local boss = self:pickBoss(n)
+        if boss then
+            self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
+            -- paint the hazard's pictures now rather than on the frame it arrives
+            if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
+        end
+    end
     if self:eventsOn() then
         local count = self:eventCount(n)
+        -- a stage hazard is a wave's worth of trouble on its own: no other events with it
+        if self.pendingBoss and self.pendingBoss.def.hazard then count = 0 end
         local at = self.cfg.eventAt
         for i = 1, count do
             local def = util.weightedPick(Content.events:all(), function(d) return eventWeight(self, d, n) end)
@@ -158,15 +173,28 @@ function Director:onWaveStart(n)
             self.schedule[#self.schedule + 1] = { def = def, at = t }
         end
     end
-    -- a predator joins the queen on boss waves (not the run's final wave)
-    local every = self.cfg.encounterEvery
-    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n)) then
-        local boss = self:pickBoss(n)
-        if boss then
-            self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
-            -- paint the hazard's pictures now rather than on the frame it arrives
-            if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
+end
+
+-- The events and encounter a scripted wave names, spread through the wave. They come whatever
+-- the Mid-Wave Events / Boss Encounters settings say: the wave's maker asked for them.
+function Director:scriptedWave(sw)
+    local w = self.world
+    if w.mode ~= "run" or w.flags.demo then return end
+    -- (the first one early, so even a small wave gets to see it, the rest eventGap apart)
+    for i, id in ipairs(sw.events or {}) do
+        local def = Content.events:get(id)
+        if def then
+            local t = 2 + (i - 1) * self.cfg.eventGap
+            self.schedule[#self.schedule + 1] = { def = def, at = t }
         end
+    end
+    local boss = sw.encounter and Content.bosses:get(sw.encounter)
+    if boss then
+        -- early, like the first event: a small scripted wave can be cleared before a stage
+        -- hazard's usual arrival time, and the wave's maker asked to see it
+        local at = math.min(boss.arrive or self.cfg.encounterAt, 3)
+        self.pendingBoss = { def = boss, at = at }
+        if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
     end
 end
 
@@ -387,6 +415,8 @@ function Director:update(dt)
         else
             if h.def.update then h.def.update(world, h, dt) end
             if h.def.env then h.def.env(world, h, env) end
+            -- it only stays a while: after `stay` seconds it has eaten its fill and moves on
+            if h.def.stay and h.t >= h.def.stay and not h.leaving then self:endHazard(true) end
         end
         Env.current = nil
     end

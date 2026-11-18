@@ -3,6 +3,7 @@ return {
     description = "+1 HP Regen, +8 Max HP. Below 30% HP you heal 3 more HP a second (+3 per stack).",
     effect = "Below 30% HP you heal 3 more HP a second (+3 per stack).",
     rarity = "rare",
+    category = "mend",
     size = { 1, 1 },
     stats = { hpRegen = 1, maxHp = 8 },
     procs = {

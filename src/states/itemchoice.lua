@@ -23,6 +23,7 @@ local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
 local Choices = require("src.game.choices")
 local InvState = require("src.states.inventory")
+local CatGlyph = require("src.ui.catglyph")
 
 local Choice = { transparent = true }
 Choice.__index = Choice
@@ -370,10 +371,11 @@ function Choice.drawCard(self, i, entry, c, ctx)
     if item then
         -- the item drawn on its own little grid, so you can see its shape
         local bw, bh = Inventory.size(item)
-        local cell = math.floor(math.min(u(52), (c.w - u(40)) / math.max(bw, 1), areaH / math.max(bh, 1)))
+        local cell = math.floor(math.min(u(72), (c.w - u(40)) / math.max(bw, 1), areaH / math.max(bh, 1)))
         local gx = math.floor(x + (c.w - bw * cell) / 2)
         local gy = math.floor(y + u(34) + (areaH - bh * cell) / 2)
-        InvState.shapeCells(item, gx, gy, cell, { rc[1] * 0.3, rc[2] * 0.3, rc[3] * 0.3, 0.9 }, { rc[1], rc[2], rc[3], 0.8 })
+        local kc = InvState.catColor(def)
+        InvState.shapeCells(item, gx, gy, cell, { kc[1] * 0.26, kc[2] * 0.26, kc[3] * 0.26, 0.9 }, { rc[1], rc[2], rc[3], 0.8 })
         InvState.itemIcon(item, gx + 3, gy + 3, bw * cell - 6, bh * cell - 6)
     else
         -- a stat boost: the amount, big
@@ -390,7 +392,19 @@ function Choice.drawCard(self, i, entry, c, ctx)
     lg.setColor(cursed and CURSE_COL or COL.dim)
     local meta = item and (Rarities[def.rarity].label .. "  ·  " .. #def.cells .. (#def.cells == 1 and " cell" or " cells"))
         or "Stat boost  ·  no bag space"
-    lg.printf(meta, x, ty, c.w, "center")
+    if item then
+        -- what it is for (its category chip), then rarity and size, centred as one line
+        local f = lg.getFont()
+        local ch = f:getHeight() + u(2)
+        local cw = CatGlyph.chip(def.category, 0, 0, ch, f, 1, true)
+        local total = cw + u(8) + f:getWidth(meta)
+        local lx = math.floor(x + (c.w - total) / 2)
+        CatGlyph.chip(def.category, lx, ty - u(1), ch, f)
+        lg.setColor(cursed and CURSE_COL or COL.dim)
+        lg.print(meta, lx + cw + u(8), ty)
+    else
+        lg.printf(meta, x, ty, c.w, "center")
+    end
     ty = ty + u(24)
     -- tags: lit ones are shared with items already in your bag
     local th = Choices.drawTags(def, self.tags, x + u(8), ty, c.w - u(16), Theme.font(13), u)

@@ -7,7 +7,7 @@ local BLOOD = { 1, 0.3, 0.25 }
 return {
     character = "assassin_bug",
     branches = {
-        { name = "Rostrum", color = { 1, 0.4, 0.35 }, nodes = {
+        { name = "Rostrum", blurb = "Life-drinking beak stabs", color = { 1, 0.4, 0.35 }, nodes = {
             { id = "ab_sharp", tier = 1, ranks = 3, name = "Sharp Beak", desc = "+12% stab damage and a longer beak per rank.",
               attack = { damage = { mul = 0.12 }, reach = 4 } },
             { id = "ab_drink", tier = 2, name = "Deep Drinker", desc = "Stabs heal 15% more of the damage they deal.",
@@ -21,7 +21,7 @@ return {
             { id = "ab_impale", tier = 5, name = "Impale", desc = "Every 4th stab is a huge thrust that pierces a whole line and drinks twice as deep.",
               empower = { move = "attack", every = 4, mods = { reach = { mul = 1.2 }, pierce = { add = 8 }, leech = { mul = 1 }, damage = { mul = 0.8 } }, text = "IMPALE!", shake = 0.12 } },
         } },
-        { name = "Shove", color = { 0.95, 0.55, 0.3 }, nodes = {
+        { name = "Shove", blurb = "Clear space, stagger the crowd", color = { 0.95, 0.55, 0.3 }, nodes = {
             { id = "ab_gulp", tier = 1, ranks = 3, name = "Heavy Shove", desc = "+15% shove damage and harder knockback per rank.",
               secondary = { damage = { mul = 0.15 }, knockback = 40 } },
             { id = "ab_quick", tier = 2, name = "Quick Hands", desc = "Shove recharges 25% faster.",
@@ -38,7 +38,7 @@ return {
               procs = { { trigger = "onKill", effect = function(ctx) fx.heal(ctx, 1) end },
                         { trigger = "onSpecial", effect = function(ctx) fx.buff(ctx, "ab_feast", "moveSpeed", 0, 0.3, 3) end } } },
         } },
-        { name = "Ambush", color = { 0.6, 0.8, 1 }, nodes = {
+        { name = "Ambush", blurb = "Strike from the shadows", color = { 0.6, 0.8, 1 }, nodes = {
             { id = "ab_lean", tier = 1, ranks = 3, name = "Lean Body", desc = "+6 max HP and +4% speed per rank.",
               stats = { maxHp = 6 }, statsMult = { moveSpeed = 0.04 } },
             { id = "ab_stalk", tier = 2, name = "Stalker", desc = "+8% crit chance and +30% crit damage.",
@@ -60,4 +60,10 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_assassin_reaper", name = "Red Assassin", desc = "Every kill with your beak drinks deep: +1 HP and +20% damage for 3 s.",
+          procs = { { trigger = "onKill", move = "attack", effect = function(ctx)
+              fx.heal(ctx, 1)
+              fx.buff(ctx, "sig_assassin_reaper", "damage", 20, 0, 3)
+          end } } },
 }

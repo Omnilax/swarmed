@@ -6,6 +6,7 @@ return {
     description = "+18 Armor, +30 Max HP. When hurt, 50% chance to lash every ant around you for 30 damage (+30 per stack).",
     effect = "When hurt, 50% chance to lash every ant around you for 30 damage (+30 per stack).",
     rarity = "molted",
+    category = "guard",
     size = { 2, 2 },
     stats = { armor = 18, maxHp = 30 },
     procs = {

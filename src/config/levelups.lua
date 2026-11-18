@@ -6,9 +6,9 @@ return {
     xp = { base = 10, scale = 5, pow = 1.5 },
     cards = 3,              -- cards per level-up
     armTime = 0.5,          -- seconds before the cards accept input (anti-misclick, like items)
-    -- chance a pick offers one skill-tree node (never more than one per pick), so a run can't
-    -- finish a whole tree (~21 ranks): ~13 node offers by wave 15, ~18 by wave 20
-    skillShare = 0.4,
+    -- cards are stat boosts only; skipping a pick banks 1 skill point for the SKILLS tab (a whole
+    -- tree costs ~45 points, a run levels ~35 times, so no run gets everything)
+    botSkip = 0.4,          -- how often the balance bot / autoPickAll skips for a point
     -- rarity rolls for stat cards: weight, and how much the card's numbers are multiplied by.
     -- Luck tilts the odds: tier k (0 = common) has its weight times (1 + luck / 100) ^ k.
     rarities = {

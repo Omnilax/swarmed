@@ -4,6 +4,7 @@ return {
     name = "Bombardier Gland",
     description = "Dashing leaves a boiling blast behind you: 14 damage (+14 per stack).",
     rarity = "rare",
+    category = "elemental",
     size = { 2, 1 },
     procs = {
         {

@@ -3,6 +3,7 @@ return {
     description = "+8% Crit Chance. Critical hits poison the ant for 5 damage a second (+5 per stack) for 3 seconds.",
     effect = "Critical hits poison the ant for 5 damage a second (+5 per stack) for 3 seconds.",
     rarity = "uncommon",
+    category = "elemental",
     shape = { "X.", "XX" },
     stats = { critChance = 8 },
     procs = {

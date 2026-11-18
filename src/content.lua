@@ -61,6 +61,11 @@ Content.items = Registry.new("item", {
         size = { 1, 1 } },
     validate = function(def)
         def.icon = def.icon or ("icon_" .. def.id)
+        local Categories = require("src.config.categories")
+        if def.category and not Categories.index[def.category] then
+            return false, "unknown category '" .. tostring(def.category) .. "' (see src/config/categories.lua)"
+        end
+        def.category = def.category or Categories.guess(def)
         -- cells it covers: from `shape` rows ("X" = filled), else the full `size` rectangle
         def.cells = {}
         if def.shape then
@@ -87,10 +92,22 @@ Content.items = Registry.new("item", {
     end,
 })
 
+-- Kin branches (content/skillbranches/_template.lua): a 4th skill tree branch shared by a whole
+-- lineage of bugs (beetles, spiders, crustaceans...). Each tree gets the best match for its bug's
+-- tags, topped with the tree's own `signature` node. Loaded before the skill trees.
+Content.skillbranches = Registry.new("skillbranch", {
+    required = { "name", "nodes" },
+    defaults = { tags = {}, priority = 0, blurb = "" },
+})
+
 -- Skill trees: one per character (`character` = its id; see content/skilltrees/_template.lua).
 Content.skilltrees = Registry.new("skilltree", {
     required = { "character", "branches" },
-    validate = function(def) return require("src.game.skills").validateTree(def) end,
+    validate = function(def)
+        local Skills = require("src.game.skills")
+        Skills.attachKin(def, Content.characters:get(def.character))
+        return Skills.validateTree(def)
+    end,
 })
 
 Content.stages = Registry.new("stage", {
@@ -130,7 +147,7 @@ Content.achievements = Registry.new("achievement", {
     defaults = { description = "", category = "Misc", goal = 1 },
 })
 
-Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skilltrees", "items", "stages", "bosses", "events", "props", "mechanics", "wavemods", "modes", "achievements" }
+Content.order = { "sprites", "behaviors", "attacks", "dashes", "elites", "enemies", "characters", "skillbranches", "skilltrees", "items", "stages", "bosses", "events", "props", "mechanics", "wavemods", "modes", "achievements" }
 
 -- Weather spells (visual only): see content/weather/_template.lua and src/game/weather.lua.
 Content.weather = Registry.new("weather", { required = { "name" }, defaults = { weight = 10 } })
@@ -201,6 +218,15 @@ local function crossCheck()
     for _, m in ipairs(Content.modes:all()) do
         for _, id in ipairs(m.enemies or {}) do need(Content.enemies, id, "mode '" .. m.id .. "'") end
         for _, id in ipairs(m.bossPool or {}) do need(Content.enemies, id, "mode '" .. m.id .. "' bossPool") end
+        -- scripted waves: every species, queen, modifier, event and encounter they name
+        for i, wv in ipairs(m.waves or {}) do
+            local where = "mode '" .. m.id .. "' wave " .. i
+            for _, g in ipairs(wv.groups or {}) do need(Content.enemies, g[1] or g.enemy, where) end
+            if wv.queen then need(Content.enemies, wv.queen, where .. " queen") end
+            for _, id in ipairs(wv.mods or {}) do need(Content.wavemods, id, where .. " mods") end
+            for _, id in ipairs(wv.events or {}) do need(Content.events, id, where .. " events") end
+            if wv.encounter then need(Content.bosses, wv.encounter, where .. " encounter") end
+        end
     end
 
     for _, c in ipairs(Content.characters:all()) do

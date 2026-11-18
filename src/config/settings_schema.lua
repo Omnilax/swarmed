@@ -106,7 +106,7 @@ add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "cho
     desc = "When the next wave starts after you pick an item. The Next Wave key (N) always starts it at once, and during a wave sends the rest of its ants in early." }
 add { key = "levelUps", category = "Gameplay", label = "Level-Ups", type = "choice", default = "cards",
     options = { { value = "cards", label = "Pick a Card" }, { value = "points", label = "Skill Points" } },
-    desc = "Pick a Card: every level offers 3 cards (skill tree nodes of your bug, or stat boosts that roll a rarity; Luck makes rare ones likelier). Skill Points: every level gives a point to spend in the bag's SKILLS tab." }
+    desc = "Pick a Card: every level offers 3 stat cards that roll a rarity (Luck makes rare ones likelier), or skip them all for a skill point to spend in the bag's SKILLS tab. Skill Points: every level is simply a skill point." }
 add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type = "choice", default = "bloom",
     options = { { value = "bloom", label = "Walk to the Bloom" }, { value = "instant", label = "Open at Once" } },
     desc = "Walk to the Bloom: a cleared wave's rewards (level-up cards, then the item) sprout as a glowing bloom next to you; walk into it to open it (Next Wave brings it to you, and it rolls to you by itself after a few seconds). Open at Once: the reward screens pop up right after the wave." }
@@ -171,6 +171,14 @@ add { key = "uiScale", category = "Interface", label = "Interface Scale", type =
 add { key = "hudScale", category = "Interface", label = "HUD Size", type = "slider", default = 75, min = 50, max = 125, step = 5, format = percent,
     desc = "Size of everything drawn over the fight: health, wave line, KO count, banners, species cards, tips and damage numbers. Smaller leaves more of the screen for the game." }
 add { key = "hudOpacity", category = "Interface", label = "HUD Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent }
+add { key = "itemBadges", category = "Interface", label = "Item Category Badges", type = "toggle", default = true,
+    desc = "A little symbol in the corner of every item in the bag saying what it is for: Attack, Elemental, Guard, Mend, Move, Control, Fortune or Cursed." }
+add { key = "bagSort", category = "Interface", label = "Bag Sort Order", type = "choice", default = "category",
+    options = { { value = "category", label = "By Category" }, { value = "rarity", label = "By Rarity" }, { value = "size", label = "By Size" } },
+    desc = "How SORT lines up your bag. By Category keeps Attack items together, then Elemental, Guard, Mend and so on. If they can't all fit that way, it packs by size." }
+add { key = "catalogueGroup", category = "Interface", label = "Item Catalogue Groups", type = "choice", default = "category",
+    options = { { value = "category", label = "By Category" }, { value = "rarity", label = "By Rarity" } },
+    desc = "How the Item Catalogue lists items. G switches it there too." }
 add { key = "showTimer", category = "Interface", label = "Show Run Timer", type = "toggle", default = true }
 add { key = "showEnemyCount", category = "Interface", label = "Enemies Left", type = "toggle", default = true,
     desc = "A counter under the KO count with how many enemies are still to beat this wave, and a bar of how much of it is done." }

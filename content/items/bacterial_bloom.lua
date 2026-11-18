@@ -4,6 +4,7 @@ return {
     name = "Bacterial Bloom",
     description = "Kills have a 20% chance to leave a bacterial mat for 4 seconds that poisons ants on it for 5 damage a second (+5 per stack).",
     rarity = "rare",
+    category = "elemental",
     shape = { "XX", "X." },
     procs = {
         {
