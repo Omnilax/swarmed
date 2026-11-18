@@ -36,9 +36,12 @@ function Cosmetics.save()
 end
 
 function Cosmetics.isUnlocked(def)
+    if Cosmetics.data.unlocked[def.id] == true then return true end
+    -- Settings > Gameplay > "Unlock Everything" opens locked skins, decor and maps too
+    if require("src.game.unlocks").all() then return true end
     -- maps bought with amber in the Burrow (src/game/amber.lua)
     if def.palette and not require("src.game.amber").stageOpen(def.id) then return false end
-    return not def.locked or Cosmetics.data.unlocked[def.id] == true
+    return not def.locked
 end
 
 function Cosmetics.unlock(id)

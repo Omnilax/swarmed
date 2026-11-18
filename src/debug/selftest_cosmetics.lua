@@ -106,11 +106,18 @@ return function(wait, shot)
         wait(0.15)
         Cosmetics.data.skins[char] = nil
     end
+    -- (with Unlock Everything off: under --selftest Unlocks.free opens everything)
+    local Unlocks = require("src.game.unlocks")
+    local savedFree = Unlocks.free
+    Unlocks.free = false
     local hidden = 0
-    for _, s in ipairs(Content.skins:all()) do if s.locked then hidden = hidden + 1 end end
+    for _, s in ipairs(Content.skins:all()) do
+        if s.locked and not Cosmetics.isUnlocked(s) and (not s.character or s.character == "rhino_beetle") then hidden = hidden + 1 end
+    end
     local before = #Cosmetics.skinsFor("rhino_beetle")
     for _, s in ipairs(Content.skins:all()) do if s.locked then Cosmetics.unlock(s.id) end end
     assert(#Cosmetics.skinsFor("rhino_beetle") == before + hidden, "unlocking did not reveal locked skins")
+    Unlocks.free = savedFree
 
     -- the Cosmetics screen: walk every row (location previews, decor, every bug's skin)
     local Cos = require("src.states.cosmetics")

@@ -66,7 +66,7 @@ function ItemPool:build()
         else
             local goal = Unlocks.itemGoal(id)
             items[#items + 1] = { type = "button", label = d.name, disabled = true, def = d, locked = true,
-                desc = "Locked. " .. Unlocks.progressText(goal), value = function() return "Locked" end }
+                desc = "Locked. " .. Unlocks.progressText(goal) .. "  (Settings > Gameplay > Unlock Everything opens every item.)", value = function() return "Locked" end }
         end
     end
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() self:close() end }

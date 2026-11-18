@@ -103,7 +103,7 @@ add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type
     options = { { value = "instant", label = "Right Away" }, { value = "wave", label = "At Wave End" } },
     desc = "Right Away: the moment you level up, the cards open (after a short fanfare) and you pick your reward on the spot; the wave's reward bloom then holds only the item. At Wave End: level-ups wait in the reward bloom and come just before the item choice." }
 add { key = "unlockAll", category = "Gameplay", label = "Unlock Everything", type = "toggle", default = false,
-    desc = "Open every bug, item and danger level now, without meeting their goals. Goals still count in Records." }
+    desc = "Open every bug, item, danger level and locked skin now, without meeting their goals. Turn it off to go back to earning them; goals still count in Records." }
 add { key = "autoAttack", category = "Gameplay", label = "Auto Attack", type = "toggle", default = true,
     desc = "Attack automatically. When off, hold the Attack button." }
 add { key = "aimMode", category = "Gameplay", label = "Aim Mode", type = "choice", default = "nearest",

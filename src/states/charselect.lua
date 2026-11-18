@@ -758,7 +758,7 @@ function CharSelect:drawDetails(def, px, py, pw, ph)
     local ruleH = #ruleLines * fRule:getHeight()
     local dangerH = fDanger:getHeight() + fRule:getHeight() + u(8)
     local starsH = u(20)
-    local bottomH = open and (dangerH + starsH + (ruleH > 0 and ruleH + u(8) or 0)) or u(62)
+    local bottomH = open and (dangerH + starsH + (ruleH > 0 and ruleH + u(8) or 0)) or u(82)
 
     -- fit: fixed pieces first, then share what is left
     local gap = math.floor(u(10))
@@ -986,6 +986,9 @@ function CharSelect:drawMastery(def, px, y, pw, bh, rule, ruleLines, stars)
         lg.setFont(Theme.font(16))
         lg.setColor(c.text)
         lg.printf(Unlocks.progressText(Unlocks.bugGoal(def.id)), px + u(48), y + u(32), pw - u(96), "center")
+        lg.setFont(Theme.font(13))
+        lg.setColor(c.dim)
+        lg.printf("Or open every bug: Settings > Gameplay > Unlock Everything", px + u(16), y + bh - u(18), pw - u(32), "center")
         lg.setColor(1, 1, 1, 1)
         return
     end
