@@ -403,10 +403,14 @@ return function(wait, shot)
     State.pop()
     -- custom bugs on bug select
     local cs = State.push(require("src.states.charselect").new({ gameMode = "colony" }))
-    cs.filter = "custom"
-    cs:build()
+    cs:setTab("custom")
     local seen = 0
-    for _, it in ipairs(cs.menu.items) do if it.character and it.character.custom then seen = seen + 1 end end
+    for _, e in ipairs(cs.list) do if e.def.custom then seen = seen + 1 end end
+    assert(seen == #cs.list, "the Custom tab holds only custom bugs")
+    cs:setTab("all")
+    cs:focusOn(cs.list[#cs.list].def.id)
+    wait(1.2)
+    shot("creator_charselect_custom")
     if seen ~= 4 then for _, e in ipairs(CustomBugs.all()) do print("  custom: " .. e.id) end end
     assert(seen == 4, "bug select should list the custom bugs (saw " .. seen .. ")")
     State.pop()

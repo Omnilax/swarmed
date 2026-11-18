@@ -68,7 +68,8 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Unleash Frenzy (when the meter is full) | Q / C | Right or left stick click |
 | Pause | Esc / P | Start |
 | Quick restart (pause / defeat screen) | R | Y |
-| Favourite a bug (bug select) | F | X |
+| Favourite a bug (bug select) | F / right click | X |
+| Bug select: family tab / danger / sort / style | Q, E / Z, X / T / G | LB, RB / Y / L-stick / R-stick |
 
 All bindings can be changed in Settings > Controls. With a controller in use, prompts and key
 hints show its buttons as icons (`Theme.glyph`); any prompt can name an action as `{dash}` and
@@ -81,9 +82,16 @@ hints show its buttons as icons (`Theme.glyph`); any prompt can name an action a
   saved mid-wave plays that wave again. Abandon Run, defeat and End Run delete the save.
 - **Play Again** on the title screen starts the last bug and mode in one press. Pause and the
   defeat screen restart the same setup; the defeat screen can also go straight to bug select.
-- **Bug select** sorts (speed, health, size, armour, playstyle, name) and filters (playstyle,
-  favourites) from `src/config/playstyles.lua`; favourites are pinned on top. A live preview
-  shows the highlighted bug's special and dash (`src/ui/movepreview.lua`).
+- **Bug select** is a wall of bug portraits grouped by family, with a tab per family (All,
+  Favourites, Beetles, Spiders, Scorpions, Crustaceans, Insects, Myriapods, Custom for Bug Creator
+  bugs). Families come from `src/config/bugfamilies.lua`: a bug joins the first family whose tag
+  it has, or names one with `family = "<id>"`. In All, favourites get their own section on top.
+  Sort (speed, health, size, armour, playstyle, name) and the playstyle filter sit top right
+  (`src/config/playstyles.lua`); tiles show a lock and a silhouette for locked bugs, a pip per
+  danger level won and the sorted number. The details panel fits itself to the screen (the
+  picture shrinks, then the description, then the stats give way on phones) and shows a live
+  preview of the bug's special and dash (`src/ui/movepreview.lua`). Mouse: hover highlights,
+  click plays. Touch: first tap shows, second tap plays. Test: `love . --selftest --charselect`.
 - Each bug has a `playstyle` and a one-time `tip` (content/characters), shown in its first run.
 - **Practice** (title screen): pick a bug, mode, starting wave and one species (or a boss, or
   "Mixed"), optionally with the items and skill points a real run would have, and invincibility.
@@ -433,7 +441,7 @@ achievements on their own. Unlocks slide in at the top right. Run events it list
   `src/game/bugrules.lua`): Dung Beetle gets stronger from eaten items, Hermit Crab starts with an
   extra bag row but slows per filled cell, Orb Weaver's procs fire twice on webbed ants, Hissing
   Roach heals double from eating, Scorpion's poison items proc more. Shown on bug select.
-- **Danger levels.** Left/Right on a bug in bug select picks Danger 0-5 (`src/config/danger.lua`):
+- **Danger levels.** Z / X (pad Y, or the arrows in the panel) on bug select picks Danger 0-5 (`src/config/danger.lua`):
   each level adds one rule (more elites, less healing, faster ants, tougher ants, bigger groups and
   an extra crowned queen). Winning at a level opens the next one for that bug; the highest level
   won shows as mastery stars and is kept in Records (`characters[id].danger`).
