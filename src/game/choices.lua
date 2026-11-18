@@ -69,6 +69,16 @@ function Choices.roll(world, n, minRarity, keep, avoid)
             avoid = nil
             d = Choices.pickDef(world, taken, pred)
         end
+        -- `rarityBump` items (Ladybug Spots): now and then the card rolls one tier higher
+        if d and not pred then
+            local inv = world.player and world.player.inventory
+            local bump = inv and inv:sum("rarityBump") or 0
+            if bump > 0 and love.math.random() < bump then
+                local o = Rarities[d.rarity].order
+                local up = Choices.pickDef(world, taken, function(x) return Rarities[x.rarity].order > o and x.rarity ~= "cursed" end)
+                if up then d = up end
+            end
+        end
         if d then taken[d.id] = true; return Inventory.newItem(d.id) end
     end
     if minRarity and #free > 0 then

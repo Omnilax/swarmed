@@ -79,6 +79,12 @@ end
 local function wave(world) return world.spawner and math.max(1, world.spawner.wave) or 1 end
 Economy.wave = wave
 
+-- The total of an item field over the player's bag (0 without a bag).
+local function bagSum(world, field)
+    local inv = world.player and world.player.inventory
+    return inv and inv:sum(field) or 0
+end
+
 local function scale(world) return 1 + Economy.cfg(world).perWave * (wave(world) - 1) end
 
 ----------------------------------------------------------------------------------------------
@@ -99,6 +105,9 @@ end
 -- The price of the next shop reroll.
 function Economy.rerollPrice(world)
     local c, shop = Economy.cfg(world).reroll, Economy.state(world).shop
+    -- free rerolls each restock from `freeShopRerolls` items (Cuckoo Wasp Shell)
+    local inv = world.player and world.player.inventory
+    if shop and inv and (shop.freeUsed or 0) < inv:sum("freeShopRerolls") then return 0 end
     local n = shop and shop.rerolls or 0
     return math.floor(c.base + c.step * n + c.waveStep * (wave(world) - 1) + 0.5)
 end
@@ -284,8 +293,14 @@ function Economy.rerollShop(world, notIds)
         if o.locked or o.sold then keep[i] = o else any = true; avoid[o.key] = true end
     end
     if not any then return false, "locked" end
-    if not Economy.spend(world, Economy.rerollPrice(world)) then return false, "poor" end
-    shop.rerolls = shop.rerolls + 1
+    local price = Economy.rerollPrice(world)
+    if price <= 0 then
+        shop.freeUsed = (shop.freeUsed or 0) + 1
+    elseif not Economy.spend(world, price) then
+        return false, "poor"
+    else
+        shop.rerolls = shop.rerolls + 1
+    end
     -- keep slots in place: rebuild with the kept ones where they were
     shop.offers = roll(world, keep, avoid, notIds)
     world.events:emit("shop_rerolled")
@@ -342,14 +357,14 @@ end
 function Economy.interestPreview(world, bank)
     local c = Economy.cfg(world).interest
     if not c or not Economy.enabled(world) then return 0 end
-    local cap = math.floor(c.cap + c.capPerWave * (wave(world) - 1))
+    local cap = Economy.interestCap(world)
     return math.max(0, math.min(cap, math.floor((bank or Economy.nectar(world)) * c.rate)))
 end
 
 -- The cap on interest at this wave (shown in the shop).
 function Economy.interestCap(world)
     local c = Economy.cfg(world).interest
-    return math.floor(c.cap + c.capPerWave * (wave(world) - 1))
+    return math.floor(c.cap + c.capPerWave * (wave(world) - 1) + bagSum(world, "interestCap"))
 end
 
 -- Pay interest once per wave clear (src/game/rewardflow.lua, on wave_cleared). Returns the amount.
@@ -358,6 +373,12 @@ function Economy.payInterest(world)
     local w = wave(world)
     if s.interestWave == w then return 0 end
     s.interestWave = w
+    -- `waveNectar` items (Seed Cache) pay a flat bonus at every clear, on top of interest
+    local bonus = math.floor(bagSum(world, "waveNectar"))
+    if bonus > 0 then
+        Economy.add(world, bonus)
+        if world.player then world:floatText(world.player.x, world.player.y - 14, "+" .. bonus .. " nectar", { 1, 0.85, 0.35 }) end
+    end
     local n = Economy.interestPreview(world)
     if n > 0 then
         Economy.add(world, n)

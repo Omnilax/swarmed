@@ -38,5 +38,14 @@ return {
     },
     -- Optional hook when picked up: onAdd = function(player, stacks) end,
     -- shopSpeed = 0.25,           -- the nectar shop restocks 25% faster per copy (src/game/economy.lua)
+    -- More bag-wide fields, summed over every copy (Inventory:sum):
+    -- waveNectar = 3,             -- nectar paid at each wave clear (Economy.payInterest)
+    -- interestCap = 5,            -- savings interest can pay this much more (Economy.interestCap)
+    -- beadValue = 0.15,           -- kills drop 15% more nectar (Nectar:onKill)
+    -- freeShopRerolls = 1,        -- free shop rerolls after each restock (Economy.rerollPrice)
+    -- rarityBump = 0.1,           -- chance an item choice card rolls a rarity higher (Choices.roll)
+    -- poisonAmp = 0.15,           -- poisoned ants take 15% more damage (Combat.damage)
+    -- Helpers in src/game/itemfx.lua: ItemFx.trail / onTrail (slime trails), ItemFx.guard (take
+    -- less damage for a while), ItemFx.patch { hurtPlayer = 4 } (a patch that bites you too).
     tags = {},
 }
