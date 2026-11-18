@@ -16,7 +16,7 @@ return {
     { id = "thirsty_jaws", name = "Thirsty Jaws", stats = { lifesteal = 2 }, weight = 6, minLevel = 4 },
     { id = "long_antennae", name = "Long Antennae", stats = { pickupRange = 12 }, weight = 4 },
     { id = "second_wind", name = "Second Wind", statsMult = { dashCooldown = -0.06 }, weight = 7 },
-    { id = "nectar_sip", name = "Nectar Sip", weight = 5,
+    { id = "nectar_sip", name = "Nectar Sip", family = "instant", weight = 5,
         description = "Heal 35% of your Max HP now",
         scaledText = function(mult) return ("Heal %d%% of your Max HP now"):format(math.floor(35 * mult + 0.5)) end,
         available = function(p) return p.hp < p.stats:get("maxHp") * 0.8 end,

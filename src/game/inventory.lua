@@ -440,6 +440,9 @@ function Inventory:trigger(name, ctx)
     -- the bug's skill tree answers the same triggers (src/game/skills.lua)
     local skills = self.player.skills
     if skills then skills:trigger(name, ctx) end
+    -- and the perk / growth level-up cards taken this run (src/game/levelups.lua)
+    local lu = self.player.world and self.player.world.levelups
+    if lu and (lu.perkOrder[1] or lu.growth[1]) then lu:trigger(name, ctx) end
 end
 
 return Inventory

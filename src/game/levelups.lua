@@ -4,6 +4,15 @@
 -- the odds). The skill tree is never on the cards: SKIPPING a pick banks one skill point to spend
 -- in the bag's SKILLS tab, so each level is a boost now or a step down the tree.
 -- Run rule "levelUps" = "points" (a Custom Waves set) brings back the old way: levels give skill points to spend.
+--
+-- Card families (a card file's `family`, content/levelcards/_template.lua):
+--   stat     small stat boosts (the default)
+--   pact     a big boost with a cost: `cost` stats are not scaled by the rarity roll
+--   growth   `growth` stats are added again at the start of every wave, for the rest of the run
+--   perk     a lasting effect: `procs` on the same triggers as items (onHit, onKill, onHurt,
+--            onDash, onDodge, onBlock, onWaveStart, onTick...). Taking it again ranks it up
+--            (up to maxRank); its power is the sum of the rarity rolls it was taken with.
+--   instant  something happens right away (`apply`), nothing lasting
 -- Numbers: src/config/levelups.lua (a mode can override them with `levelUps = {...}`).
 --
 -- Other systems can hand out picks too (brood cell chests, shrines...):
@@ -38,7 +47,9 @@ end
 
 function LevelUps.new(world)
     local self = setmetatable({ world = world, cfg = LevelUps.config(world.modeDef), queue = {}, mods = {},
-        picks = 0, fanfareAt = -1 }, LevelUps)
+        picks = 0, fanfareAt = -1,
+        perks = {}, perkOrder = {}, perkState = {},   -- perks[id] = { power, rank }, taken order
+        growth = {} }, LevelUps)                      -- growth cards: { id, stats, statsMult }
     return self
 end
 
@@ -171,7 +182,30 @@ function LevelUps:statCard(def, rarity)
         stats = {}, statsMult = {} }
     for k, v in pairs(def.stats or EMPTY) do c.stats[k] = tidy(v * rarity.mult) end
     for k, v in pairs(def.statsMult or EMPTY) do c.statsMult[k] = tidyMult(v * rarity.mult) end
-    c.description = def.scaledText and def.scaledText(rarity.mult) or def.description or LevelUps.describe(c)
+    c.family = def.family or "stat"
+    -- a pact's cost is the same whatever the roll
+    if def.cost then
+        for k, v in pairs(def.cost.stats or EMPTY) do c.stats[k] = (c.stats[k] or 0) + v end
+        for k, v in pairs(def.cost.statsMult or EMPTY) do c.statsMult[k] = (c.statsMult[k] or 0) + v end
+    end
+    if def.growth then
+        c.growth = { stats = {}, statsMult = {} }
+        for k, v in pairs(def.growth.stats or EMPTY) do c.growth.stats[k] = tidy(v * rarity.mult) end
+        for k, v in pairs(def.growth.statsMult or EMPTY) do c.growth.statsMult[k] = tidyMult(v * rarity.mult) end
+    end
+    if c.family == "perk" then
+        -- perk text shows the power you would have after taking it
+        local have = self.perks[def.id]
+        c.rank = (have and have.rank or 0) + 1
+        c.power = (have and have.power or 0) + rarity.mult
+        c.description = def.text and def.text(c.power) or def.description or ""
+    elseif c.growth then
+        c.description = def.text and def.text(rarity.mult) or def.description
+            or (LevelUps.describe(c.growth) .. " at the start of every wave")
+    else
+        c.description = def.scaledText and def.scaledText(rarity.mult) or def.text and def.text(rarity.mult)
+            or def.description or LevelUps.describe(c)
+    end
     return c
 end
 
@@ -186,7 +220,8 @@ function LevelUps:deal(entry, count)
     local function pickStat()
         local total, opts = 0, {}
         for _, d in ipairs(Content.levelcards:all()) do
-            if not usedIds[d.id] and (d.minLevel or 1) <= level and (not d.available or d.available(p, self.world)) then
+            if not usedIds[d.id] and (d.minLevel or 1) <= level and not self:maxed(d)
+                and (not d.available or d.available(p, self.world)) then
                 opts[#opts + 1] = d
                 total = total + d.weight
             end
@@ -207,6 +242,13 @@ function LevelUps:deal(entry, count)
         cards[#cards + 1] = card
     end
     return cards
+end
+
+-- A perk taken as many times as it can be.
+function LevelUps:maxed(def)
+    if def.family ~= "perk" then return false end
+    local have = self.perks[def.id]
+    return have ~= nil and have.rank >= (def.maxRank or 3)
 end
 
 -- The card a skip takes: one skill point (LevelUp screen's skip button, the balance bot).
@@ -250,6 +292,20 @@ function LevelUps:take(card)
         -- more Max HP comes filled in
         local gain = p.stats:get("maxHp") - hpBefore
         if gain > 0 then p.hp = p.hp + gain end
+        if card.family == "perk" then
+            local have = self.perks[card.id]
+            if not have then
+                have = { power = 0, rank = 0 }
+                self.perks[card.id] = have
+                self.perkOrder[#self.perkOrder + 1] = card.id
+            end
+            if have.rank < (card.def and card.def.maxRank or 3) then
+                have.power, have.rank = have.power + (card.mult or 1), have.rank + 1
+            end
+        end
+        if card.growth then
+            self.growth[#self.growth + 1] = { id = card.id, stats = card.growth.stats, statsMult = card.growth.statsMult }
+        end
         if card.def and card.def.apply then card.def.apply(p, card.mult or 1, self.world) end
     end
     self.world.events:emit("levelup_taken", card)
@@ -272,6 +328,89 @@ function LevelUps:autoPickAll(skipChance)
 end
 
 ----------------------------------------------------------------------------------------------
+-- Perks and growth cards at work (Inventory:trigger forwards every trigger here)
+
+-- How strong a perk is on this run (sum of its rarity rolls), or nil if it wasn't taken.
+function LevelUps:perkPower(id)
+    local have = self.perks[id]
+    return have and have.power or nil
+end
+
+-- A scratch table for one perk (cooldowns, counters). Not saved.
+function LevelUps:stateOf(id)
+    local s = self.perkState[id]
+    if not s then s = {}; self.perkState[id] = s end
+    return s
+end
+
+function LevelUps:trigger(name, ctx)
+    if name == "onWaveStart" and self.growth[1] then self:grow() end
+    if not self.perkOrder[1] then return end
+    local Content = require("src.content")
+    local w = self.world
+    for _, id in ipairs(self.perkOrder) do
+        local def = Content.levelcards.byId[id]
+        local have = self.perks[id]
+        if def and def.procs then
+            for _, pr in ipairs(def.procs) do
+                if pr.trigger == name then
+                    local st = self:stateOf(id)
+                    if not pr.cooldown or (st.cd or -1) <= w.time then
+                        local chance = pr.chance
+                        if type(chance) == "function" then chance = chance(have.power) end
+                        if chance == nil or love.math.random() < chance then
+                            if pr.cooldown then st.cd = w.time + pr.cooldown end
+                            local prev = w.dmgSrc
+                            w.dmgSrc = def.name             -- its damage counts for the card in the run summary
+                            pr.effect(ctx, have.power, st, self)
+                            w.dmgSrc = prev
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- A new wave: every growth card adds its stats again.
+function LevelUps:grow()
+    for _, g in ipairs(self.growth) do
+        for k, v in pairs(g.stats) do
+            self.mods[k] = self.mods[k] or {}
+            self.mods[k].add = (self.mods[k].add or 0) + v
+        end
+        for k, v in pairs(g.statsMult) do
+            self.mods[k] = self.mods[k] or {}
+            self.mods[k].mult = (self.mods[k].mult or 0) + v
+        end
+    end
+    local p = self.world.player
+    local hpBefore = p and p.stats:get("maxHp")
+    self:applyStats()
+    if p then
+        local gain = p.stats:get("maxHp") - hpBefore
+        if gain > 0 then p.hp = p.hp + gain end
+        self.world:floatText(p.x, p.y - 16, "growing", { 0.55, 1, 0.55 })
+    end
+end
+
+-- Player:hurt asks this when a hit would kill: a perk with `saveFromDeath` can step in once.
+function LevelUps:saveFromDeath(p)
+    if not self.perkOrder[1] then return false end
+    local Content = require("src.content")
+    for _, id in ipairs(self.perkOrder) do
+        local def = Content.levelcards.byId[id]
+        if def and def.saveFromDeath and not (self.used and self.used[id]) then
+            self.used = self.used or {}
+            self.used[id] = true
+            def.saveFromDeath(p, self.perks[id].power, self.world)
+            return true
+        end
+    end
+    return false
+end
+
+----------------------------------------------------------------------------------------------
 -- Saves (src/game/runsave.lua)
 
 function LevelUps:snapshot()
@@ -279,7 +418,13 @@ function LevelUps:snapshot()
     for i, e in ipairs(self.queue) do q[i] = { source = e.source, level = e.level, minRarity = e.minRarity, now = e.now } end
     local mods = {}
     for k, m in pairs(self.mods) do mods[k] = { add = m.add, mult = m.mult } end
-    return { queue = q, mods = mods, picks = self.picks }
+    local perks = {}
+    for i, id in ipairs(self.perkOrder) do perks[i] = { id = id, power = self.perks[id].power, rank = self.perks[id].rank } end
+    local growth = {}
+    for i, g in ipairs(self.growth) do growth[i] = { id = g.id, stats = g.stats, statsMult = g.statsMult } end
+    local used = {}
+    for id in pairs(self.used or EMPTY) do used[#used + 1] = id end
+    return { queue = q, mods = mods, picks = self.picks, perks = perks, growth = growth, used = used }
 end
 
 function LevelUps:restore(snap)
@@ -290,6 +435,18 @@ function LevelUps:restore(snap)
     for k, m in pairs(snap.mods or EMPTY) do
         if Stats.byId[k] then self.mods[k] = { add = m.add, mult = m.mult } end
     end
+    local Content = require("src.content")
+    self.perks, self.perkOrder, self.perkState, self.growth, self.used = {}, {}, {}, {}, nil
+    for _, pk in ipairs(snap.perks or EMPTY) do
+        if Content.levelcards.byId[pk.id] and not self.perks[pk.id] then
+            self.perks[pk.id] = { power = pk.power or 1, rank = pk.rank or 1 }
+            self.perkOrder[#self.perkOrder + 1] = pk.id
+        end
+    end
+    for _, g in ipairs(snap.growth or EMPTY) do
+        self.growth[#self.growth + 1] = { id = g.id, stats = g.stats or {}, statsMult = g.statsMult or {} }
+    end
+    for _, id in ipairs(snap.used or EMPTY) do self.used = self.used or {}; self.used[id] = true end
     self:applyStats()
 end
 

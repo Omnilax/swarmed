@@ -17,6 +17,14 @@ LevelUp.__index = LevelUp
 local lg = love.graphics
 local SKILL_COL = { 0.5, 0.85, 1 }
 local GOLD = { 1, 0.88, 0.45 }
+-- the card's family ribbon (src/game/levelups.lua, content/levelcards/_template.lua)
+LevelUp.FAMILY = {
+    stat = { label = "BOOST", color = { 0.85, 0.82, 0.74 } },
+    pact = { label = "PACT", color = { 0.85, 0.45, 1 }, note = "A boost with a cost" },
+    growth = { label = "GROWTH", color = { 0.5, 0.95, 0.5 }, note = "Grows every wave" },
+    perk = { label = "PERK", color = { 1, 0.7, 0.35 }, note = "Lasts the whole run" },
+    instant = { label = "INSTANT", color = { 0.45, 0.85, 1 }, note = "Happens right now" },
+}
 
 -- entry: a queued pick (LevelUps queue). Optional cards: deal these instead (tests).
 function LevelUp.new(game, entry, cards)
@@ -108,7 +116,7 @@ function LevelUp:layout()
     local u = Theme.u
     local n = math.max(1, #self.cards)
     local cw = math.floor(math.min(u(230), (w - u(60)) / n - u(16)))
-    local ch = math.floor(u(250))
+    local ch = math.floor(u(270))
     local gap = u(16)
     local total = n * cw + (n - 1) * gap
     local x0 = math.floor((w - total) / 2)
@@ -235,7 +243,21 @@ function LevelUp:draw()
         lg.setColor(col)
         local kindLabel = (require("src.config.rarities")[c.rarity] or { label = "" }).label:upper()
         lg.printf(kindLabel, x + u(6), ty, r.w - u(12), "center")
-        ty = ty + u(26)
+        ty = ty + u(20)
+        -- the family ribbon: what kind of card this is
+        local fam = LevelUp.FAMILY[c.family or "stat"] or LevelUp.FAMILY.stat
+        do
+            local f = Theme.font(12, "bold")
+            lg.setFont(f)
+            local tw = f:getWidth(fam.label) + u(14)
+            local bx, bh = math.floor(x + (r.w - tw) / 2), f:getHeight() + u(2)
+            lg.setColor(fam.color[1] * 0.25, fam.color[2] * 0.25, fam.color[3] * 0.25, 0.95)
+            lg.rectangle("fill", bx, ty, tw, bh)
+            lg.setColor(fam.color)
+            lg.rectangle("line", bx + 0.5, ty + 0.5, tw - 1, bh - 1)
+            lg.printf(fam.label, bx, ty + u(1), tw, "center")
+            ty = ty + bh + u(8)
+        end
         lg.setFont(Theme.font(20, "bold"))
         local nameLines = wrapLines(lg.getFont(), c.name, r.w - u(20), u(52))
         for k, l in ipairs(nameLines) do Theme.printShadow(l, x + u(10), ty + (k - 1) * lg.getFont():getHeight(), col, "center", r.w - u(20)) end
@@ -244,7 +266,14 @@ function LevelUp:draw()
         lg.setColor(COL.dim)
         do
             local m = c.mult or 1
-            lg.printf(m > 1 and ("x" .. (math.floor(m * 100 + 0.5) / 100) .. " roll") or "base roll", x, ty, r.w, "center")
+            local roll = m > 1 and ("x" .. (math.floor(m * 100 + 0.5) / 100) .. " roll") or "base roll"
+            if c.family == "perk" then
+                local maxR = c.def and c.def.maxRank or 3
+                roll = (c.rank and c.rank > 1 and ("RANK " .. c.rank .. "/" .. maxR) or (maxR > 1 and ("new  ·  up to rank " .. maxR) or "once per run")) .. "  ·  " .. roll
+            elseif fam.note then
+                roll = fam.note .. "  ·  " .. roll
+            end
+            lg.printf(roll, x, ty, r.w, "center")
             ty = ty + u(22)
         end
         -- stat cards: real numbers ("Speed 120 » 128")
