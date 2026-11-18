@@ -17,7 +17,6 @@
 --   steer = function(player, wx, wy, mag, dt, item) -> wx, wy, mag   (bends your walking)
 --   item.level: a number the parasite grows (lice, botfly larva); saved with the run.
 local Content = require("src.content")
-local Settings = require("src.core.settings")
 local util = require("src.core.util")
 
 local Parasites = {}
@@ -34,9 +33,9 @@ function Parasites.cfg(world)
     return base
 end
 
--- Are parasites on at all (setting, mode)?
+-- Are parasites on? Always in the main game; a mode (Custom Waves) can turn them off with
+-- `parasites = false`. Deliberately not a global setting: it changes the game too much.
 function Parasites.on(world)
-    if Settings.get("parasites") == "off" then return false end
     if world and world.modeDef and world.modeDef.parasites == false then return false end
     return true
 end
@@ -56,7 +55,7 @@ function Parasites.weight(world, def)
     if not Parasites.on(world) then return 0 end
     local inv = world.player and world.player.inventory
     if inv and (Parasites.find(inv, def.id) or Parasites.count(inv) >= Parasites.cfg(world).max) then return 0 end
-    return Settings.get("parasites") == "often" and Parasites.cfg(world).oftenMul or 1
+    return Parasites.cfg(world).weightMul or 1
 end
 
 -- The steering hook Player:update calls (only set while a parasite steers).
@@ -216,7 +215,6 @@ function Parasites.onWaveStart(world, n)
     world.parasiteWaves = (world.parasiteWaves or 0) + 1
     if (n or 0) - (world.parasiteSince or 0) <= c.graceWaves then return end
     local chance = math.min(c.maxChance, c.chance + c.pity * math.max(0, world.parasiteWaves - 1))
-    if Settings.get("parasites") == "often" then chance = chance * c.oftenMul end
     if love.math.random() < chance then
         Parasites.sprout(world, nil, nil, c.arriveAt[1] + love.math.random() * (c.arriveAt[2] - c.arriveAt[1]))
     end

@@ -1,12 +1,11 @@
 -- Parasites (src/game/parasites.lua) and the Green Mushroom that purges them.
 --   love . --selftest --parasites
 -- A parasite goes in the bug, not the bag, and still counts (stats, procs, HUD row); it devours
--- its host items; it can't be offered twice; the Parasites setting turns them off; Flu halves
+-- its host items; it can't be offered twice; a mode can turn them off; Flu halves
 -- HP and doubles damage; Cordyceps walks for you; lice breed; it survives a run save; the
 -- mushroom sprouts, wilts with the next wave, and walking into it purges everything.
 local State = require("src.core.state")
 local Content = require("src.content")
-local Settings = require("src.core.settings")
 
 return function(wait, shot)
     local Game = require("src.states.game")
@@ -41,9 +40,9 @@ return function(wait, shot)
     local seen = false
     for _ = 1, 800 do if Choices.pickDef(world, {}).parasite then seen = true break end end
     assert(seen, "parasites should be offered")
-    Settings.set("parasites", "off")
-    for _ = 1, 800 do assert(not Choices.pickDef(world, {}).parasite, "parasites offered while off") end
-    Settings.set("parasites", "normal")
+    world.modeDef.parasites = false
+    for _ = 1, 800 do assert(not Choices.pickDef(world, {}).parasite, "parasites offered while a mode turns them off") end
+    world.modeDef.parasites = nil
 
     -- Flu: lives outside the bag, halves HP, doubles damage
     local hp0, dmg0 = p.stats:get("maxHp"), p.stats:get("damage")

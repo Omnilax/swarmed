@@ -166,8 +166,8 @@ Test: `love . --selftest --nectar`.
   Some devour their host items in your bag when they get in (Void-style) for a permanent bonus.
   Horsehair Worm, Deer Tick, Head Lice, Follicle Mite, Flu, Cordyceps Puppeteer, Toxoplasma,
   Botfly Larva, Lancet Fluke, Guinea Worm. The only cure is a rare **Green Mushroom** that sprouts
-  while you carry one: walk into it to purge them all. Settings > Gameplay > Parasites (Normal /
-  Often / Off). Icons: `PYTHONPATH=tools python3 tools/make_parasite_icons.py`. Test:
+  while you carry one: walk into it to purge them all. No global setting (it changes the game too
+  much); a mode can set `parasites = false`. Icons: `PYTHONPATH=tools python3 tools/make_parasite_icons.py`. Test:
   `love . --selftest --parasites`.
 - **Hyperbolic stacking**: Luck, the proc snowball and extra copies never push a chance to 100%
   (`Inventory.stackChance`). A proc whose effect doesn't grow with copies can set `chanceStack` to
