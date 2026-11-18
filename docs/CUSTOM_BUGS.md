@@ -205,6 +205,66 @@ sounds = {
 (how fast it fades, 0.2..8), `attack` (fade-in seconds), `vibrato = { rate, depth }`. Up to 16.
 
 
+### Passives, looks, movement and music (no code needed)
+
+These are plain settings; the mixer has rows for all of them too.
+
+```lua
+passives = {
+    camo = { after = 0.6, ambush = 50 },   -- stand still to vanish; +50% damage for a moment after
+    aura = { radius = 40, dps = 4, slow = 0.7, color = "#80ff70" },
+    shell = { every = 8 },                 -- a shell blocks the next hit every 8 s
+},
+effects = {
+    glow = { color = "#80ff70", radius = 60, intensity = 0.6, pulse = 2 },   -- a light around the bug
+    trail = { kind = "spark", color = "#ffd870" },   -- dust, spark, bubble, slime, fire, frost, petals, shadow
+    sparkle = { color = "#ffffff", rate = 4 },        -- little lights drifting up
+    shimmer = true,                                   -- a soft pulsing sheen
+},
+movement = {
+    slide = 0.5,                           -- 0..0.95: steering eases in, like ice
+    hover = 8,                             -- float (6+ px: walking ants can't touch it)
+    bob = 1.5,                             -- bob up and down
+    sprint = { after = 1, speed = 1.4 },   -- speeds up after running for a second
+    sideways = { forward = 0.6, side = 1.2 },   -- crab walk: quick sideways, slow forwards
+},
+music = "flute",                           -- or { theme = "flute", key = 2 }
+```
+
+| Passive | What it does | Settings (defaults) |
+|---|---|---|
+| `camo` | Stand still to blend in: ants lose track of you. Moving again gives a short damage boost. | `after` 0.8 s, `alpha` 0.3, `ambush` 40 %, `ambushTime` 1.5 s |
+| `regen` | Heal while standing still (and some while moving). | `still` 2 /s, `moving` 0 |
+| `aura` | Ants near you keep taking damage, and can be slowed. | `radius` 36, `dps` 4, `slow`, `color` |
+| `thorns` | Getting hit hurts every ant around you. | `damage` 10, `radius` 32 |
+| `feast` | Kills can heal you. | `hp` 2, `chance` 0.5 |
+| `rampage` | Kills stack a short buff. | `stat` "damage", `amount` 4, `max` 10, `seconds` 3 |
+| `berserk` | Stronger while badly hurt. | `below` 0.35, `stats` { damage = 30, attackSpeed = 20 } |
+| `planted` | Stats while standing still. | `stats` { armor = 4 } |
+| `momentum` | Stats while moving. | `stats` { damage = 15 } |
+| `venom` | Hits can poison. | `dps` 3, `seconds` 3, `chance` 0.5 |
+| `frost` | Hits can slow. | `mul` 0.5, `seconds` 1.5, `chance` 0.5 |
+| `spark` | Hits can arc lightning to other ants. | `damage` 5, `jumps` 2, `chance` 0.2 |
+| `burst` | Ants you kill can explode. | `damage` 8, `radius` 26, `chance` 0.3, `color` |
+| `shell` | Every few seconds a shell blocks the next hit. | `every` 8 s |
+| `blink` | Dodging a hit hides you for a moment. | `seconds` 1.5 |
+| `magnet` | Pull pickups from further away. | `range` 60 |
+| `spawn` | Every few kills, little helpers hatch and hunt with you. | `every` 15, `count` 2, `damage` 5, `life` 8 |
+| `stampede` | Running into ants knocks them aside and hurts them. | `damage` 3, `push` 140 |
+
+Music themes: `creep` (spiders), `chug` (beetles), `bubble` (crustaceans), `rattle` (myriapods),
+`flute` (flyers), `kalimba`. Leave it out and the bug's tags pick one.
+
+### Skill trees for every bug
+
+Every custom bug has a skill tree, plus the kin branch of its kind (insect, beetle, spider...):
+
+* `skillTree = "preset:brawler"` – a ready-made tree that works with any moves: `brawler`,
+  `tank`, `speedster`, `ranged` (Sharpshooter) or `control` (Trapper). With no `skillTree`, the
+  preset that fits the bug's `playstyle` is used.
+* `skillTree = "mantis"` – borrow a built-in bug's tree.
+* `skillTree = { branches = ... }` – its own (below).
+
 ### Moves written in code
 
 Any move can be written as code: give it functions instead of a `type` (or `type = "scripted"`).
@@ -304,7 +364,8 @@ Every hit and shot takes the same extras: `knockback` (0 .. 900), `poison = { dp
 | `anim(name)` | Plays one of the bug's own animations. |
 | `sound(name, pitch, volume)` | Your own sounds, or `hit`, `swing`, `special`, `zap`, `boom`, `dash`, `chime`, `drop`, `kill`, `pickup`, `equip`, `bell`, `hurt`. |
 | `ring{ radius, color, x, y, life }`, `particles{ count, color, speed, glow }`, `shake(amount)`, `say(text, color)` | Effects and floating text. |
-| `count(radius)`, `nearest(radius)`, `enemies(radius)` | How many ants are near; x, y of the nearest; a list of up to 40 `{ x, y, hp, maxHp, boss }`. |
+| `count(radius)`, `nearest(radius)`, `enemies(radius)` | How many ants are near; x, y of the nearest; a list of up to 40 `{ x, y, hp, maxHp, id, boss, queen, elite, flying, poisoned, slowed }`. |
+| `props(radius)`, `kickProps{ radius, strength, ahead, x, y }` | Rocks, sticks and leaves near the bug (`{ x, y, id, size }`); knock them flying. `grab` picks up props too. |
 
 ### Code on game events
 
@@ -330,8 +391,7 @@ Hits made by event code can set off more events, a few deep, so nothing loops fo
 
 ### An own skill tree
 
-`skillTree` can be a bug id to borrow, or a whole tree of its own (points come from skipping
-level-up cards, like every bug):
+A whole tree of its own (points come from skipping level-up cards, like every bug):
 
 ```lua
 skillTree = {

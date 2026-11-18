@@ -462,7 +462,7 @@ function Skills:trigger(name, ctx)
             self.dashing = false
             local ectx = { world = ctx.world, player = p, procDepth = 0 }
             self:trigger("onDashEnd", ectx)
-            if p.def.hooks then require("src.game.scriptmoves").event(p, "onDashEnd", ectx) end
+            if p.def.custom then require("src.game.scriptmoves").event(p, "onDashEnd", ectx) end
         end
     elseif name == "onDash" then
         self.dashing = true

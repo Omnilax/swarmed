@@ -23,6 +23,62 @@ local SLIDERS = {
     { "damage", -80, 150, 5 }, { "attackSpeed", -60, 150, 5 }, { "critChance", 0, 80, 1 }, { "hpRegen", 0, 10, 0.5 },
 }
 
+local Traits = require("src.game.bugtraits")
+local GLOWS = { { "#ffd870", "Gold" }, { "#80ff70", "Green" }, { "#70c8ff", "Blue" }, { "#ff6050", "Red" },
+    { "#c080ff", "Violet" }, { "#ffffff", "White" } }
+local function hexOf(c)
+    return ("#%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
+end
+
+-- the looks / passives / movement / music part of the mixer state, from a def (or defaults)
+local function extrasFrom(def, m)
+    m.music = type(def and def.music) == "table" and def.music.theme or (def and def.music) or NONE
+    m.passiveArgs = {}
+    local ids = {}
+    for _, id in ipairs(Traits.PASSIVE_ORDER) do
+        if def and def.passives and def.passives[id] then ids[#ids + 1] = id m.passiveArgs[id] = def.passives[id] end
+    end
+    m.passive1, m.passive2, m.passive3 = ids[1] or NONE, ids[2] or NONE, ids[3] or NONE
+    local fx = def and def.effects or {}
+    m.glow = fx.glow and hexOf(fx.glow.color) or NONE
+    m.glowPulse = fx.glow and fx.glow.pulse > 0 or false
+    m.trail = fx.trail and fx.trail.kind or NONE
+    m.sparkle = fx.sparkle and hexOf(fx.sparkle.color) or NONE
+    local mv = def and def.movement or {}
+    m.slide = math.floor((mv.slide or 0) * 100 / 5 + 0.5) * 5
+    m.hover = mv.hover or 0
+    m.sprint = mv.sprint and true or false
+end
+
+-- ... and back to script fields
+local function extrasRaw(m)
+    local r = {}
+    if m.music ~= NONE then r.music = m.music end
+    local ps = {}
+    for _, k in ipairs({ "passive1", "passive2", "passive3" }) do
+        local id = m[k]
+        if id ~= NONE then
+            local args = {}
+            for a, v in pairs(m.passiveArgs[id] or {}) do
+                if type(v) == "table" and v[1] then args[a] = hexOf(v) else args[a] = v end
+            end
+            ps[id] = args
+        end
+    end
+    r.passives = next(ps) and ps or nil
+    local fx = {}
+    if m.glow ~= NONE then fx.glow = { color = m.glow, radius = 60, intensity = 0.6, pulse = m.glowPulse and 2 or 0 } end
+    if m.trail ~= NONE then fx.trail = { kind = m.trail } end
+    if m.sparkle ~= NONE then fx.sparkle = { color = m.sparkle, rate = 4 } end
+    r.effects = next(fx) and fx or nil
+    local mv = {}
+    if m.slide > 0 then mv.slide = m.slide / 100 end
+    if m.hover > 0 then mv.hover = m.hover end
+    if m.sprint then mv.sprint = { after = 1, speed = 1.4 } end
+    r.movement = next(mv) and mv or nil
+    return r
+end
+
 local function builtins()
     return Content.characters:filter(function(c) return not c.custom end)
 end
@@ -58,6 +114,7 @@ function Mixer.new(opts)
         for k, v in pairs(def.stats) do m.stats[k] = v end
         m.rules, m.skillTree = def.rules or NONE, def.skillTree or NONE
         m.startingItems, m.tags, m.immune = def.startingItems, def.tags, def.immune
+        extrasFrom(def, m)
         self.replaces = def.id
         if (def.description or ""):find("^The body of the ") then self.autoDesc = def.description end
         self.fromCode = entry.source and not entry.source:find("^%-%- Made with the Bug Creator") or false
@@ -77,9 +134,11 @@ function Mixer.new(opts)
         m.hue = 0
         m.stats = {}
         for _, s in ipairs(SLIDERS) do m.stats[s[1]] = statOf(base, s[1]) end
-        m.rules, m.skillTree = NONE, base.id
+        m.rules, m.skillTree = NONE, NONE
+        extrasFrom(nil, m)
     end
     self.m = m
+    self.extrasBase = CustomBugs.serialize(extrasRaw(m))
     self.menu = Menu.new({
         items = {},
         onBack = function() self:back() end,
@@ -141,6 +200,7 @@ function Mixer:raw()
     end
     if m.rules ~= NONE then raw.rules = m.rules end
     if m.skillTree ~= NONE then raw.skillTree = m.skillTree end
+    for k, v in pairs(extrasRaw(m)) do raw[k] = v end
     return raw
 end
 
@@ -160,7 +220,13 @@ function Mixer:source()
     for k, v in pairs(m.stats) do
         if v ~= statOf(d, k) then t.stats[k] = v end
     end
-    if not (t.name or t.scale or t.colors ~= nil or next(t.stats)) then return self.tweak.source end
+    -- passives, looks, movement, music: written whole once any of them changed
+    local ex = extrasRaw(m)
+    if CustomBugs.serialize(ex) ~= self.extrasBase then
+        t.extras = { music = ex.music or false, passives = ex.passives or false, effects = ex.effects or false,
+            movement = ex.movement or false }
+    end
+    if not (t.name or t.scale or t.colors ~= nil or next(t.stats) or t.extras) then return self.tweak.source end
     -- the name is always written once it differs, so the file keeps its name after a rename
     return CustomBugs.tweakSource(self.tweak.source, t)
 end
@@ -244,6 +310,51 @@ function Mixer:build(keep)
     items[#items + 1] = { type = "choice", label = "Skill tree", options = treeOpts, get = get("skillTree"), set = set("skillTree"),
         desc = "A ready-made preset tree (works with any moves), or borrow a bug's tree (its upgrades work best with that bug's own moves). Every bug also gets its kin branch." }
     end
+    -- passives, looks, movement, music (src/game/bugtraits.lua)
+    items[#items + 1] = { type = "header", label = "Passives" }
+    local pasOpts = { { value = NONE, label = "None" } }
+    for _, id in ipairs(Traits.PASSIVE_ORDER) do pasOpts[#pasOpts + 1] = { value = id, label = Traits.PASSIVES[id].name } end
+    for i = 1, 3 do
+        local key = "passive" .. i
+        items[#items + 1] = { type = "choice", label = "Passive " .. i, options = pasOpts, get = get(key), set = set(key),
+            desc = function()
+                local id = m[key]
+                return id ~= NONE and Traits.PASSIVES[id].desc or "Pick a passive: camouflage, auras, thorns, venom, a hard shell, helpers that hatch..."
+            end }
+    end
+    items[#items + 1] = { type = "header", label = "Looks & Sound" }
+    local glowOpts = { { value = NONE, label = "None" } }
+    local known = false
+    for _, g in ipairs(GLOWS) do glowOpts[#glowOpts + 1] = { value = g[1], label = g[2] } known = known or g[1] == m.glow end
+    if m.glow ~= NONE and not known then glowOpts[#glowOpts + 1] = { value = m.glow, label = "Own (" .. m.glow .. ")" } end
+    items[#items + 1] = { type = "choice", label = "Glow", options = glowOpts, get = get("glow"), set = set("glow"),
+        desc = "A light around the bug (it shows best at night and in the dark)." }
+    items[#items + 1] = { type = "toggle", label = "Glow pulses", get = get("glowPulse"), set = set("glowPulse") }
+    local trailOpts = { { value = NONE, label = "None" } }
+    for _, k in ipairs({ "dust", "spark", "bubble", "slime", "fire", "frost", "petals", "shadow" }) do
+        trailOpts[#trailOpts + 1] = { value = k, label = k:sub(1, 1):upper() .. k:sub(2) }
+    end
+    items[#items + 1] = { type = "choice", label = "Trail", options = trailOpts, get = get("trail"), set = set("trail"),
+        desc = "Particles left behind while it walks." }
+    local sparkOpts = { { value = NONE, label = "None" } }
+    for _, g in ipairs(GLOWS) do sparkOpts[#sparkOpts + 1] = { value = g[1], label = g[2] } end
+    if m.sparkle ~= NONE and not (function() for _, g in ipairs(GLOWS) do if g[1] == m.sparkle then return true end end end)() then
+        sparkOpts[#sparkOpts + 1] = { value = m.sparkle, label = "Own" }
+    end
+    items[#items + 1] = { type = "choice", label = "Sparkles", options = sparkOpts, get = get("sparkle"), set = set("sparkle"),
+        desc = "Little lights drifting up off the bug." }
+    local musOpts = { { value = NONE, label = "Fits its kind" } }
+    for _, th in ipairs(require("src.core.music").THEMES) do musOpts[#musOpts + 1] = { value = th, label = th:sub(1, 1):upper() .. th:sub(2) } end
+    items[#items + 1] = { type = "choice", label = "Music", options = musOpts, get = get("music"), set = set("music"),
+        desc = "The bug's own band in the music: creep (spiders), chug (beetles), bubble (crustaceans), rattle (myriapods), flute (flyers), kalimba." }
+    items[#items + 1] = { type = "header", label = "Movement" }
+    items[#items + 1] = { type = "slider", label = "Slide", min = 0, max = 90, step = 5, get = get("slide"), set = set("slide"),
+        format = function(v) return v == 0 and "Off" or (v .. "%") end, desc = "Steering eases in, like skating on ice." }
+    items[#items + 1] = { type = "slider", label = "Hover", min = 0, max = 20, step = 1, get = get("hover"), set = set("hover"),
+        format = function(v) return v == 0 and "Off" or (v .. " px") end, desc = "Floats above the ground. From 6 px up, walking ants can't touch it." }
+    items[#items + 1] = { type = "toggle", label = "Sprint", get = get("sprint"), set = set("sprint"),
+        desc = "After a second of running it speeds up by 40%." }
+
     items[#items + 1] = { type = "header", label = "" }
     items[#items + 1] = { type = "button", label = "Save", onActivate = function() self:save(false) end,
         desc = "Save it. It joins the bug select screen (Show: Custom Bugs)." }
@@ -416,6 +527,7 @@ function Mixer:draw()
     -- help for the focused row, then any problem
     local it = self.menu:focused()
     local desc = it and it.desc
+    if type(desc) == "function" then desc = desc() end
     if self.tweak then
         desc = (desc and desc .. "\n\n" or "") .. "This bug has its own art or code, so its script is kept as it is: what you change here is added as a few lines after it."
     elseif self.fromCode then

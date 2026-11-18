@@ -1303,6 +1303,7 @@ function World:draw()
     -- Additive glow pass: attack swooshes, sparks, explosions.
     lg.setBlendMode("add")
     self:drawFx()
+    if self.player.def.custom then require("src.game.bugtraits").drawGlow(self.player, self) end
     self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
     if Settings.get("showHitboxes") then self:drawHitboxes(list, n) end
@@ -1355,6 +1356,7 @@ function World:drawLighting(ox, oy, list, n)
             if not sl._c then sl._c = util.hex(sl.color) end
             light(px, py, sl.radius or 60, sl._c[1], sl._c[2], sl._c[3], sl.intensity or 0.5)
         end
+        if p.def.custom then require("src.game.bugtraits").light(p, self, light, px, py) end
     end
     for i = 1, n do
         local e = list[i]

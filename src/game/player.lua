@@ -121,6 +121,7 @@ function Player:setCharacter(def)
     -- custom bug script state (src/game/scriptmoves.lua)
     self._me, self._cx, self.scriptHelpers, self.scriptHeld, self.scriptPending = nil, nil, nil, nil, nil
     self.scriptBlock, self.scriptWardOn, self.scriptSpeed, self.scriptSpeedT, self.scriptStarted = nil, nil, nil, nil, nil
+    self.traits, self.traitShell, self.traitWardOn, self.traitSpeed, self.slideVX, self.slideVY = nil, nil, nil, nil, nil, nil
     self.slowT, self.slowAmt = 0, 1                 -- timed slow (pebble daze)
     self.venomT, self.venomDps, self.venomTick = 0, 0, 0   -- poison from venomous bites
     self.stunT, self.blindT, self.gumT, self.gumMul = 0, 0, 0, 1   -- paralysed, blinded, attacks gummed up (bees, wasps)
@@ -286,7 +287,7 @@ function Player:update(dt)
         world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, { 0.6, 0.85, 1 }, 1, { glow = true, grav = 0 })
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
-            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1)
+            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1) * (self.traitSpeed or 1)
         -- the arena (src/game/director.lua): weather, water, sun and shade
         local env = world.env
         if env and not self.def.immune then
@@ -301,6 +302,14 @@ function Player:update(dt)
             local sx, sy = mvx - f * self.aimX, mvy - f * self.aimY
             mvx = self.aimX * f * (sw.forward or 0.6) + sx * (sw.side or 1.15)
             mvy = self.aimY * f * (sw.forward or 0.6) + sy * (sw.side or 1.15)
+        end
+        -- custom bugs can slide (movement.slide 0..0.95): steering eases in like on ice
+        local slide = self.def.movement and self.def.movement.slide
+        if slide then
+            local k = 1 - math.exp(-dt * (1 - slide) * 25)
+            self.slideVX = (self.slideVX or 0) + (mvx * speed - (self.slideVX or 0)) * k
+            self.slideVY = (self.slideVY or 0) + (mvy * speed - (self.slideVY or 0)) * k
+            mvx, mvy, speed = self.slideVX, self.slideVY, 1
         end
         vx, vy = mvx * speed + self.kvx + self.momX, mvy * speed + self.kvy + self.momY
     end

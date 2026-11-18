@@ -242,19 +242,8 @@ local function build(player)
     function me.summon(t)
         t = type(t) == "table" and t or {}
         return U(function()
-            local list = player.scriptHelpers or {}
-            player.scriptHelpers = list
-            local n = math.floor(num(t.count, 3, 1, 20))
-            for i = 1, n do
-                if #list >= 60 then break end
-                local a = i / n * math.pi * 2 + love.math.random() * 0.5
-                list[#list + 1] = { x = player.x, y = player.y, vx = math.cos(a) * 90, vy = math.sin(a) * 90, t = 0,
-                    life = num(t.life, 5, 0.5, 30), damage = num(t.damage, 4, 0, 500), speed = num(t.speed, 160, 30, 500),
-                    bites = math.floor(num(t.bites, 3, 1, 50)), size = math.floor(num(t.size, 2, 1, 6)),
-                    color = color(t.color, { 0.45, 0.38, 0.3 }), poison = type(t.poison) == "table" and hitOpts(t).poison or nil,
-                    depth = cx.depth, look = 0 }
-            end
-            return n
+            return SM.addHelpers(player, { count = t.count, life = t.life, damage = t.damage, speed = t.speed, bites = t.bites,
+                size = t.size, color = t.color, poison = type(t.poison) == "table" and hitOpts(t).poison or nil, depth = cx.depth })
         end)
     end
 
@@ -390,6 +379,31 @@ local function build(player)
         if not id then return end
         return U(function() Audio.play(id, { pitch = num(pitch, 1, 0.2, 4), volume = num(volume, 1, 0, 1) }) end)
     end
+    -- rocks, sticks, leaves... near the bug: up to 20 { x, y, id, size }
+    function me.props(radius)
+        return U(function()
+            local out, props = {}, world().props
+            if not props then return out end
+            local Props = require("src.game.props")
+            for _, o in ipairs(props.list) do
+                if #out >= 20 then break end
+                if not o.dead and Props.distance(o, player.x, player.y) <= num(radius, 80, 1, 800) then
+                    out[#out + 1] = { x = o.x, y = o.y, id = o.def.id, size = o.r }
+                end
+            end
+            return out
+        end)
+    end
+    -- knock the props around a point flying: { radius, strength, ahead, x, y }
+    function me.kickProps(t)
+        t = type(t) == "table" and t or {}
+        return U(function()
+            local props = world().props
+            if not props then return end
+            local x, y = point(t, 0)
+            props:blast(x, y, num(t.radius, 40, 4, 300), num(t.strength, 260, 0, 900))
+        end)
+    end
     -- play one of the bug's own animations (anims = { spin = { ... } } in the script)
     function me.anim(name)
         local clip = type(name) == "string" and player.def.anims and player.def.anims[name]
@@ -414,7 +428,9 @@ local function build(player)
             local out = {}
             for _, e in ipairs(Combat.collect(world(), player.x, player.y, num(radius, 80, 1, 800))) do
                 if #out >= 40 then break end
-                out[#out + 1] = { x = e.x, y = e.y, hp = e.hp, maxHp = e.maxHp, boss = e.def.boss and true or false }
+                out[#out + 1] = { x = e.x, y = e.y, hp = e.hp, maxHp = e.maxHp, boss = e.def.boss and true or false,
+                    id = e.def.id, flying = (e.z or 0) > 4, elite = e.elite and true or false, queen = e.def.queen and true or false,
+                    poisoned = (e.poisonT or 0) > 0, slowed = (e.slowT or 0) > 0 }
             end
             return out
         end)
@@ -473,6 +489,22 @@ end
 
 ----------------------------------------------------------------------------------------------
 -- Pools, helpers, the held ant, blocking, speed: things that last
+
+-- little helpers that run down ants: { count, life, damage, speed, bites, size, color, poison, depth }
+function SM.addHelpers(player, t)
+    local list = player.scriptHelpers or {}
+    player.scriptHelpers = list
+    local n = math.floor(num(t.count, 3, 1, 20))
+    for i = 1, n do
+        if #list >= 60 then break end
+        local a = i / n * math.pi * 2 + love.math.random() * 0.5
+        list[#list + 1] = { x = player.x, y = player.y, vx = math.cos(a) * 90, vy = math.sin(a) * 90, t = 0,
+            life = num(t.life, 5, 0.5, 30), damage = num(t.damage, 4, 0, 500), speed = num(t.speed, 160, 30, 500),
+            bites = math.floor(num(t.bites, 3, 1, 50)), size = math.floor(num(t.size, 2, 1, 6)),
+            color = color(t.color, { 0.45, 0.38, 0.3 }), poison = t.poison, depth = t.depth or 0, look = 0 }
+    end
+    return n
+end
 
 function SM.addPool(player, world, t, x, y, depth)
     local zones = world.hazards.zones
@@ -539,6 +571,7 @@ end
 -- Every frame for a custom bug (Player:update): hooks.onTick / onStart, helpers, timers.
 function SM.tick(player, world, dt)
     local def = player.def
+    require("src.game.bugtraits").tick(player, world, dt)
     local hooks = def.hooks
     if player.scriptSpeedT then
         player.scriptSpeedT = player.scriptSpeedT - dt
@@ -623,6 +656,7 @@ function SM.evOf(ctx)
         hp = t and t.hp, maxHp = t and t.maxHp, move = type(ctx.move) == "string" and ctx.move or nil }
 end
 function SM.event(player, name, ctx)
+    if player.def.passives then require("src.game.bugtraits").event(player, name, ctx) end
     local hooks = player.def.hooks
     local fn = hooks and EVENTS[name] and hooks[name]
     if not fn then return end

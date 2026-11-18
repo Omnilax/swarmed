@@ -263,7 +263,11 @@ function Creator:draw()
         if def.ownTree then extras[#extras + 1] = "own skill tree" end
         if def.sounds then extras[#extras + 1] = "own sounds" end
         if def.mix.anims then extras[#extras + 1] = "own animations" end
+        if def.effects then extras[#extras + 1] = "glow / trails" end
+        if def.movement then extras[#extras + 1] = "own movement" end
         if #extras > 0 and not small then rows[#rows + 1] = { "Extras", table.concat(extras, ", ") } end
+        local pas = require("src.game.bugtraits").describe(def)
+        if #pas > 0 then rows[#rows + 1] = { "Passives", table.concat(pas, ", ") } end
         -- how it has done (Records keeps every bug's runs, custom ones too)
         local rec = require("src.game.records").get().characters[def.id]
         rows[#rows + 1] = { "Runs", rec and ("%d played, %d won, best wave %d"):format(rec.runs or 0, rec.wins or 0, rec.bestWave or 0) or "not played yet" }

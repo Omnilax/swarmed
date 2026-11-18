@@ -834,6 +834,8 @@ function CustomBugs.build(raw)
     for _, t in ipairs(type(raw.tags) == "table" and raw.tags or {}) do
         if type(t) == "string" and #def.tags < 8 and t ~= "custom" then def.tags[#def.tags + 1] = t:sub(1, 20) end
     end
+    -- passives, looks, movement and music (src/game/bugtraits.lua)
+    require("src.game.bugtraits").build(raw, def, errs, warns)
     if type(raw.skillTree) == "table" then def.ownTree = buildTree(def, raw.skillTree, errs, warns) end
     if not (def.ownTree or def.skillTree or def.presetTree) then def.presetTree = Presets.forPlaystyle(def.playstyle) end
     if def.hooks or def.ownTree then def.scripted = true end
@@ -1025,7 +1027,8 @@ end
 -- Writing scripts
 
 local KEY_ORDER = { "name", "description", "lore", "tip", "look", "scale", "radius", "colors", "playstyle",
-    "stats", "attack", "secondary", "dash", "rules", "skillTree", "immune", "startingItems", "tags" }
+    "stats", "attack", "secondary", "dash", "rules", "skillTree", "immune", "startingItems", "tags",
+    "passives", "effects", "movement", "music" }
 
 local function isIdent(k) return type(k) == "string" and k:match("^[%a_][%w_]*$") ~= nil end
 
@@ -1107,6 +1110,11 @@ function CustomBugs.tweakSource(source, t)
     table.sort(keys)
     if #keys > 0 then line("bug.stats = bug.stats or {}") end
     for _, k in ipairs(keys) do line(("bug.stats.%s = %s"):format(k, ser(t.stats[k], ""))) end
+    for _, k in ipairs({ "music", "passives", "effects", "movement" }) do
+        local v = t.extras and t.extras[k]
+        if v == false then line("bug." .. k .. " = nil")
+        elseif v ~= nil then line("bug." .. k .. " = " .. ser(v, "")) end
+    end
     line("return bug")
     return table.concat(out)
 end

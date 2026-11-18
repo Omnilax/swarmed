@@ -400,7 +400,7 @@ function Inventory:trigger(name, ctx)
     local BugRules = require("src.game.bugrules")
     BugRules.trigger(self.player, name, ctx)
     -- a custom bug's own event code (hooks = { onHit = function(me, ev) ... }, src/game/scriptmoves.lua)
-    if self.player.def.hooks and name ~= "onTick" then require("src.game.scriptmoves").event(self.player, name, ctx) end
+    if self.player.def.custom and name ~= "onTick" then require("src.game.scriptmoves").event(self.player, name, ctx) end
     local ruled = BugRules.of(self.player) ~= nil
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]

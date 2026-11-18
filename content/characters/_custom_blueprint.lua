@@ -63,8 +63,16 @@ return {
     -- dash = Shift: the movement move (false = a plain dash)
     dash = "wolf_spider",
 
+    -- PASSIVES, LOOKS, MOVEMENT, MUSIC (no code needed; every option in docs/CUSTOM_BUGS.md)
+    passives = { thorns = { damage = 8 } },     -- camo, regen, aura, thorns, venom, shell, spawn...
+    effects = { glow = { color = "#80ff70", radius = 50 } },   -- glow, trail, sparkle, shimmer
+    -- movement = { slide = 0.4, hover = 8, sprint = { after = 1, speed = 1.4 } },
+    -- music = "chug",                         -- creep, chug, bubble, rattle, flute, kalimba
+
     -- Borrow a built-in bug's item rule (dung_beetle, hermit_crab, orb_weaver, hissing_roach,
-    -- scorpion ...) and skill tree (any built-in bug id). Leave out for none.
+    -- scorpion ...). Skill tree: a built-in bug's id, a preset ("preset:tank", also brawler,
+    -- speedster, ranged, control) or a whole tree of its own. Leave out for the preset that
+    -- fits the playstyle.
     -- rules = "dung_beetle",
     skillTree = "rhino_beetle",
     -- immune = true,           -- no debuffs (slow, poison...) like the hissing roach
