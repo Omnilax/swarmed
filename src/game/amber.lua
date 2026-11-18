@@ -31,6 +31,17 @@ local function index()
         end
         Cfg.shelves[#Cfg.shelves + 1] = { id = "artifacts", name = "Artifacts", list = list }
     end
+    -- and a Keepsakes shelf from src/config/keepsakes.lua
+    local haveK = false
+    for _, shelf in ipairs(Cfg.shelves) do if shelf.id == "keepsakes" then haveK = true end end
+    if not haveK then
+        local list = {}
+        for _, k in ipairs(require("src.config.keepsakes")) do
+            list[#list + 1] = { id = "keepsake_" .. k.id, name = k.name, cost = k.cost, kind = "keepsake",
+                keepsake = k.id, description = k.description .. " Pick it before a run in mode select." }
+        end
+        table.insert(Cfg.shelves, 2, { id = "keepsakes", name = "Keepsakes", list = list })
+    end
     for _, shelf in ipairs(Cfg.shelves) do
         for _, u in ipairs(shelf.list) do
             u.shelf = shelf.id

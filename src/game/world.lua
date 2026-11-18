@@ -113,6 +113,8 @@ function World.new(opts)
     require("src.game.onramp").attach(self)
     -- artifacts (content/artifacts): run rules switched on before the run
     require("src.game.artifacts").apply(self, opts.artifacts)
+    -- a keepsake (src/config/keepsakes.lua): one small trade carried into the run
+    require("src.game.keepsakes").apply(self, opts.keepsake)
     -- queens with phases, the Empress, named champions (src/game/bosses.lua)
     require("src.game.bosses").attach(self)
     -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
@@ -452,6 +454,7 @@ end
 -- floats none, so sweeping up a trail doesn't spam the screen.
 function World:grantXP(amount, x, y, quiet)
     if not amount or amount <= 0 then return end
+    if self.xpMul then amount = amount * self.xpMul end
     self.xp = (self.xp or 0) + amount
     if self.player and self.player.skills then self.player.skills:gainXP(amount) end
     self.events:emit("xp_gained", amount, x, y)
@@ -463,6 +466,8 @@ end
 
 function World:addNectar(amount, x, y)
     if not amount or amount <= 0 then return end
+    -- a keepsake can change what you earn (src/game/keepsakes.lua)
+    if self.nectarMul then amount = math.max(1, math.floor(amount * self.nectarMul + 0.5)) end
     self.nectar = self.nectar + amount
     self.nectarEarned = self.nectarEarned + amount
     self.events:emit("nectar_changed", self.nectar, amount)

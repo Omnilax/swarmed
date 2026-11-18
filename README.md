@@ -530,6 +530,18 @@ src/game/bosses.lua, numbers and names in src/config/bosses.lua.
 
 Test: `love . --selftest --bosses`.
 
+## Keepsakes
+
+One small trade your bug carries into a run (src/config/keepsakes.lua, src/game/keepsakes.lua).
+Bought with amber on the Burrow's Keepsakes shelf, then picked on the **Keepsake** row in mode
+select (the row shows once you own one). Each trades one thing for another, never a straight
+gain: Snail Shell (more health, slower), Wasp Sting (more damage, less health), Dragonfly Wing
+(faster, less damage), Honey Jar (30 nectar to start, less nectar earned), Old Map (more XP, less
+nectar), Pill Bug Plate (bites hurt less, slower attacks). A saved run keeps its keepsake; the
+daily run, practice and the tutorial take none.
+
+Test: `love . --selftest --keepsakes`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

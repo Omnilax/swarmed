@@ -134,7 +134,7 @@ function Burrow:draw()
     y = y + lg.getFont():getHeight() + u(10)
     lg.setFont(Theme.font("label"))
     lg.setColor(c.accent)
-    local kind = ({ items = "ITEM PACK", stage = "MAP", mode = "MODE", artifact = "ARTIFACT" })[un.kind] or ""
+    local kind = ({ items = "ITEM PACK", stage = "MAP", mode = "MODE", artifact = "ARTIFACT", keepsake = "KEEPSAKE" })[un.kind] or ""
     lg.print(kind, x, y)
     y = y + u(28)
     lg.setFont(Theme.font("body"))

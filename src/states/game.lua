@@ -20,11 +20,12 @@ function Game.new(params)
     self.mode = params.mode or "run"
     -- artifacts switched on before the run (src/game/artifacts.lua); Metamorphosis picks the bug
     require("src.game.artifacts").prepare(params)
+    require("src.game.keepsakes").prepare(params)
     local RunSave = require("src.game.runsave")
     self.world = World.new({ mode = self.mode, character = params.character, stage = params.stage,
         gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil,
         seed = params.seed, daily = params.daily, danger = params.danger, customWaves = params.customWaves,
-        artifacts = params.artifacts })
+        artifacts = params.artifacts, keepsake = params.keepsake })
     if params.resume then RunSave.restore(self.world, params.resume) end
     -- acts: the run's route of maps, and moving on after waves 5 and 10 (src/game/acts.lua)
     if self.mode == "run" and not params.practice then

@@ -95,6 +95,14 @@ function ModeSelect.mapInfo()
     return { name = st.name, tagline = "Where the run is fought. Left and right to change.", description = st.description or "", facts = facts }
 end
 
+-- The info panel for the Keepsake row.
+function ModeSelect.keepsakeInfo()
+    local k = require("src.game.keepsakes").get(require("src.game.keepsakes").chosen())
+    return { name = k and k.name or "No keepsake", tagline = "One small trade carried into the run. Left and right to change.",
+        description = k and k.description or "Your bug as it is. Keepsakes are bought in the Burrow; each trades a little of one thing for another.",
+        facts = {} }
+end
+
 function ModeSelect.new()
     local self = setmetatable({ t = 0 }, ModeSelect)
     local items, focus = {}, 2
@@ -105,6 +113,20 @@ function ModeSelect.new()
         for _, s in ipairs(Cosmetics.locations()) do opts[#opts + 1] = { value = s.id, label = s.name } end
         items[#items + 1] = { type = "choice", label = "Map", options = opts, map = true,
             get = Cosmetics.location, set = Cosmetics.setLocation }
+    end
+    -- a keepsake: one small trade carried into the run, bought in the Burrow (src/game/keepsakes.lua)
+    do
+        local Keepsakes = require("src.game.keepsakes")
+        local opts = { { value = "none", label = "None" } }
+        for _, k in ipairs(Keepsakes.list) do
+            if Keepsakes.owned(k.id) then opts[#opts + 1] = { value = k.id, label = k.name } end
+        end
+        if #opts > 1 then
+            items[#items + 1] = { type = "choice", label = "Keepsake", options = opts, keepsake = true,
+                get = function() return Keepsakes.chosen() or "none" end,
+                set = function(v) Keepsakes.choose(v ~= "none" and v or nil) end }
+            focus = focus + 1
+        end
     end
     for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden end)) do
         local Amber = require("src.game.amber")
@@ -174,7 +196,7 @@ function ModeSelect:draw()
     self.menu:draw()
 
     local it = self.menu:focused()
-    local m = it and (it.map and ModeSelect.mapInfo() or it.mode)
+    local m = it and (it.map and ModeSelect.mapInfo() or it.keepsake and ModeSelect.keepsakeInfo() or it.mode)
     if not m then return end
     local px = math.min(u(320), w * 0.32) + u(100)
     local pw, ph = w - px - u(60), h - u(200)
