@@ -450,8 +450,16 @@ Test: `love . --selftest --gentle`.
 - **Field Guide** (main menu and pause): one short page for every system
   (`src/config/guide.lua`), a set-bonus page written from `src/config/tags.lua`, and the bug
   and item catalogues. Pages for systems Gentle Start hasn't shown yet read "? ? ?" until met.
+- **Wiki** (Field Guide > Wiki, `src/states/wiki.lua`): nine tabs (Bugs, Enemies, Items,
+  Level-ups, Maps, World, Modes, Progress, Design) with a page for everything in the game. Pages
+  are written live from the content by `src/game/wiki.lua`, so new content shows up by itself;
+  "how it works" notes are the comment block at the top of each behaviour / attack / dash file.
+  Enemies you haven't met stay "? ? ?" (unless Unlock Everything). The Design tab is
+  `docs/wiki/*.md` baked into `src/config/wiki_notes.lua` by `python3 tools/make_wiki_notes.py`
+  (run it after editing a chapter). Two panes on wide screens; one pane with a Back button on an
+  upright phone. The same chapters build the Design Bible PDFs (`tools/wiki/README.md`).
 
-Test: `love . --selftest --tutorial`.
+Test: `love . --selftest --tutorial`, `love . --selftest --wiki`.
 
 ## Amber and the Burrow
 

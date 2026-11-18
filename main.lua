@@ -63,6 +63,8 @@ function love.load(args)
     Music.init()
     Sprites.build(Content.sprites)
 
+    -- the Design Bible PDFs read the game through this dump (tools/wiki/README.md)
+    if flags["--docdump"] then require("src.debug.docdump")() love.event.quit() return end
     Settings.onChange(function(key)
         local s = Settings.byKey[key]
         if s and s.window then Screen.applyVideoSettings() end

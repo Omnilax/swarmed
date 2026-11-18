@@ -690,6 +690,7 @@ local function script(flags)
     if flags["--nectar"] then require("src.debug.selftest_nectar")(wait, shot) love.event.quit() return end
     if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
     if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
+    if flags["--docshots"] then require("src.debug.selftest_docshots")(wait, shot) love.event.quit() return end
     if flags["--arttour"] then require("src.debug.selftest_arttour")(wait, shot) love.event.quit() return end
     if flags["--itemorg"] then require("src.debug.selftest_itemorg")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
@@ -700,6 +701,7 @@ local function script(flags)
     if flags["--runcode"] then require("src.debug.selftest_runcode")(wait, shot) love.event.quit() return end
     if flags["--flow"] then require("src.debug.selftest_flow")(wait, shot) love.event.quit() return end
     if flags["--visuals"] then require("src.debug.selftest_visuals")(wait, shot) love.event.quit() return end
+    if flags["--wiki"] then require("src.debug.selftest_wiki")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end

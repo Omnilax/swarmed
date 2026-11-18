@@ -1,6 +1,7 @@
--- The Field Guide: how everything in the game works (pages in src/config/guide.lua), plus the
--- bug and item catalogues. Pages for systems the player hasn't met yet (Gentle Start,
--- src/game/onramp.lua) read "not met yet" instead of spoiling them. Main menu and pause menu.
+-- The Field Guide: how everything in the game works (pages in src/config/guide.lua), the Wiki
+-- (src/states/wiki.lua: every bug, enemy, item, map... with how it works), and the catalogues.
+-- Pages for systems the player hasn't met yet (Gentle Start, src/game/onramp.lua) read "not met
+-- yet" instead of spoiling them. Main menu and pause menu.
 local State = require("src.core.state")
 local Theme = require("src.ui.theme")
 local Menu = require("src.ui.menu")
@@ -44,6 +45,13 @@ function FieldGuide.new(opts)
         items[#items + 1] = { type = "button", label = "Play the tutorial", known = true,
             page = { title = "Tutorial", text = "A guided first fight, one lesson at a time: moving, attacking, dashing, specials, nectar, level-ups, items, the bag, the shop, frenzy, elites and a queen." },
             onActivate = function() require("src.states.menu").tutorial() end }
+    end
+    -- the Wiki: every bug, enemy, item, map... written live from the game's content
+    items[#items + 1] = { type = "header", label = "Wiki" }
+    for i, s in ipairs(require("src.game.wiki").SECTIONS) do
+        items[#items + 1] = { type = "button", label = s.label, link = true, known = true,
+            page = { title = s.label, text = s.blurb },
+            onActivate = function() State.push(require("src.states.wiki").new({ section = i, inRun = self.opts.inRun })) end }
     end
     for _, g in ipairs(Guide) do
         items[#items + 1] = { type = "header", label = g.group }
