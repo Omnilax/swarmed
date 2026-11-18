@@ -46,6 +46,8 @@ function Game.new(params)
     if self.mode == "sandbox" then
         self.world.flags.god = true
         self.sandbox = require("src.debug.sandbox").new(self)
+        -- the Bug Creator's Test Arena: dummies that don't die, every hitbox shown
+        if params.arena then self.sandbox:arena() end
     end
     self.world.events:on("player_died", function()
         self.deathTimer = 1.2
@@ -140,6 +142,13 @@ function Game:restart()
     local p = {}
     for k, v in pairs(self.params) do p[k] = v end
     p.resume = nil
+    if p.arena then
+        -- the Test Arena sits on top of the Bug Creator: keep that underneath
+        while State.top() and State.top() ~= self do State.pop() end
+        State.pop()
+        State.push(Game.new(p))
+        return
+    end
     State.switch(Game.new(p))
 end
 
@@ -185,6 +194,9 @@ function Game:update(dt)
     if won and self.world.time >= (won.at or (self.world.pendingChoice or {}).at or 0) then
         self.world.pendingVictory = nil
         if not self.world.player.dead then
+            local p = self.world.player
+            local clip = p.def.custom and p.def.anims and p.def.anims.victory
+            if clip then p.wonPose = true require("src.gfx.anim").play(p, clip, "pose_victory", {}) end
             State.push(require("src.states.victory").new(self, won))
             return
         end

@@ -48,6 +48,7 @@ function Preview:update(dt)
     local w = self.world
     local pilot = w.pilot
     pilot.pressed = {}
+    if self.extraPress then pilot.pressed[self.extraPress] = true self.extraPress = nil end      -- (block editor)
     self.t = self.t + dt
     local cycle, t1 = math.floor(self.t / LOOP), self.t % LOOP
     pilot.down = {}

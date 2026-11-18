@@ -44,9 +44,6 @@ function love.load(args)
     local CustomBugs = require("src.game.custombugs")
     if Records.noSave or flags["--balance"] then
         CustomBugs.dir, CustomBugs.noSave = "selftest_custom_bugs", true
-    else
-        local okC, errC = pcall(CustomBugs.loadAll)
-        if not okC then print("[custombugs] " .. tostring(errC)) end
     end
     require("src.game.tutorial").load()
     require("src.game.prefs").noSave = Records.noSave or flags["--balance"] or false
@@ -62,6 +59,11 @@ function love.load(args)
     require("src.game.acts").off = Records.noSave or flags["--balance"] or false
     Music.init()
     Sprites.build(Content.sprites)
+    -- custom bugs load after the atlas: their own art is built as small images of its own
+    if not (Records.noSave or flags["--balance"]) then
+        local okC, errC = pcall(CustomBugs.loadAll)
+        if not okC then print("[custombugs] " .. tostring(errC)) end
+    end
 
     -- the Design Bible PDFs read the game through this dump (tools/wiki/README.md)
     if flags["--docdump"] then require("src.debug.docdump")() love.event.quit() return end

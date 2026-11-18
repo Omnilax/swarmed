@@ -207,6 +207,8 @@ function Records.track(world, info)
     end)
     ev:on("item_duplicated", function() p.duplicated = p.duplicated + 1 end)
     ev:on("player_died", function() Records.endRun("died") end)
+    -- a custom bug's own challenges (src/game/bugextras.lua)
+    if world.player.def.custom then require("src.game.bugextras").track(world, run, p.characters[charId]) end
     return run
 end
 

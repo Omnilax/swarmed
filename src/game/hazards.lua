@@ -190,7 +190,7 @@ function Hazards:update(dt)
                     s.hitSet[e] = true
                     local nx, ny = util.normalize(s.vx, s.vy)
                     Combat.damage(world, e, s.damage, { knockback = s.knockback or 70, kbx = nx, kby = ny, procDepth = s.procDepth or 1, slow = s.slow,
-                        poison = s.poison, corrode = s.corrode, stun = s.stun, source = s._src })
+                        poison = s.poison, corrode = s.corrode, stun = s.stun, source = s._src, cstatus = s.cstatus, look = s.look })
                     s.pierce = s.pierce - 1
                     if s.pierce < 0 then done = true break end
                 end

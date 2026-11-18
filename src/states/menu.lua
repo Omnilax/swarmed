@@ -137,7 +137,12 @@ function MainMenu:buildItems()
     self.menu:setItems(items)
 end
 
-function MainMenu:resume() self:buildItems() end
+function MainMenu:resume()
+    local f = self.menu.focus
+    self:buildItems()
+    self.menu.focus = math.min(f or 1, #self.menu.items)
+    if self.menu.fixFocus then self.menu:fixFocus(1) end
+end
 
 function MainMenu:update(dt)
     self.t = self.t + dt

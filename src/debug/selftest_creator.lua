@@ -249,6 +249,45 @@ return function(wait, shot)
         CustomBugs.unregister(kit.id)
         print(("[selftest] creator: toolkit ok (%d calls, %d hits seen by onHit)"):format(st.k, st.hits))
     end
+    -- passives, looks, movement and music, no code
+    do
+        local Traits = require("src.game.bugtraits")
+        local all = {}
+        for _, id in ipairs(Traits.PASSIVE_ORDER) do all[#all + 1] = id .. " = {}" end
+        local tr, tinfo = CustomBugs.compile(([[return { name = "Trait Bug", look = "mantis", music = { theme = "flute", key = 2 },
+            passives = { %s },
+            effects = { glow = { color = "#80ff70", pulse = 2 }, trail = "spark", sparkle = { color = "#ffffff" }, shimmer = true },
+            movement = { slide = 0.5, hover = 8, bob = 1, sprint = { after = 0.5 }, sideways = { forward = 0.5, side = 1.3 } } }]]):format(table.concat(all, ", ")))
+        assert(tr, "traits bug: " .. tostring(tinfo.errors[1]))
+        assert(#tinfo.warnings == 0, "traits bug warned: " .. tostring(tinfo.warnings[1]))
+        local n = 0
+        for _ in pairs(tr.passives) do n = n + 1 end
+        assert(n == #Traits.PASSIVE_ORDER and tr.effects.glow and tr.movement.slide and tr.music.theme == "flute" and tr.sideways, "traits lost")
+        assert(require("src.core.music").themeFor(tr) == "flute", "custom music not used")
+        assert(CustomBugs.register(tr, ""))
+        local tw = World.new({ mode = "sandbox", character = tr.id })
+        tw.flags.god = true
+        tw.pilot = { pressed = {}, down = {} }
+        local p = tw.player
+        local sawCamo, sawShell, sawHover = false, false, false
+        local Settings = require("src.core.settings")
+        for f = 1, 600 do
+            if f % 60 == 1 then tw:spawnRing("worker_ant", 8, p.x, p.y, 40) end
+            -- walk for a bit, then stand still
+            local walking = (f % 200) < 100
+            tw.pilot.mx, tw.pilot.my = walking and 1 or 0, 0
+            tw:update(1 / 60)
+            sawCamo = sawCamo or p.cloakT == "trait_camo"
+            sawShell = sawShell or p.traitShell == true
+            sawHover = sawHover or (p.z or 0) >= 6
+            love.graphics.origin()
+            if f % 150 == 0 then tw:draw() end
+        end
+        assert(sawCamo and sawShell and sawHover, ("passives did not show (camo %s shell %s hover %s)"):format(tostring(sawCamo), tostring(sawShell), tostring(sawHover)))
+        assert(tw.enemyCount < 60, "aura / passives killed nothing")
+        CustomBugs.unregister(tr.id)
+        print("[selftest] creator: every passive, glow, trail, hover and slide ran")
+    end
     -- move code is sandboxed too: a stuck loop in a move stops that move, not the game
     local loopy, linfo = CustomBugs.compile([[return { name = "Loopy", attack = { type = "scripted", cooldown = 0.5,
         fire = function(me) while true do end end } }]])
@@ -318,8 +357,14 @@ return function(wait, shot)
     end
     assert(mix.preview and mix.def and mix.def.mix.look == "lobster", "mixer preview did not build")
     shot("creator_mixer")
+    mix.m.passive1, mix.m.glow, mix.m.trail, mix.m.music, mix.m.slide = "camo", "#80ff70", "spark", "chug", 40
+    mix:refresh(true)
+    for _ = 1, 30 do wait(1 / 60) if not mix.pending then break end end
+    shot("creator_mixer_extras")
     mix:save(false)
     local made = Content.characters:get("custom_mixed_up")
+    assert(made.passives and made.passives.camo and made.effects.glow and made.effects.trail and made.music == "chug"
+        and made.movement.slide == 0.4, "mixer passives / looks / movement not saved")
     assert(made and made.attack.type == Content.characters:get("mantis_shrimp").attack.type, "mixer save failed")
     -- typing a name
     mix:startNaming()
@@ -435,6 +480,26 @@ return function(wait, shot)
     Input.virtualDown.dash = nil
     for _ = 1, 6 do wait(1 / 60) end
     shot("creator_velvet_worm")
+    -- the SKILLS tab on custom bugs: no tree, a borrowed tree, its own tree
+    assert(CustomBugs.save([[return { name = "Treeless", look = "crab" }]]))
+    assert(CustomBugs.save([[return { name = "Borrower", look = "mantis", skillTree = "scorpion" }]]))
+    for _, id in ipairs({ "custom_treeless", "custom_borrower", "custom_velvet_worm", "custom_stick_insect" }) do
+        local gg = State.switch(Game.new({ mode = "sandbox", character = id }))
+        gg.world:grantXP(400)
+        wait(0.1)
+        local inv = State.push(require("src.states.inventory").new(gg))
+        wait(0.1)
+        require("src.states.skilltree").openFrom(inv)
+        local st = State.top()
+        assert(st.skills and st.tree, id .. ": no skill tree on the SKILLS tab")
+        for _, br in ipairs(st.tree.branches) do
+            for _, n in ipairs(br.nodes) do st.skills.points = 99 st.skills:buy(n.id) end
+        end
+        wait(0.2)
+        shot("creator_tree_" .. id)
+        State.pop()
+        for _ = 1, 30 do wait(1 / 60) end
+    end
     for _, e in ipairs(CustomBugs.all()) do CustomBugs.delete(e.id) end
     State.switch(require("src.states.menu").new())
     print("[selftest] creator OK")

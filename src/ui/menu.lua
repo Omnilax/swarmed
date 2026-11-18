@@ -95,6 +95,9 @@ function Menu:activate(it)
     if it.type == "button" then
         Audio.play("ui_confirm")
         it.onActivate()
+    elseif (it.type == "toggle" or it.type == "choice") and it.onActivate then
+        Audio.play("ui_confirm")         -- a choice that also opens something (Left / Right still pick)
+        it.onActivate()
     elseif it.type == "toggle" or it.type == "choice" then
         self:adjust(it, 1)
     elseif it.type == "keybind" then
@@ -187,6 +190,8 @@ function Menu:mousepressed(mx, my, button)
     if it.type == "slider" and button == 1 then
         self.dragging = it
         self:dragTo(it, mx)
+    elseif (it.type == "choice" or it.type == "toggle") and it.onActivate and button == 1 then
+        self:activate(it)
     elseif it.type == "choice" or it.type == "toggle" then
         self:adjust(it, button == 2 and -1 or 1)
     elseif button == 1 then

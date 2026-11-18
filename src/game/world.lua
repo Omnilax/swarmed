@@ -464,7 +464,7 @@ end
 
 -- e (optional): the enemy hit. With "Combine Damage Numbers" on, quick hits on the same enemy
 -- add up into one number that keeps counting instead of a spray of small ones.
-function World:damageNumber(x, y, value, crit, e)
+function World:damageNumber(x, y, value, crit, e, col)
     local mode = Settings.get("damageNumbers")
     if mode == "off" or (mode == "crits" and not crit) then return end
     if e and Settings.get("combineDamageNumbers") then
@@ -474,15 +474,15 @@ function World:damageNumber(x, y, value, crit, e)
             t.text = tostring(t.value)
             t.t, t.z, t.vz = 0, math.max(t.z, 10), 30
             t.x, t.y = e.x, e.y
-            if crit and not t.big then t.big, t.color, t.life = true, { 1, 0.85, 0.2 }, 0.9 end
+            if crit and not t.big then t.big, t.color, t.life = true, col or { 1, 0.85, 0.2 }, 0.9 end
             return
         end
-        t = self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
+        t = self:floatText(x, y, tostring(value), col or (crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }), crit)
         t.value, t.owner, t.life = value, e, t.life + 0.2
         e._dmgText = t
         return
     end
-    self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
+    self:floatText(x, y, tostring(value), col or (crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }), crit)
 end
 
 -- XP for the skill tree: collected nectar beads (kills) and bonus sources (goals, treasure)
@@ -1407,6 +1407,7 @@ function World:draw()
     if fxLayer then Lighting.beginFx() end
     lg.setBlendMode("add")
     self:drawFx()
+    if self.player.def.custom then require("src.game.bugtraits").drawGlow(self.player, self) end
     self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
     if fxLayer then Lighting.endFx() end
@@ -1471,6 +1472,7 @@ function World:drawLighting(ox, oy, list, n)
             if not sl._c then sl._c = util.hex(sl.color) end
             light(px, py, sl.radius or 60, sl._c[1], sl._c[2], sl._c[3], sl.intensity or 0.5)
         end
+        if p.def.custom then require("src.game.bugtraits").light(p, self, light, px, py) end
     end
     for i = 1, n do
         local e = list[i]

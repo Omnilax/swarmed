@@ -124,6 +124,21 @@ end
 ----------------------------------------------------------------------------------------------
 -- Tabs
 
+-- The Bug Creator's Test Arena: a ring of dummy ants (they never die), the DPS meter, every
+-- move's hitbox drawn.
+function Sandbox:arena()
+    local world = self.world
+    self.isArena = true
+    self.hpMul = 1000
+    require("src.game.hitshapes").show = true
+    local p = world.player
+    for i = 1, 6 do
+        local a = i / 6 * math.pi * 2
+        self:spawn("worker_ant", p.x + math.cos(a) * 70, p.y + math.sin(a) * 70)
+    end
+    self:setTab(1)
+end
+
 function Sandbox:setTab(i)
     self.tab = (i - 1) % #TABS + 1
     local build = ({ self.spawnTab, self.itemsTab, self.playerTab, self.wavesTab, self.worldTab })[self.tab]
@@ -331,6 +346,8 @@ function Sandbox:worldTab()
         { type = "button", label = "Reset meter", onActivate = function() self:resetMeter() end },
         { type = "toggle", label = "Proc log", get = function() return self.showProcs end, set = function(v) self.showProcs = v end },
         { type = "toggle", label = "Hitboxes", get = hbGet, set = hbSet },
+        { type = "toggle", label = "Move hitboxes", get = function() return require("src.game.hitshapes").show end,
+            set = function(v) require("src.game.hitshapes").show = v end },
         { type = "toggle", label = "Spatial grid", get = grGet, set = grSet },
         { type = "toggle", label = "Perf overlay", get = ovGet, set = ovSet },
     }

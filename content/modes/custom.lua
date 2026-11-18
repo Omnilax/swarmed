@@ -8,6 +8,7 @@ return {
     tagline = "Build your own waves, then fight them.",
     description = "Pick the species in every wave and how many come, add queens, wave modifiers, events and stage hazards, and set how tough the enemies are. Clear your last wave to win. Sets can be copied out as text and shared.",
     order = 20,
+    group = "free",
     custom = true,
     -- your counts are exact: no extra-big opening waves, no random wave modifiers
     spawn = { earlyBoost = false },

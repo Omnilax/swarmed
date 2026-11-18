@@ -9,6 +9,7 @@ return {
     tagline = "Ten hand-made waves. The same run every time.",
     description = "A fixed run of ten waves built to test you: fast fire ants, a shield wall of soldiers, an ambush of bullet ants, a lawnmower, two queens. Learn it, then beat it faster.",
     order = 9,
+    group = "challenge",
     finalWave = 10,
     spawn = { earlyBoost = false },
     hpPerWave = 0.1,

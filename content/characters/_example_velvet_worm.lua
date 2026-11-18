@@ -81,6 +81,12 @@ return {
 
     stats = { maxHp = 60, moveSpeed = 92, armor = 0, hpRegen = 0.4 },
 
+    -- passives, looks and movement that need no code
+    passives = { frost = { mul = 0.6, chance = 0.3 } },             -- hits can glue ants down (slow)
+    effects = { trail = { kind = "slime", color = "#d8d0b0" }, glow = { color = "#ffb070", radius = 40, intensity = 0.4, pulse = 1 } },
+    movement = { slide = 0.3 },                                     -- a little slippery
+    music = "rattle",
+
     -- its own sounds, made from a few numbers
     sounds = {
         squirt = { wave = "noise", freq = 900, to = 300, duration = 0.14, volume = 0.45, decay = 2 },
