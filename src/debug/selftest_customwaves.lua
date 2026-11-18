@@ -58,6 +58,18 @@ return function(wait, shot)
     assert(Rules.get("mapGambles") == "off" and Rules.get("parasites") == false, "the run doesn't use the set's rules")
     Rules.begin(nil)
     assert(Rules.get("mapGambles") == "normal" and Rules.get("difficulty") == "worker", "the main game doesn't use the default rules")
+    -- a set's own item pool
+    ruled.itemsOff = { honeydew = true, not_an_item = true }
+    local ri = CustomWaves.clean(ruled)
+    assert(ri.itemsOff and ri.itemsOff.honeydew and not ri.itemsOff.not_an_item, "clean mangled the set's item pool")
+    local Unlocks = require("src.game.unlocks")
+    local wasFree = Unlocks.free
+    Unlocks.free = false
+    Rules.begin(CustomWaves.modeDef(Content.modes:get("custom"), ruled).rules)
+    assert(not Unlocks.inPool("honeydew"), "the set's switched-off item is still in the pool")
+    Rules.begin(nil)
+    assert(Unlocks.inPool("honeydew"), "the main game lost an item from its pool")
+    Unlocks.free = wasFree
     Rules.begin(before)
     print("[selftest] customwaves: run rules OK")
 

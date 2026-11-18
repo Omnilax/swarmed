@@ -210,6 +210,19 @@ function WaveBuilder:build(focus)
                     end })
             end
         end
+        add({ type = "button", label = "Item Pool...",
+            value = function()
+                local n = 0
+                for _ in pairs(s.itemsOff or {}) do n = n + 1 end
+                return n == 0 and "Every item" or (n .. " off")
+            end,
+            desc = "Switch items in or out of this set's item choices. The main game always offers every unlocked item.",
+            onActivate = function()
+                State.push(require("src.states.itempool").new(s.itemsOff or {}, function(off)
+                    s.itemsOff = next(off) and off or nil
+                    self:changed()
+                end))
+            end })
         add({ type = "header", label = "Waves" })
         self.firstWaveRow = #items + 1
         for i, w in ipairs(s.waves) do

@@ -278,7 +278,8 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
   works as a mode file's `waves`. Clearing the last wave wins; Keep Going loops the set, tougher.
   Custom wins count for the mode's own record only (no bug wins, danger mastery or achievements).
   Each set also has **Rules**: map gambles, parasites, level-ups (cards or skill points),
-  overlapping waves, wave heat, mini-goals, route gates, weather effects and dash tech.
+  overlapping waves, wave heat, mini-goals, route gates, weather effects, dash tech and its own
+  item pool.
 
 - **Run rules** (`src/game/rules.lua`): anything that changes the game itself (difficulty, spawns,
   elites, species order, events, gambles, encounters, pacing, acts, level-ups, dash tech,
@@ -609,8 +610,9 @@ achievements on their own. Unlocks slide in at the top right. Run events it list
   Goals are achievements in the Records screen's **Unlocks** category (`content/achievements/unlocks.lua`),
   so progress shows there and an "Unlocked" card pops up mid-run. Bugs already played before
   unlocks existed stay open. Settings > Gameplay > **Unlock Everything** opens it all.
-- **Item pool.** Settings > Gameplay > **Item Pool...** switches items in or out of the item
-  choices (at least 12 stay in). Saved in `prefs.lua`.
+- **Item pool.** The main game always offers every unlocked item; the pool is part of the game,
+  not a setting. Only a Custom Waves set's Rules > **Item Pool...** switches items out of that
+  set's choices (at least 12 stay in), saved with the set as `itemsOff`.
 - **Bug rules.** Some bugs bend how items work for them (`src/config/bugrules.lua`, run by
   `src/game/bugrules.lua`): Dung Beetle gets stronger from eaten items, Hermit Crab starts with an
   extra bag row but slows per filled cell, Orb Weaver's procs fire twice on webbed ants, Hissing

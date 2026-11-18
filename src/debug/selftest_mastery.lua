@@ -10,12 +10,11 @@ local Prefs = require("src.game.prefs")
 
 return function(wait, shot)
     local savedProfile, savedFree, savedAll = Records.profile, Unlocks.free, Settings.get("unlockAll")
-    local savedOff = Prefs.get().poolOff
     Records.noSave, Prefs.noSave = true, true
     Records.reset()
     Unlocks.free = false
     Settings.set("unlockAll", false)
-    Prefs.get().poolOff = {}
+    Unlocks.editing = nil
 
     -- 1. Locks: 8 starters open, the rest locked; unlock-all opens everything
     local open, all = Unlocks.bugCount()
@@ -53,17 +52,19 @@ return function(wait, shot)
     assert(card, "unlock card")
     print("[mastery] unlocks OK")
 
-    -- 3. Item pool toggles
+    -- 3. Item pool toggles (only a Custom Waves set's list; the main game has no global pool)
+    assert(not Unlocks.setInPool("honeydew", false) and Unlocks.inPool("honeydew"), "the main game's pool changed")
+    Unlocks.editing = {}
     assert(Unlocks.setInPool("honeydew", false) and not Unlocks.inPool("honeydew"), "switch off")
     for _ = 1, 300 do assert(Choices.pickDef(world, {}).id ~= "honeydew", "switched-off item rolled") end
     -- switching everything off stops at the minimum
     for _, d in ipairs(Content.items:all()) do Unlocks.setInPool(d.id, false) end
     assert(Unlocks.poolSize() == Unlocks.MIN_POOL, "pool minimum, got " .. Unlocks.poolSize())
-    local pool = State.push(require("src.states.itempool").new())
+    local pool = State.push(require("src.states.itempool").new(Unlocks.editing))
     wait(0.3)
     shot("mastery_itempool")
-    State.pop()
-    Prefs.get().poolOff = {}
+    pool:close()
+    assert(Unlocks.editing == nil and Unlocks.inPool("honeydew"), "closing the item pool left it switched off")
     print("[mastery] item pool OK")
 
     -- 4. Danger levels: tougher ants, less healing; a win records mastery and opens the next level
@@ -196,6 +197,5 @@ return function(wait, shot)
     Records.profile = savedProfile
     Unlocks.free = savedFree
     Settings.set("unlockAll", savedAll)
-    Prefs.get().poolOff = savedOff
     print("[selftest] mastery OK")
 end

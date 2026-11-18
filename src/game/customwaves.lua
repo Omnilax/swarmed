@@ -6,6 +6,7 @@
 --     hpPerWave = 0.12,                 -- extra enemy health per wave
 --     elites = "normal",                -- "none" | "normal" | "double" | "all"
 --     rules = { mapGambles = "off", parasites = false },   -- run rules (src/game/rules.lua), optional
+--     itemsOff = { honeydew = true },   -- items switched out of this set's item choices, optional
 --     waves = {
 --       { groups = { { "worker_ant", 30 }, { "fire_ant", 12 } },   -- species id, how many
 --         queen = "queen_fire",         -- a boss enemy that comes this wave (optional)
@@ -105,6 +106,14 @@ function CustomWaves.clean(set)
     }
     for _, e in ipairs(CustomWaves.ELITES) do if e.value == set.elites then out.elites = e.value end end
     out.rules = Rules.clean(set.rules)
+    if type(set.itemsOff) == "table" then
+        for id, on in pairs(set.itemsOff) do
+            if on == true and type(id) == "string" and Content.items:get(id) then
+                out.itemsOff = out.itemsOff or {}
+                out.itemsOff[id] = true
+            end
+        end
+    end
     for _, w in ipairs(type(set.waves) == "table" and set.waves or {}) do
         local cw = CustomWaves.cleanWave(w)
         -- a wave needs someone in it
@@ -175,6 +184,7 @@ function CustomWaves.modeDef(base, set)
     m.rules = {}
     for k, v in pairs(base.rules or {}) do m.rules[k] = v end
     for k, v in pairs(set.rules or {}) do m.rules[k] = v end
+    if set.itemsOff then m.rules.itemsOff = set.itemsOff end
     if m.rules.parasites == false then m.parasites = false end
     return m
 end
