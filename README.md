@@ -246,6 +246,19 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
 - **Champions**: small groups, every enemy is an elite.
 - **Endless**: pick starting items on a point budget (`src/states/loadout.lua`), then no waves and no
   breaks; the level climbs every 40 s with a new species, a queen every 5 levels, an item choice every 3.
+- **Gauntlet**: ten hand-made scripted waves, the same every run (`waves` in `content/modes/gauntlet.lua`).
+- **Royal Court** (boss rush): a queen every wave for ten waves, a new species each wave too.
+- **Blitz**: a short run, eight huge waves with no breaks, two new species a wave, faster level-ups.
+- **Mayhem**: one or two wave modifiers on every wave from the first, extra mid-wave events, and a
+  boss encounter or stage hazard every third wave.
+- **Custom Waves**: opens the wave builder (`src/states/wavebuilder.lua`) instead of going straight to
+  the bug select. Make sets of waves: for each wave, up to six groups (species and how many), a queen,
+  up to three wave modifiers, up to four events and a boss encounter / stage hazard; per set, enemy
+  health, damage, growth per wave and elites. Sets save to `customwaves.lua` in the save folder
+  (`src/game/customwaves.lua`). Copy Set puts a set on the clipboard as a Lua table and Paste Set reads
+  one back (it runs with no globals and a step limit, so pasted text can only be data); the same table
+  works as a mode file's `waves`. Clearing the last wave wins; Keep Going loops the set, tougher.
+  Custom wins count for the mode's own record only (no bug wins, danger mastery or achievements).
 
 - **Daily Run** (bottom of the mode list): today's date seeds the bug, the stage, the species order
   and every wave modifier, so everyone gets the same run that day (Colony rules). The best result
@@ -253,7 +266,9 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
 
 A mode can override any stage wave setting (`spawn`), restrict enemies (`families`, `enemies`,
 `exclude`), scale enemy health and damage, change elite odds, and set `finalWave` (false = no end).
-`love . --selftest --modes` plays six waves of each mode and checks who came.
+Scripted modes (`waves = {...}`) send exactly what each wave lists instead of the usual one-new-species
+rhythm. `love . --selftest --modes` plays six waves of each mode and checks who came;
+`love . --selftest --customwaves` checks the builder, pasting, a custom run's exact counts and the scripted modes.
 
 ## Characters
 

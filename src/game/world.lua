@@ -34,7 +34,7 @@ World.__index = World
 World.ENEMY_CAP = 2000
 
 -- opts: stage (id), character (id), mode ("run" | "sandbox"), gameMode (content/modes id,
--- default "colony"), startItems (item ids given at the start: the endless mode's loadout)
+-- default "colony"), customWaves (a wave set, src/game/customwaves.lua; Custom Waves mode), startItems (item ids given at the start: the endless mode's loadout)
 function World.new(opts)
     local self = setmetatable({}, World)
     self.mode = opts.mode or "run"
@@ -43,6 +43,11 @@ function World.new(opts)
     self.daily = opts.daily
     love.math.setRandomSeed(self.seed)
     self.modeDef = Content.modes:get(opts.gameMode or "colony") or Content.modes:all()[1]
+    -- Custom Waves: the set picked in the wave builder (or the one a saved run carried)
+    if self.modeDef.custom then
+        self.modeDef = require("src.game.customwaves").modeDef(self.modeDef, opts.customWaves)
+        self.customWaves = self.modeDef.set
+    end
     self.gameMode = self.modeDef.id
     -- danger level of this run (src/config/danger.lua): every level adds one rule
     self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)

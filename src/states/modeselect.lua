@@ -32,6 +32,13 @@ function ModeSelect.facts(m)
     local f = {}
     if m.endless then
         f[#f + 1] = { "Length", "No waves, no end" }
+    elseif m.custom then
+        local set = require("src.game.customwaves").active()
+        f[#f + 1] = { "Your set", set.name .. " (" .. #set.waves .. " waves)" }
+        f[#f + 1] = { "Enemies", "Whatever you put in" }
+        return f
+    elseif m.waves then
+        f[#f + 1] = { "Length", #m.waves .. " scripted waves, then again, tougher" }
     elseif m.finalWave then
         f[#f + 1] = { "Length", m.finalWave .. " waves, then keep going" }
     else
@@ -46,6 +53,10 @@ function ModeSelect.facts(m)
     if m.enemyHp ~= 1 or m.enemyDamage ~= 1 then
         f[#f + 1] = { "Enemy strength", percent(m.enemyHp) .. " health, " .. percent(m.enemyDamage) .. " damage" }
     end
+    if m.spawn and m.spawn.bossEvery == 1 then f[#f + 1] = { "Queens", "Every wave" } end
+    local mc = m.spawn and m.spawn.modifiers
+    if mc and mc.chance and mc.chance >= 1 then f[#f + 1] = { "Wave modifiers", "Every wave, from the first" } end
+    if m.director and m.director.eventBonus then f[#f + 1] = { "Events", "Constant" } end
     if m.chooseItems then f[#f + 1] = { "Start", "Pick your own items" } end
     return f
 end
@@ -56,7 +67,11 @@ function ModeSelect.new()
     for _, m in ipairs(Content.modes:all()) do
         items[#items + 1] = { type = "button", label = m.name, mode = m, onActivate = function()
             lastMode = m.id
-            State.push(require("src.states.charselect").new({ gameMode = m.id }))
+            if m.custom then
+                State.push(require("src.states.wavebuilder").new())     -- build or pick a set first
+            else
+                State.push(require("src.states.charselect").new({ gameMode = m.id }))
+            end
         end }
         if m.id == lastMode then focus = #items end
     end
