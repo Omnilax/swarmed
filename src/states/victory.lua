@@ -42,6 +42,7 @@ function Victory.new(game, info)
                 if not self:ready() then return end
                 State.push(require("src.states.runsummary").new(game))
             end },
+            require("src.states.gameover").codeItem(game),
             { type = "button", label = "End Run", onActivate = function()
                 if not self:ready() then return end
                 world.events:emit("run_finished", world.spawner.wave)

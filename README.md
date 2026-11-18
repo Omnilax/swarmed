@@ -552,6 +552,16 @@ all run. Your best is kept with the daily results under the week's key ("2026-W4
 
 Test: `love . --selftest --keepsakes`.
 
+## Run codes
+
+Game over and victory have **Copy Run Code**: a line like
+`swarmed1.rhino_beetle.dune_field.colony.d2.mi4r7153.giants` (bug, first map, mode, danger,
+seed, artifacts). Mode select > **Play a Run Code** reads it from the clipboard and starts the same
+run. The bug must be unlocked; the code's artifacts are on whether you own them or not; keepsakes
+are left out. Practice, custom waves and the tutorial have no code (src/game/runcode.lua).
+
+Test: `love . --selftest --runcode`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

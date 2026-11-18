@@ -15,6 +15,7 @@ function GameOver.new(game)
         items = {
             { type = "button", label = "Try Again", onActivate = function() game:restart() end },
             { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
+            GameOver.codeItem(game),
             { type = "button", label = "Change Bug", onActivate = function() GameOver.changeBug(game) end },
             { type = "button", label = "Main Menu", onActivate = function() State.switch(require("src.states.menu").new()) end },
         },
@@ -138,5 +139,16 @@ end
 
 function GameOver:mousemoved(x, y) self.menu:mousemoved(x, y) end
 function GameOver:mousepressed(x, y, b) self.menu:mousepressed(x, y, b) end
+
+-- "Copy Run Code": the run's code to the clipboard (src/game/runcode.lua).
+function GameOver.codeItem(game)
+    local code = require("src.game.runcode").encode(game.world)
+    local it
+    it = { type = "button", label = "Copy Run Code", onActivate = function()
+        local ok = code and pcall(love.system.setClipboardText, code)
+        it.label = ok and "Copied: paste it to a friend" or "This run has no code"
+    end }
+    return it
+end
 
 return GameOver

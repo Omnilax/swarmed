@@ -171,6 +171,24 @@ function ModeSelect.new()
             State.switch(require("src.states.game").new(Daily.weekParams()))
         end }
     end
+    -- a run code from a friend, read from the clipboard (src/game/runcode.lua)
+    do
+        local codeInfo = { name = "Play a Run Code", tagline = "The same run a friend played.",
+            description = "Copy a run code (from the game over or victory screen), then press this. You get the same bug, map, mode, danger, seed and artifacts.",
+            facts = {} }
+        local it
+        it = { type = "button", label = "Play a Run Code", mode = codeInfo, onActivate = function()
+            local ok, text = pcall(love.system.getClipboardText)
+            local params, why = require("src.game.runcode").decode(ok and text or nil)
+            if not params then
+                codeInfo.facts = { { "Clipboard", why } }
+                require("src.core.audio").play("ui_back")
+                return
+            end
+            State.switch(require("src.states.game").new(params))
+        end }
+        items[#items + 1] = it
+    end
     -- artifacts: run rules for any mode, bought with amber (src/states/artifactpicker.lua)
     local Artifacts = require("src.game.artifacts")
     local artifactInfo = { name = "Artifacts", tagline = "Bend the rules of any mode.",
