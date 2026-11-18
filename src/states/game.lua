@@ -221,7 +221,7 @@ end
 
 function Game:draw()
     self.world:flushDecals()
-    Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera:viewZoom())
+    Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera:viewZoom(), true)
     self.world:draw()
     Screen.endWorld()
     -- the HUD, banners and floating numbers draw at the HUD Size zoom (Theme.hudZoom)
@@ -312,6 +312,13 @@ end
 
 function Game:keypressed(key)
     if self.sandbox then self.sandbox:keypressed(key) end
+    -- Zoom Keys: + / - zoom, 0 back to 1x
+    if Settings.get("zoomKeys") and not (self.sandbox and self.sandbox.visible) then
+        local cam = self.world.camera
+        if key == "=" or key == "kp+" then cam:zoomBy(1)
+        elseif key == "-" or key == "kp-" then cam:zoomBy(-1)
+        elseif key == "0" or key == "kp0" then cam:resetZoom() end
+    end
 end
 
 return Game

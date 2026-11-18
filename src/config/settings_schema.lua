@@ -258,6 +258,37 @@ add { key = "lowHealthPulse", category = "Interface", label = "Low Health Pulse"
 add { key = "dangerCompass", category = "Interface", label = "Danger Compass", type = "toggle", default = false,
     desc = "Little wedges on the ground around your bug point at the nearest boss, elite or incoming shot." }
 
+-- Camera (src/game/camera.lua, src/gfx/camfx.lua) ----------------------------------------
+add { key = "zoomKeys", category = "Camera", label = "Zoom Keys", type = "toggle", default = true,
+    desc = "+ and - zoom in and out, 0 goes back to 1x." }
+add { key = "smoothZoom", category = "Camera", label = "Smooth Zoom", type = "toggle", default = false,
+    desc = "Zooming glides slowly instead of snapping quickly." }
+add { key = "autoZoom", category = "Camera", label = "Smart Auto-Zoom", type = "choice", default = "off",
+    options = { { value = "off", label = "Off" }, { value = "subtle", label = "Subtle" }, { value = "full", label = "Full" } },
+    desc = "Pulls the camera out when a big horde or a boss is around you and eases back in when it's calm. Your own zoom stays the starting point." }
+add { key = "hordeFraming", category = "Camera", label = "Horde Framing", type = "toggle", default = false,
+    desc = "The view leans a little towards the side the ants are coming from." }
+add { key = "zoomBySize", category = "Camera", label = "Zoom By Bug Size", type = "toggle", default = false,
+    desc = "Big bugs see a little further, tiny ones a little closer, so every bug feels the same size on screen." }
+add { key = "cameraHeight", category = "Camera", label = "Camera Height", type = "choice", default = "normal",
+    options = { { value = "low", label = "Low" }, { value = "normal", label = "Normal" }, { value = "high", label = "High" } },
+    desc = "Low squashes the ground for a lower, more grazing angle and shows more of the arena; High stretches it for a steeper look from above." }
+add { key = "bossIntro", category = "Camera", label = "Boss Intro Camera", type = "toggle", default = false,
+    desc = "When a queen or a beast arrives the camera glances at it for a moment, with letterbox bars and its name." }
+add { key = "waveClearZoom", category = "Camera", label = "Wave Clear Zoom", type = "toggle", default = false,
+    desc = "A quick push-in when the last ant of a wave falls." }
+add { key = "shakeStyle", category = "Camera", label = "Shake Style", type = "choice", default = "random",
+    options = { { value = "random", label = "Random" }, { value = "directional", label = "Directional" } },
+    desc = "Directional: when you're hit the screen jolts along the hit and settles faster." }
+add { key = "cameraPunch", category = "Camera", label = "Camera Punch", type = "slider", default = 100, min = 0, max = 150, step = 10, format = percent,
+    desc = "The quick zoom kick on big kills and moves, apart from Screen Shake." }
+add { key = "foregroundGrass", category = "Camera", label = "Foreground Grass", type = "toggle", default = false,
+    desc = "Dark grass blades along the bottom of the screen drift faster than the ground, for depth. They fade when you walk behind them." }
+add { key = "photoMode", category = "Camera", label = "Photo Mode", type = "toggle", default = true,
+    desc = "Adds Photo Mode to the pause menu: move the camera freely, zoom, change time of day and weather, then save a screenshot." }
+add { key = "screenshotKey", category = "Camera", label = "Screenshot Key", type = "toggle", default = true,
+    desc = "F12 saves a screenshot into the game's save folder." }
+
 -- Accessibility -------------------------------------------------------------------------
 add { key = "reduceFlashing", category = "Accessibility", label = "Reduce Flashing", type = "toggle", default = false,
     desc = "Disables white hit flashes and bright screen effects." }

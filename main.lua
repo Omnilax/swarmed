@@ -107,6 +107,17 @@ end
 function love.draw()
     State.draw()
     Records.drawToasts()
+    local st = _G.SwarmedToast
+    if st then
+        st.t = st.t - love.timer.getDelta()
+        if st.t <= 0 then _G.SwarmedToast = nil else
+            local Theme = require("src.ui.theme")
+            love.graphics.setFont(Theme.font("body"))
+            love.graphics.setColor(1, 0.9, 0.6, math.min(1, st.t))
+            love.graphics.printf(st.text, 0, Theme.u(70), love.graphics.getWidth(), "center")
+            love.graphics.setColor(1, 1, 1, 1)
+        end
+    end
     Touch.draw()
     Dev.draw()
     if selftest then selftest.draw() end
@@ -120,6 +131,13 @@ function love.keypressed(key, scancode, isrepeat)
         Input.lastDevice = "keyboard"
         State.call("keypressed", key, scancode, isrepeat)
         return
+    end
+    -- Screenshot Key: F12 saves a PNG of the window into the save folder (Photo Mode has its own)
+    if key == "f12" and not isrepeat and require("src.core.settings").get("screenshotKey")
+        and not (top and top.photo) then
+        local name = require("src.states.photomode").screenshot()
+        print("[screenshot] " .. name)
+        _G.SwarmedToast = { text = "Screenshot saved", t = 2 }
     end
     if not Input.isCapturing() and Dev.keypressed(key) then return end
     Input.keypressed(key, isrepeat)

@@ -23,8 +23,16 @@ function Pause.new(game)
         { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
         { type = "button", label = "Field Guide", onActivate = function() State.push(require("src.states.fieldguide").new({ inRun = true })) end },
         { type = "button", label = "Settings", onActivate = function() State.push(require("src.states.settings").new()) end },
-        { type = "button", label = "Restart", onActivate = function() game:restart() end },
     }
+    if require("src.core.settings").get("photoMode") then
+        table.insert(items, #items + 1, { type = "button", label = "Photo Mode", onActivate = function()
+            State.pop()
+            State.push(require("src.states.photomode").new(game))
+        end })
+    end
+    for _, it in ipairs({
+        { type = "button", label = "Restart", onActivate = function() game:restart() end },
+    }) do items[#items + 1] = it end
     if RunSave.allowed(game) then
         items[#items + 1] = { type = "button", label = "Save & Quit", onActivate = function() game:saveAndQuit() end }
         items[#items + 1] = { type = "button", label = "Abandon Run", onActivate = function() State.switch(require("src.states.menu").new()) end }

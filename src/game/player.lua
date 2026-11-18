@@ -618,7 +618,8 @@ function Player:hurt(amount, source)
         self.hurtFxT = 0.18
         self.flash = 0.12
         self.recoilT = 0.2
-        world.camera:shake(math.min(0.5, 0.15 + dmg * 0.03))
+        local sx = type(source) == "table" and source.x
+        world.camera:shake(math.min(0.5, 0.15 + dmg * 0.03), sx and (self.x - sx) - (self.y - source.y), sx and ((self.x - sx) + (self.y - source.y)) * 0.5)
         Audio.play("hurt")
         Input.vibrate(math.min(1, 0.3 + dmg * 0.05), 0.12)
     end

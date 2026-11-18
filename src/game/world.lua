@@ -25,6 +25,7 @@ local Daylight = require("src.game.daylight")
 local Lighting = require("src.gfx.lighting")
 local Shading = require("src.gfx.shading")
 local Clarity = require("src.gfx.clarity")
+local CamFx = require("src.gfx.camfx")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
 local RunStats = require("src.game.runstats")
@@ -124,6 +125,7 @@ function World.new(opts)
     local sx, sy = Iso.toScreen(self.player.x, self.player.y)
     self.camera = Camera.new(sx, sy)
     self.weather = Weather.new(self)
+    self.events:on("wave_cleared", function() CamFx.onWaveCleared(self) end)
     -- frenzy meter, streak buffs, mini-goals, treasure ant, route gates (src/game/rewards.lua)
     self.rewards = require("src.game.rewards").new(self)
     -- molting after a queen wave, brood cell chests opening by themselves when the wave ends
@@ -198,6 +200,7 @@ function World:spawnEnemy(def, x, y, elite)
         self.events:emit("species_seen", def, e)
     end
     if elite then self.events:emit("elite_spawned", e) end
+    CamFx.onSpawn(self, e)
     return e
 end
 
@@ -661,6 +664,7 @@ function World:update(dt)
     local p = self.player
     local px, py = Iso.toScreen(p.x, p.y)
     local ax, ay = Iso.toScreen(p.aimX, p.aimY)
+    CamFx.update(self, dt)                      -- auto-zoom, framing, size zoom (src/gfx/camfx.lua)
     self.camera:follow(px, py - 4, ax, ay)
     self.camera:update(dt)
 end
@@ -1351,6 +1355,7 @@ function World:draw()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
     Shading.drawRays(self, ox, oy, vw, vh)          -- Sun Rays at golden hour and dawn
+    CamFx.drawForeground(self, ox, oy, vw, vh)      -- Foreground Grass
     self.weather:drawGlow(ox, oy, vw, vh)
     if self.freezeT > 0 then
         -- frost pickup: a cold blue wash over the arena while the swarm is frozen
