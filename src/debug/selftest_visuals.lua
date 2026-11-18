@@ -88,10 +88,58 @@ return function(wait, shot)
     State.pop()
     wait(0.05)
     assert(math.abs(world.camera.x - cx) < 1 and world.camera.photoZoom == nil, "photo mode did not restore the camera")
+    -- the looks (presets) each apply and read back as themselves
+    local SS = require("src.states.settings")
+    for _, lp in ipairs(require("src.config.look_presets")) do
+        SS.applyPreset(lp)
+        assert(SS.current(require("src.config.look_presets")) == lp, "look preset " .. lp.id .. " does not read back")
+    end
     for _, s in ipairs(Schema) do
         if (s.category == "Lighting" or s.category == "Camera") then Settings.set(s.key, s.default) end
     end
+    assert(SS.current(require("src.config.look_presets")).id == "standard", "defaults are not the Standard look")
+    -- hold to inspect: slows the run and labels nearby enemies
+    Settings.set("timeOfDay", "day")
+    local Input = require("src.core.input")
+    local realDown = Input.down
+    Input.down = function(id) if id == "inspect" then return true end return realDown(id) end
+    assert(require("src.ui.inspect").timeScale(world) < 1, "inspect does not slow the run")
+    for _ = 1, 10 do wait(1 / 60) end
+    shot("vis_inspect")
+    Input.down = realDown
+    -- settings with the live preview beside the Lighting tab
+    local st = SS.new()
+    for i, c in ipairs(st.categories) do if c == "Lighting" then st.tab = i end end
+    st:build()
+    State.push(st)
+    for _ = 1, 20 do wait(1 / 60) end
+    shot("vis_settings_lighting")
+    State.pop()
+    wait(0.05)
     Settings.set("backgroundDim", 0)
+    -- frame rate with each look over a crowd (VISBENCH=1)
+    if os.getenv("VISBENCH") then
+        local LP = require("src.config.look_presets")
+        for _ = 1, 8 do world.spawner:spawnGroup() end
+        for _ = 1, 60 do wait(1 / 60) end
+        for _, lp in ipairs(LP) do
+            SS.applyPreset(lp)
+            wait(2)
+            print(string.format("[selftest] look %-10s %3d fps with %d enemies", lp.id, love.timer.getFPS(), world.enemyCount))
+        end
+        SS.applyPreset(LP[1])
+        for _, kv in ipairs({ { "lightStyle", "soft" }, { "glareGuard", false }, { "rimLight", false }, { "sunShadows", false },
+            { "contactShadows", false }, { "actorsPop", false }, { "fallingLeaves", false }, { "shotsOnTop", false } }) do
+            local was = Settings.get(kv[1])
+            Settings.set(kv[1], kv[2])
+            wait(2)
+            print(string.format("[selftest] standard minus %-14s %3d fps", kv[1], love.timer.getFPS()))
+            Settings.set(kv[1], was)
+        end
+        for _, s in ipairs(Schema) do
+            if (s.category == "Lighting" or s.category == "Camera") then Settings.set(s.key, s.default) end
+        end
+    end
     local times = os.getenv("VIS") or "night,day,sunset"
     for t in times:gmatch("[^,]+") do
         Settings.set("timeOfDay", t)

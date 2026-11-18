@@ -26,6 +26,7 @@ Input.actions = {
     { id = "choice_lock", label = "Lock Card (item choice)", keys = { "l" }, pad = { "rightshoulder" }, rebind = true },
     { id = "choice_ban", label = "Ban Card (item choice)", keys = { "x", "delete" }, pad = { "y" }, rebind = true },
     { id = "quick_restart", label = "Quick Restart (pause / defeat)", keys = { "r" }, pad = { "y" }, rebind = true },
+    { id = "inspect", label = "Inspect (hold)", keys = { "v", "lalt" }, rebind = true },
     { id = "ui_favourite", label = "Favourite Bug (bug select)", keys = { "f" }, pad = { "x" }, rebind = true },
 
     { id = "ui_up", keys = { "up", "w" }, pad = { "dpup" }, repeats = true },

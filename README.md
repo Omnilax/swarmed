@@ -1024,3 +1024,25 @@ src/debug/              dev tools, console commands, sandbox panel, selftest
 content/                all game content (see above)
 docs/PLAN.md            roadmap
 ```
+
+## Lighting, camera and visual options
+
+Every visual extra has its own setting, so players choose what they like. Settings > Lighting
+has a **Look** row (Standard, Clarity, Cinematic, Classic) that sets them in one go.
+
+- `src/gfx/lighting.lua`: Bold light style (light map at half scale + highlight roll-off
+  composite), Glare Guard / Own Effects Opacity (additive layer on its own canvas, soft-capped),
+  warning / hazard / threat lights, night lantern, kill light pops. Rich day palette in
+  `src/game/daylight.lua`.
+- `src/gfx/shading.lua`: sun and contact shadows, rim light, cloud shadows, sun rays, wet ground.
+- `src/gfx/clarity.lua`: actors pop / background dim (ground shader), see-through silhouettes,
+  threat outlines, horde depth, danger compass, clear space, low health pulse.
+- `src/gfx/ambience.lua`: wind gusts, horde tracks, death styles, colour grade and heat haze
+  (both in the post shader, `src/core/screen.lua`), falling leaves, night glow mushrooms.
+- `src/gfx/camfx.lua` + `src/game/camera.lua`: smart auto-zoom, horde framing, zoom by bug size,
+  boss intro glance, wave clear zoom, directional shake, camera punch, foreground grass. Camera
+  Height changes the view's rows in `Screen.setZoom`.
+- `src/states/photomode.lua` (Pause > Photo Mode), F12 screenshots, Highlight Shots,
+  `src/ui/inspect.lua` (hold V / Left Alt), live preview beside the Video / Lighting / Camera tabs.
+- `src/game/soundscape.lua`: ambient sounds, in-key stingers; positional sound in `Audio.place`.
+- Test: `love . --selftest --visuals` (VISBENCH=1 prints the frame rate of each look).

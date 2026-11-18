@@ -204,60 +204,66 @@ add { key = "speciesPopups", category = "Interface", label = "First Sighting Pop
     desc = "A card with a species' name and what it does the first time it shows up (a species a wave introduces always gets its card, unless this is Off)." }
 add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Markers", type = "toggle", default = true,
     desc = "Arrows at the screen edge pointing at queens and elites you cannot see." }
+add { key = "livePreview", category = "Interface", label = "Live Preview", type = "toggle", default = true,
+    desc = "A little live arena beside the Video, Lighting and Camera settings, so you see each change as you make it (when the window is wide enough)." }
+add { key = "holdInspect", category = "Interface", label = "Hold To Inspect", type = "toggle", default = true,
+    desc = "Hold Inspect (V or Left Alt) to slow the run and see the name, health and kind of the enemies near your pointer." }
+add { key = "highlightShots", category = "Interface", label = "Highlight Shots", type = "toggle", default = false,
+    desc = "Saves a picture of each run's biggest multi-kill into the highlights folder of the save folder." }
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }
 add { key = "cursorStyle", category = "Interface", label = "Cursor", type = "choice", default = "crosshair",
     options = { { value = "crosshair", label = "Crosshair" }, { value = "system", label = "System" }, { value = "hidden", label = "Hidden In Game" } } }
 
 -- Lighting (src/gfx/lighting.lua) -------------------------------------------------------
-add { key = "lightStyle", category = "Lighting", label = "Light Style", type = "choice", default = "bold",
+add { key = "lightStyle", group = "Lights", category = "Lighting", label = "Light Style", type = "choice", default = "bold",
     options = { { value = "bold", label = "Bold" }, { value = "soft", label = "Soft" } },
     desc = "Bold: lights glow past daylight and bright spots roll off softly instead of turning white. Soft: the gentler original look, where lights only lift the shade." }
-add { key = "lightStrength", category = "Lighting", label = "Light Strength", type = "slider", default = 100, min = 50, max = 150, step = 10, format = percent,
+add { key = "lightStrength", group = "Lights", category = "Lighting", label = "Light Strength", type = "slider", default = 100, min = 50, max = 150, step = 10, format = percent,
     desc = "How strong lights are with the Bold light style." }
-add { key = "glareGuard", category = "Lighting", label = "Glare Guard", type = "toggle", default = true,
+add { key = "glareGuard", group = "Lights", category = "Lighting", label = "Glare Guard", type = "toggle", default = true,
     desc = "Caps how bright sparks, swooshes, fireflies and lightning can get, so glare never hides your bug or the ants." }
-add { key = "ownEffects", category = "Lighting", label = "Own Effects Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent,
+add { key = "ownEffects", group = "Lights", category = "Lighting", label = "Own Effects Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent,
     desc = "Fade your own attack glows and sparks so you can see the ants inside them." }
-add { key = "richDay", category = "Lighting", label = "Rich Day Palette", type = "toggle", default = true,
+add { key = "richDay", group = "Lights", category = "Lighting", label = "Rich Day Palette", type = "toggle", default = true,
     desc = "The day cycle passes through a golden hour, a blue hour and cool moonlight instead of plain day, sunset and night." }
-add { key = "warningLights", category = "Lighting", label = "Warning Lights", type = "toggle", default = true,
+add { key = "warningLights", group = "Lights", category = "Lighting", label = "Warning Lights", type = "toggle", default = true,
     desc = "Attack warnings light up the ground red as they charge, so they read in the dark." }
-add { key = "hazardGlow", category = "Lighting", label = "Hazard Glow", type = "toggle", default = true,
+add { key = "hazardGlow", group = "Lights", category = "Lighting", label = "Hazard Glow", type = "toggle", default = true,
     desc = "Puddles and pools on the ground give off a soft light in their colour." }
-add { key = "threatLights", category = "Lighting", label = "Threat Lights", type = "toggle", default = true,
+add { key = "threatLights", group = "Lights", category = "Lighting", label = "Threat Lights", type = "toggle", default = true,
     desc = "Queens, bosses and elites carry their own light, so the dangerous ones stand out at night." }
-add { key = "nightLantern", category = "Lighting", label = "Night Lantern", type = "toggle", default = true,
+add { key = "nightLantern", group = "Lights", category = "Lighting", label = "Night Lantern", type = "toggle", default = true,
     desc = "At dusk and night a soft pool of light falls where you are aiming." }
-add { key = "killLights", category = "Lighting", label = "Kill Light Pops", type = "toggle", default = false,
+add { key = "killLights", group = "Lights", category = "Lighting", label = "Kill Light Pops", type = "toggle", default = false,
     desc = "Elites, queens and bosses light up the area for a moment when they die." }
 
-add { key = "sunShadows", category = "Lighting", label = "Sun Shadows", type = "toggle", default = true,
+add { key = "sunShadows", group = "Shadows & Sky", category = "Lighting", label = "Sun Shadows", type = "toggle", default = true,
     desc = "Bugs and props cast a soft shadow away from the sun: short at noon, long at sunrise and sunset, and away from your light at night." }
-add { key = "contactShadows", category = "Lighting", label = "Contact Shadows", type = "toggle", default = true,
+add { key = "contactShadows", group = "Shadows & Sky", category = "Lighting", label = "Contact Shadows", type = "toggle", default = true,
     desc = "A dark spot right under each bug and prop so it sits on the ground." }
-add { key = "rimLight", category = "Lighting", label = "Rim Light", type = "toggle", default = true,
+add { key = "rimLight", group = "Shadows & Sky", category = "Lighting", label = "Rim Light", type = "toggle", default = true,
     desc = "A thin bright edge on the side of each bug facing the light, so bugs stand out from the ground." }
-add { key = "cloudShadows", category = "Lighting", label = "Cloud Shadows", type = "choice", default = "weather",
+add { key = "cloudShadows", group = "Shadows & Sky", category = "Lighting", label = "Cloud Shadows", type = "choice", default = "weather",
     options = { { value = "off", label = "Off" }, { value = "weather", label = "Cloudy Weather" }, { value = "always", label = "Always" } },
     desc = "Big soft cloud shadows drift across the arena by day." }
-add { key = "sunRays", category = "Lighting", label = "Sun Rays", type = "toggle", default = false,
+add { key = "sunRays", group = "Shadows & Sky", category = "Lighting", label = "Sun Rays", type = "toggle", default = false,
     desc = "Faint shafts of light at golden hour and dawn." }
-add { key = "wetGround", category = "Lighting", label = "Wet Ground", type = "toggle", default = true,
+add { key = "wetGround", group = "Shadows & Sky", category = "Lighting", label = "Wet Ground", type = "toggle", default = true,
     desc = "Rain darkens the ground and leaves puddles that shine, drying slowly afterwards." }
 
 -- Visibility (src/gfx/clarity.lua): also in the Lighting tab
-add { key = "actorsPop", category = "Lighting", label = "Actors Pop", type = "toggle", default = true,
+add { key = "actorsPop", group = "Seeing The Fight", category = "Lighting", label = "Actors Pop", type = "toggle", default = true,
     desc = "The ground is drawn a touch greyer so bugs stand out against it." }
-add { key = "backgroundDim", category = "Lighting", label = "Background Dim", type = "slider", default = 0, min = 0, max = 50, step = 5, format = percent,
+add { key = "backgroundDim", group = "Seeing The Fight", category = "Lighting", label = "Background Dim", type = "slider", default = 0, min = 0, max = 50, step = 5, format = percent,
     desc = "Darken and grey the ground and its decor on busy maps, so only the fight is bright." }
-add { key = "silhouettes", category = "Lighting", label = "See-Through Silhouettes", type = "toggle", default = true,
+add { key = "silhouettes", group = "Seeing The Fight", category = "Lighting", label = "See-Through Silhouettes", type = "toggle", default = true,
     desc = "When your bug is buried in a crowd, behind a big beast or inside your own effects, its outline shows through on top." }
-add { key = "threatOutlines", category = "Lighting", label = "Threat Outlines", type = "choice", default = "off",
+add { key = "threatOutlines", group = "Seeing The Fight", category = "Lighting", label = "Threat Outlines", type = "choice", default = "off",
     options = { { value = "off", label = "Off" }, { value = "elites", label = "Elites" }, { value = "all", label = "Elites & Queens" } },
     desc = "A thin gold outline on elites (and red on queens), so the dangerous ones are easy to pick out." }
-add { key = "shotsOnTop", category = "Lighting", label = "Enemy Shots On Top", type = "toggle", default = true,
+add { key = "shotsOnTop", group = "Seeing The Fight", category = "Lighting", label = "Enemy Shots On Top", type = "toggle", default = true,
     desc = "Enemy projectiles are drawn over your own effects so a spit or a stone is never lost in your flurry." }
-add { key = "hordeDepth", category = "Lighting", label = "Horde Depth", type = "toggle", default = false,
+add { key = "hordeDepth", group = "Seeing The Fight", category = "Lighting", label = "Horde Depth", type = "toggle", default = false,
     desc = "Ants further from you are drawn slightly darker, so the front line you'll touch next stands out." }
 add { key = "clearSpace", category = "Interface", label = "Clear Space Around You", type = "toggle", default = true,
     desc = "Damage numbers fade right around your bug so they never cover it." }
@@ -267,53 +273,53 @@ add { key = "dangerCompass", category = "Interface", label = "Danger Compass", t
     desc = "Little wedges on the ground around your bug point at the nearest boss, elite or incoming shot." }
 
 -- Art and atmosphere (src/gfx/ambience.lua): in the Lighting tab
-add { key = "windGusts", category = "Lighting", label = "Wind Gusts", type = "toggle", default = true,
+add { key = "windGusts", group = "Atmosphere", category = "Lighting", label = "Wind Gusts", type = "toggle", default = true,
     desc = "One shared wind with slow gusts: falling leaves, foreground grass and weather all lean the same way." }
-add { key = "hordeTracks", category = "Lighting", label = "Horde Tracks", type = "toggle", default = false,
+add { key = "hordeTracks", group = "Atmosphere", category = "Lighting", label = "Horde Tracks", type = "toggle", default = false,
     desc = "Ants leave faint tracks on the ground that fade after a few seconds." }
-add { key = "squashStretch", category = "Lighting", label = "Squash & Stretch", type = "toggle", default = true,
+add { key = "squashStretch", group = "Atmosphere", category = "Lighting", label = "Squash & Stretch", type = "toggle", default = true,
     desc = "Ants squash for a moment when they are hit." }
-add { key = "deathStyles", category = "Lighting", label = "Death Styles", type = "toggle", default = true,
+add { key = "deathStyles", group = "Atmosphere", category = "Lighting", label = "Death Styles", type = "toggle", default = true,
     desc = "Bodies fall by family: ants curl up, termites flip over, bees and wasps spiral down." }
-add { key = "colourGrade", category = "Lighting", label = "Colour Grade", type = "choice", default = "off",
+add { key = "colourGrade", group = "Atmosphere", category = "Lighting", label = "Colour Grade", type = "choice", default = "off",
     options = { { value = "off", label = "Off" }, { value = "map", label = "Per Map" }, { value = "act", label = "Per Act" } },
     desc = "A gentle colour grade: each map its own mood, or lush green for act 1, dry gold for act 2 and dusky violet for act 3." }
-add { key = "heatHaze", category = "Lighting", label = "Heat Haze", type = "toggle", default = true,
+add { key = "heatHaze", group = "Atmosphere", category = "Lighting", label = "Heat Haze", type = "toggle", default = true,
     desc = "A soft shimmer on desert maps at midday and in heatwaves. Off with Reduce Flashing." }
-add { key = "fallingLeaves", category = "Lighting", label = "Falling Leaves", type = "toggle", default = true,
+add { key = "fallingLeaves", group = "Atmosphere", category = "Lighting", label = "Falling Leaves", type = "toggle", default = true,
     desc = "A few leaves drift through the view (dust motes in the desert)." }
-add { key = "glowDecor", category = "Lighting", label = "Night Glow Decor", type = "toggle", default = true,
+add { key = "glowDecor", group = "Atmosphere", category = "Lighting", label = "Night Glow Decor", type = "toggle", default = true,
     desc = "Glowing mushrooms come out at night on the leafy maps and light the ground around them." }
 
 -- Camera (src/game/camera.lua, src/gfx/camfx.lua) ----------------------------------------
-add { key = "zoomKeys", category = "Camera", label = "Zoom Keys", type = "toggle", default = true,
+add { key = "zoomKeys", group = "Zoom", category = "Camera", label = "Zoom Keys", type = "toggle", default = true,
     desc = "+ and - zoom in and out, 0 goes back to 1x." }
-add { key = "smoothZoom", category = "Camera", label = "Smooth Zoom", type = "toggle", default = false,
+add { key = "smoothZoom", group = "Zoom", category = "Camera", label = "Smooth Zoom", type = "toggle", default = false,
     desc = "Zooming glides slowly instead of snapping quickly." }
-add { key = "autoZoom", category = "Camera", label = "Smart Auto-Zoom", type = "choice", default = "off",
+add { key = "autoZoom", group = "Zoom", category = "Camera", label = "Smart Auto-Zoom", type = "choice", default = "off",
     options = { { value = "off", label = "Off" }, { value = "subtle", label = "Subtle" }, { value = "full", label = "Full" } },
     desc = "Pulls the camera out when a big horde or a boss is around you and eases back in when it's calm. Your own zoom stays the starting point." }
-add { key = "hordeFraming", category = "Camera", label = "Horde Framing", type = "toggle", default = false,
+add { key = "hordeFraming", group = "Framing & Feel", category = "Camera", label = "Horde Framing", type = "toggle", default = false,
     desc = "The view leans a little towards the side the ants are coming from." }
-add { key = "zoomBySize", category = "Camera", label = "Zoom By Bug Size", type = "toggle", default = false,
+add { key = "zoomBySize", group = "Framing & Feel", category = "Camera", label = "Zoom By Bug Size", type = "toggle", default = false,
     desc = "Big bugs see a little further, tiny ones a little closer, so every bug feels the same size on screen." }
-add { key = "cameraHeight", category = "Camera", label = "Camera Height", type = "choice", default = "normal",
+add { key = "cameraHeight", group = "Framing & Feel", category = "Camera", label = "Camera Height", type = "choice", default = "normal",
     options = { { value = "low", label = "Low" }, { value = "normal", label = "Normal" }, { value = "high", label = "High" } },
     desc = "Low squashes the ground for a lower, more grazing angle and shows more of the arena; High stretches it for a steeper look from above." }
-add { key = "bossIntro", category = "Camera", label = "Boss Intro Camera", type = "toggle", default = false,
+add { key = "bossIntro", group = "Framing & Feel", category = "Camera", label = "Boss Intro Camera", type = "toggle", default = false,
     desc = "When a queen or a beast arrives the camera glances at it for a moment, with letterbox bars and its name." }
-add { key = "waveClearZoom", category = "Camera", label = "Wave Clear Zoom", type = "toggle", default = false,
+add { key = "waveClearZoom", group = "Framing & Feel", category = "Camera", label = "Wave Clear Zoom", type = "toggle", default = false,
     desc = "A quick push-in when the last ant of a wave falls." }
-add { key = "shakeStyle", category = "Camera", label = "Shake Style", type = "choice", default = "random",
+add { key = "shakeStyle", group = "Framing & Feel", category = "Camera", label = "Shake Style", type = "choice", default = "random",
     options = { { value = "random", label = "Random" }, { value = "directional", label = "Directional" } },
     desc = "Directional: when you're hit the screen jolts along the hit and settles faster." }
-add { key = "cameraPunch", category = "Camera", label = "Camera Punch", type = "slider", default = 100, min = 0, max = 150, step = 10, format = percent,
+add { key = "cameraPunch", group = "Framing & Feel", category = "Camera", label = "Camera Punch", type = "slider", default = 100, min = 0, max = 150, step = 10, format = percent,
     desc = "The quick zoom kick on big kills and moves, apart from Screen Shake." }
-add { key = "foregroundGrass", category = "Camera", label = "Foreground Grass", type = "toggle", default = false,
+add { key = "foregroundGrass", group = "Framing & Feel", category = "Camera", label = "Foreground Grass", type = "toggle", default = false,
     desc = "Dark grass blades along the bottom of the screen drift faster than the ground, for depth. They fade when you walk behind them." }
-add { key = "photoMode", category = "Camera", label = "Photo Mode", type = "toggle", default = true,
+add { key = "photoMode", group = "Photos", category = "Camera", label = "Photo Mode", type = "toggle", default = true,
     desc = "Adds Photo Mode to the pause menu: move the camera freely, zoom, change time of day and weather, then save a screenshot." }
-add { key = "screenshotKey", category = "Camera", label = "Screenshot Key", type = "toggle", default = true,
+add { key = "screenshotKey", group = "Photos", category = "Camera", label = "Screenshot Key", type = "toggle", default = true,
     desc = "F12 saves a screenshot into the game's save folder." }
 
 -- Accessibility -------------------------------------------------------------------------

@@ -563,6 +563,7 @@ end
 
 function World:update(dt)
     dt = dt * self.timeScale * (Settings.get("gameSpeed") / 100)
+    dt = dt * require("src.ui.inspect").timeScale(self)      -- Hold To Inspect
     dt = dt * self.rewards:timeScale(dt)       -- slow motion on big moments
     if self.queryPool then self.queryPool.n = 0 end
 
@@ -574,6 +575,16 @@ function World:update(dt)
     end
     self.time = self.time + dt
     Lighting.update(self, dt)
+    if self.highlightDue then
+        self.highlightDue = self.highlightDue - dt
+        if self.highlightDue <= 0 then
+            self.highlightDue = nil
+            local ok = pcall(love.filesystem.createDirectory, "highlights")
+            local name = string.format("highlights/run%s_wave%d_%dkills.png", os.date("%Y%m%d_%H%M%S"), self.spawner and self.spawner.wave or 0, self.bestBurst or 0)
+            if ok then love.graphics.captureScreenshot(name) end
+            self.lastHighlight = name
+        end
+    end
     Shading.update(self, dt)
     Ambience.update(self, dt)
     self.killsThisFrame = 0
@@ -642,6 +653,12 @@ function World:update(dt)
         self.hitstop = math.min(feel.stopMax, feel.stopMin + self.killsThisFrame * feel.stopPerKill)
         self.hitstopCd = feel.stopCooldown
         self.camera:shake(math.min(0.4, self.killsThisFrame * 0.02))
+        -- Highlight Shots: the run's biggest multi-kill so far is saved as a picture
+        if Settings.get("highlightShots") and not self.flags.demo and self.mode == "run"
+            and self.killsThisFrame >= 15 and self.killsThisFrame > (self.bestBurst or 0) then
+            self.bestBurst = self.killsThisFrame
+            self.highlightDue = 0.12      -- a beat later, when the bodies are flying
+        end
     end
     for j = #self.fx, 1, -1 do
         local fx = self.fx[j]
@@ -1381,7 +1398,7 @@ function World:draw()
 
     -- Additive glow pass: attack swooshes, sparks, explosions.
     -- (Glare Guard / Own Effects Opacity: drawn on their own layer and soft-capped, src/gfx/lighting.lua)
-    local fxLayer = Lighting.fxLayer()
+    local fxLayer = Lighting.fxLayer(self)
     if fxLayer then Lighting.beginFx() end
     lg.setBlendMode("add")
     self:drawFx()
@@ -1674,6 +1691,7 @@ function World:drawText(fonts)
         lg.print(t.text, math.floor(wx - w / 2), math.floor(wy))
     end
     lg.setColor(1, 1, 1, 1)
+    require("src.ui.inspect").draw(self, fonts)
 end
 
 return World

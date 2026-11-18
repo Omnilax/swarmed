@@ -97,7 +97,8 @@ function Lighting.composite(div)
 end
 
 -- Is the additive glow layer drawn on its own canvas (Glare Guard, or Own Effects Opacity < 100)?
-function Lighting.fxLayer()
+function Lighting.fxLayer(world)
+    if world and #world.fx == 0 and (world.particles.n or 0) == 0 then return false end
     return Settings.get("glareGuard") or Settings.get("ownEffects") < 100
 end
 
@@ -106,7 +107,10 @@ function Lighting.beginFx()
     local cw, ch = Screen.canvas:getDimensions()
     canvasLike("fxCanvas", cw, ch)
     lg.setCanvas(Screen.fxCanvas)
+    -- only the visible part needs clearing (the canvas is sized for the widest zoom)
+    lg.setScissor(0, 0, Screen.viewW, Screen.viewH)
     lg.clear(0, 0, 0, 0)
+    lg.setScissor()
 end
 
 function Lighting.endFx()
