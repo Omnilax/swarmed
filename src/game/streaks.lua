@@ -23,7 +23,7 @@ function Streaks:grant(def)
     table.insert(self.active, 1, { def = def, t = def.time })
     local col = util.hex(def.color)
     self.world:floatText(p.x, p.y - 14, def.name:upper() .. "!", col, true)
-    Audio.play("ui_confirm", { pitch = 1.25 })
+    if not require("src.game.soundscape").sting("streak") then Audio.play("ui_confirm", { pitch = 1.25 }) end
     self.world.camera:shake(0.15)
     self.world.events:emit("streak_buff", def, self.world.combo)
 end

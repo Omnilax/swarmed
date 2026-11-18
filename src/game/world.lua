@@ -298,7 +298,8 @@ function World:killEnemy(e)
             style = Ambience.styleOf(e.def),
         }
     end
-    Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008 })
+    local ksx, ksy = Iso.toScreen(e.x, e.y)
+    Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008, sx = ksx, sy = ksy })
     local elite = e.elite
     if elite then
         local c = Elites.color(elite)

@@ -283,6 +283,12 @@ function Audio.play(name, opts)
     local now = love.timer.getTime()
     if now - s.last < s.def.gap then return end
     local vol = busVolume(s.def.bus) * (s.def.volume or 1) * (opts and opts.volume or 1)
+    -- Positional Sound: quieter further from the view's centre
+    if opts and opts.sx and Audio.listener and Settings.get("positionalSound") then
+        local L = Audio.listener
+        local d = math.sqrt((opts.sx - L.x) ^ 2 + ((opts.sy or L.y) - L.y) ^ 2 * 2)
+        vol = vol * math.max(0.25, 1 - d / (L.w * 1.2))
+    end
     if vol <= 0 then return end
     s.last = now
     local src = s.pool[s.next]
@@ -291,6 +297,7 @@ function Audio.play(name, opts)
     src:setVolume(vol)
     local pv = s.def.pitchVar or 0
     src:setPitch((opts and opts.pitch or 1) * (1 + (love.math.random() - 0.5) * pv))
+    Audio.place(src, opts)
     src:play()
 end
 
@@ -335,5 +342,29 @@ function Audio.addSynth(name, spec)
 end
 
 function Audio.setFocused(f) Audio.focused = f end
+
+local panOf = setmetatable({}, { __mode = "k" })
+
+-- Left / right placement: opts.pan (-1..1) or, with Positional Sound on, opts.sx (projected x)
+-- against the listener. Only mono sources can be placed; the rest play centred.
+function Audio.place(src, opts)
+    local pan = opts and opts.pan
+    if not pan and opts and opts.sx and Audio.listener and Settings.get("positionalSound") then
+        local L = Audio.listener
+        pan = math.max(-1, math.min(1, (opts.sx - L.x) / (L.w * 0.5)))
+    end
+    pan = pan or 0
+    if panOf[src] == pan then return end
+    if src:getChannelCount() ~= 1 then return end
+    if not Audio.distanceSet then
+        Audio.distanceSet = true
+        pcall(love.audio.setDistanceModel, "none")
+    end
+    panOf[src] = pan
+    pcall(function()
+        src:setRelative(true)
+        src:setPosition(pan * 0.8, 0, -math.sqrt(math.max(0, 1 - (pan * 0.8) ^ 2)))
+    end)
+end
 
 return Audio

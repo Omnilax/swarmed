@@ -91,6 +91,14 @@ add { key = "masterVolume", category = "Audio", label = "Master Volume", type = 
 add { key = "musicVolume", category = "Audio", label = "Music Volume", type = "slider", default = 70, min = 0, max = 100, step = 5, format = percent }
 add { key = "sfxVolume", category = "Audio", label = "Effects Volume", type = "slider", default = 80, min = 0, max = 100, step = 5, format = percent }
 add { key = "uiVolume", category = "Audio", label = "Menu Volume", type = "slider", default = 70, min = 0, max = 100, step = 5, format = percent }
+add { key = "ambientVolume", category = "Audio", label = "Ambient Sounds", type = "slider", default = 60, min = 0, max = 100, step = 10, format = percent,
+    desc = "Birds by day and crickets at night on leafy maps, dry wind in the desert, drips after rain. They hush while the fight is loud. 0% turns them off." }
+add { key = "musicFollowsDay", category = "Audio", label = "Music Follows Day", type = "toggle", default = true,
+    desc = "After dark the drums soften and the pad swells. Off keeps the daytime mix all run." }
+add { key = "positionalSound", category = "Audio", label = "Positional Sound", type = "toggle", default = true,
+    desc = "Kills and hits pan left and right by where they are on screen and get quieter further away." }
+add { key = "musicalStingers", category = "Audio", label = "Musical Stingers", type = "toggle", default = false,
+    desc = "Wave clears and kill streaks play short notes in the music's key instead of the usual sounds." }
 add { key = "muteUnfocused", category = "Audio", label = "Mute When Unfocused", type = "toggle", default = true,
     desc = "Silence the game while its window is in the background." }
 

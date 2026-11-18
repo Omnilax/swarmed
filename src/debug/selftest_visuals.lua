@@ -48,6 +48,15 @@ return function(wait, shot)
             Settings.set(s.key, was)
         end
     end
+    -- audio options: stingers, ambience and positional placement run without errors
+    for _, k in ipairs({ "musicalStingers", "positionalSound", "musicFollowsDay" }) do Settings.set(k, true) end
+    Settings.set("ambientVolume", 100)
+    local SS = require("src.game.soundscape")
+    assert(SS.sting("clear") and SS.sting("streak"), "stingers did not play")
+    for _ = 1, 30 do SS.update(world, 0.2) end
+    require("src.core.audio").play("kill", { sx = world.camera.x + 200, sy = world.camera.y })
+    Settings.set("musicalStingers", false)
+    Settings.set("ambientVolume", 60)
     -- everything on at once
     for _, s in ipairs(Schema) do
         if (s.category == "Lighting" or s.category == "Camera") and s.type == "toggle" then Settings.set(s.key, true) end
