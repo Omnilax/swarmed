@@ -113,6 +113,8 @@ function World.new(opts)
     require("src.game.onramp").attach(self)
     -- artifacts (content/artifacts): run rules switched on before the run
     require("src.game.artifacts").apply(self, opts.artifacts)
+    -- queens with phases, the Empress, named champions (src/game/bosses.lua)
+    require("src.game.bosses").attach(self)
     -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
     require("src.game.playlog").attach(self)
     -- the guided tutorial (content/modes/tutorial.lua): lessons instead of waves
@@ -560,6 +562,7 @@ function World:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    require("src.game.bosses").update(self, dt)
     self.rewardFlow:update(dt)
     require("src.game.economy").update(self, dt)     -- the shop restocks every minute or so
     if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)

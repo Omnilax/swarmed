@@ -515,6 +515,21 @@ off keeps a run on one map.
 
 Test: `love . --selftest --acts`.
 
+## Queens, the Empress and champions
+
+src/game/bosses.lua, numbers and names in src/config/bosses.lua.
+
+- **Title cards**: a queen walking in gets a card across the lower screen with her name and an
+  epithet for the map ("Desert Queen, the Sun-Baked").
+- **Phases**: at half health a queen enrages: faster, and her brood rushes in around her.
+- **The Empress**: the last crowned queen of the final wave, with her own card and two phases
+  (two thirds and one third health).
+- **Named champions**: on the middle wave of each act (3, 8, 13) the first elite is a champion
+  with a name ("Cinder, Worker Ant"), three times the health and the boss bar while no queen is
+  about. She pays 40 XP and 12 nectar. Held back with elites by Gentle Start.
+
+Test: `love . --selftest --bosses`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

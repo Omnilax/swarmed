@@ -709,7 +709,7 @@ function Spawner:updateStreams(dt)
             q.radius = q.radius * st.crown.scale ^ 0.5
             q.title = "Crowned " .. q.def.name
             world.boss = q
-            world.milestone = { text = self.crownLeft > 0 and "THE CROWNED QUEEN" or "THE LAST QUEEN", t = 0 }
+            -- her title card comes from src/game/bosses.lua (the last one is the Empress)
             self.crownE, self.crownUid = q, q.uid
         end
         if st.left <= 0 then

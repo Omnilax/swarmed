@@ -79,6 +79,8 @@ end
 
 function Enemy.release(e)
     e.def, e.sprite, e.behavior, e.leader, e.elite, e.params = nil, nil, nil, nil, nil, nil
+    -- titles and boss state (src/game/bosses.lua) must not follow the table back out of the pool
+    e.title, e.champion, e.phases, e.enraged, e.empress = nil, nil, nil, nil, nil
     e.uid = -1
     pool[#pool + 1] = e
 end

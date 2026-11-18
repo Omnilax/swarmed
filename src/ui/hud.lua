@@ -161,8 +161,9 @@ function Hud.draw(game, covered)
         Theme.printShadow(world.latchCount > 0 and ("GRABBED x" .. world.latchCount) or "SLOWED", sx, u(44), { 1, 0.85, 0.5, alpha })
     end
 
-    -- Boss health
+    -- Boss health (a named champion gets the bar when no queen is about, src/game/bosses.lua)
     local boss = world.boss
+    if not (boss and not boss.dead) then boss = world.champion end
     if boss and not boss.dead then
         local bw2 = math.min(u(520), w * 0.5)
         local bx = (w - bw2) / 2
@@ -346,6 +347,8 @@ function Hud.draw(game, covered)
 
     -- arrows to queens and elites off screen, first-run hints (src/game/feedback.lua)
     require("src.game.feedback").drawHud(game, covered)
+    -- a queen's or champion's title card
+    require("src.game.bosses").drawHud(world, covered, alpha)
     -- event banners, the boss encounter's bar, the merchant's price (src/game/director.lua)
     require("src.game.director").drawHud(game, covered)
 
