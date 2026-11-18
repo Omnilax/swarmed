@@ -57,6 +57,7 @@ function RunSave.snapshot(game)
             interestWave = w.economy.interestWave }),
         -- danger level (src/config/danger.lua) and the bug rule's state (src/game/bugrules.lua)
         danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
+        artifacts = util.deepcopy(w.artifacts),
         -- blessings and curses from map gambles (src/game/gambles.lua)
         blessings = util.deepcopy(w.blessings),
     }
@@ -129,7 +130,7 @@ end
 function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
         startItems = snap.startItems, customWaves = snap.customWaves, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
-        danger = tonumber(snap.danger) or 0 }
+        danger = tonumber(snap.danger) or 0, artifacts = type(snap.artifacts) == "table" and snap.artifacts or {} }
 end
 
 -- Put a fresh world into the saved run's state.

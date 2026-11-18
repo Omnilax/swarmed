@@ -111,6 +111,8 @@ function World.new(opts)
     self.director = Director.new(self)
     -- Gentle Start: systems held back over a new player's first runs, with a "NEW" card each
     require("src.game.onramp").attach(self)
+    -- artifacts (content/artifacts): run rules switched on before the run
+    require("src.game.artifacts").apply(self, opts.artifacts)
     -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
     require("src.game.playlog").attach(self)
     -- the guided tutorial (content/modes/tutorial.lua): lessons instead of waves

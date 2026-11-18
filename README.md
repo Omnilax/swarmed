@@ -454,6 +454,21 @@ in the Field Guide).
 
 Test: `love . --selftest --amber`.
 
+## Artifacts
+
+Run rules for any mode, like Risk of Rain 2's (`content/artifacts`, schema in `_template.lua`,
+`src/game/artifacts.lua`). Each is bought once in the Burrow (its own shelf, made from the
+content folder), then switched on or off in mode select > **Artifacts** (kept in prefs). They
+stay on for every run until switched off; the first wave's banner names them; a saved run keeps
+its own list; the daily run, practice and the tutorial ignore them. An artifact can change the
+Game params before the world is made (`params`, Metamorphosis picks the bug) and the world after
+(`apply`: `world.danger` multipliers, player stat modifiers, the frenzy meter...).
+
+Glass Carapace, Teeming, Giants, Royal Guard, Twin Queens (a second queen every queen wave,
+`danger.twinQueens`), Heatwave, Mixed Colony, Frenzy Tide, Metamorphosis.
+
+Test: `love . --selftest --artifacts`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

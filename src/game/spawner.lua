@@ -202,6 +202,11 @@ function Spawner:startWave(n)
         if queen then
             local e = entries[1]
             self.queue[#self.queue + 1] = { def = queen, count = 1, x = e[1], y = e[2], at = 2 }
+            -- the Twin Queens artifact (content/artifacts): a second queen from another side
+            for i = 1, (world.danger and world.danger.twinQueens or 0) do
+                local q2, e2 = self:pickQueen() or queen, entries[1 + (i % #entries)] or e
+                self.queue[#self.queue + 1] = { def = q2, count = 1, x = e2[1], y = e2[2], at = 6 }
+            end
             groups = math.ceil(groups * 0.5)
         else
             self.bossWave = false

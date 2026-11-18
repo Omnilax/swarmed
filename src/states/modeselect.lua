@@ -24,6 +24,10 @@ local function percent(v) return math.floor(v * 100 + 0.5) .. "%" end
 function ModeSelect.facts(m)
     local Amber = require("src.game.amber")
     if m.facts then return m.facts end
+    if m.name == "Artifacts" and not m.id then
+        local on = require("src.game.artifacts").names(require("src.game.artifacts").active())
+        return { { "On now", on or "None" } }
+    end
     if not m.daily and not Amber.modeOpen(m.id) then
         local u = Amber.modeUnlock(m.id)
         return { { "Locked", ("Unlock it in the Burrow for %d amber (you have %d)."):format(u.cost, Amber.balance()) } }
@@ -97,6 +101,13 @@ function ModeSelect.new()
     items[#items + 1] = { type = "button", label = "Daily Run", mode = dailyMode, onActivate = function()
         State.switch(require("src.states.game").new(Daily.params()))
     end }
+    -- artifacts: run rules for any mode, bought with amber (src/states/artifactpicker.lua)
+    local Artifacts = require("src.game.artifacts")
+    local artifactInfo = { name = "Artifacts", tagline = "Bend the rules of any mode.",
+        description = "Artifacts change how a run plays: glass shells, giant ants, twin queens and more. Buy them in the Burrow with amber, then switch them on here. They stay on until you switch them off." }
+    items[#items + 1] = { type = "button", label = "Artifacts", mode = artifactInfo,
+        value = function() local n = #Artifacts.active() return n > 0 and (n .. " on") or "" end,
+        onActivate = function() State.push(require("src.states.artifactpicker").new()) end }
     -- practice: any bug, mode, wave and species, nothing counts (src/states/practice.lua)
     items[#items + 1] = { type = "button", label = "Practice", mode = { name = "Practice",
         tagline = "Try anything. Nothing counts.",

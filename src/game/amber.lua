@@ -14,20 +14,36 @@ local Amber = {}
 local function Records() return require("src.game.records") end
 local function Unlocks() return require("src.game.unlocks") end
 
--- Every unlock by id, and which unlock holds each item / stage / mode.
-local byId, itemPack, stageUnlock, modeUnlock = {}, {}, {}, {}
-for _, shelf in ipairs(Cfg.shelves) do
-    for _, u in ipairs(shelf.list) do
-        u.shelf = shelf.id
-        byId[u.id] = u
-        for _, it in ipairs(u.items or {}) do itemPack[it] = u end
-        if u.stage then stageUnlock[u.stage] = u end
-        if u.mode then modeUnlock[u.mode] = u end
+-- Every unlock by id, and which unlock holds each item / stage / mode. Built on first use, with
+-- an Artifacts shelf made from content/artifacts (src/game/artifacts.lua).
+local byId, itemPack, stageUnlock, modeUnlock
+local function index()
+    if byId then return end
+    byId, itemPack, stageUnlock, modeUnlock = {}, {}, {}, {}
+    local Content = require("src.content")
+    local have = false
+    for _, shelf in ipairs(Cfg.shelves) do if shelf.id == "artifacts" then have = true end end
+    if not have and Content.artifacts then
+        local list = {}
+        for _, a in ipairs(Content.artifacts:all()) do
+            list[#list + 1] = { id = "artifact_" .. a.id, name = a.name, cost = a.cost, kind = "artifact",
+                artifact = a.id, description = a.description .. " Switch it on or off before a run in mode select." }
+        end
+        Cfg.shelves[#Cfg.shelves + 1] = { id = "artifacts", name = "Artifacts", list = list }
+    end
+    for _, shelf in ipairs(Cfg.shelves) do
+        for _, u in ipairs(shelf.list) do
+            u.shelf = shelf.id
+            byId[u.id] = u
+            for _, it in ipairs(u.items or {}) do itemPack[it] = u end
+            if u.stage then stageUnlock[u.stage] = u end
+            if u.mode then modeUnlock[u.mode] = u end
+        end
     end
 end
 
-function Amber.get(id) return byId[id] end
-function Amber.shelves() return Cfg.shelves end
+function Amber.get(id) index() return byId[id] end
+function Amber.shelves() index() return Cfg.shelves end
 
 -- The display name of an unlock (stages and modes use their own names).
 function Amber.name(u)
@@ -67,17 +83,20 @@ function Amber.owns(id)
 end
 
 function Amber.itemOpen(id)
+    index()
     local u = itemPack[id]
     return not u or Amber.owns(u.id)
 end
 
 function Amber.stageOpen(id)
+    index()
     local u = stageUnlock[id]
     return not u or Amber.owns(u.id)
 end
 
 -- A mode is open when bought, or when it was played before amber existed (never taken away).
 function Amber.modeOpen(id)
+    index()
     local u = modeUnlock[id]
     if not u or Amber.owns(u.id) then return true end
     local m = Amber.profile().modes[id]
@@ -87,24 +106,21 @@ end
 -- Already open some other way (a mode played before amber)? Then it isn't for sale.
 function Amber.open(u)
     if u.kind == "mode" then return Amber.modeOpen(u.mode) end
-    if u.kind == "artifact" then
-        local ok, A = pcall(require, "src.game.artifacts")
-        if ok and A.owned then return A.owned(u.artifact) end
-    end
     return Amber.owns(u.id)
 end
 
-function Amber.modeUnlock(id) return modeUnlock[id] end
-function Amber.stageUnlock(id) return stageUnlock[id] end
+function Amber.modeUnlock(id) index() return modeUnlock[id] end
+function Amber.stageUnlock(id) index() return stageUnlock[id] end
 
 function Amber.canBuy(id)
+    index()
     local u = byId[id]
     return u ~= nil and not Amber.open(u) and Amber.balance() >= u.cost
 end
 
 function Amber.buy(id)
     if not Amber.canBuy(id) then return false end
-    local p, u = Amber.profile(), byId[id]
+    local p, u = Amber.profile(), Amber.get(id)
     p.amber = p.amber - u.cost
     p.amberOwned[id] = true
     Records().save()
@@ -114,7 +130,7 @@ end
 -- The cheapest thing still to buy (nil when everything is open).
 function Amber.next()
     local best
-    for _, shelf in ipairs(Cfg.shelves) do
+    for _, shelf in ipairs(Amber.shelves()) do
         for _, u in ipairs(shelf.list) do
             if not Amber.open(u) and (not best or u.cost < best.cost) then best = u end
         end

@@ -165,11 +165,13 @@ Content.levelcards = Registry.new("levelcard", { required = { "name" },
     defaults = { stats = {}, statsMult = {}, weight = 10, minLevel = 1 }, validate = statsValid })
 -- Ground pickups (src/game/nectar.lua, content/pickups/_template.lua): magnet, freeze, frenzy fill.
 Content.pickups = Registry.new("pickup", { required = { "name", "collect" }, defaults = { description = "", color = "#ffffff", icon = "star", weight = 10, minWave = 1 } })
+-- Artifacts: run rules toggled before a run, bought with amber (src/game/artifacts.lua).
+Content.artifacts = Registry.new("artifact", { required = { "name", "description" }, defaults = { cost = 60, order = 50, color = "#c0a070" } })
 -- (they load before achievements, which stay last)
 do
     local at = #Content.order + 1
     for i, kind in ipairs(Content.order) do if kind == "achievements" then at = i end end
-    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes", "levelcards", "pickups" }) do table.insert(Content.order, at + i - 1, kind) end
+    for i, kind in ipairs({ "weather", "skins", "decor", "frenzies", "streaks", "goals", "routes", "levelcards", "pickups", "artifacts" }) do table.insert(Content.order, at + i - 1, kind) end
 end
 
 -- Molting recipes (content/molts/_template.lua, src/game/molting.lua): items touching in the bag
