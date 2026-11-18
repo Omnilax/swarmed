@@ -34,6 +34,7 @@ function RunSave.snapshot(game)
     local snap = {
         version = RunSave.VERSION,
         character = p.def.id, gameMode = w.gameMode, stage = w.stage.id,
+        route = w.route and util.deepcopy(w.route), act = w.act,
         startItems = game.params.startItems,
         customWaves = util.deepcopy(w.customWaves),     -- the Custom Waves set, as it was when the run began
         -- waves fully behind you: a wave still going is played again
@@ -87,7 +88,13 @@ end
 
 function RunSave.save(game)
     if RunSave.noSave or not RunSave.allowed(game) then return false end
-    local ok, s = pcall(util.serialize, RunSave.snapshot(game))
+    return RunSave.write(RunSave.snapshot(game))
+end
+
+-- Write a snapshot to the save file (moving to a new act writes one it changed first).
+function RunSave.write(snap)
+    if RunSave.noSave then return false end
+    local ok, s = pcall(util.serialize, snap)
     if not ok then return false end
     local wrote = pcall(love.filesystem.write, RunSave.FILE, "return " .. s .. "\n")
     RunSave.cache = nil

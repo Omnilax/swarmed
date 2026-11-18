@@ -186,6 +186,8 @@ end
 
 function Spawner:startWave(n)
     local cfg, world = self.cfg, self.world
+    -- the run moves to its next act's map first (src/game/acts.lua; Game sets holdWave)
+    if not n and self.holdWave and self.holdWave(self.wave + 1) then return end
     if n and n > self.wave + 1 then self:catchUp(n) end
     self.wave = n or self.wave + 1
     self.finalThisWave, self.crownLeft, self.crownE = false, 0, nil

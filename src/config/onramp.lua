@@ -18,6 +18,7 @@ return {
         gambles   = { run = 2, wave = 5 },   -- dewdrop shrines, challenge bells, gamble flowers
         routes    = { run = 3, wave = 3 },   -- safe / hard route tunnels after a wave
         encounters = { run = 3, wave = 5 },  -- boss encounters and stage hazards
+        acts      = { run = 2, wave = 6 },   -- moving to a new map after waves 5 and 10
     },
     -- Until this run, at most one mid-wave event a wave, and never an event in the same wave
     -- as a boss encounter.
@@ -35,5 +36,6 @@ return {
         gambles   = { "Map gambles", "Shrines, bells and flowers pop up mid-wave. Risky, but they pay well." },
         routes    = { "Route tunnels", "Walk into the safe tunnel or the hard one. Hard pays more. Ignore both for a normal wave." },
         encounters = { "Big visitors", "Something huge has arrived. What it does hurts ants too, so lead the swarm into it." },
+        acts      = { "A new map", "After every queen the colony moves on, and you follow. Each map has its own ants." },
     },
 }

@@ -26,6 +26,16 @@ function Game.new(params)
         seed = params.seed, daily = params.daily, danger = params.danger, customWaves = params.customWaves,
         artifacts = params.artifacts })
     if params.resume then RunSave.restore(self.world, params.resume) end
+    -- acts: the run's route of maps, and moving on after waves 5 and 10 (src/game/acts.lua)
+    if self.mode == "run" and not params.practice then
+        local Acts = require("src.game.acts")
+        Acts.attach(self.world, params.resume)
+        self.world.spawner.holdWave = function(n)
+            if not Acts.travelsBefore(self.world, n) then return false end
+            self:travel()
+            return true
+        end
+    end
     if params.practice then
         self.world.flags.practice = true
         require("src.states.practice").apply(self.world, params.practice)
@@ -62,6 +72,25 @@ function Game.new(params)
         self.world.events:on("run_finished", function() RunSave.clear() end)
     end
     return self
+end
+
+-- On to the next act's map: the run is carried over through a save, as if it were resumed
+-- there (src/game/acts.lua).
+function Game:travel()
+    if self.travelling then return end
+    local RunSave = require("src.game.runsave")
+    local Acts = require("src.game.acts")
+    local w = self.world
+    if not RunSave.allowed(self) then return end
+    local snap = RunSave.snapshot(self)
+    local act = Acts.actOf(w.spawner.wave + 1)
+    snap.stage, snap.act, snap.travelled = w.route[act], act, true
+    self.travelling = true
+    RunSave.write(snap)
+    require("src.game.records").suspend()
+    self.suspended = true
+    require("src.core.audio").play("ui_confirm", { pitch = 0.8 })
+    State.switch(Game.new(RunSave.params(snap)))
 end
 
 -- Pause > Save & Quit: save the run and go back to the title screen.

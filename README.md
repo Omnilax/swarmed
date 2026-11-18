@@ -500,6 +500,21 @@ longer repeats the count.
 
 Test: `love . --selftest --flow`.
 
+## Three acts per run
+
+A 15-wave run is three acts of five waves, each on its own map (src/game/acts.lua). The route
+is planned when the run starts: act 1 is the map you picked, acts 2 and 3 are other maps you
+have open, so every map bought in the Burrow can turn up mid-run (seeded: the same seed takes the
+same route). After the queen of waves 5 and 10, her rewards and the shop, the break line says
+where the colony goes next; starting the next wave carries the whole run there (through a run
+save, as if resumed), with an "Act 2 of 3" card and a breather.
+
+Not in practice, the daily run, endless, custom or scripted waves, or modes with `acts = false`.
+Gentle Start holds it back until the second run. Settings > Gameplay > **Travel Between Acts**
+off keeps a run on one map.
+
+Test: `love . --selftest --acts`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

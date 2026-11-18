@@ -229,6 +229,10 @@ function Hud.draw(game, covered)
             -- the wave's rewards are waiting in the bloom: that comes first
             if world.pendingChoice and not world.pendingChoice.opened and world.rewardFlow and world.rewardFlow:bloom() then
                 sub = "walk into the reward bloom  ·  " .. key .. " brings it to you"
+            else
+                -- the next wave is on a new map (src/game/acts.lua)
+                local move = require("src.game.acts").nextLine(world)
+                if move then sub = move .. (sp:waiting() and ("  ·  " .. key .. " to go") or ("  ·  in " .. math.max(1, math.ceil(sp.timer)))) end
             end
         end
         if (Settings.get("showTimer") and Settings.get("hudDetail") ~= "clean") then

@@ -156,6 +156,8 @@ add { key = "combineDamageNumbers", category = "Gameplay", label = "Combine Dama
     desc = "Quick hits on the same enemy add up into one number that keeps counting, instead of a spray of small ones." }
 add { key = "showKoCounter", category = "Gameplay", label = "KO Counter", type = "toggle", default = true,
     desc = "Show the running KO count and combo." }
+add { key = "travelActs", category = "Gameplay", label = "Travel Between Acts", type = "toggle", default = true,
+    desc = "A run is three acts of five waves. After each queen you move to another of your open maps, with its own ants. Off: the whole run stays on the map you picked." }
 add { key = "gentleStart", category = "Gameplay", label = "Gentle Start", type = "toggle", default = true,
     desc = "New players meet the game a piece at a time: elites, the shop, events, gambles, routes and big visitors join over the first runs, each with a short card. Off: everything from the first wave." }
 add { key = "tutorialHints", category = "Gameplay", label = "Tutorial Hints", type = "toggle", default = true,

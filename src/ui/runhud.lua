@@ -168,7 +168,7 @@ end
 
 -- During a break: what the next wave brings (queen / final wave, a new species, modifiers).
 function RunHud.drawPreview(world, covered, y, alpha)
-    if covered or world.mode ~= "run" or world.flags.demo or world.lessons or not (Settings.get("nextWavePreview") and Settings.get("hudDetail") ~= "clean") then return end
+    if covered or world.mode ~= "run" or world.flags.demo or world.lessons or require("src.game.acts").nextLine(world) or not (Settings.get("nextWavePreview") and Settings.get("hudDetail") ~= "clean") then return end
     local sp = world.spawner
     if not sp or sp.phase == "wave" or not sp.preview or world.finalSwarm then return end
     local pv = sp:preview()
