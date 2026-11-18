@@ -618,6 +618,8 @@ function Player:hurt(amount, source)
     local ctx = { world = world, player = self, damage = dmg, source = source, procDepth = 0 }
     world.events:emit("player_hurt", ctx)
     self.inventory:trigger("onHurt", ctx)
+    -- a perk card (Molt Reserve) can cheat death once
+    if self.hp <= 0 and world.levelups and world.levelups:saveFromDeath(self) then return end
     if self.hp <= 0 then
         self.hp = 0
         self.dead = true

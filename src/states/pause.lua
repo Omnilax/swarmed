@@ -97,6 +97,40 @@ function Pause:itemBlocks(width)
         b.h = fName:getHeight() + Theme.u(3) + #b.lines * lh + #b.effect * lh + Theme.u(10)
         blocks[#blocks + 1] = b
     end
+    -- perk and growth level-up cards taken this run (src/game/levelups.lua)
+    local lu = self.game.world.levelups
+    if lu then
+        local Fam = require("src.states.levelup").FAMILY
+        local function add(def, tag, text, fam)
+            local b = { def = def, name = def.name, tag = tag, color = Fam[fam].color, lines = {}, effect = {} }
+            if text and text ~= "" then _, b.effect = fSmall:getWrap(text, width) end
+            local lh = fSmall:getHeight() + Theme.u(1)
+            b.h = fName:getHeight() + Theme.u(3) + #b.effect * lh + Theme.u(10)
+            blocks[#blocks + 1] = b
+        end
+        for _, id in ipairs(lu.perkOrder) do
+            local def, have = Content.levelcards.byId[id], lu.perks[id]
+            if def then
+                local spent = lu.used and lu.used[id]
+                add(def, "Perk · rank " .. have.rank, (def.text and def.text(have.power) or def.description or "") .. (spent and "  (used)" or ""), "perk")
+            end
+        end
+        local grown = {}
+        for _, g in ipairs(lu.growth) do grown[g.id] = (grown[g.id] or 0) + 1 end
+        for _, d in ipairs(Content.levelcards:all()) do
+            if grown[d.id] then
+                local L = require("src.game.levelups")
+                local g = { stats = {}, statsMult = {} }
+                for _, e in ipairs(lu.growth) do
+                    if e.id == d.id then
+                        for k, v in pairs(e.stats) do g.stats[k] = (g.stats[k] or 0) + v end
+                        for k, v in pairs(e.statsMult) do g.statsMult[k] = (g.statsMult[k] or 0) + v end
+                    end
+                end
+                add(d, "Growth" .. (grown[d.id] > 1 and (" x" .. grown[d.id]) or ""), L.describe(g) .. " every wave", "growth")
+            end
+        end
+    end
     return blocks
 end
 
@@ -176,10 +210,10 @@ function Pause:draw()
     for _, b in ipairs(blocks) do
         if yy + b.h > listTop and yy < listBottom then
             lg.setFont(fName)
-            Theme.printShadow(b.def.name, rx + u(14), yy, b.color)
+            Theme.printShadow(b.name or b.def.name, rx + u(14), yy, b.color)
             lg.setFont(fSmall)
             lg.setColor(Theme.colors.dim)
-            lg.printf((b.n > 1 and ("x" .. b.n .. "  ·  ") or "") .. Rarities[b.def.rarity].label, rx, yy + u(1), sideW - u(14), "right")
+            lg.printf(b.tag or ((b.n > 1 and ("x" .. b.n .. "  ·  ") or "") .. Rarities[b.def.rarity].label), rx, yy + u(1), sideW - u(14), "right")
             local cy = yy + fName:getHeight() + u(3)
             for _, l in ipairs(b.lines) do
                 lg.setColor(l[2] and Theme.colors.good or Theme.colors.bad)
