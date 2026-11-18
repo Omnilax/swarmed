@@ -85,15 +85,14 @@ return function(wait, shot)
     assert(Unlocks.bestDanger("stag_beetle") == 0 and Unlocks.maxDanger("stag_beetle") == 1, "win at danger 0 opens danger 1")
     local CharSelect = require("src.states.charselect")
     local cs = State.push(CharSelect.new({ gameMode = "colony" }))
-    cs.menu.focus = 3
-    for i, it in ipairs(cs.menu.items) do if it.character and it.character.id == "stag_beetle" then cs.menu.focus = i end end
+    cs:focusOn("stag_beetle")
     cs:shiftDanger(Content.characters:get("stag_beetle"), 1)
     assert(CharSelect.danger("stag_beetle") == 1, "danger picker")
     cs:shiftDanger(Content.characters:get("stag_beetle"), 1)
     assert(CharSelect.danger("stag_beetle") == 1, "danger 2 should still be locked")
     wait(0.6)
     shot("mastery_charselect")
-    for i, it in ipairs(cs.menu.items) do if it.character and it.locked then cs.menu.focus = i break end end
+    for i, e in ipairs(cs.list) do if not Unlocks.bug(e.def.id) then cs.focus = i cs:ensureVisible() break end end
     wait(0.4)
     shot("mastery_charselect_locked")
     State.pop()

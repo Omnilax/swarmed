@@ -37,6 +37,11 @@ Input.actions = {
     { id = "ui_back", keys = { "escape", "backspace" }, pad = { "b", "back" } },
     { id = "ui_tab_next", keys = { "e", "tab", "pagedown" }, pad = { "rightshoulder" }, repeats = true },
     { id = "ui_tab_prev", keys = { "q", "pageup" }, pad = { "leftshoulder" }, repeats = true },
+    -- bug select: danger level down / up, cycle the sort and the playstyle filter
+    { id = "ui_danger_down", keys = { "z", "-", "[" }, pad = {} },
+    { id = "ui_danger_up", keys = { "x", "=", "]" }, pad = { "y" } },
+    { id = "ui_sort", keys = { "t" }, pad = { "leftstick" } },
+    { id = "ui_style", keys = { "g" }, pad = { "rightstick" } },
 }
 
 local byId = {}

@@ -693,6 +693,7 @@ local function script(flags)
     if flags["--docshots"] then require("src.debug.selftest_docshots")(wait, shot) love.event.quit() return end
     if flags["--arttour"] then require("src.debug.selftest_arttour")(wait, shot) love.event.quit() return end
     if flags["--itemorg"] then require("src.debug.selftest_itemorg")(wait, shot) love.event.quit() return end
+    if flags["--charselect"] then require("src.debug.selftest_charselect")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
     if flags["--creator"] then require("src.debug.selftest_creator")(wait, shot) love.event.quit() return end
     if flags["--acts"] then require("src.debug.selftest_acts")(wait, shot) love.event.quit() return end
