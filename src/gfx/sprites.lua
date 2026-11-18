@@ -262,12 +262,13 @@ function Sprites.build(registry)
     local aw, ah = atlasW, atlasH
     local function quad(p) return love.graphics.newQuad(p.x, p.y, p.data:getWidth(), p.data:getHeight(), aw, ah) end
     for _, entry in pairs(Sprites.byId) do
-        for dir = 1, entry.dirs do
+        -- (custom bug art built earlier has its own image and quads already)
+        if not entry.image then for dir = 1, entry.dirs do
             for i = 1, #entry.frames[dir] do
                 entry.frames[dir][i] = quad(entry.frames[dir][i])
                 if entry.flash then entry.flash[dir][i] = quad(entry.flash[dir][i]) end
             end
-        end
+        end end
     end
     Sprites.glow = quad(glowPiece)
 

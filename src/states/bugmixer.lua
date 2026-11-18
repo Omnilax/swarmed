@@ -228,7 +228,11 @@ function Mixer:build(keep)
     end
     if not self.tweak then
     items[#items + 1] = { type = "header", label = "Extras" }
-    local ruleOpts, treeOpts = { { value = NONE, label = "None" } }, { { value = NONE, label = "None" } }
+    local ruleOpts, treeOpts = { { value = NONE, label = "None" } }, { { value = NONE, label = "Fits its playstyle" } }
+    local Presets = require("src.config.presettrees")
+    for _, pid in ipairs(Presets.order) do
+        treeOpts[#treeOpts + 1] = { value = "preset:" .. pid, label = "Preset: " .. Presets.list[pid].name }
+    end
     local Rules = require("src.config.bugrules")
     local Skills = require("src.game.skills")
     for _, d in ipairs(builtins()) do
@@ -238,7 +242,7 @@ function Mixer:build(keep)
     items[#items + 1] = { type = "choice", label = "Item rule", options = ruleOpts, get = get("rules"), set = set("rules"),
         desc = "Borrow a bug's special item rule." }
     items[#items + 1] = { type = "choice", label = "Skill tree", options = treeOpts, get = get("skillTree"), set = set("skillTree"),
-        desc = "Borrow a bug's skill tree. Its upgrades work best with that bug's own moves." }
+        desc = "A ready-made preset tree (works with any moves), or borrow a bug's tree (its upgrades work best with that bug's own moves). Every bug also gets its kin branch." }
     end
     items[#items + 1] = { type = "header", label = "" }
     items[#items + 1] = { type = "button", label = "Save", onActivate = function() self:save(false) end,

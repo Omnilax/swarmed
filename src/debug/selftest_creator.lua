@@ -435,6 +435,26 @@ return function(wait, shot)
     Input.virtualDown.dash = nil
     for _ = 1, 6 do wait(1 / 60) end
     shot("creator_velvet_worm")
+    -- the SKILLS tab on custom bugs: no tree, a borrowed tree, its own tree
+    assert(CustomBugs.save([[return { name = "Treeless", look = "crab" }]]))
+    assert(CustomBugs.save([[return { name = "Borrower", look = "mantis", skillTree = "scorpion" }]]))
+    for _, id in ipairs({ "custom_treeless", "custom_borrower", "custom_velvet_worm", "custom_stick_insect" }) do
+        local gg = State.switch(Game.new({ mode = "sandbox", character = id }))
+        gg.world:grantXP(400)
+        wait(0.1)
+        local inv = State.push(require("src.states.inventory").new(gg))
+        wait(0.1)
+        require("src.states.skilltree").openFrom(inv)
+        local st = State.top()
+        assert(st.skills and st.tree, id .. ": no skill tree on the SKILLS tab")
+        for _, br in ipairs(st.tree.branches) do
+            for _, n in ipairs(br.nodes) do st.skills.points = 99 st.skills:buy(n.id) end
+        end
+        wait(0.2)
+        shot("creator_tree_" .. id)
+        State.pop()
+        for _ = 1, 30 do wait(1 / 60) end
+    end
     for _, e in ipairs(CustomBugs.all()) do CustomBugs.delete(e.id) end
     State.switch(require("src.states.menu").new())
     print("[selftest] creator OK")

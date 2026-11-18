@@ -162,7 +162,11 @@ function Skills.treeFor(charId)
     local c = Content.characters:get(charId)
     if c and c.custom then
         if c.ownTree then return c.ownTree end      -- its own, written in its script
-        if not c.skillTree then return nil end
+        if not c.skillTree then
+            -- a ready-made tree (src/config/presettrees.lua), made once per bug
+            if not c._preset then c._preset = require("src.config.presettrees").make(c.presetTree or "brawler", c) end
+            return c._preset
+        end
         charId = c.skillTree
     end
     for _, t in ipairs(Content.skilltrees:all()) do

@@ -56,7 +56,12 @@ function Tree:layout()
     local area = { x = px + pad, y = py + headH, w = pw - pad * 2, h = ph - headH - infoH - pad }
     local L = { panel = { x = px, y = py, w = pw, h = ph }, pad = pad, area = area,
         info = { x = px + pad, y = py + ph - infoH - pad * 0.5, w = pw - pad * 2, h = infoH }, nodes = {} }
-    if not self.tree then self.L = L return L end
+    if not self.tree then
+        -- no tree (shouldn't happen: custom bugs get a preset one), but the tabs still work
+        L.tabs = require("src.states.bagtabs").layout(self.game, px + pad, py + math.floor(u(10)), Theme.font(18, "bold"):getHeight() + u(6))
+        self.L = L
+        return L
+    end
     local branches = self.tree.branches
     local colW = area.w / #branches
     local maxTier = 1

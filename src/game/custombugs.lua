@@ -659,6 +659,11 @@ local function buildTree(def, t, errs, warns)
     end
     if #tree.branches == 0 then errs[#errs + 1] = "skillTree needs branches = { { name = ..., nodes = { ... } } }" return nil end
     clampParams(tree, 0)
+    -- the bug's kin branch (insect, beetle, spider...) joins as a 4th, unless kin = false
+    if t.kin ~= false and #tree.branches < 4 then
+        if type(t.kin) == "string" then tree.kin = t.kin end
+        Skills.attachKin(tree, def)
+    end
     local ok, e = Skills.validateTree(tree)
     if not ok then errs[#errs + 1] = "skillTree: " .. tostring(e) return nil end
     return tree
@@ -747,12 +752,18 @@ function CustomBugs.build(raw)
         if Rules[raw.rules] then def.rules, def.mix.rules = raw.rules, raw.rules
         else warns[#warns + 1] = "rules: the bug '" .. tostring(raw.rules) .. "' has no rule (dropped)" end
     end
+    -- skill tree: its own (built at the end, once its tags are known), a preset ("preset:tank"),
+    -- or a built-in bug's. With none named it gets the preset that fits its playstyle.
+    local Presets = require("src.config.presettrees")
     if type(raw.skillTree) == "table" then
-        def.ownTree = buildTree(def, raw.skillTree, errs, warns)
         def.mix.ownTree = true
-    elseif raw.skillTree ~= nil then
+    elseif type(raw.skillTree) == "string" and raw.skillTree:match("^preset:") then
+        local pid = raw.skillTree:sub(8)
+        if Presets.list[pid] then def.presetTree, def.mix.skillTree = pid, raw.skillTree
+        else warns[#warns + 1] = "skillTree: no preset '" .. pid .. "' (" .. table.concat(Presets.order, ", ") .. ")" end
+    elseif raw.skillTree ~= nil and raw.skillTree ~= false then
         if require("src.game.skills").treeFor(raw.skillTree) then def.skillTree, def.mix.skillTree = raw.skillTree, raw.skillTree
-        else warns[#warns + 1] = "skillTree: the bug '" .. tostring(raw.skillTree) .. "' has no skill tree (dropped)" end
+        else warns[#warns + 1] = "skillTree: the bug '" .. tostring(raw.skillTree) .. "' has no skill tree (a preset is used)" end
     end
     def.immune = raw.immune == true or nil
     -- code that runs on game events (src/game/scriptmoves.lua)
@@ -823,6 +834,9 @@ function CustomBugs.build(raw)
     for _, t in ipairs(type(raw.tags) == "table" and raw.tags or {}) do
         if type(t) == "string" and #def.tags < 8 and t ~= "custom" then def.tags[#def.tags + 1] = t:sub(1, 20) end
     end
+    if type(raw.skillTree) == "table" then def.ownTree = buildTree(def, raw.skillTree, errs, warns) end
+    if not (def.ownTree or def.skillTree or def.presetTree) then def.presetTree = Presets.forPlaystyle(def.playstyle) end
+    if def.hooks or def.ownTree then def.scripted = true end
     if #errs > 0 then return nil, errs, warns end
     return def, errs, warns
 end
