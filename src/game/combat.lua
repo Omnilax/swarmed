@@ -79,9 +79,19 @@ function Combat.damage(world, e, base, opts)
         e.slowT = math.max(e.slowT, opts.slow[2])
         e.slowMul = math.min(e.slowT > opts.slow[2] and e.slowMul or 1, opts.slow[1])
     end
-    world:damageNumber(e.x, e.y, dmg, crit, e)
-    world.particles:sparks(e.x, e.y, crit and 6 or 2, crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }, opts.kbx or 0, opts.kby or 0)
-    Audio.play("hit")
+    if opts.cstatus then require("src.game.bugextras").applyStatus(world, e, opts.cstatus) end
+    -- a custom bug's own hit look (Bug Creator: hitFx, or a hit's number / sparks)
+    local look = opts.look or p.def.hitLook
+    if look then
+        world:damageNumber(e.x, e.y, dmg, crit, e, crit and look.crit or look.number)
+        local n = look.sparkCount or 2
+        if n > 0 then world.particles:sparks(e.x, e.y, crit and n + 4 or n, look.sparkColor or (crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }), opts.kbx or 0, opts.kby or 0) end
+        if look.sound then Audio.play(look.sound, { pitch = 0.9 + love.math.random() * 0.2 }) else Audio.play("hit") end
+    else
+        world:damageNumber(e.x, e.y, dmg, crit, e)
+        world.particles:sparks(e.x, e.y, crit and 6 or 2, crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }, opts.kbx or 0, opts.kby or 0)
+        Audio.play("hit")
+    end
 
     local depth = opts.procDepth or 0
     local cap = world.rewards and world.rewards:procDepth() or 2

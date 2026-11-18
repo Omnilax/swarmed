@@ -132,6 +132,9 @@ function Game:update(dt)
     if won and self.world.time >= (won.at or (self.world.pendingChoice or {}).at or 0) then
         self.world.pendingVictory = nil
         if not self.world.player.dead then
+            local p = self.world.player
+            local clip = p.def.custom and p.def.anims and p.def.anims.victory
+            if clip then p.wonPose = true require("src.gfx.anim").play(p, clip, "pose_victory", {}) end
             State.push(require("src.states.victory").new(self, won))
             return
         end

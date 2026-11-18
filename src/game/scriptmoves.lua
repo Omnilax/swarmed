@@ -32,6 +32,10 @@ local function num(v, default, lo, hi)
 end
 
 local function color(c, default)
+    if type(c) == "string" and c:match("^#%x%x%x%x%x%x") then
+        local h = util.hex(c:sub(1, 7))
+        return { h[1], h[2], h[3] }
+    end
     if type(c) ~= "table" then return default end
     return { num(c[1], 1, 0, 1), num(c[2], 1, 0, 1), num(c[3], 1, 0, 1) }
 end
@@ -59,6 +63,10 @@ local function build(player)
         if type(t.slow) == "table" then o.slow = { num(t.slow[1], 0.5, 0.05, 1), num(t.slow[2], 2, 0, 15) } end
         if type(t.corrode) == "table" then o.corrode = { num(t.corrode[1], 1.3, 1, 3), num(t.corrode[2], 3, 0, 15) } end
         if t.stun then o.stun = num(t.stun, 0.5, 0, 5) end
+        -- the bug's own status effects (statuses = { burn = {...} }) and hit look
+        local sts = player.def.statuses
+        if type(t.status) == "string" and sts and sts[t.status] then o.cstatus = t.status end
+        o.look = SM.hitLook(t, player.def.hitLook)
         return o
     end
     local function point(t, defAhead)
@@ -69,63 +77,188 @@ local function build(player)
     local function liftable(e) return not (e.def.boss or e.def.queen or e.def.hazard) and not e.held end
 
     -- hits ------------------------------------------------------------------------------
+    -- me.hit{ shape, ...shape numbers, damage, ahead, side, turn, x, y,
+    --   windup (s, with a telegraph), active (s the shape stays live), rehit (s between hits on
+    --   the same ant while active), follow (moves with the bug), sweep = { from, to } (turns, in
+    --   radians, swept over the active time), maxTargets,
+    --   knockback, kb = "out" | "aim" | "in" | "side" | "player", stagger (s), stun, poison, slow,
+    --   corrode, crit, noCrit, sweet = { from = 0.7, to = 1, mult = 1.5, color, text },
+    --   hitstop (s), shake, hitSound, sound (on the swing), number = colour, sparks = { color, count },
+    --   fx = "slash" | "ring" | "stab" | "outline" | "none", color, fxLife, telegraph = false,
+    --   onHit = function(me, ev) per ant, debug = true (draw the hitbox) }
+    -- Returns how many ants it hit (0 when it waits for a wind-up).
+    local HS = require("src.game.hitshapes")
+    function me.hit(t, kind)
+        t = type(t) == "table" and t or {}
+        return U(function()
+            local w = world()
+            local s = HS.shape(t, area(), kind)
+            local _, _, ang = dirOf(t)
+            local ahead = num(t.ahead, 0, -400, 400)
+            local side = num(t.side, 0, -400, 400)
+            local ox, oy
+            if t.x or t.y then
+                ox, oy = num(t.x, player.x, -1e5, 1e5), num(t.y, player.y, -1e5, 1e5)
+            else
+                local c, sn = math.cos(ang), math.sin(ang)
+                ox, oy = player.x + c * ahead - sn * side, player.y + sn * ahead + c * side
+            end
+            local dmg = num(t.damage, 8, 0, 1000)
+            local base = hitOpts(t, 0, 0)
+            local kbMode = type(t.kb) == "string" and t.kb or ((s.kind == "box" or s.kind == "line") and "aim" or "out")
+            local col = color(t.color, { 1, 0.95, 0.85 })
+            local sweet = type(t.sweet) == "table" and { from = num(t.sweet.from, 0.7, 0, 1), to = num(t.sweet.to, 1.01, 0, 2),
+                mult = num(t.sweet.mult, 1.5, 0, 10), color = color(t.sweet.color, { 1, 0.85, 0.3 }),
+                text = type(t.sweet.text) == "string" and t.sweet.text:sub(1, 20) or nil }
+            local hitSound = type(t.hitSound) == "string" and t.hitSound
+            local onHit = type(t.onHit) == "function" and t.onHit
+            local depth, params = cx.depth, cx.params
+            local look = SM.hitLook(t)
+            local stagger = t.stagger and num(t.stagger, 0.5, 0, 3)
+            local hitstop, shake = t.hitstop and num(t.hitstop, 0.05, 0, 0.25), t.shake and num(t.shake, 0.1, 0, 0.8)
+            local b = { shape = s, t = 0, windup = num(t.windup, 0, 0, 5), active = num(t.active, 0, 0, 10),
+                rehit = t.rehit and num(t.rehit, 0.3, 0.05, 10), hit = {}, follow = t.follow and true or false,
+                ox = ox, oy = oy, ang = ang, baseAng = ang, turn = num(t.turn, 0, -7, 7), ahead = ahead, side = side,
+                aimFollow = t.follow == "aim",
+                sweep = type(t.sweep) == "table" and { num(t.sweep[1] or t.sweep.from, -1, -7, 7), num(t.sweep[2] or t.sweep.to, 1, -7, 7) },
+                maxTargets = math.floor(num(t.maxTargets, 999, 1, 999)), color = col, debug = t.debug == true,
+                telegraph = t.telegraph ~= false, showActive = (t.active and t.fx == nil) or t.fx == "outline" }
+            if b.follow then b.baseAng = math.atan2(cx.ay, cx.ax) b.turn = num(t.turn, 0, -7, 7) end
+            b.apply = function(e, x0, y0, a, along, f, sd)
+                local nx, ny
+                if kbMode == "aim" then nx, ny = math.cos(a), math.sin(a)
+                elseif kbMode == "in" then nx, ny = util.normalize(x0 - e.x, y0 - e.y)
+                elseif kbMode == "side" then
+                    local sg = sd >= 0 and 1 or -1
+                    nx, ny = -math.sin(a) * sg, math.cos(a) * sg
+                elseif kbMode == "player" then nx, ny = util.normalize(e.x - player.x, e.y - player.y)
+                else nx, ny = util.normalize(e.x - x0, e.y - y0) end
+                local o = {}
+                for k2, v in pairs(base) do o[k2] = v end
+                o.kbx, o.kby, o.look = nx, ny, look
+                local d = dmg
+                local isSweet = sweet and along >= sweet.from and along <= sweet.to
+                if isSweet then
+                    d = d * sweet.mult
+                    o.look = SM.hitLook({ number = sweet.color, sparks = { color = sweet.color, count = 6 } }, look)
+                    if sweet.text then w:floatText(e.x, e.y - 8, sweet.text, sweet.color, true) end
+                end
+                local hp0 = e.hp
+                local dealt = Combat.damage(w, e, d, o)
+                if stagger and not e.dead and e.hp > 0 and not e.def.boss and e.st then Combat.stagger(w, e, stagger, o) end
+                if onHit then
+                    SM.run(onHit, player, params, nil, nil, { depth = depth + 1, label = "onHit" },
+                        { x = e.x, y = e.y, damage = dealt, hp = e.hp, maxHp = e.maxHp, killed = e.dead or e.hp <= 0,
+                          boss = e.def.boss and true or false, sweet = isSweet and true or false, before = hp0 })
+                end
+            end
+            local contacted = false
+            b.onContact = function()
+                if hitSound then me.sound(hitSound) end
+                if contacted and not b.rehit then return end
+                contacted = true
+                if hitstop and hitstop > 0 then
+                    local now = w.time
+                    if not player.scriptStopAt or now - player.scriptStopAt > 0.15 then
+                        player.scriptStopAt = now
+                        w:hitStop(hitstop)
+                    end
+                end
+                if shake then w.camera:shake(shake) end
+            end
+            -- the visual of the swing itself
+            local fxKind = t.fx
+            if fxKind == nil then
+                fxKind = (s.kind == "arc" and "slash") or (s.kind == "circle" and "ring") or (s.kind == "line" and "stab")
+                    or (b.active > 0 and "none") or "outline"
+            end
+            local fxLife = num(t.fxLife, 0.18, 0.05, 2)
+            local function swingFx()
+                local x0, y0, a = HS.placeOf(b, player)
+                if fxKind == "slash" and s.kind == "arc" then
+                    player.swingDir = -(player.swingDir or 1)
+                    w:addFx({ kind = "arc", x = x0, y = y0, r = s.r, a = a, arc = s.half * 2, dir = player.swingDir, life = fxLife, color = col })
+                elseif fxKind == "ring" then
+                    w:addFx({ kind = "ring", x = x0, y = y0, r = s.reach, life = fxLife, color = col })
+                elseif fxKind == "stab" then
+                    w:addFx({ kind = "stab", x = x0, y = y0, x2 = x0 + math.cos(a) * s.reach, y2 = y0 + math.sin(a) * s.reach,
+                        w = math.min(8, (s.hw or 3)), life = fxLife, color = col })
+                elseif fxKind == "outline" and b.active <= 0 then
+                    HS.flash(w, s, x0, y0, a, col, fxLife)
+                end
+                if type(t.sound) == "string" then me.sound(t.sound) end
+            end
+            if b.windup <= 0 and b.active <= 0 then
+                swingFx()
+                return HS.strike(b, player, w)
+            end
+            b.onStart = swingFx
+            if b.windup <= 0 then swingFx() b.onStart = nil end
+            HS.add(player, b)
+            if b.windup <= 0 then return HS.strike(b, player, w) end
+            return 0
+        end)
+    end
+    -- the older shortcuts are the same thing with a fixed shape
     function me.hitArc(t)
         t = type(t) == "table" and t or {}
-        return U(function()
-            local w = world()
-            local _, _, ang = dirOf(t)
-            local r = num(t.radius, 40, 4, 400) * area()
-            local half = num(t.arc, 2, 0.1, math.pi * 2) / 2
-            local hits = Combat.collect(w, player.x, player.y, r, function(e, ex, ey)
-                return math.abs(util.angleDiff(ang, math.atan2(ey, ex))) <= half
-            end)
-            local dmg = num(t.damage, 8, 0, 1000)
-            for _, e in ipairs(hits) do
-                local nx, ny = util.normalize(e.x - player.x, e.y - player.y)
-                Combat.damage(w, e, dmg, hitOpts(t, nx, ny))
-            end
-            player.swingDir = -(player.swingDir or 1)
-            if t.fx ~= false then
-                w:addFx({ kind = "arc", x = player.x, y = player.y, r = r, a = ang, arc = half * 2, dir = player.swingDir,
-                    life = 0.16, color = color(t.color) })
-            end
-            return #hits
-        end)
+        return me.hit(t, "arc")
     end
-
     function me.hitCircle(t)
         t = type(t) == "table" and t or {}
-        return U(function()
-            local w = world()
-            local x, y = point(t, 0)
-            local r = num(t.radius, 30, 4, 400) * area()
-            local dmg = num(t.damage, 8, 0, 1000)
-            local hits = Combat.collect(w, x, y, r)
-            for _, e in ipairs(hits) do
-                local nx, ny = util.normalize(e.x - x, e.y - y)
-                Combat.damage(w, e, dmg, hitOpts(t, nx, ny))
-            end
-            if t.fx ~= false then w:addFx({ kind = "ring", x = x, y = y, r = r, life = 0.2, color = color(t.color) }) end
-            return #hits
-        end)
+        return me.hit(t, "circle")
     end
-
     function me.hitLine(t)
         t = type(t) == "table" and t or {}
+        return me.hit(t, "line")
+    end
+    function me.hitBox(t)
+        t = type(t) == "table" and t or {}
+        return me.hit(t, "box")
+    end
+    function me.hitRing(t)
+        t = type(t) == "table" and t or {}
+        return me.hit(t, "ring")
+    end
+    -- put one of the bug's own status effects on the ants around a point: { status, radius, x, y, ahead }
+    function me.statusArea(t)
+        t = type(t) == "table" and t or {}
+        local sts = player.def.statuses
+        local id = type(t.status) == "string" and t.status or (sts and next(sts))
+        if not (sts and id and sts[id]) then return 0 end
         return U(function()
-            local w = world()
-            local dx, dy = dirOf(t)
-            local len = num(t.length, 80, 4, 600) * area()
-            local x2, y2 = player.x + dx * len, player.y + dy * len
-            local dmg = num(t.damage, 8, 0, 1000)
-            local hits = Combat.collectLine(w, player.x, player.y, x2, y2, num(t.width, 6, 1, 80))
-            for _, e in ipairs(hits) do Combat.damage(w, e, dmg, hitOpts(t, dx, dy)) end
-            if t.fx ~= false then
-                w:addFx({ kind = "stab", x = player.x, y = player.y, x2 = x2, y2 = y2, w = 3, life = 0.15, color = color(t.color) })
-            end
+            local x, y = point(t, 0)
+            local hits = Combat.collect(world(), x, y, num(t.radius, 50, 4, 400) * area())
+            for _, e in ipairs(hits) do require("src.game.bugextras").applyStatus(world(), e, id) end
+            if t.fx ~= false then world():addFx({ kind = "ring", x = x, y = y, r = num(t.radius, 50, 4, 400), life = 0.25, color = sts[id].color }) end
             return #hits
         end)
     end
+    -- switch to another form (forms = { ... }; 1 = the bug's own moves)
+    function me.form(n)
+        return U(function() return require("src.game.bugextras").setForm(player, n) end)
+    end
+    function me.formNow() return player.formIndex or 1 end
+    -- pets: how many are out, and hatch one more of pets[i]
+    function me.pets() return player.pets and #player.pets or 0 end
+    function me.addPet(i)
+        return U(function() return require("src.game.bugextras").addPet(player, math.floor(num(i, 1, 1, 8))) end)
+    end
+    -- the cooldown of the move that is firing, just this once
+    function me.cooldown(seconds) player.scriptCd = num(seconds, 0.5, 0, 60) end
+    -- show / hide every hitbox (handy while tuning a move)
+    function me.showHitboxes(on) HS.show = on and true or false end
+    -- freeze the action a moment (at most 0.25 s, not more often than every 0.15 s)
+    function me.hitstop(seconds)
+        return U(function()
+            local w = world()
+            if player.scriptStopAt and w.time - player.scriptStopAt <= 0.15 then return end
+            player.scriptStopAt = w.time
+            w:hitStop(num(seconds, 0.05, 0, 0.25))
+        end)
+    end
+    -- the bug can't walk for a moment (wind-ups, heavy swings); it can still turn
+    function me.root(seconds) player.scriptSpeed, player.scriptSpeedT = 0, num(seconds, 0.3, 0, 10) end
 
     -- the nearest ant within radius (single target). Returns true if it hit one.
     function me.hitNearest(t)
@@ -198,7 +331,7 @@ local function build(player)
             local s = { x = player.x, y = player.y, z = 5, vx = dx * sp, vy = dy * sp,
                 r = num(t.size, 3, 1, 16), damage = num(t.damage, 8, 0, 1000), life = life, color = col,
                 pierce = math.floor(num(t.pierce, 0, 0, 40)), knockback = o.knockback, poison = o.poison, slow = o.slow,
-                stun = o.stun, corrode = o.corrode, procDepth = depth }
+                stun = o.stun, corrode = o.corrode, procDepth = depth, cstatus = o.cstatus, look = o.look }
             if t.arc then s.vz, s.grav, s.pierce = 160 * life * 0.5 + 40, 320, 0 end
             if burst or pool then
                 s.onEnd = function(w2, sh)
@@ -302,7 +435,7 @@ local function build(player)
     end
     -- move speed x mul for some seconds
     function me.speed(mul, seconds)
-        player.scriptSpeed, player.scriptSpeedT = num(mul, 1, 0.1, 4), num(seconds, 1, 0, 60)
+        player.scriptSpeed, player.scriptSpeedT = num(mul, 1, 0, 4), num(seconds, 1, 0, 60)
     end
     -- nothing can hurt the bug for a moment
     function me.shield(seconds) player.iframes = math.max(player.iframes, num(seconds, 0.5, 0, 5)) end
@@ -436,6 +569,18 @@ local function build(player)
         end)
     end
     return me, cx
+end
+
+-- How a hit looks when it lands: { number = colour, crit = colour, sparks = { color, count } }.
+-- Returns nil when nothing is set (then the bug's own hitFx, then the default look).
+function SM.hitLook(t, fallback)
+    if type(t) ~= "table" then return fallback end
+    local sp = type(t.sparks) == "table" and t.sparks
+    if not (t.number or t.critNumber or sp) then return fallback end
+    local fb = fallback or {}
+    return { number = color(t.number, fb.number), crit = color(t.critNumber, fb.crit),
+        sparkColor = sp and color(sp.color or sp[1], fb.sparkColor) or fb.sparkColor,
+        sparkCount = sp and math.floor(num(sp.count or sp[2], 3, 0, 30)) or fb.sparkCount }
 end
 
 SM.SOUNDS = { boom = true, zap = true, dash = true, hit = true, swing = true, special = true, chime = true, drop = true,
@@ -572,6 +717,8 @@ end
 function SM.tick(player, world, dt)
     local def = player.def
     require("src.game.bugtraits").tick(player, world, dt)
+    if player.hitboxes then require("src.game.hitshapes").update(player, world, dt) end
+    require("src.game.bugextras").tick(player, world, dt)
     local hooks = def.hooks
     if player.scriptSpeedT then
         player.scriptSpeedT = player.scriptSpeedT - dt
@@ -628,6 +775,8 @@ end
 
 -- Drawn in the world (World:draw): helpers.
 function SM.draw(player, world)
+    if player.hitboxes then require("src.game.hitshapes").draw(player, world) end
+    if player.pets or player.statusTargets then require("src.game.bugextras").draw(player, world) end
     local list = player.scriptHelpers
     if not list then return end
     local Iso = require("src.core.iso")
@@ -657,6 +806,8 @@ function SM.evOf(ctx)
 end
 function SM.event(player, name, ctx)
     if player.def.passives then require("src.game.bugtraits").event(player, name, ctx) end
+    require("src.game.bugextras").event(player, name, ctx)
+    if name == "onKill" then require("src.game.bugextras").sfx(player, "kill") end
     local hooks = player.def.hooks
     local fn = hooks and EVENTS[name] and hooks[name]
     if not fn then return end

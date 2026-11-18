@@ -13,6 +13,8 @@ Frenzy.__index = Frenzy
 
 -- The super move for a character: its own `frenzy`, else a frenzy tagged like it, else the default.
 function Frenzy.defFor(charDef, cfg)
+    local own = (charDef.baseDef or charDef).ownFrenzy      -- a custom bug's own ultimate
+    if own then return own end
     if charDef.frenzy then return Content.frenzies:require(charDef.frenzy) end
     for _, f in ipairs(Content.frenzies:all()) do
         for _, t in ipairs(f.tags) do
@@ -35,6 +37,9 @@ function Frenzy:ready() return self.charge >= self.max and not self.active end
 function Frenzy:add(amount, force)
     if self.active and not force then return end
     local was = self.charge >= self.max
+    local p = self.world.player
+    local own = p and p.def and (p.def.baseDef or p.def).ownFrenzy
+    if own and not force then amount = amount * (own.chargeRate or 1) end
     self.charge = math.min(self.max, self.charge + amount)
     if not was and self.charge >= self.max then
         self.readyT = 0
@@ -53,7 +58,7 @@ function Frenzy:unleash()
     self.active = ctx
     def.start(ctx)
     local f = self.rewards.cfg.feel
-    self.rewards:slowmo(f.frenzySlow, f.frenzySlowTime)
+    if def.slowmo ~= false then self.rewards:slowmo(f.frenzySlow, f.frenzySlowTime) end
     self.rewards:punch(f.frenzyPunch)
     w.milestone = { text = def.name:upper() .. "!", t = 0 }
     self.flashT = 0.35
