@@ -106,6 +106,9 @@ function Lighting.beginFx()
     local lg = love.graphics
     local cw, ch = Screen.canvas:getDimensions()
     canvasLike("fxCanvas", cw, ch)
+    -- endFx puts back whatever was drawn to before (the world canvas in a run; a test or a
+    -- preview can draw a world straight to the screen)
+    Lighting.fxPrev = lg.getCanvas()
     lg.setCanvas(Screen.fxCanvas)
     -- only the visible part needs clearing (the canvas is sized for the widest zoom)
     lg.setScissor(0, 0, Screen.viewW, Screen.viewH)
@@ -115,7 +118,8 @@ end
 
 function Lighting.endFx()
     local lg = love.graphics
-    lg.setCanvas(Screen.canvas)
+    lg.setCanvas(Lighting.fxPrev)
+    Lighting.fxPrev = nil
     lg.push()
     lg.origin()
     Lighting.soft = Lighting.soft or lg.newShader(SOFTADD)

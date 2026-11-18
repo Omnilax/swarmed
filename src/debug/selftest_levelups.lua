@@ -185,8 +185,12 @@ return function(wait, shot)
         -- Molt Reserve: the first killing bite is survived, the second isn't
         lu:take(lu:statCard(Content.levelcards:get("molt_reserve"), lu.cfg.rarities[1]))
         assert(lu:maxed(Content.levelcards:get("molt_reserve")), "Molt Reserve is once only")
-        p.iframes = 0
-        p:hurt(p.hp * 50 + 9999)
+        -- (a dodge or block from the cards taken above can turn a bite away: bite until one lands)
+        for _ = 1, 50 do
+            if lu.used and lu.used.molt_reserve then break end
+            p.iframes = 0
+            p:hurt(p.hp * 50 + 9999)
+        end
         assert(not p.dead and p.hp > 0, "Molt Reserve should save you once")
         assert(lu.used and lu.used.molt_reserve, "Molt Reserve should be spent")
         world.flags.god = true
