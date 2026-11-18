@@ -5,6 +5,11 @@
 local AI = require("src.game.ai")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.85, 0.35 }
+local PFX_2 = { grav = 120 }
+local PFX_LIST_1 = { PFX_1 }
+
 return {
     name = "Bumper",
     init = function(e) e.st.cd, e.st.ph = 0, love.math.random() * 6.28 end,
@@ -27,7 +32,7 @@ return {
             local b = (params.bounce or 170) / e.mass ^ 0.3
             e.kvx, e.kvy = -nx * b, -ny * b
             world.camera:shake(0.15)
-            world.particles:burst(e.x, e.y, 5, { { 1, 0.85, 0.35 } }, 60, 30, { grav = 120 })
+            world.particles:burst(e.x, e.y, 5, PFX_LIST_1, 60, 30, PFX_2)
             Audio.play("hit", { pitch = 0.55 })
         end
     end,

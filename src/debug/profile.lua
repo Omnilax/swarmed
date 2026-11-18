@@ -2,6 +2,7 @@
 -- Runs a scripted massacre (big streaming waves, a player with chain/explosion procs killing
 -- hundreds) and prints where frame time goes, plus LuaJIT's hottest lines (update and draw
 -- separately), draw calls and garbage per frame. Then quits.
+--   --gclines  with --crowd: the source lines that allocate the most each frame
 --   --crowd    repeatable benchmark instead: a fixed horde (500 / 1000 / 2000, packed and spread)
 --              around a god-mode player that doesn't attack (--lines: hottest lines, --byfunc: by function)
 --   --nojit    interpreter only, close to the phone/web build (plain Lua 5.1, no JIT)
@@ -72,6 +73,24 @@ function Profile.crowd(game, world)
                 local k = prof.dumpstack(th, Profile.flags["--byfunc"] and "F" or "pl", 1)
                 counts[k] = (counts[k] or 0) + samples
             end)
+        end
+        -- --gclines: which source lines allocate (every line's growth in Lua memory over 10 frames of the 1000 horde; numbers are rough)
+        if Profile.flags["--gclines"] and target == 1000 and not case.spread then
+            collectgarbage("restart")     -- the hook's own garbage must still be collected
+            local by, last, lastKey = {}, collectgarbage("count"), nil
+            debug.sethook(function()
+                local now_ = collectgarbage("count")
+                if lastKey and now_ > last then by[lastKey] = (by[lastKey] or 0) + (now_ - last) end
+                local info = debug.getinfo(2, "Sl")
+                lastKey = info and (info.short_src .. ":" .. (info.currentline or 0)) or "?"
+                last = collectgarbage("count")
+            end, "l")
+            for _ = 1, 10 do world:update(1 / 60) end
+            debug.sethook()
+            local arr = {}
+            for k, v in pairs(by) do arr[#arr + 1] = { k, v / 10 } end
+            table.sort(arr, function(x, y) return x[2] > y[2] end)
+            for i = 1, math.min(12, #arr) do print(("[gc] %7.2f KB/frame  %s"):format(arr[i][2], arr[i][1])) end
         end
         collectgarbage("stop")
         local g0 = collectgarbage("count")
@@ -205,6 +224,24 @@ function Profile.crowd(game, world)
                 local k = prof.dumpstack(th, Profile.flags["--byfunc"] and "F" or "pl", 1)
                 counts[k] = (counts[k] or 0) + samples
             end)
+        end
+        -- --gclines: which source lines allocate (every line's growth in Lua memory over 10 frames of the 1000 horde; numbers are rough)
+        if Profile.flags["--gclines"] and target == 1000 and not case.spread then
+            collectgarbage("restart")     -- the hook's own garbage must still be collected
+            local by, last, lastKey = {}, collectgarbage("count"), nil
+            debug.sethook(function()
+                local now_ = collectgarbage("count")
+                if lastKey and now_ > last then by[lastKey] = (by[lastKey] or 0) + (now_ - last) end
+                local info = debug.getinfo(2, "Sl")
+                lastKey = info and (info.short_src .. ":" .. (info.currentline or 0)) or "?"
+                last = collectgarbage("count")
+            end, "l")
+            for _ = 1, 10 do world:update(1 / 60) end
+            debug.sethook()
+            local arr = {}
+            for k, v in pairs(by) do arr[#arr + 1] = { k, v / 10 } end
+            table.sort(arr, function(x, y) return x[2] > y[2] end)
+            for i = 1, math.min(12, #arr) do print(("[gc] %7.2f KB/frame  %s"):format(arr[i][2], arr[i][1])) end
         end
         collectgarbage("stop")
         local g0 = collectgarbage("count")

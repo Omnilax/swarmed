@@ -68,7 +68,8 @@ The web build runs plain Lua 5.1, not LuaJIT: no `goto`, and no LuaJIT-only libr
 | Unleash Frenzy (when the meter is full) | Q / C | Right or left stick click |
 | Pause | Esc / P | Start |
 | Quick restart (pause / defeat screen) | R | Y |
-| Favourite a bug (bug select) | F | X |
+| Favourite a bug (bug select) | F / right click | X |
+| Bug select: family tab / danger / sort / style | Q, E / Z, X / T / G | LB, RB / Y / L-stick / R-stick |
 
 All bindings can be changed in Settings > Controls. With a controller in use, prompts and key
 hints show its buttons as icons (`Theme.glyph`); any prompt can name an action as `{dash}` and
@@ -81,9 +82,16 @@ hints show its buttons as icons (`Theme.glyph`); any prompt can name an action a
   saved mid-wave plays that wave again. Abandon Run, defeat and End Run delete the save.
 - **Play Again** on the title screen starts the last bug and mode in one press. Pause and the
   defeat screen restart the same setup; the defeat screen can also go straight to bug select.
-- **Bug select** sorts (speed, health, size, armour, playstyle, name) and filters (playstyle,
-  favourites) from `src/config/playstyles.lua`; favourites are pinned on top. A live preview
-  shows the highlighted bug's special and dash (`src/ui/movepreview.lua`).
+- **Bug select** is a wall of bug portraits grouped by family, with a tab per family (All,
+  Favourites, Beetles, Spiders, Scorpions, Crustaceans, Insects, Myriapods, Custom for Bug Creator
+  bugs). Families come from `src/config/bugfamilies.lua`: a bug joins the first family whose tag
+  it has, or names one with `family = "<id>"`. In All, favourites get their own section on top.
+  Sort (speed, health, size, armour, playstyle, name) and the playstyle filter sit top right
+  (`src/config/playstyles.lua`); tiles show a lock and a silhouette for locked bugs, a pip per
+  danger level won and the sorted number. The details panel fits itself to the screen (the
+  picture shrinks, then the description, then the stats give way on phones) and shows a live
+  preview of the bug's special and dash (`src/ui/movepreview.lua`). Mouse: hover highlights,
+  click plays. Touch: first tap shows, second tap plays. Test: `love . --selftest --charselect`.
 - Each bug has a `playstyle` and a one-time `tip` (content/characters), shown in its first run.
 - **Practice** (title screen): pick a bug, mode, starting wave and one species (or a boss, or
   "Mixed"), optionally with the items and skill points a real run would have, and invincibility.
@@ -161,6 +169,14 @@ Test: `love . --selftest --nectar`.
 - **Cursed items** (purple, from wave 3): a big upside with a real cost, written in purple on the
   card. They can't be eaten, only scrapped (for nothing). Hungry Tapeworm, Glass Wings, Fool's Gold
   Scarab, Queen's Pheromone, Bullet Ant Venom, Parasitoid Egg.
+- **Parasites** (red, from wave 3; `src/game/parasites.lua`): curse-like items that live *in* your
+  bug, not the bag, so nothing can eat, scrap, sell or clone them. One of each, three at most.
+  Some devour their host items in your bag when they get in (Void-style) for a permanent bonus.
+  Horsehair Worm, Deer Tick, Head Lice, Follicle Mite, Flu, Cordyceps Puppeteer, Toxoplasma,
+  Botfly Larva, Lancet Fluke, Guinea Worm. The only cure is a rare **Green Mushroom** that sprouts
+  while you carry one: walk into it to purge them all. No global setting (it changes the game too
+  much); a mode can set `parasites = false`. Icons: `PYTHONPATH=tools python3 tools/make_parasite_icons.py`. Test:
+  `love . --selftest --parasites`.
 - **Hyperbolic stacking**: Luck, the proc snowball and extra copies never push a chance to 100%
   (`Inventory.stackChance`). A proc whose effect doesn't grow with copies can set `chanceStack` to
   fire more often per copy instead. The bag tooltip shows each item's chance right now. Dodge has a
@@ -269,6 +285,17 @@ Play opens the mode select, then the bug select. Modes are files in `content/mod
   one back (it runs with no globals and a step limit, so pasted text can only be data); the same table
   works as a mode file's `waves`. Clearing the last wave wins; Keep Going loops the set, tougher.
   Custom wins count for the mode's own record only (no bug wins, danger mastery or achievements).
+  Each set also has **Rules**: map gambles, parasites, level-ups (cards or skill points),
+  overlapping waves, wave heat, mini-goals, route gates, weather effects, dash tech and its own
+  item pool.
+
+- **Run rules** (`src/game/rules.lua`): anything that changes the game itself (difficulty, spawns,
+  elites, species order, events, gambles, encounters, pacing, acts, level-ups, dash tech,
+  parasites) is NOT a setting. The main game always plays with the defaults there, so every
+  player's game is the same game. Only a mode changes them: a Custom Waves set's `rules`, or a
+  mode file's `rules = { key = value }`. Code reads them with `Rules.get(key)`; selftests override
+  with `Rules.set(key, value)`. Settings > Gameplay keeps comfort options only (auto attack, aim,
+  health bars, hit stop, wave break, reward timing...).
 
 - **Daily Run** (bottom of the mode list): today's date seeds the bug, the stage, the species order
   and every wave modifier, so everyone gets the same run that day (Colony rules). The best result
@@ -404,6 +431,178 @@ the only way to earn skill points. Setting
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
 
+## Gentle Start (new players)
+
+A new player meets the game a piece at a time (`src/game/onramp.lua`, numbers and card text in
+`src/config/onramp.lua`). In the first run: no elites before wave 4, the treasure ant from wave 3,
+and the nectar shop (with the nectar counter) from wave 3. Mini-goals, wave twists, garden events
+and map gambles join in run 2, route tunnels and big visitors in run 3, and until run 4 a wave has
+at most one event and never one beside a visitor. The first time each system shows up, a short
+"NEW" card explains it; from then on it is never held back again. Saves with 6+ runs count as
+met everything. Practice, the daily run, custom waves and modes with `onramp = false` skip it.
+Setting: Gameplay > **Gentle Start**. Systems ask `OnRamp.allows(world, id, wave)`.
+
+**Playtest Log** (Developer): one CSV line per cleared wave and at the end of a run (time, damage
+taken, KOs, level, items, nectar) in `playtest_log.csv` in the save folder (`src/game/playlog.lua`).
+
+Test: `love . --selftest --gentle`.
+
+## Tutorial and Field Guide
+
+- **Tutorial** (main menu; "Tutorial (start here)" until it is finished once): a guided fight
+  in `content/modes/tutorial.lua` (a hidden mode) run by `src/game/lessons.lua`. The colony's
+  own waves are off; 14 lessons each bring in what they need and move on when done: move,
+  attack, dash, special, the swarm, nectar, a level-up, an item choice, the bag, the shop,
+  frenzy, an elite, a queen. A panel at the top shows the current lesson. Nobody can fall in
+  it, it isn't tracked or saved, and it ends back on the title screen.
+- **Field Guide** (main menu and pause): one short page for every system
+  (`src/config/guide.lua`), a set-bonus page written from `src/config/tags.lua`, and the bug
+  and item catalogues. Pages for systems Gentle Start hasn't shown yet read "? ? ?" until met.
+- **Wiki** (Field Guide > Wiki, `src/states/wiki.lua`): nine tabs (Bugs, Enemies, Items,
+  Level-ups, Maps, World, Modes, Progress, Design) with a page for everything in the game. Pages
+  are written live from the content by `src/game/wiki.lua`, so new content shows up by itself;
+  "how it works" notes are the comment block at the top of each behaviour / attack / dash file.
+  Enemies you haven't met stay "? ? ?" (unless Unlock Everything). The Design tab is
+  `docs/wiki/*.md` baked into `src/config/wiki_notes.lua` by `python3 tools/make_wiki_notes.py`
+  (run it after editing a chapter). Two panes on wide screens; one pane with a Back button on an
+  upright phone. The same chapters build the Design Bible PDFs (`tools/wiki/README.md`).
+
+Test: `love . --selftest --tutorial`, `love . --selftest --wiki`.
+
+## Amber and the Burrow
+
+**Amber** is the currency kept between runs (`src/game/amber.lua`, numbers and stock in
+`src/config/amber.lua`, kept in the records save). Every run that got going pays some when it
+ends, won or lost: 2 a wave cleared, 4 a queen, 1 per 10 elites, 1 per 200 KOs, 20 for a win
+(Custom Waves pay half). The defeat and victory screens show what the run paid and how much more
+the next unlock needs. A save that already had 6+ runs gets a one-time head start (5 a run, up to 250).
+
+**The Burrow** (main menu, `src/states/burrow.lua`) spends it on new things to find, never on raw
+power: item packs (their items stay out of every item choice and the shop until bought), maps
+(Cosmetics > Location), modes (shown as locked in mode select until bought; a mode played before
+amber stays open) and, from the next step, artifacts. Press once to look, twice to buy. Unlock
+Everything opens it all. API: `Amber.owns/itemOpen/stageOpen/modeOpen/buy/next/runLine`.
+
+The main menu is shorter: the bug and item catalogues live in the Field Guide, Practice moved
+into mode select, and the Tutorial button shows until the tutorial is finished once (then it is
+in the Field Guide).
+
+Test: `love . --selftest --amber`.
+
+## Artifacts
+
+Run rules for any mode, like Risk of Rain 2's (`content/artifacts`, schema in `_template.lua`,
+`src/game/artifacts.lua`). Each is bought once in the Burrow (its own shelf, made from the
+content folder), then switched on or off in mode select > **Artifacts** (kept in prefs). They
+stay on for every run until switched off; the first wave's banner names them; a saved run keeps
+its own list; the daily run, practice and the tutorial ignore them. An artifact can change the
+Game params before the world is made (`params`, Metamorphosis picks the bug) and the world after
+(`apply`: `world.danger` multipliers, player stat modifiers, the frenzy meter...).
+
+Glass Carapace, Teeming, Giants, Royal Guard, Twin Queens (a second queen every queen wave,
+`danger.twinQueens`), Heatwave, Mixed Colony, Frenzy Tide, Metamorphosis.
+
+Test: `love . --selftest --artifacts`.
+
+## Maps and their wildlife
+
+Every stage can have its own `fauna` (content/stages): how much more often each species or
+family turns up there (`desert_ant = 5`, `termite = 2`, `bee = 0.15`; 0 = never, `other` = the
+rest, the id beats the family) and `first`, the species that opens wave 1. Favoured species are
+also met sooner in the run (`Spawner:faunaMul`, `Pacing.shuffleOrder`). A mode's own families
+still apply on top. Content checks every fauna key at start-up.
+
+New maps (bought in the Burrow): **Dune Field** (desert, honeypot and pebble ants, velvet ants,
+sand wasps, harvester termites), **Rainforest Floor** (army, driver and bullet ants, leafcutters,
+orchid and stingless bees), **Rotting Log** (termites, wood ants, carpenter bees) and
+**Wildflower Meadow** (bees, wasps and hornets). The old maps got a lighter touch of fauna too
+(Sandstone Wash leans desert, Mossy Flagstones woodland, the lawn fire ants...).
+
+Mode select opens on a **Map** row (left and right to change, any open map) with the map's
+description and who lives there.
+
+Test: `love . --selftest --maps`.
+
+## One currency, a cleaner HUD
+
+A run has one currency, nectar. The merchant beetle sells for nectar too, a fifth under shop
+price (each later sale 25% more), instead of its own count of KOs.
+
+Settings > Interface > **HUD Detail**: Full (the default) or Clean. Clean keeps health, stamina,
+XP, the frenzy meter and how many enemies are left, and hides the run timer, KO counter, KO
+milestones and the next-wave preview. With Enemies Left on, the line under the wave title no
+longer repeats the count.
+
+Test: `love . --selftest --flow`.
+
+## Three acts per run
+
+A 15-wave run is three acts of five waves, each on its own map (src/game/acts.lua). The route
+is planned when the run starts: act 1 is the map you picked, acts 2 and 3 are other maps you
+have open, so every map bought in the Burrow can turn up mid-run (seeded: the same seed takes the
+same route). After the queen of waves 5 and 10, her rewards and the shop, the break line says
+where the colony goes next; starting the next wave carries the whole run there (through a run
+save, as if resumed), with an "Act 2 of 3" card and a breather.
+
+Not in practice, the daily run, endless, custom or scripted waves, or modes with `acts = false`.
+Gentle Start holds it back until the second run. A mode with `rules = { travelActs = false }`
+keeps a run on one map.
+
+The victory screen closes the story with the maps the run crossed ("From Backyard Patio to Dune
+Field to Mossy Flagstones. The Empress has fallen."); a mode can set its own `ending`.
+
+Test: `love . --selftest --acts`.
+
+## Queens, the Empress and champions
+
+src/game/bosses.lua, numbers and names in src/config/bosses.lua.
+
+- **Title cards**: a queen walking in gets a card across the lower screen with her name and an
+  epithet for the map ("Desert Queen, the Sun-Baked").
+- **Phases**: at half health a queen enrages: faster, and her brood rushes in around her.
+- **The Empress**: the last crowned queen of the final wave, with her own card and two phases
+  (two thirds and one third health).
+- **Named champions**: on the middle wave of each act (3, 8, 13) the first elite is a champion
+  with a name ("Cinder, Worker Ant"), three times the health and the boss bar while no queen is
+  about. She pays 40 XP and 12 nectar. Held back with elites by Gentle Start.
+
+Test: `love . --selftest --bosses`.
+
+## Keepsakes
+
+One small trade your bug carries into a run (src/config/keepsakes.lua, src/game/keepsakes.lua).
+Bought with amber on the Burrow's Keepsakes shelf, then picked on the **Keepsake** row in mode
+select (the row shows once you own one). Each trades one thing for another, never a straight
+gain: Snail Shell (more health, slower), Wasp Sting (more damage, less health), Dragonfly Wing
+(faster, less damage), Honey Jar (30 nectar to start, less nectar earned), Old Map (more XP, less
+nectar), Pill Bug Plate (bites hurt less, slower attacks). A saved run keeps its keepsake; the
+daily run, practice and the tutorial take none.
+
+## Weekly challenge
+
+Mode select > **Weekly Challenge**: a new one every Monday (src/game/daily.lua `Daily.weekInfo`).
+The week's seed picks the bug, the map and two artifacts, which are on whether you own them or
+not, so it is a taste of rules you may not have bought yet. Colony rules, no keepsake, one map
+all run. Your best is kept with the daily results under the week's key ("2026-W46").
+
+Test: `love . --selftest --keepsakes`.
+
+## Run codes
+
+Game over and victory have **Copy Run Code**: a line like
+`swarmed1.rhino_beetle.dune_field.colony.d2.mi4r7153.giants` (bug, first map, mode, danger,
+seed, artifacts). Mode select > **Play a Run Code** reads it from the clipboard and starts the same
+run. The bug must be unlocked; the code's artifacts are on whether you own them or not; keepsakes
+are left out. Practice, custom waves and the tutorial have no code (src/game/runcode.lua).
+
+Test: `love . --selftest --runcode`.
+
+## Sealed cocoons
+
+From wave 4, an item choice sometimes (15%) deals one card as a **Sealed Cocoon**: rare or
+better, but its name, shape and stats stay hidden until you take it (`Choices.seal`,
+`Choices.SEALED` in src/game/choices.lua). Locked cards are never sealed.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):
@@ -427,19 +626,20 @@ achievements on their own. Unlocks slide in at the top right. Run events it list
   Goals are achievements in the Records screen's **Unlocks** category (`content/achievements/unlocks.lua`),
   so progress shows there and an "Unlocked" card pops up mid-run. Bugs already played before
   unlocks existed stay open. Settings > Gameplay > **Unlock Everything** opens it all.
-- **Item pool.** Settings > Gameplay > **Item Pool...** switches items in or out of the item
-  choices (at least 12 stay in). Saved in `prefs.lua`.
+- **Item pool.** The main game always offers every unlocked item; the pool is part of the game,
+  not a setting. Only a Custom Waves set's Rules > **Item Pool...** switches items out of that
+  set's choices (at least 12 stay in), saved with the set as `itemsOff`.
 - **Bug rules.** Some bugs bend how items work for them (`src/config/bugrules.lua`, run by
   `src/game/bugrules.lua`): Dung Beetle gets stronger from eaten items, Hermit Crab starts with an
   extra bag row but slows per filled cell, Orb Weaver's procs fire twice on webbed ants, Hissing
   Roach heals double from eating, Scorpion's poison items proc more. Shown on bug select.
-- **Danger levels.** Left/Right on a bug in bug select picks Danger 0-5 (`src/config/danger.lua`):
+- **Danger levels.** Z / X (pad Y, or the arrows in the panel) on bug select picks Danger 0-5 (`src/config/danger.lua`):
   each level adds one rule (more elites, less healing, faster ants, tougher ants, bigger groups and
   an extra crowned queen). Winning at a level opens the next one for that bug; the highest level
   won shows as mastery stars and is kept in Records (`characters[id].danger`).
 - **Dash tech.** A kill during a pressed dash (or just after) refunds half its stamina; dashing
   again within 0.45 s of the last one ending is 15% faster per link, up to 3 (`src/game/dashtech.lua`,
-  Settings > Gameplay > Dash Tech).
+  a Custom Waves set's Rules can turn it off).
 - **Final Swarm.** After the wave-15 win, the victory screen offers a last stand: 60 seconds of
   every species met pouring in from every side, lots of elites and a crowned queen halfway
   (`src/game/finalswarm.lua`). Live through it and the run ends with "Swarm survived".
@@ -515,8 +715,8 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   follows you, then flattens everything under it), a flood (water from one side: wading, a current,
   small ants drown), colony war (a red rival colony fights yours), dew drops rolling across in
   lines, falling acorns (they stay as things to roll), a lawnmower lane, web cocoons (break one to
-  free a bug that fights beside you for 20 s) and the merchant beetle (its prices are KOs made while
-  it is around; walk into it to buy, the item goes straight into the bag). A stage's
+  free a bug that fights beside you for 20 s) and the merchant beetle (it takes nectar, a fifth under
+  shop price; walk into it to buy, the item goes straight into the bag). A stage's
   `events = { id = weight }` and a mode's `eventWeights` / `events = false` change the odds.
 - **Boss encounters** (`content/bosses`, setting **Boss Encounters**): every 5th wave except the
   final one, something big joins the queen. Bugs are fights: the antlion (a sand pit that drags
@@ -631,7 +831,7 @@ attacks sooner and further), Gilded (shiny gold, tough, +1 card in the next item
 40% of each hit), Venomous (poisonous bites) or Volatile (bursts into acid on death). They are
 tinted, bigger, glow and stand on a coloured aura. Affixes are files in `content/elites`, and a
 species can give an affix its own twist with `elites = { aggressive = { params = {...} } }`
-(the red green ant sprays a wider, faster, longer-range fan). Settings > Gameplay > Elite Ants.
+(the red green ant sprays a wider, faster, longer-range fan). How often is a run rule (`eliteFrequency`); Custom Waves sets pick their own.
 
 Time of day: Settings > Video > Time of Day picks a day/night cycle (default, Day Length sets how
 long) or a fixed Day, Sunset, Evening or Night. Colours live in `src/game/daylight.lua` and a stage
@@ -640,6 +840,26 @@ can override them with `ambients`.
 Enemy behaviours live in `content/behaviors` (helpers in `src/game/ai.lua`); honey, acid and pebbles
 are in `src/game/hazards.lua`. A behaviour can also define `onHit` (react to being hit), `draw`
 (warnings, shown with Attack Warnings on) and `drawUnder` (things in the world, always drawn).
+
+## Game icon and Discord status
+
+**Icon.** `assets/icon/` holds the game icon (a bombardier beetle ringed by worker ants, painted
+with the game's own models). The window, taskbar and dock use `icon_256.png` (`conf.lua`), the web
+build uses it as the browser tab and phone home-screen icon, and `swarmed.ico` / `swarmed.icns`
+are for desktop shortcuts and packaged builds (Windows: right-click the shortcut > Properties >
+Change Icon > pick `swarmed.ico`). To repaint it: `love . --makeicon`, copy `icon/icon_128.png`
+and `icon/icon_32.png` from the save folder into `assets/icon/`, then `python3 tools/make_icons.py`.
+
+**Discord.** While the Discord desktop app is open, your profile shows "Playing Swarmed" with what
+you're doing: the bug, the wave, the mode and danger level, and how long the run has gone on
+(menus, the Bug Creator and the sandbox get their own lines). It talks to Discord's local pipe
+directly (`src/core/discord.lua`, no DLLs to ship), and turns itself off quietly on the web, on
+phones, in tests, when Discord isn't running, or with Settings > Interface > Discord Status off.
+It needs the Application ID of a "Swarmed" app from the
+[Discord Developer Portal](https://discord.com/developers/applications) in
+`src/config/discord.lua` (or `SWARMED_DISCORD_APP_ID` in the environment); with none it stays off.
+Test without Discord: `python3 tools/fake_discord.py`, then
+`SWARMED_DISCORD_APP_ID=1 love . --selftest --discord`.
 
 ## Developer mode
 
@@ -800,6 +1020,11 @@ and the centipede back in line).
 - Splats are a few tinted blob stamps from the atlas; particle spawns scale down as the pool fills;
   bodies in the air are capped; glowing-particle lights are capped; hit stop has a cooldown so
   constant mass kills don't feel like stutter.
+- Particle colours and options are module constants (`PFX_n`), not a new table per spawn; the
+  death spray reuses one scratch colour and two option tables.
+- `love . --profile --crowd --nojit --cpudraw` benchmarks a fixed horde; add `--gclines` to list
+  the source lines that allocate the most each frame. Most of what is left on the interpreter is
+  LÖVE's own `love.math.random` (kept: seeded runs depend on it).
 
 ## UI style guide
 
@@ -834,6 +1059,13 @@ use them instead of drawing your own. Check by eye with `love . --selftest --uit
 - **Transitions**: the state stack fades every non-transparent screen in; overlays
   (`transparent = true`) dim the game behind them to about 70% black.
 
+Menus with pictures: any Menu row can take `icon = Menu.sprite(spriteId, turn)` (a bug, enemy or
+item sprite on a round chitin badge; `turn` tips side-on bugs 45 degrees). When some rows have an
+icon every row keeps the room, so labels line up. Game modes name an enemy as their `icon`.
+Title-screen rows carry a `desc` shown under the list. List screens end with
+`Theme.navFooter(pick)` (Arrows / Enter / Esc, or the pad's buttons; nothing on touch). Mode
+select is grouped under headers: Your run, Modes (bought ones first), Challenges, More.
+
 ## Layout
 
 ```
@@ -848,3 +1080,25 @@ src/debug/              dev tools, console commands, sandbox panel, selftest
 content/                all game content (see above)
 docs/PLAN.md            roadmap
 ```
+
+## Lighting, camera and visual options
+
+Every visual extra has its own setting, so players choose what they like. Settings > Lighting
+has a **Look** row (Standard, Clarity, Cinematic, Classic) that sets them in one go.
+
+- `src/gfx/lighting.lua`: Bold light style (light map at half scale + highlight roll-off
+  composite), Glare Guard / Own Effects Opacity (additive layer on its own canvas, soft-capped),
+  warning / hazard / threat lights, night lantern, kill light pops. Rich day palette in
+  `src/game/daylight.lua`.
+- `src/gfx/shading.lua`: sun and contact shadows, rim light, cloud shadows, sun rays, wet ground.
+- `src/gfx/clarity.lua`: actors pop / background dim (ground shader), see-through silhouettes,
+  threat outlines, horde depth, danger compass, clear space, low health pulse.
+- `src/gfx/ambience.lua`: wind gusts, horde tracks, death styles, colour grade and heat haze
+  (both in the post shader, `src/core/screen.lua`), falling leaves, night glow mushrooms.
+- `src/gfx/camfx.lua` + `src/game/camera.lua`: smart auto-zoom, horde framing, zoom by bug size,
+  boss intro glance, wave clear zoom, directional shake, camera punch, foreground grass. Camera
+  Height changes the view's rows in `Screen.setZoom`.
+- `src/states/photomode.lua` (Pause > Photo Mode), F12 screenshots, Highlight Shots,
+  `src/ui/inspect.lua` (hold V / Left Alt), live preview beside the Video / Lighting / Camera tabs.
+- `src/game/soundscape.lua`: ambient sounds, in-key stingers; positional sound in `Audio.place`.
+- Test: `love . --selftest --visuals` (VISBENCH=1 prints the frame rate of each look).

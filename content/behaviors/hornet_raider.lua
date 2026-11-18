@@ -11,6 +11,9 @@ local Audio = require("src.core.audio")
 
 local SCENT = { 1, 0.85, 0.35 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { glow = true, grav = -10 }
+
 local function raidUpdate(world, z)
     if z.t < z.delay or z.done then return end
     z.done, z.t = true, z.maxLife
@@ -43,7 +46,7 @@ return {
             st.ang = st.ang + dt * 2.5
             AI.goTo(e, p.x + math.cos(st.ang) * 22, p.y + math.sin(st.ang) * 22, e.speed * 2)
             if love.math.random() < dt * 12 then
-                world.particles:spawn(e.x, e.y, 4, 0, 0, 15, 0.6, SCENT, 1, { glow = true, grav = -10 })
+                world.particles:spawn(e.x, e.y, 4, 0, 0, 15, 0.6, SCENT, 1, PFX_1)
             end
             st.t = st.t - dt
             if st.t <= 0 then

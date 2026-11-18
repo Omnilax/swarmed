@@ -16,30 +16,33 @@ return function(wait, shot)
 
     -- 1. character select
     local cs = State.push(require("src.states.charselect").new())
-    local m = cs.menu
-    local x, y, w, h = m:rect()
+    local L = cs:layout()
+    local G = L.grid
     for _, dev in ipairs({ "keyboard", "touch" }) do
         Input.lastDevice = dev
-        for i = 1, #m.items do
-            m.focus = i
-            m:ensureVisible()
-            drawState(cs)
+        for _, tab in ipairs(cs:tabs()) do
+            cs:setTab(tab.id)
+            for i = 1, #cs.list do
+                cs.focus = i
+                cs:ensureVisible()
+                drawState(cs)
+            end
         end
-        m.focus, m.scroll = 1, 0
-        for _ = 1, #m.items + 5 do          -- wheel down past the end, hovering as it goes
+        cs:setTab("all")
+        cs.focus, cs.scroll = 1, 0
+        for _ = 1, #cs.list + 5 do          -- wheel down past the end, hovering as it goes
             cs:wheelmoved(0, -1)
-            for py = y, y + h, 8 do cs:mousemoved(x + 10, py) drawState(cs) end
+            for py = G.y, G.y + G.h, 8 do cs:mousemoved(G.x + 10, py) drawState(cs) end
             cs:update(1 / 60)
         end
-        for _ = 1, #m.items + 5 do cs:wheelmoved(0, 1) drawState(cs) end
+        for _ = 1, #cs.list + 5 do cs:wheelmoved(0, 1) drawState(cs) end
     end
     Input.lastDevice = "keyboard"
-    for i = 1, #m.items do if m.items[i].character and m.items[i].character.id == "dragonfly" then m.focus = i end end
-    m:ensureVisible()
+    cs:focusOn("dragonfly")
     wait(0.2)
     shot("charselect_scrolled")
     State.pop()
-    print("[selftest] character select OK (" .. (#m.items - 2) .. " bugs)")
+    print("[selftest] character select OK (" .. #cs.list .. " bugs)")
 
     -- 2. every character in a fight
     local Game = require("src.states.game")

@@ -10,12 +10,11 @@ local Prefs = require("src.game.prefs")
 
 return function(wait, shot)
     local savedProfile, savedFree, savedAll = Records.profile, Unlocks.free, Settings.get("unlockAll")
-    local savedOff = Prefs.get().poolOff
     Records.noSave, Prefs.noSave = true, true
     Records.reset()
     Unlocks.free = false
     Settings.set("unlockAll", false)
-    Prefs.get().poolOff = {}
+    Unlocks.editing = nil
 
     -- 1. Locks: 8 starters open, the rest locked; unlock-all opens everything
     local open, all = Unlocks.bugCount()
@@ -25,9 +24,31 @@ return function(wait, shot)
         assert(Unlocks.bug(c.id) or Unlocks.bugGoal(c.id), "locked bug without a goal: " .. c.id)
     end
     assert(not Unlocks.item("amber") and not Unlocks.inPool("amber"), "amber should start locked")
+    -- every goal names a real bug / item (a renamed or removed one would leave a dead goal)
+    local UC = require("src.config.unlocks")
+    for _, id in ipairs(UC.starters) do assert(Content.characters:get(id), "unknown starter bug: " .. id) end
+    for id in pairs(UC.bugs) do assert(Content.characters:get(id), "unlock goal for unknown bug: " .. id) end
+    for id in pairs(UC.items) do assert(Content.items.byId[id], "unlock goal for unknown item: " .. id) end
     Settings.set("unlockAll", true)
     assert(Unlocks.bug("crab") and Unlocks.item("amber") and Unlocks.maxDanger("crab") == 5, "unlock all")
+    -- Unlock Everything covers every bug, item and locked cosmetic, including ones added later
+    local Cosmetics = require("src.game.cosmetics")
+    assert(select(1, Unlocks.bugCount()) == Content.characters:count(), "unlock all: a bug stayed locked")
+    for _, d in ipairs(Content.items:all()) do assert(Unlocks.item(d.id), "unlock all: item locked " .. d.id) end
+    for _, reg in ipairs({ Content.skins, Content.decor, Content.stages }) do
+        for _, d in ipairs(reg and reg:all() or {}) do
+            assert(Cosmetics.isUnlocked(d), "unlock all: cosmetic locked " .. tostring(d.id))
+        end
+    end
     Settings.set("unlockAll", false)
+    assert(not Unlocks.bug("crab") and not Cosmetics.isUnlocked(Content.skins:get("gilded"))
+        or Cosmetics.data.unlocked.gilded, "turning Unlock Everything off should lock again")
+    -- random item gifts (practice, sandbox) also skip locked items
+    local World = require("src.game.world")
+    for _ = 1, 300 do
+        local it = World.rollItem({ spawner = { wave = 99 } })
+        assert(Unlocks.item(it.def.id), "rollItem gave a locked item: " .. it.def.id)
+    end
     -- every locked bug / item has an achievement in the Unlocks category
     local reg = Content.achievements
     assert(reg:get(Unlocks.bugAchievement("crab")) and reg:get(Unlocks.itemAchievement("amber")), "unlock achievements missing")
@@ -53,17 +74,19 @@ return function(wait, shot)
     assert(card, "unlock card")
     print("[mastery] unlocks OK")
 
-    -- 3. Item pool toggles
+    -- 3. Item pool toggles (only a Custom Waves set's list; the main game has no global pool)
+    assert(not Unlocks.setInPool("honeydew", false) and Unlocks.inPool("honeydew"), "the main game's pool changed")
+    Unlocks.editing = {}
     assert(Unlocks.setInPool("honeydew", false) and not Unlocks.inPool("honeydew"), "switch off")
     for _ = 1, 300 do assert(Choices.pickDef(world, {}).id ~= "honeydew", "switched-off item rolled") end
     -- switching everything off stops at the minimum
     for _, d in ipairs(Content.items:all()) do Unlocks.setInPool(d.id, false) end
     assert(Unlocks.poolSize() == Unlocks.MIN_POOL, "pool minimum, got " .. Unlocks.poolSize())
-    local pool = State.push(require("src.states.itempool").new())
+    local pool = State.push(require("src.states.itempool").new(Unlocks.editing))
     wait(0.3)
     shot("mastery_itempool")
-    State.pop()
-    Prefs.get().poolOff = {}
+    pool:close()
+    assert(Unlocks.editing == nil and Unlocks.inPool("honeydew"), "closing the item pool left it switched off")
     print("[mastery] item pool OK")
 
     -- 4. Danger levels: tougher ants, less healing; a win records mastery and opens the next level
@@ -84,15 +107,14 @@ return function(wait, shot)
     assert(Unlocks.bestDanger("stag_beetle") == 0 and Unlocks.maxDanger("stag_beetle") == 1, "win at danger 0 opens danger 1")
     local CharSelect = require("src.states.charselect")
     local cs = State.push(CharSelect.new({ gameMode = "colony" }))
-    cs.menu.focus = 3
-    for i, it in ipairs(cs.menu.items) do if it.character and it.character.id == "stag_beetle" then cs.menu.focus = i end end
+    cs:focusOn("stag_beetle")
     cs:shiftDanger(Content.characters:get("stag_beetle"), 1)
     assert(CharSelect.danger("stag_beetle") == 1, "danger picker")
     cs:shiftDanger(Content.characters:get("stag_beetle"), 1)
     assert(CharSelect.danger("stag_beetle") == 1, "danger 2 should still be locked")
     wait(0.6)
     shot("mastery_charselect")
-    for i, it in ipairs(cs.menu.items) do if it.character and it.locked then cs.menu.focus = i break end end
+    for i, e in ipairs(cs.list) do if not Unlocks.bug(e.def.id) then cs.focus = i cs:ensureVisible() break end end
     wait(0.4)
     shot("mastery_charselect_locked")
     State.pop()
@@ -196,6 +218,5 @@ return function(wait, shot)
     Records.profile = savedProfile
     Unlocks.free = savedFree
     Settings.set("unlockAll", savedAll)
-    Prefs.get().poolOff = savedOff
     print("[selftest] mastery OK")
 end

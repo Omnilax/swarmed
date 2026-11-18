@@ -23,7 +23,7 @@ local RECORD_FIELDS = { "kills", "elites", "queens", "killsBy", "killsByFamily",
 -- Can this game be saved? (a real run that's still going)
 function RunSave.allowed(game)
     local w = game and game.world
-    return w ~= nil and game.mode == "run" and not game.params.practice and not w.player.dead and not w.flags.demo
+    return w ~= nil and game.mode == "run" and not game.params.practice and not game.tutorial and not w.player.dead and not w.flags.demo
 end
 
 function RunSave.snapshot(game)
@@ -34,6 +34,7 @@ function RunSave.snapshot(game)
     local snap = {
         version = RunSave.VERSION,
         character = p.def.id, gameMode = w.gameMode, stage = w.stage.id,
+        route = w.actRoute and util.deepcopy(w.actRoute), act = w.act,
         startItems = game.params.startItems,
         customWaves = util.deepcopy(w.customWaves),     -- the Custom Waves set, as it was when the run began
         -- waves fully behind you: a wave still going is played again
@@ -57,6 +58,9 @@ function RunSave.snapshot(game)
             interestWave = w.economy.interestWave }),
         -- danger level (src/config/danger.lua) and the bug rule's state (src/game/bugrules.lua)
         danger = w.danger and w.danger.level or 0, ruleState = util.deepcopy(w.ruleState),
+        artifacts = util.deepcopy(w.artifacts),
+        keepsake = w.keepsake,
+        weekly = w.weekly,
         -- blessings and curses from map gambles (src/game/gambles.lua)
         blessings = util.deepcopy(w.blessings),
     }
@@ -71,6 +75,7 @@ function RunSave.snapshot(game)
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
     end
+    snap.parasites = require("src.game.parasites").save(p.inventory)
     for _, d in ipairs(sp.knownList) do snap.known[#snap.known + 1] = d.id end
     for id in pairs(sp.usedQueens) do snap.usedQueens[#snap.usedQueens + 1] = id end
     local pc = w.pendingChoice
@@ -86,7 +91,13 @@ end
 
 function RunSave.save(game)
     if RunSave.noSave or not RunSave.allowed(game) then return false end
-    local ok, s = pcall(util.serialize, RunSave.snapshot(game))
+    return RunSave.write(RunSave.snapshot(game))
+end
+
+-- Write a snapshot to the save file (moving to a new act writes one it changed first).
+function RunSave.write(snap)
+    if RunSave.noSave then return false end
+    local ok, s = pcall(util.serialize, snap)
     if not ok then return false end
     local wrote = pcall(love.filesystem.write, RunSave.FILE, "return " .. s .. "\n")
     RunSave.cache = nil
@@ -129,7 +140,8 @@ end
 function RunSave.params(snap)
     return { mode = "run", character = snap.character, gameMode = snap.gameMode, stage = snap.stage,
         startItems = snap.startItems, customWaves = snap.customWaves, seed = tonumber(snap.seed), daily = snap.daily, resume = snap,
-        danger = tonumber(snap.danger) or 0 }
+        danger = tonumber(snap.danger) or 0, artifacts = type(snap.artifacts) == "table" and snap.artifacts or {},
+        keepsake = type(snap.keepsake) == "string" and snap.keepsake or false, weekly = snap.weekly == true or nil }
 end
 
 -- Put a fresh world into the saved run's state.
@@ -166,6 +178,8 @@ function RunSave.restore(world, snap)
             end
         end
     end
+    -- parasites (they live in the bug, not the bag)
+    require("src.game.parasites").restore(inv, snap.parasites)
     -- the skill tree: XP back (quietly), then every node bought
     local sk = p.skills
     if sk and snap.skills then

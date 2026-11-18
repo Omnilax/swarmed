@@ -20,6 +20,7 @@ local Touch = require("src.core.touch")
 local Records = require("src.game.records")
 local Music = require("src.core.music")
 local Feedback = require("src.game.feedback")
+local Presence = require("src.game.presence")
 
 local selftest
 
@@ -44,9 +45,6 @@ function love.load(args)
     local CustomBugs = require("src.game.custombugs")
     if Records.noSave or flags["--balance"] then
         CustomBugs.dir, CustomBugs.noSave = "selftest_custom_bugs", true
-    else
-        local okC, errC = pcall(CustomBugs.loadAll)
-        if not okC then print("[custombugs] " .. tostring(errC)) end
     end
     require("src.game.tutorial").load()
     require("src.game.prefs").noSave = Records.noSave or flags["--balance"] or false
@@ -56,9 +54,21 @@ function love.load(args)
     -- tests and the balance bot run without hints (the polish selftest turns them on itself)
     require("src.game.tutorial").noSave = Records.noSave
     require("src.game.tutorial").off = Records.noSave or flags["--balance"] or false
+    -- Gentle Start (src/game/onramp.lua) holds nothing back in tests or for the balance bot
+    require("src.game.onramp").off = Records.noSave or flags["--balance"] or false
+    -- tests and the balance bot drive one world: no moving to a new map between acts
+    require("src.game.acts").off = Records.noSave or flags["--balance"] or false
     Music.init()
+    Presence.init(flags)  -- Discord status (src/game/presence.lua)
     Sprites.build(Content.sprites)
+    -- custom bugs load after the atlas: their own art is built as small images of its own
+    if not (Records.noSave or flags["--balance"]) then
+        local okC, errC = pcall(CustomBugs.loadAll)
+        if not okC then print("[custombugs] " .. tostring(errC)) end
+    end
 
+    -- the Design Bible PDFs read the game through this dump (tools/wiki/README.md)
+    if flags["--docdump"] then require("src.debug.docdump")() love.event.quit() return end
     Settings.onChange(function(key)
         local s = Settings.byKey[key]
         if s and s.window then Screen.applyVideoSettings() end
@@ -80,6 +90,7 @@ function love.load(args)
         State.switch(require("src.debug.roster").new({ shot = flags["--shot"], t = 0.3 }))
         return
     end
+    if flags["--makeicon"] then State.switch(require("src.debug.iconmaker").new()) return end
     if flags["--profile"] then require("src.debug.profile").start(flags) return end
     if flags["--balance"] then require("src.debug.balance").start() return end
     if flags["--selftest"] then
@@ -96,6 +107,7 @@ function love.update(dt)
     Feedback.update(dt)
     Music.update(dt)
     Records.update(dt)
+    Presence.update(dt)
     Input.endFrame()
     Touch.endFrame()
 end
@@ -103,6 +115,17 @@ end
 function love.draw()
     State.draw()
     Records.drawToasts()
+    local st = _G.SwarmedToast
+    if st then
+        st.t = st.t - love.timer.getDelta()
+        if st.t <= 0 then _G.SwarmedToast = nil else
+            local Theme = require("src.ui.theme")
+            love.graphics.setFont(Theme.font("body"))
+            love.graphics.setColor(1, 0.9, 0.6, math.min(1, st.t))
+            love.graphics.printf(st.text, 0, Theme.u(70), love.graphics.getWidth(), "center")
+            love.graphics.setColor(1, 1, 1, 1)
+        end
+    end
     Touch.draw()
     Dev.draw()
     if selftest then selftest.draw() end
@@ -116,6 +139,13 @@ function love.keypressed(key, scancode, isrepeat)
         Input.lastDevice = "keyboard"
         State.call("keypressed", key, scancode, isrepeat)
         return
+    end
+    -- Screenshot Key: F12 saves a PNG of the window into the save folder (Photo Mode has its own)
+    if key == "f12" and not isrepeat and require("src.core.settings").get("screenshotKey")
+        and not (top and top.photo) then
+        local name = require("src.states.photomode").screenshot()
+        print("[screenshot] " .. name)
+        _G.SwarmedToast = { text = "Screenshot saved", t = 2 }
     end
     if not Input.isCapturing() and Dev.keypressed(key) then return end
     Input.keypressed(key, isrepeat)
@@ -186,6 +216,7 @@ function love.quit()
     local game = State.find(require("src.states.game"))
     if game and game.closing then game:closing() end
     Records.quit()
+    Presence.quit()
 end
 
 -- Default LÖVE loop plus an optional frame cap (used when VSync is off).

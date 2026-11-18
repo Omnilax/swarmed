@@ -15,6 +15,7 @@ function GameOver.new(game)
         items = {
             { type = "button", label = "Try Again", onActivate = function() game:restart() end },
             { type = "button", label = "Run Summary", onActivate = function() State.push(require("src.states.runsummary").new(game)) end },
+            GameOver.codeItem(game),
             { type = "button", label = "Change Bug", onActivate = function() GameOver.changeBug(game) end },
             { type = "button", label = "Main Menu", onActivate = function() State.switch(require("src.states.menu").new()) end },
         },
@@ -76,6 +77,13 @@ function GameOver:draw()
         lg.printf(cell[2], x, y0 + u(34), cw, "center")
     end
     local ry = y0 + u(66)
+    -- what the run paid toward the Burrow (src/game/amber.lua): no run is wasted
+    local amber = require("src.game.amber").runLine(world)
+    if amber then
+        lg.setFont(Theme.font("body"))
+        Theme.printShadow(amber, 0, ry, { 1, 0.75, 0.3 }, "center", w)
+        ry = ry + u(30)
+    end
     if world.won then
         lg.setFont(Theme.font("body"))
         Theme.printShadow("The colony was broken. You went down fighting past it.", 0, ry, Theme.colors.text, "center", w)
@@ -131,5 +139,16 @@ end
 
 function GameOver:mousemoved(x, y) self.menu:mousemoved(x, y) end
 function GameOver:mousepressed(x, y, b) self.menu:mousepressed(x, y, b) end
+
+-- "Copy Run Code": the run's code to the clipboard (src/game/runcode.lua).
+function GameOver.codeItem(game)
+    local code = require("src.game.runcode").encode(game.world)
+    local it
+    it = { type = "button", label = "Copy Run Code", onActivate = function()
+        local ok = code and pcall(love.system.setClipboardText, code)
+        it.label = ok and "Copied: paste it to a friend" or "This run has no code"
+    end }
+    return it
+end
 
 return GameOver

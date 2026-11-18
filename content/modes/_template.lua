@@ -2,10 +2,12 @@
 -- how many, how hard, and when the run ends. Everything is optional except name; leave a
 -- field out to get the standard game (content/modes/colony.lua has no overrides at all).
 return {
+    -- icon = "worker_ant",   -- an enemy sprite to show for the mode in mode select
     name = "My Mode",
     tagline = "One short line for the mode list.",
     description = "A sentence or two shown on the mode select screen.",
     order = 50,                 -- position in the mode list
+    group = "challenge",        -- heading it is listed under: "classic", "challenge" or "free"
 
     finalWave = 15,             -- the run is won after this wave (you may keep going); false = no end
 
@@ -54,4 +56,8 @@ return {
     -- Before the run, pick starting items from the whole catalogue with a point budget
     -- (cost per rarity, see src/states/loadout.lua).
     chooseItems = nil,          -- e.g. { budget = 12 }
+
+    -- Run rules (src/game/rules.lua): game-changing switches that are never global settings.
+    -- e.g. { difficulty = "soldier", eliteFrequency = 2, mapGambles = "often", routeGates = false }
+    rules = nil,
 }

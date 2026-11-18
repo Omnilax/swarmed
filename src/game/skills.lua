@@ -1,7 +1,7 @@
 -- Skill trees. Every kill gives XP (World:grantXP); XP fills levels and every level opens a
 -- level-up card pick (src/game/levelups.lua). Cards are stat boosts only: SKIPPING a pick is what
 -- earns a skill point, so every level is a choice between a boost now and the tree. (With the
--- "levelUps" setting on "points", every level is simply a point.) Points buy nodes in the
+-- "levelUps" run rule on "points", every level is simply a point.) Points buy nodes in the
 -- character's own tree (content/skilltrees/<character>.lua, schema in content/skilltrees/_template.lua)
 -- plus a 4th "kin" branch shared by its lineage (content/skillbranches), capped by a signature
 -- node only that bug has. Trees cost far more points than a run can earn and forks are
@@ -25,7 +25,7 @@ Skills.MOVES = { "attack", "secondary", "dash" }
 Skills.TIER_COST = { 1, 1, 2, 2, 3, 3 }    -- default point cost per rank, by tier
 
 -- XP to go from level-1 to level. Every level is a level-up card pick (src/game/levelups.lua;
--- skipping it banks a skill point), or straight a skill point with the "levelUps" setting on "points". The curve is in
+-- skipping it banks a skill point), or straight a skill point with the "levelUps" run rule on "points". The curve is in
 -- src/config/levelups.lua: the first level takes ~10 kills, a 15-wave run reaches ~level 35.
 function Skills.xpFor(level)
     return require("src.game.levelups").xpFor(level)
@@ -162,7 +162,11 @@ function Skills.treeFor(charId)
     local c = Content.characters:get(charId)
     if c and c.custom then
         if c.ownTree then return c.ownTree end      -- its own, written in its script
-        if not c.skillTree then return nil end
+        if not c.skillTree then
+            -- a ready-made tree (src/config/presettrees.lua), made once per bug
+            if not c._preset then c._preset = require("src.config.presettrees").make(c.presetTree or "brawler", c) end
+            return c._preset
+        end
         charId = c.skillTree
     end
     for _, t in ipairs(Content.skilltrees:all()) do
@@ -240,7 +244,7 @@ function Skills.new(player, xp)
     return self
 end
 
--- Level-up cards instead of points? (Real runs, unless the "levelUps" setting says points.)
+-- Level-up cards instead of points? (Real runs, unless the "levelUps" run rule says points.)
 function Skills:cardsMode()
     local w = self.player.world
     return w and w.levelups and w.levelups:enabled() or false
@@ -458,7 +462,7 @@ function Skills:trigger(name, ctx)
             self.dashing = false
             local ectx = { world = ctx.world, player = p, procDepth = 0 }
             self:trigger("onDashEnd", ectx)
-            if p.def.hooks then require("src.game.scriptmoves").event(p, "onDashEnd", ectx) end
+            if p.def.custom then require("src.game.scriptmoves").event(p, "onDashEnd", ectx) end
         end
     elseif name == "onDash" then
         self.dashing = true

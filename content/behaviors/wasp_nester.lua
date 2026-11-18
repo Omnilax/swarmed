@@ -9,6 +9,9 @@ local Audio = require("src.core.audio")
 
 local PAPER = { 0.72, 0.68, 0.6 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 150 }
+
 return {
     name = "Nest builder",
     init = function(e) e.st.mode, e.st.ph = "seek", love.math.random() * 6.28 end,
@@ -31,7 +34,7 @@ return {
             AI.hover(e, world, dt, 3)
             st.t = st.t - dt
             if love.math.random() < dt * 12 then
-                world.particles:spawn(st.tx, st.ty, 3, (love.math.random() - 0.5) * 20, (love.math.random() - 0.5) * 20, 20, 0.5, PAPER, 1, { grav = 150 })
+                world.particles:spawn(st.tx, st.ty, 3, (love.math.random() - 0.5) * 20, (love.math.random() - 0.5) * 20, 20, 0.5, PAPER, 1, PFX_1)
             end
             if st.t <= 0 then
                 local nest = world:spawnEnemy(params.nest or "paper_nest", st.tx, st.ty)

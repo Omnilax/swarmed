@@ -1,5 +1,5 @@
 -- Which bugs and items are open (data in src/config/unlocks.lua), the item pool the player
--- switched on or off (Settings > Gameplay > Item Pool, src/states/itempool.lua), and danger
+-- switched on or off per Custom Waves set (src/states/itempool.lua), and danger
 -- levels per bug (src/config/danger.lua).
 --
 -- Unlocks are achievements (content/achievements/unlocks.lua builds them), so the Records save
@@ -42,7 +42,10 @@ function Unlocks.bug(id)
 end
 
 function Unlocks.item(id)
-    if Unlocks.all() or not Config.items[id] then return true end
+    if Unlocks.all() then return true end
+    -- item packs bought with amber in the Burrow (src/game/amber.lua)
+    if not require("src.game.amber").itemOpen(id) then return false end
+    if not Config.items[id] then return true end
     return Records().get().achievements[Unlocks.itemAchievement(id)] ~= nil
 end
 
@@ -68,11 +71,13 @@ end
 ----------------------------------------------------------------------------------------------
 -- Item pool
 
--- The player's own pool: items switched off (prefs "poolOff" = { [id] = true }).
+-- Items switched off ({ [id] = true }). Not a global option: the main game always offers every
+-- unlocked item. Only a Custom Waves set switches items off (its `itemsOff`, run rule
+-- "itemsOff"); the Item Pool screen edits that set's list through Unlocks.editing.
+local NONE = {}
+Unlocks.editing = nil
 function Unlocks.poolOff()
-    local d = require("src.game.prefs").get()
-    if type(d.poolOff) ~= "table" then d.poolOff = {} end
-    return d.poolOff
+    return Unlocks.editing or require("src.game.rules").get("itemsOff") or NONE
 end
 
 function Unlocks.inPool(id)
@@ -89,12 +94,13 @@ function Unlocks.poolSize()
     return n
 end
 
--- Switch an item in or out of the pool. Returns false when it would leave too few.
+-- Switch an item in or out of the list being edited (Unlocks.editing). Returns false when it
+-- would leave too few.
 function Unlocks.setInPool(id, on)
-    local off = Unlocks.poolOff()
+    local off = Unlocks.editing
+    if not off then return false end
     if not on and not off[id] and Unlocks.poolSize() <= Unlocks.MIN_POOL then return false end
     off[id] = (not on) or nil
-    require("src.game.prefs").save()
     return true
 end
 

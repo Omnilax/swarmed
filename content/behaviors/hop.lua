@@ -2,6 +2,10 @@
 -- params: distance (max per hop, 55), airtime (0.38), rest ({min, max}, {0.25, 0.55}), height (14)
 local AI = require("src.game.ai")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.55, 0.5, 0.42 }
+local PFX_LIST_1 = { PFX_1 }
+
 return {
     name = "Hopper",
     init = function(e) e.st.mode, e.st.t = "rest", love.math.random() * 0.5 end,
@@ -22,7 +26,7 @@ return {
             if AI.updateJump(e, dt) then
                 local r = params.rest or { 0.25, 0.55 }
                 st.mode, st.t = "rest", r[1] + love.math.random() * (r[2] - r[1])
-                world.particles:burst(e.x, e.y, 3, { { 0.55, 0.5, 0.42 } }, 30, 20)
+                world.particles:burst(e.x, e.y, 3, PFX_LIST_1, 30, 20)
             end
         end
     end,

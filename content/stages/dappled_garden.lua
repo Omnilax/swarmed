@@ -23,6 +23,7 @@ return {
     mechanic = { type = "sun_and_shade", sun = 3, shade = 4, size = { 48, 85 }, drift = 6 },
     props = { pebble = 4, twig = 4 },
     events = { acorns = 18 },
+    fauna = { bee = 2, wasp = 1.5, weaver_ant = 2, green_ant = 2, leafcutter_ant = 2, desert_ant = 0.3 },
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
 }

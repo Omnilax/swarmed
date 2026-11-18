@@ -293,6 +293,28 @@ local function buildMove(slot, v, reg, errs, warns)
             params[k] = x
         end
     else
+        -- no-code moves: blocks = { {"lunge", ...}, ... } or combo = { step, step, window = 0.8 }
+        -- (src/game/moveblocks.lua) become the move's fire / start function
+        local MB = require("src.game.moveblocks")
+        local key = slot == "dash" and "start" or "fire"
+        if type(v[key]) ~= "function" and (type(v.blocks) == "table" or type(v.combo) == "table") then
+            local gen
+            if type(v.combo) == "table" then gen = MB.combo(v.combo, warns, slot .. ".combo")
+            else
+                local bl = MB.clean(v.blocks, warns, slot .. ".blocks")
+                gen = bl and #bl > 0 and MB.compile(bl) or nil
+            end
+            local pure = true
+            for _, st in ipairs(type(v.combo) == "table" and v.combo or {}) do if type(st) == "function" then pure = false end end
+            if gen then
+                local v2 = copyTable(v)
+                v2[key], v2.type, v2.fromBlocks = gen, nil, pure or nil
+                if slot == "dash" and v2.distance == nil then v2.distance = 0 end
+                v = v2
+            end
+        elseif type(v.combo) == "table" and type(v[key]) == "function" then
+            warns[#warns + 1] = slot .. ": combo is ignored when " .. key .. " is written in code"
+        end
         params = CustomBugs.plain(v)
         clampParams(params, 0)
         -- functions and no type: a move written in code
@@ -440,6 +462,33 @@ local function buildArt(id, art, errs, warns)
     local model = { legs = ids.legs, body = ids.body,
         height = clamp(tonumber(art.height) or 3, 1, 10), lift = clamp(tonumber(art.lift) or 2, 0, 10),
         kneeUp = clamp(tonumber(art.kneeUp) or 1, 0, 6), stride = clamp(tonumber(art.stride) or 1.6, 0.5, 4) }
+    -- shortcuts: wings = true | { color, size, flap, at }, antennae = true | { length, color, sway, at }
+    local extraLimbs = {}
+    local front = maxX - w / 2
+    if art.wings then
+        local wt = type(art.wings) == "table" and art.wings or {}
+        local col = type(wt.color) == "string" and wt.color or "#e8f0ff"
+        local n = clamp(tonumber(wt.pairs) or 1, 1, 2)
+        for i = 1, n do
+            extraLimbs[#extraLimbs + 1] = { u = clamp(tonumber(wt.at) or (front * 0.2), -60, 60) - (i - 1) * 2, v = 1.5, z = nil,
+                segs = { { 1.5, 2.3 + (i - 1) * 0.3, 0.5 } }, tip = "wing", tipLen = clamp(tonumber(wt.size) or 4, 1, 12),
+                width = 1, color = col, depth = "far", flap = wt.flap == false and nil or (tonumber(wt.flap) or 24),
+                wave = wt.flap == false and { speed = 1.5, pitch = 0.05 } or nil }
+        end
+    end
+    if art.antennae then
+        local at = type(art.antennae) == "table" and art.antennae or {}
+        local len = clamp(tonumber(at.length) or 6, 2, 20)
+        extraLimbs[#extraLimbs + 1] = { u = clamp(tonumber(at.at) or front, -60, 60), v = 1, segs = { { len * 0.5, 0.5, 0.5 },
+            { len * 0.5, -0.2, -0.3 } }, width = 1, color = type(at.color) == "string" and at.color or nil,
+            sway = at.sway == false and nil or (tonumber(at.sway) or 0.25) }
+    end
+    if #extraLimbs > 0 then
+        local list = {}
+        for _, l in ipairs(type(art.limbs) == "table" and art.limbs or {}) do list[#list + 1] = l end
+        for _, l in ipairs(extraLimbs) do list[#list + 1] = l end
+        art = setmetatable({ limbs = list }, { __index = art })
+    end
     -- extra limbs that are always there: claws, tails, fangs, antennae, horns (src/gfx/anim.lua)
     if art.limbs ~= nil then
         model.restLimbs = {}
@@ -495,7 +544,7 @@ local function buildArt(id, art, errs, warns)
 end
 
 -- One jointed limb (src/gfx/anim.lua "Limbs"), plain data only.
-local TIPS = { pincer = true, blade = true, sting = true, fang = true, club = true, crusher = true }
+local TIPS = { pincer = true, blade = true, sting = true, fang = true, club = true, crusher = true, wing = true }
 local function chan(v) return type(v) == "string" and v:match("^[%a_][%w_]*$") and #v <= 16 and v or nil end
 local function segList(l, max)
     if type(l) ~= "table" then return nil end
@@ -507,6 +556,19 @@ local function segList(l, max)
     end
     return #out > 0 and out or nil
 end
+-- A limb's constant motion: wave = { speed, yaw, pitch, follow, lag }, or the shortcuts
+-- flap = true | speed (wings: quick, up and down) and sway = true | amount (feelers, tails).
+function CustomBugs.wave(w, flap, sway)
+    if type(w) ~= "table" then
+        if flap then w = { speed = tonumber(flap) or 22, pitch = 0.7, yaw = 0.1, follow = 0.2, lag = 0 }
+        elseif sway then w = { speed = 2.5, yaw = (tonumber(sway) or 0.25), pitch = 0.08, follow = 0.8, lag = 0.7 }
+        else return nil end
+    end
+    local function n(v, lo, hi, d) v = tonumber(v) or d return math.max(lo, math.min(hi, v)) end
+    return { speed = n(w.speed, 0, 60, 3), yaw = n(w.yaw, -2, 2, 0), pitch = n(w.pitch, -2, 2, 0),
+        follow = n(w.follow, 0, 2, 0.5), lag = n(w.lag, -3, 3, 0.6), phase = n(w.phase, -10, 10, 0) }
+end
+
 function CustomBugs.limb(l, pal)
     if type(l) ~= "table" then return nil, "must be a table" end
     local segs = segList(l.segs, 8)
@@ -524,12 +586,16 @@ function CustomBugs.limb(l, pal)
         tipW = tonumber(l.tipW) and clamp(tonumber(l.tipW), 0.2, 2) or nil,
         restOpen = tonumber(l.restOpen) and clamp(tonumber(l.restOpen), 0, 1) or nil,
         depth = (l.depth == "far" or l.depth == "near") and l.depth or nil, group = chan(l.group),
+        -- wave = { speed, yaw, pitch, follow, lag, phase }: flaps / sways all the time
+        wave = CustomBugs.wave(l.wave, l.flap, l.sway),
     }
 end
 
 -- An animation clip (src/gfx/anim.lua), plain data only. hold = "charge" | "block" | "mode" |
 -- "hold" keeps the pose while that is going on.
 local HOLDS = {
+    dead = function(p) return p.dead == true end,
+    won = function(p) return p.wonPose == true end,
     charge = function(p) return p.scriptCharge ~= nil and next(p.scriptCharge) ~= nil end,
     block = function(p) return p.scriptBlock == true end,
     mode = function(p) return p.holdMode ~= nil end,
@@ -659,6 +725,11 @@ local function buildTree(def, t, errs, warns)
     end
     if #tree.branches == 0 then errs[#errs + 1] = "skillTree needs branches = { { name = ..., nodes = { ... } } }" return nil end
     clampParams(tree, 0)
+    -- the bug's kin branch (insect, beetle, spider...) joins as a 4th, unless kin = false
+    if t.kin ~= false and #tree.branches < 4 then
+        if type(t.kin) == "string" then tree.kin = t.kin end
+        Skills.attachKin(tree, def)
+    end
     local ok, e = Skills.validateTree(tree)
     if not ok then errs[#errs + 1] = "skillTree: " .. tostring(e) return nil end
     return tree
@@ -669,6 +740,7 @@ local HOOKS = { "onStart", "onTick", "onHit", "onKill", "onHurt", "onDodge", "on
 -- raw (a script's result) -> def ready for Content.characters, or nil + errors. Warnings are
 -- things that were fixed up on the way (clamped numbers, unknown items dropped...).
 function CustomBugs.build(raw)
+    local rawIn = raw
     local errs, warns = {}, {}
     if type(raw) ~= "table" then return nil, { "the script must return a table" }, warns end
     local name = text(raw.name, 28)
@@ -700,7 +772,7 @@ function CustomBugs.build(raw)
     -- own art instead of a built-in bug's look
     local art
     if raw.art ~= nil then
-        art = buildArt(def.id, raw.art, errs, warns)
+        art = buildArt(def.id .. (type(raw._artSuffix) == "string" and raw._artSuffix or ""), raw.art, errs, warns)
         if art then
             def.sprite, def.model, def.anims, def.sideways, def.segs, def.strike, def.alt = art.sprite, art.model, nil, nil, nil, nil, nil
             def.art = art.sprites
@@ -747,12 +819,18 @@ function CustomBugs.build(raw)
         if Rules[raw.rules] then def.rules, def.mix.rules = raw.rules, raw.rules
         else warns[#warns + 1] = "rules: the bug '" .. tostring(raw.rules) .. "' has no rule (dropped)" end
     end
+    -- skill tree: its own (built at the end, once its tags are known), a preset ("preset:tank"),
+    -- or a built-in bug's. With none named it gets the preset that fits its playstyle.
+    local Presets = require("src.config.presettrees")
     if type(raw.skillTree) == "table" then
-        def.ownTree = buildTree(def, raw.skillTree, errs, warns)
         def.mix.ownTree = true
-    elseif raw.skillTree ~= nil then
+    elseif type(raw.skillTree) == "string" and raw.skillTree:match("^preset:") then
+        local pid = raw.skillTree:sub(8)
+        if Presets.list[pid] then def.presetTree, def.mix.skillTree = pid, raw.skillTree
+        else warns[#warns + 1] = "skillTree: no preset '" .. pid .. "' (" .. table.concat(Presets.order, ", ") .. ")" end
+    elseif raw.skillTree ~= nil and raw.skillTree ~= false then
         if require("src.game.skills").treeFor(raw.skillTree) then def.skillTree, def.mix.skillTree = raw.skillTree, raw.skillTree
-        else warns[#warns + 1] = "skillTree: the bug '" .. tostring(raw.skillTree) .. "' has no skill tree (dropped)" end
+        else warns[#warns + 1] = "skillTree: the bug '" .. tostring(raw.skillTree) .. "' has no skill tree (a preset is used)" end
     end
     def.immune = raw.immune == true or nil
     -- code that runs on game events (src/game/scriptmoves.lua)
@@ -768,6 +846,13 @@ function CustomBugs.build(raw)
             end
         end
     end
+    -- poses = { idle, death, victory } are animations too
+    if type(raw.poses) == "table" then
+        local merged = {}
+        for k, v in pairs(type(raw.anims) == "table" and raw.anims or {}) do merged[k] = v end
+        for _, k in ipairs({ "idle", "death", "victory" }) do if raw.poses[k] ~= nil then merged[k] = raw.poses[k] end end
+        raw = setmetatable({ anims = merged }, { __index = raw })
+    end
     -- own animations: { attack = clip, secondary = clip, dash = clip, <any name> = clip (me.anim) }
     if raw.anims ~= nil then
         if type(raw.anims) ~= "table" then errs[#errs + 1] = "anims must be a table"
@@ -780,7 +865,14 @@ function CustomBugs.build(raw)
             for slot, c in pairs(raw.anims) do
                 n = n + 1
                 if n > 16 then warns[#warns + 1] = "anims: 16 at most" break end
-                if chan(slot) then def.anims[slot] = buildClip(c, pal, "anims." .. slot, errs) end
+                if chan(slot) then
+                    local clip = buildClip(c, pal, "anims." .. slot, errs)
+                    -- death and victory poses stay struck
+                    if type(clip) == "table" and not clip.hold and (slot == "death" or slot == "victory") then
+                        clip.hold = slot == "death" and HOLDS.dead or HOLDS.won
+                    end
+                    def.anims[slot] = clip
+                end
             end
             def.mix.anims = true
         end
@@ -798,7 +890,7 @@ function CustomBugs.build(raw)
     end
     -- moves written in code (src/game/scriptmoves.lua runs them)
     for _, slot in ipairs({ "attack", "secondary", "dash" }) do
-        if type(def[slot]) == "table" and tostring(def[slot].type):match("^scripted") then def.scripted = true end
+        if type(def[slot]) == "table" and tostring(def[slot].type):match("^scripted") and not def[slot].fromBlocks then def.scripted = true end
     end
     if def.hooks or def.ownTree then def.scripted = true end
     -- colours: a built-in skin's fields
@@ -823,6 +915,29 @@ function CustomBugs.build(raw)
     for _, t in ipairs(type(raw.tags) == "table" and raw.tags or {}) do
         if type(t) == "string" and #def.tags < 8 and t ~= "custom" then def.tags[#def.tags + 1] = t:sub(1, 20) end
     end
+    -- passives, looks, movement and music (src/game/bugtraits.lua)
+    require("src.game.bugtraits").build(raw, def, errs, warns)
+    -- hit look, sound pack, statuses, pets, ultimate, card, challenges, forms, molt
+    local Extras = require("src.game.bugextras")
+    Extras.buildSound = buildSound
+    Extras.build(rawIn, def, errs, warns, (raw._depth or 0) < 1 and function(r)
+        local r2 = setmetatable({ _depth = (raw._depth or 0) + 1 }, { __index = r })
+        return CustomBugs.build(r2)
+    end or nil)
+    if def.forms then
+        -- Shift switches forms (formSwitch = "code": the bug's own dash stays, me.form(n) switches)
+        if def.formSwitch ~= "code" then def.dash = Extras.formDash(def) def.mix.dash = "form" end
+        def.scripted = true
+    end
+    -- only what the mixer can't make again marks the bug as written in code
+    if def.ownFrenzy and not def.mix.ultimate then def.scripted = true end
+    if def.molt and not def.mix.moltSimple then def.scripted = true end
+    for _, pt in ipairs(def.pets or {}) do if not pt.preset then def.scripted = true end end
+    for id, st in pairs(def.statuses or {}) do if st.preset ~= id then def.scripted = true end end
+    if def.pets and #def.pets > 1 then def.scripted = true end
+    if type(raw.skillTree) == "table" then def.ownTree = buildTree(def, raw.skillTree, errs, warns) end
+    if not (def.ownTree or def.skillTree or def.presetTree) then def.presetTree = Presets.forPlaystyle(def.playstyle) end
+    if def.hooks or def.ownTree then def.scripted = true end
     if #errs > 0 then return nil, errs, warns end
     return def, errs, warns
 end
@@ -841,6 +956,9 @@ end
 -- Make the bug's own sprites (once per version of its art).
 local artKeys = {}
 function CustomBugs.prepareArt(def)
+    -- other versions of the bug (forms, the molt) with their own art
+    for i, f in ipairs(def.forms or {}) do if i > 1 and f.art then CustomBugs.prepareArt(f) end end
+    if def.molt and def.molt.def.art then CustomBugs.prepareArt(def.molt.def) end
     -- own sounds (me.sound("name") plays "<id>:name")
     if def.sounds then
         local Audio = require("src.core.audio")
@@ -1011,7 +1129,8 @@ end
 -- Writing scripts
 
 local KEY_ORDER = { "name", "description", "lore", "tip", "look", "scale", "radius", "colors", "playstyle",
-    "stats", "attack", "secondary", "dash", "rules", "skillTree", "immune", "startingItems", "tags" }
+    "stats", "attack", "secondary", "dash", "rules", "skillTree", "immune", "startingItems", "tags",
+    "passives", "effects", "movement", "music", "hitFx", "soundPack", "card", "statuses", "pets", "molt", "ultimate", "challenges" }
 
 local function isIdent(k) return type(k) == "string" and k:match("^[%a_][%w_]*$") ~= nil end
 
@@ -1093,8 +1212,38 @@ function CustomBugs.tweakSource(source, t)
     table.sort(keys)
     if #keys > 0 then line("bug.stats = bug.stats or {}") end
     for _, k in ipairs(keys) do line(("bug.stats.%s = %s"):format(k, ser(t.stats[k], ""))) end
+    for _, k in ipairs({ "art", "music", "passives", "effects", "movement", "hitFx", "soundPack", "card", "statuses", "pets", "molt", "ultimate" }) do
+        local v = t.extras and t.extras[k]
+        if v == false then line("bug." .. k .. " = nil")
+        elseif v ~= nil then line("bug." .. k .. " = " .. ser(v, "")) end
+    end
     line("return bug")
     return table.concat(out)
+end
+
+-- Share codes: a bug's whole script packed into one line of text ("SWARMED-BUG:..."), easy to
+-- paste into a chat. Paste a Script in the Bug Creator reads them back.
+CustomBugs.SHARE_PREFIX = "SWARMED-BUG:"
+function CustomBugs.shareCode(source)
+    local ok, packed = pcall(love.data.compress, "string", "zlib", source, 9)
+    if not ok then return nil end
+    local ok2, text = pcall(love.data.encode, "string", "base64", packed)
+    if not ok2 then return nil end
+    return CustomBugs.SHARE_PREFIX .. text:gsub("%s", "")
+end
+-- text -> the script, or nil if it isn't a share code (or a broken one: nil, why)
+function CustomBugs.fromShareCode(text)
+    if type(text) ~= "string" then return nil end
+    local body = text:match(CustomBugs.SHARE_PREFIX:gsub("%-", "%%-") .. "%s*([%w%+/=%s]+)")
+    if not body then return nil end
+    body = body:gsub("%s", "")
+    if #body > 60000 then return nil, "that share code is too long" end
+    local ok, packed = pcall(love.data.decode, "string", "base64", body)
+    if not ok then return nil, "the share code is cut short or mistyped" end
+    local ok2, src = pcall(love.data.decompress, "string", "zlib", packed)
+    if not ok2 or type(src) ~= "string" then return nil, "the share code is cut short or mistyped" end
+    if #src > CustomBugs.MAX_SOURCE then return nil, "too big" end
+    return src
 end
 
 function CustomBugs.blueprint()

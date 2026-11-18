@@ -1,9 +1,11 @@
 -- Hard mode: more and tougher columns, shorter breaks, twice the elites.
 return {
+    icon = "driver_ant",          -- the enemy sprite shown for the mode in mode select
     name = "Swarm",
     tagline = "For veterans. Bigger waves, less rest.",
     description = "More columns from more sides, tougher ants that hit harder, short breathers and elites twice as often.",
     order = 3,
+    group = "classic",
     finalWave = 15,
     spawn = { groups = 4, groupsPerWave = 1.4, growth = 0.2, breakTime = 3, firstBreak = 2, entries = { 3, 8 }, trickle = 4 },
     enemyHp = 1.2,

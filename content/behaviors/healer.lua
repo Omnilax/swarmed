@@ -5,6 +5,11 @@
 local AI = require("src.game.ai")
 local util = require("src.core.util")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.75, 0.25 }
+local PFX_2 = { 0.9, 0.55, 0.1 }
+local PFX_LIST_1 = { PFX_1, PFX_2 }
+
 return {
     name = "Honey healer",
     init = function(e) e.st.cd = 1.5 + love.math.random() * 2 end,
@@ -32,7 +37,7 @@ return {
             end
             world.hazards:addZone({ kind = "honey", x = tx, y = ty, r = params.radius or 26, life = params.life or 9,
                 heal = params.heal or 3, slow = params.slow or 0.5, color = { 0.95, 0.66, 0.16 } })
-            world.particles:burst(tx, ty, 8, { { 1, 0.75, 0.25 }, { 0.9, 0.55, 0.1 } }, 50, 40)
+            world.particles:burst(tx, ty, 8, PFX_LIST_1, 50, 40)
             e.squash = 0.15
         end
     end,

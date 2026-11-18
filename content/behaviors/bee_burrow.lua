@@ -9,6 +9,12 @@ local Audio = require("src.core.audio")
 
 local DIRT = { 0.36, 0.27, 0.18 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 250 }
+local PFX_2 = { grav = 200 }
+local PFX_3 = { 0.5, 0.4, 0.3 }
+local PFX_4 = { grav = 300, stain = true }
+
 return {
     name = "Burrower",
     init = function(e) e.st.mode, e.st.t = "fly", 1 + love.math.random() end,
@@ -30,14 +36,14 @@ return {
                 local tn = params.tunnel or { 1.4, 2.2 }
                 st.t = tn[1] + love.math.random() * (tn[2] - tn[1])
                 e.hidden, e.z = true, 0
-                world.particles:burst(e.x, e.y, 6, { DIRT }, 50, 40, { grav = 250 })
+                world.particles:burst(e.x, e.y, 6, { DIRT }, 50, 40, PFX_1)
                 Audio.play("hit", { pitch = 0.4 })
             end
         elseif st.mode == "tunnel" then
             local s = e.speed * (params.dig or 1.3)
             e.mx, e.my = dx / d * s, dy / d * s
             if love.math.random() < dt * 14 then
-                world.particles:spawn(e.x, e.y, 1, (love.math.random() - 0.5) * 30, (love.math.random() - 0.5) * 30, 25, 0.5, DIRT, 1, { grav = 200 })
+                world.particles:spawn(e.x, e.y, 1, (love.math.random() - 0.5) * 30, (love.math.random() - 0.5) * 30, 25, 0.5, DIRT, 1, PFX_2)
             end
             if st.t <= 0 or d < 6 then
                 -- lock the spot under you and warn
@@ -55,7 +61,7 @@ return {
                     p:knock(p.x - st.tx + 0.01, p.y - st.ty, 160)
                 end
                 world:addFx({ kind = "ring", x = st.tx, y = st.ty, r = r, life = 0.2, color = { 0.8, 0.6, 0.4 } })
-                world.particles:burst(st.tx, st.ty, 12, { DIRT, { 0.5, 0.4, 0.3 } }, 90, 90, { grav = 300, stain = true })
+                world.particles:burst(st.tx, st.ty, 12, { DIRT, PFX_3 }, 90, 90, PFX_4)
                 Audio.play("boom", { pitch = 1.6 })
                 st.mode, st.t = "fly", 1.5 + love.math.random()
             end

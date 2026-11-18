@@ -6,6 +6,7 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Env = require("src.game.envfx")
 
 return function(wait, shot)
@@ -178,18 +179,19 @@ return function(wait, shot)
     assert(not world.props:find("ally")[1], "the ally should leave after its time")
 
     center()
-    -- merchant: KOs pay, touching buys, the item goes in the bag
+    -- merchant: nectar pays, touching buys, the item goes in the bag
     world:clearEnemies()
     ev = dir:start("merchant")
     local m = ev.st.m
     m.x, m.y = pl.x + 200, pl.y
-    world.kos = world.kos + m.price + 1
+    world.nectar = m.price + 1
     local bag0 = #pl.inventory.bag
     m.update = nil
     m.x, m.y = pl.x + 2, pl.y
     m.say = 0
     m.def.update(world, m, 0)
-    assert(m.sold == 1, "touching the merchant with enough KOs should buy its ware")
+    assert(m.sold == 1, "touching the merchant with enough nectar should buy its ware")
+    assert(world.nectar == 1, "the merchant takes its price in nectar")
     assert(#pl.inventory.bag > bag0 or true, "bought items go in the bag")
     shot("prop_merchant")
     dir:stop(ev)
@@ -239,10 +241,10 @@ return function(wait, shot)
     w.t = 10
     step(2)
     assert(world.env.enemySpeed > 1.1 and world.env.playerSpeed > 1.05, "a heatwave should speed things up")
-    Settings.set("weatherEffects", false)
+    Rules.set("weatherEffects", false)
     step(2)
     assert(world.env.enemySpeed == 1, "Weather Effects off should leave speeds alone")
-    Settings.set("weatherEffects", true)
+    Rules.set("weatherEffects", true)
     w:set(Content.weather:require("clear"), 60)
 
     -- boss encounters. Bugs (the antlion) are real enemies the wave waits for; animals too big
@@ -314,7 +316,7 @@ return function(wait, shot)
     local function bossWave(n, want)
         world:clearEnemies()
         sp.enabled = true
-        Settings.set("bossEncounters", true)
+        Rules.set("bossEncounters", true)
         dir.usedBosses = {}
         for _, b in ipairs(Content.bosses:all()) do if b.id ~= want then dir.usedBosses[b.id] = true end end
         sp:startWave(n)
@@ -377,13 +379,13 @@ return function(wait, shot)
     sp.enabled = false
 
     -- scheduling: normal setting gives some waves events, off gives none
-    Settings.set("midWaveEvents", "off")
+    Rules.set("midWaveEvents", "off")
     dir:onWaveStart(6)
     assert(#dir.schedule == 0, "Mid-Wave Events off should schedule nothing")
-    Settings.set("midWaveEvents", "often")
+    Rules.set("midWaveEvents", "often")
     dir:onWaveStart(6)
     assert(#dir.schedule >= 1, "Often should line up at least one event")
-    Settings.set("midWaveEvents", "normal")
+    Rules.set("midWaveEvents", "normal")
     dir.schedule, dir.pendingBoss = {}, nil
 
     -- stages: each mechanic changes play

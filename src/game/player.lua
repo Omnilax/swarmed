@@ -13,6 +13,13 @@ local Skills = require("src.game.skills")
 local Stamina = require("src.game.stamina")
 local RunStats = require("src.game.runstats")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.8, 0.85, 0.9 }
+local PFX_2 = { grav = 120 }
+local PFX_3 = { 0.6, 0.85, 1 }
+local PFX_4 = { glow = true, grav = 0 }
+local PFX_LIST_1 = { PFX_1 }
+
 local Player = {}
 Player.__index = Player
 
@@ -50,7 +57,7 @@ function Player:releaseShove(params)
     end
     self.iframes = math.max(self.iframes, 0.15)
     world:addFx({ kind = "ring", x = self.x, y = self.y, r = r, life = 0.22, color = { 0.85, 0.92, 1 } })
-    world.particles:burst(self.x, self.y, 8, { { 0.8, 0.85, 0.9 } }, 110, 10, { grav = 120 })
+    world.particles:burst(self.x, self.y, 8, PFX_LIST_1, 110, 10, PFX_2)
     Audio.play("dash", { pitch = 0.7, volume = 0.6 })
 end
 
@@ -121,6 +128,11 @@ function Player:setCharacter(def)
     -- custom bug script state (src/game/scriptmoves.lua)
     self._me, self._cx, self.scriptHelpers, self.scriptHeld, self.scriptPending = nil, nil, nil, nil, nil
     self.scriptBlock, self.scriptWardOn, self.scriptSpeed, self.scriptSpeedT, self.scriptStarted = nil, nil, nil, nil, nil
+    self.traits, self.traitShell, self.traitWardOn, self.traitSpeed, self.slideVX, self.slideVY = nil, nil, nil, nil, nil, nil
+    -- round 3: hitboxes, forms, molt, pets, statuses, poses (src/game/hitshapes.lua, src/game/bugextras.lua)
+    self.hitboxes, self.scriptStopAt, self.scriptCd, self.formIndex, self.molted = nil, nil, nil, nil, nil
+    self.pets, self.petsOut, self.statusTargets, self.killsRun, self.ultUses, self.idleClipT, self.wonPose = nil, nil, nil, nil, nil, nil, nil
+    self.onDashCount = nil
     self.slowT, self.slowAmt = 0, 1                 -- timed slow (pebble daze)
     self.venomT, self.venomDps, self.venomTick = 0, 0, 0   -- poison from venomous bites
     self.stunT, self.blindT, self.gumT, self.gumMul = 0, 0, 0, 1   -- paralysed, blinded, attacks gummed up (bees, wasps)
@@ -133,8 +145,22 @@ function Player:setCharacter(def)
     if self.hp then self.hp = math.min(self.hp, self.stats:get("maxHp")) end
 end
 
+-- The cooldown a move gets after it fires: its own, unless its code set one just now (me.cooldown).
+function Player:takeCooldown(cd)
+    local o = self.scriptCd
+    if o then self.scriptCd = nil return o end
+    return cd
+end
+
 -- A swish for every attack: slow, heavy moves sound lower; quick jabs are higher and softer.
-function Player.swingSound(params, special)
+function Player.swingSound(params, special, player)
+    if player and player.def.custom then
+        local base = player.def.baseDef or player.def
+        if base.soundPack and base.soundPack[special and "special" or "attack"] then
+            require("src.game.bugextras").sfx(player, special and "special" or "attack")
+            return
+        end
+    end
     local cd = params.cooldown or 0.5
     if special then
         Audio.play("special", { pitch = 0.9 + love.math.random() * 0.2 })
@@ -153,10 +179,10 @@ function Player:releaseAttack(ax, ay, extra)
     if self.world.director then self.world.director:playerAttacked(ax, ay, params) end
     self.skills:after("attack", ax, ay, nil, nil, params)
     Anim.move(self, "attack", atk.params)
-    Player.swingSound(atk.params, false)
+    Player.swingSound(atk.params, false, self)
     self.lungeT = 0.18
     self.wangle = math.atan2(ay, ax)
-    atk.timer = atk.params.cooldown
+    atk.timer = self:takeCooldown(atk.params.cooldown)
     return true
 end
 
@@ -170,8 +196,8 @@ function Player:releaseSecondary(ax, ay, px, py, extra)
     if self.world.director then self.world.director:playerAttacked(ax, ay, params) end
     self.skills:after("secondary", ax, ay, px, py, params)
     Anim.move(self, "secondary", sec.params)
-    Player.swingSound(sec.params, true)
-    sec.timer = sec.params.cooldown
+    Player.swingSound(sec.params, true, self)
+    sec.timer = self:takeCooldown(sec.params.cooldown)
     self.lungeT = 0.18
     self.wangle = math.atan2(ay, ax)
     return true
@@ -228,6 +254,8 @@ function Player:update(dt)
     end
     local mag = util.len(mx, my)
     local wx, wy = Iso.screenDirToWorld(mx, my)
+    -- a parasite can take the wheel (Cordyceps, Horsehair Worm; src/game/parasites.lua)
+    if self.steer and not stunned then wx, wy, mag = self.steer(self, wx, wy, mag, dt) end
     self.moving = mag > 0.1
 
     -- Dash: each bug's own kind (content/dashes), all paid for from one stamina pool
@@ -261,7 +289,7 @@ function Player:update(dt)
         Anim.move(self, "dash", dp)
         self.dashT0 = self.dashT
         require("src.game.dashtech").onStart(self)      -- chained dashes go faster (src/game/dashtech.lua)
-        Audio.play("dash")
+        if self.def.custom then require("src.game.bugextras").sfx(self, "dash", "dash") else Audio.play("dash") end
         self.inventory:trigger("onDash", { world = world, player = self, procDepth = 0 })
     end
     require("src.game.dashtech").update(self)
@@ -283,10 +311,10 @@ function Player:update(dt)
     if self.dashT > 0 then
         self.dashT = self.dashT - dt
         vx, vy = self.dashX * DASH_SPEED, self.dashY * DASH_SPEED
-        world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, { 0.6, 0.85, 1 }, 1, { glow = true, grav = 0 })
+        world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, PFX_3, 1, PFX_4)
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
-            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1)
+            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1) * (self.traitSpeed or 1)
         -- the arena (src/game/director.lua): weather, water, sun and shade
         local env = world.env
         if env and not self.def.immune then
@@ -301,6 +329,14 @@ function Player:update(dt)
             local sx, sy = mvx - f * self.aimX, mvy - f * self.aimY
             mvx = self.aimX * f * (sw.forward or 0.6) + sx * (sw.side or 1.15)
             mvy = self.aimY * f * (sw.forward or 0.6) + sy * (sw.side or 1.15)
+        end
+        -- custom bugs can slide (movement.slide 0..0.95): steering eases in like on ice
+        local slide = self.def.movement and self.def.movement.slide
+        if slide then
+            local k = 1 - math.exp(-dt * (1 - slide) * 25)
+            self.slideVX = (self.slideVX or 0) + (mvx * speed - (self.slideVX or 0)) * k
+            self.slideVY = (self.slideVY or 0) + (mvy * speed - (self.slideVY or 0)) * k
+            mvx, mvy, speed = self.slideVX, self.slideVY, 1
         end
         vx, vy = mvx * speed + self.kvx + self.momX, mvy * speed + self.kvy + self.momY
     end
@@ -367,8 +403,8 @@ function Player:update(dt)
             if world.director then world.director:playerAttacked(ax, ay, params) end
             self.skills:after("secondary", ax, ay, px, py, params)
             Anim.move(self, "secondary", sec.params)
-            Player.swingSound(sec.params, true)
-            sec.timer = sec.params.cooldown
+            Player.swingSound(sec.params, true, self)
+            sec.timer = self:takeCooldown(sec.params.cooldown)
             self.lungeT = 0.18
             self.wangle = math.atan2(ay, ax)
         end
@@ -399,10 +435,10 @@ function Player:update(dt)
             if world.director then world.director:playerAttacked(self.aimX, self.aimY, params) end
             self.skills:after("attack", self.aimX, self.aimY, nil, nil, params)
             Anim.move(self, "attack", atk.params)
-            Player.swingSound(atk.params, false)
+            Player.swingSound(atk.params, false, self)
             self.lungeT = 0.18
             self.wangle = math.atan2(self.aimY, self.aimX)  -- snap to face the strike
-            atk.timer = atk.params.cooldown
+            atk.timer = self:takeCooldown(atk.params.cooldown)
         else
             atk.timer = 0
         end
@@ -603,7 +639,9 @@ function Player:hurt(amount, source)
     end
     -- No invulnerability after a hit: every bite lands, so a bigger crowd hurts more.
     -- Only dashing (and dodge) avoid damage. Feedback is throttled so swarms don't spam it.
-    local dmg = math.max(0.5, amount * armorMultiplier(self.stats:get("armor")) * (self.guardMul or 1))
+    local dmg = math.max(0.5, amount * armorMultiplier(self.stats:get("armor")) * (self.guardMul or 1)
+        * (type(source) == "table" and source.cWeak or 1)
+        * require("src.game.itemfx").guardMul(self))
     self.hp = self.hp - dmg
     if self.dmgAccum == 0 then self.dmgShowT = 0.3 end
     self.dmgAccum = self.dmgAccum + dmg
@@ -611,16 +649,25 @@ function Player:hurt(amount, source)
         self.hurtFxT = 0.18
         self.flash = 0.12
         self.recoilT = 0.2
-        world.camera:shake(math.min(0.5, 0.15 + dmg * 0.03))
-        Audio.play("hurt")
+        local sx = type(source) == "table" and source.x
+        world.camera:shake(math.min(0.5, 0.15 + dmg * 0.03), sx and (self.x - sx) - (self.y - source.y), sx and ((self.x - sx) + (self.y - source.y)) * 0.5)
+        if self.def.custom then require("src.game.bugextras").sfx(self, "hurt", "hurt") else Audio.play("hurt") end
         Input.vibrate(math.min(1, 0.3 + dmg * 0.05), 0.12)
     end
     local ctx = { world = world, player = self, damage = dmg, source = source, procDepth = 0 }
     world.events:emit("player_hurt", ctx)
     self.inventory:trigger("onHurt", ctx)
+    -- a perk card (Molt Reserve) can cheat death once
+    if self.hp <= 0 and world.levelups and world.levelups:saveFromDeath(self) then return end
     if self.hp <= 0 then
         self.hp = 0
         self.dead = true
+        if self.def.custom then
+            local Extras = require("src.game.bugextras")
+            Extras.sfx(self, "death")
+            local clip = self.def.anims and self.def.anims.death
+            if clip then Anim.play(self, clip, "pose_death", {}) end
+        end
         world.events:emit("player_died", ctx)
     end
 end

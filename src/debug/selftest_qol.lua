@@ -40,29 +40,35 @@ return function(wait, shot)
     Prefs.data = nil
     Prefs.load()
     Prefs.get().favourites = {}
+    Prefs.get().bugTab, Prefs.get().filter = "all", "all"
     local cs = State.push(require("src.states.charselect").new())
     local function bugs()
         local out = {}
-        for _, it in ipairs(cs.menu.items) do if it.character then out[#out + 1] = it.character end end
+        for _, e in ipairs(cs.list) do out[#out + 1] = e.def end
         return out
     end
     assert(#bugs() == #Content.characters:all(), "every bug listed")
-    cs.menu.items[1].set("speed")
+    -- sorted by speed inside each family section
+    cs:setSort("speed")
     local b = bugs()
-    for i = 2, #b do assert((b[i - 1].stats.moveSpeed or 100) >= (b[i].stats.moveSpeed or 100), "speed sort") end
-    assert(cs.menu.items[3].value() == tostring(b[1].stats.moveSpeed), "sorted value on the row")
-    cs.menu.items[2].set("tank")
+    for i = 2, #b do
+        if cs.list[i - 1].section == cs.list[i].section then
+            assert((b[i - 1].stats.moveSpeed or 100) >= (b[i].stats.moveSpeed or 100), "speed sort")
+        end
+    end
+    cs:setStyle("tank")
     for _, d in ipairs(bugs()) do assert(d.playstyle == "tank", "tank filter let " .. d.id .. " through") end
-    cs.menu.items[2].set("all")
-    cs.menu.items[1].set("hp")
+    cs:setStyle("all")
+    cs:setSort("hp")
     local last = bugs()[#bugs()]
-    cs.menu.focus = #cs.menu.items - 1
+    cs.focus = #cs.list
     Input.press("ui_favourite")
     cs:update(1 / 60)
-    assert(bugs()[1] == last and cs.menu.items[3].star, "favourite should pin to the top")
-    cs.menu.items[2].set("favourites")
-    assert(#bugs() == 1, "favourites filter")
-    cs.menu.items[2].set("all")
+    Input.endFrame()
+    assert(bugs()[1] == last and cs.list[1].fav, "favourite should pin to the top")
+    cs:setTab("favourites")
+    assert(#bugs() == 1, "favourites tab")
+    cs:setTab("all")
     -- the live preview: the special and the dash both fire for every bug, without errors
     for _, d in ipairs(Content.characters:all()) do
         local pv = require("src.ui.movepreview").new(d.id)
@@ -77,16 +83,15 @@ return function(wait, shot)
         pv:release()
     end
     print("[qol] preview OK for " .. #Content.characters:all() .. " bugs")
-    for i, it in ipairs(cs.menu.items) do if it.character and it.character.id == "rhino_beetle" then cs.menu.focus = i end end
-    cs.menu.items[1].set("speed")
-    for i, it in ipairs(cs.menu.items) do if it.character and it.character.id == "mantis" then cs.menu.focus = i end end
+    cs:setSort("speed")
+    cs:focusOn("mantis")
     wait(2.2)
     shot("qol_charselect")
     Input.lastDevice = "gamepad"
     wait(0.2)
     shot("qol_charselect_pad")
     Input.lastDevice = "keyboard"
-    cs.menu.items[1].set("default")
+    cs:setSort("default")
     Prefs.get().favourites = {}
     State.pop()
 
@@ -231,7 +236,12 @@ return function(wait, shot)
     local menu = State.switch(require("src.states.menu").new())
     local found = {}
     for _, it in ipairs(menu.menu.items) do found[it.label:match("^[^:]+")] = true end
-    assert(found["Play Again"] and found.Practice, "title shortcuts")
+    assert(found["Play Again"], "title shortcuts")
+    -- practice moved into mode select (next to the daily run)
+    local ms = require("src.states.modeselect").new()
+    local hasPractice = false
+    for _, it in ipairs(ms.menu.items) do if it.label == "Practice" then hasPractice = true end end
+    assert(hasPractice, "practice should be in mode select")
     wait(0.3)
     shot("qol_title")
     print("[qol] all OK")

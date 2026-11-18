@@ -555,6 +555,7 @@ function RecordsState:draw()
     end
 
     self.menu:draw()
+    Theme.navFooter()
     local it = self.menu:focused()
     if not it then return end
     local px, py, pw = self:panel()

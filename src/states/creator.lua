@@ -42,17 +42,53 @@ local function playBug(id)
     require("src.states.menu").quickStart(id, mode)
 end
 
+-- Ready-made bugs to start from (content/bugtemplates): name, description, source.
+function Creator.templates()
+    if Creator._templates then return Creator._templates end
+    local out = {}
+    local files = love.filesystem.getDirectoryItems("content/bugtemplates")
+    table.sort(files)
+    for _, f in ipairs(files) do
+        if f:match("%.lua$") then
+            local src = love.filesystem.read("content/bugtemplates/" .. f)
+            local def = src and CustomBugs.compile(src, f)
+            if def then out[#out + 1] = { file = f, source = src, name = def.name, desc = def.description, def = def, kind = src:match("%-%-%s*KIND:%s*([^\n]+)") } end
+        end
+    end
+    Creator._templates = out
+    return out
+end
+
+function Creator:buildTemplates(focusKey)
+    local items = { { type = "header", label = "Template Gallery" } }
+    for _, t in ipairs(Creator.templates()) do
+        items[#items + 1] = { type = "button", label = t.name, value = function() return t.kind end, template = t,
+            onActivate = function()
+                State.push(Editor().new({ text = t.source, title = "Template: " .. t.name }))
+            end, desc = t.desc .. "\n\nOpen it, change anything, press Save to make it yours." }
+    end
+    items[#items + 1] = { type = "button", label = "Back", onActivate = function() self.page = nil self:build("Template Gallery") end }
+    self.menu.opts.onBack = function() self.page = nil self:build("Template Gallery") end
+    self.menu:setItems(items)
+end
+
 function Creator:build(focusKey)
+    if self.page == "templates" then return self:buildTemplates(focusKey) end
+    self.menu.opts.onBack = function() State.pop() end
     local items = {}
     items[#items + 1] = { type = "header", label = "Make a bug" }
     items[#items + 1] = { type = "button", label = "Mix Parts", onActivate = function() State.push(Mixer().new()) end,
-        desc = "Build a bug from the parts of the others: one bug's body, another's attack, a third's dash. Then set its stats and colour and watch it fight." }
+        desc = "Build a bug from the parts of the others: one bug's body, another's attack, a third's dash. Then set its stats and colour, build moves from blocks, and watch it fight." }
+    items[#items + 1] = { type = "button", label = "Paint a Bug", onActivate = function() State.push(require("src.states.painter").new()) end,
+        desc = "Draw a brand-new bug pixel by pixel, or put one together from a kit of heads, middles and backs. Drag its legs, add claws, horns, tails and wings that flap, and colour every part." }
+    items[#items + 1] = { type = "button", label = "Template Gallery", onActivate = function() self.page = "templates" self:build() end,
+        desc = "Ten ready-made bugs to start from: a tank, a summoner, a sniper, a trickster, a shapeshifter... Each one shows off what bugs can do." }
     items[#items + 1] = { type = "button", label = "Write a Script", onActivate = function()
             State.push(Editor().new({ title = "New Bug Script" }))
         end,
         desc = "Write a bug in Lua, starting from the blueprint: every field explained, change what you like. The guide (docs/CUSTOM_BUGS.md) lists every move, stat and item." }
     items[#items + 1] = { type = "button", label = "Paste a Script", onActivate = function() self:pasteScript() end,
-        desc = "Import a bug someone shared: copy their script, then press this. On a computer you can also drop a .lua file onto the game window." }
+        desc = "Import a bug someone shared: copy their script or share code (SWARMED-BUG:...), then press this. On a computer you can also drop a .lua file onto the game window." }
 
     items[#items + 1] = { type = "button", label = "Example: Stick Insect", onActivate = function()
             State.push(Editor().new({ text = love.filesystem.read("content/characters/_example_stick_insect.lua"),
@@ -80,11 +116,24 @@ function Creator:build(focusKey)
                 items[#items + 1] = { type = "button", label = "     " .. label, entry = e, onActivate = fn, desc = desc }
             end
             act("Play", function() playBug(e.id) end)
+            act("Test Arena", function()
+                State.push(require("src.states.game").new({ mode = "sandbox", character = e.id, arena = true }))
+            end, "A practice room: dummy ants that don't die, spawn buttons, a damage-per-second meter and the hitboxes of every move shown.")
+            act("Rate It", function() State.push(require("src.states.rating").new(e.def)) end,
+                "Its power level: it plays the same short fight as some built-in bugs, and its damage, kills and toughness are compared. 100 = as strong as a built-in bug.")
+            act("Paint Art", function() State.push(require("src.states.painter").new({ entry = e })) end,
+                "Open its art in the Bug Painter (a bug without its own art starts from a blank beetle).")
             -- a bug with its own art or code opens the mixer in tweak mode: name, size, colour
             -- and stats change, the rest of its script stays as it is
             act(CustomBugs.coded(e.def) and "Tweak" or "Mix Parts",
                 function() State.push(Mixer().new({ from = e })) end)
             act("Edit Code", function() State.push(Editor().new({ text = e.source, replaces = e.id, title = "Bug Script" })) end)
+            act("Copy Share Code", function()
+                local code = CustomBugs.shareCode(e.source or "")
+                local ok = code and pcall(love.system.setClipboardText, code)
+                self.flash = ok and { ("Copied a share code for %s (%d letters): anyone can paste it in Paste a Script."):format(e.def.name, #code), Theme.colors.good }
+                    or { "Copying isn't available here.", Theme.colors.dim }
+            end, "The whole bug packed into one line of text, short enough for a chat message.")
             act("Copy Code", function()
                 local ok = pcall(love.system.setClipboardText, e.source or "")
                 self.flash = ok and { "Copied " .. e.def.name .. "'s script: paste it anywhere to share it.", Theme.colors.good }
@@ -146,6 +195,16 @@ function Creator:import(text, from)
         self.flash = { "Nothing to import: the clipboard is empty.", Theme.colors.dim }
         Audio.play("ui_back")
         return
+    end
+    -- a share code (SWARMED-BUG:...) unpacks to the script
+    if text:find(CustomBugs.SHARE_PREFIX, 1, true) then
+        local src, why = CustomBugs.fromShareCode(text)
+        if not src then
+            self.flash = { "That share code didn't open: " .. tostring(why), Theme.colors.bad }
+            Audio.play("ui_back")
+            return
+        end
+        text = src
     end
     local def, info = CustomBugs.save(text)
     if def then
@@ -263,10 +322,32 @@ function Creator:draw()
         if def.ownTree then extras[#extras + 1] = "own skill tree" end
         if def.sounds then extras[#extras + 1] = "own sounds" end
         if def.mix.anims then extras[#extras + 1] = "own animations" end
+        if def.effects then extras[#extras + 1] = "glow / trails" end
+        if def.movement then extras[#extras + 1] = "own movement" end
         if #extras > 0 and not small then rows[#rows + 1] = { "Extras", table.concat(extras, ", ") } end
+        local pas = require("src.game.bugtraits").describe(def)
+        if #pas > 0 then rows[#rows + 1] = { "Passives", table.concat(pas, ", ") } end
+        local more = {}
+        if def.forms then more[#more + 1] = (#def.forms) .. " forms" end
+        if def.molt then more[#more + 1] = "molts at " .. (def.molt.kills and (def.molt.kills .. " kills") or ("wave " .. def.molt.wave)) end
+        if def.pets then more[#more + 1] = "pets" end
+        if def.statuses then more[#more + 1] = "status effects" end
+        if def.ownFrenzy then more[#more + 1] = "ultimate: " .. def.ownFrenzy.name end
+        if #more > 0 and not small then rows[#rows + 1] = { "Specials", table.concat(more, ", ") } end
         -- how it has done (Records keeps every bug's runs, custom ones too)
         local rec = require("src.game.records").get().characters[def.id]
         rows[#rows + 1] = { "Runs", rec and ("%d played, %d won, best wave %d"):format(rec.runs or 0, rec.wins or 0, rec.bestWave or 0) or "not played yet" }
+        if rec and rec.power then rows[#rows + 1] = { "Power level", tostring(rec.power) } end
+        local Extras = require("src.game.bugextras")
+        local nDone, nAll, chs = Extras.challengeState(def)
+        if nAll > 0 then
+            local names = {}
+            for _, ch in ipairs(chs) do names[#names + 1] = (ch.done and "[x] " or "[ ] ") .. ch.name end
+            rows[#rows + 1] = { "Challenges", ("%d / %d"):format(nDone, nAll) }
+            if not small then
+                for i = 1, #names, 2 do rows[#rows + 1] = { "", names[i] .. (names[i + 1] and ("    " .. names[i + 1]) or "") } end
+            end
+        end
         local lh = lg.getFont():getHeight() + u(4)
         for i, r in ipairs(rows) do
             lg.setColor(c.accent)

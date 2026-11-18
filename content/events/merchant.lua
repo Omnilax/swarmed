@@ -1,10 +1,10 @@
--- The merchant beetle wanders in with a pack of wares. Its prices are in KOs made while it is
--- around: keep fighting, then walk into it to buy (up to two things). It leaves with the wave.
+-- The merchant beetle wanders in with a pack of wares, priced in nectar a little under the shop:
+-- walk into it to buy (up to two things). It leaves with the wave.
 local Env = require("src.game.envfx")
 
 return {
     name = "Merchant Beetle",
-    description = "Shop while you fight: KOs pay for its wares. Walk into it to buy.",
+    description = "A shop that comes to you, a little cheaper. Walk into it to buy with nectar.",
     color = { 0.5, 1, 0.85 },
     kind = "event",
     weight = 7, minWave = 3,

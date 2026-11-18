@@ -308,6 +308,11 @@ function Inventory:recount()
         if not self.counts[id] then self.order[#self.order + 1] = id end
         self.counts[id] = (self.counts[id] or 0) + 1
     end
+    -- parasites live in the bug, not the bag (src/game/parasites.lua), but count all the same
+    for _, item in ipairs(self.parasites or {}) do
+        if not self.counts[item.id] then self.order[#self.order + 1] = item.id end
+        self.counts[item.id] = 1
+    end
     for _, id in ipairs(self.order) do
         local def, n = Content.items:require(id), self.counts[id]
         for stat, v in pairs(def.stats) do stats:addModifier("item:" .. id, stat, v * n, 0) end
@@ -340,6 +345,7 @@ function Inventory:add(id, n)
 end
 
 function Inventory:give(item)
+    if item.def.parasite then return require("src.game.parasites").infest(self, item) end
     if not self:stow(item) then return false end
     if item.def.onAdd then item.def.onAdd(self.player, self:count(item.id)) end
     return true
@@ -355,6 +361,11 @@ end
 
 function Inventory:clear()
     self.bag = {}
+    for _, it in ipairs(self.parasites or {}) do
+        self.player.stats:removeSource("parasite_fed:" .. it.id)
+        self.player.stats:removeSource("fx:" .. it.id)
+    end
+    self.parasites, self.player.steer = nil, nil
     self:recount()
 end
 
@@ -362,7 +373,9 @@ end
 function Inventory:transferTo(other)
     other.rows = math.max(other.rows, self.rows)
     for _, e in ipairs(self.bag) do other.bag[#other.bag + 1] = e end
+    other.parasites = self.parasites
     other:recount()
+    if other.parasites then require("src.game.parasites").refresh(other) end
 end
 
 -- Hyperbolic chance stacking: luck, the proc snowball and extra copies never push a chance to
@@ -400,7 +413,7 @@ function Inventory:trigger(name, ctx)
     local BugRules = require("src.game.bugrules")
     BugRules.trigger(self.player, name, ctx)
     -- a custom bug's own event code (hooks = { onHit = function(me, ev) ... }, src/game/scriptmoves.lua)
-    if self.player.def.hooks and name ~= "onTick" then require("src.game.scriptmoves").event(self.player, name, ctx) end
+    if self.player.def.custom and name ~= "onTick" then require("src.game.scriptmoves").event(self.player, name, ctx) end
     local ruled = BugRules.of(self.player) ~= nil
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]
@@ -427,6 +440,9 @@ function Inventory:trigger(name, ctx)
     -- the bug's skill tree answers the same triggers (src/game/skills.lua)
     local skills = self.player.skills
     if skills then skills:trigger(name, ctx) end
+    -- and the perk / growth level-up cards taken this run (src/game/levelups.lua)
+    local lu = self.player.world and self.player.world.levelups
+    if lu and (lu.perkOrder[1] or lu.growth[1]) then lu:trigger(name, ctx) end
 end
 
 return Inventory

@@ -22,7 +22,7 @@ return {
     name = "Stick Insect",
     description = "Looks like a twig, fights like a whip. Long leg sweeps, every third one a jab that skewers a line. Right click flings a fan of thorns, twice. Shift vaults forward and lands with a thump.",
     lore = "Some stick insects are longer than your forearm, and many can regrow a lost leg.",
-    tip = "Every third {attack} is a long jab. {secondary} throws two fans of thorns. {dash} vaults and thumps where you land.",
+    tip = "Stand still to vanish into the twigs. Every third {attack} is a long jab. {secondary} throws two fans of thorns. {dash} vaults and thumps where you land.",
     playstyle = "control",
     tags = { "insect" },
 
@@ -55,6 +55,11 @@ return {
     scale = 1.1,
 
     stats = { maxHp = 45, moveSpeed = 96, armor = 1, dodge = 10, critChance = 12 },
+
+    -- PASSIVE: stand still and it vanishes into the twigs; the first moments after moving
+    -- again it hits 50% harder
+    passives = { camo = { after = 0.6, ambush = 50 } },
+    music = "flute",
 
     -- ATTACK: written in code. `me` is the toolkit (docs/CUSTOM_BUGS.md lists everything in it).
     attack = {

@@ -88,6 +88,7 @@ function Cos:draw()
     lg.setFont(Theme.font(40))
     Theme.printShadow("COSMETICS", Theme.u(60), Theme.u(50), Theme.colors.focus)
     self.menu:draw()
+    Theme.navFooter()
 
     local it = self.menu:focused()
     if not it or it.type == "button" then return end

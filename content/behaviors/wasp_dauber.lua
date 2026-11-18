@@ -10,6 +10,9 @@ local Audio = require("src.core.audio")
 
 local MUD = { 0.45, 0.33, 0.22 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 250 }
+
 return {
     name = "Pipe cage",
     init = function(e) e.st.mode, e.st.t = "attack", 1.5 + love.math.random() end,
@@ -36,7 +39,7 @@ return {
                 st.t = params.place or 0.45
                 if (p.x - tx) ^ 2 + (p.y - ty) ^ 2 > (p.radius + 6) ^ 2 then
                     world:spawnEnemy(params.pipe or "mud_pipe", tx, ty)
-                    world.particles:burst(tx, ty, 5, { MUD }, 40, 30, { grav = 250 })
+                    world.particles:burst(tx, ty, 5, { MUD }, 40, 30, PFX_1)
                     Audio.play("hit", { pitch = 0.5 })
                 end
                 st.k = st.k + 1

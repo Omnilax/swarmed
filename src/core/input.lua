@@ -26,6 +26,7 @@ Input.actions = {
     { id = "choice_lock", label = "Lock Card (item choice)", keys = { "l" }, pad = { "rightshoulder" }, rebind = true },
     { id = "choice_ban", label = "Ban Card (item choice)", keys = { "x", "delete" }, pad = { "y" }, rebind = true },
     { id = "quick_restart", label = "Quick Restart (pause / defeat)", keys = { "r" }, pad = { "y" }, rebind = true },
+    { id = "inspect", label = "Inspect (hold)", keys = { "v", "lalt" }, rebind = true },
     { id = "ui_favourite", label = "Favourite Bug (bug select)", keys = { "f" }, pad = { "x" }, rebind = true },
 
     { id = "ui_up", keys = { "up", "w" }, pad = { "dpup" }, repeats = true },
@@ -36,6 +37,11 @@ Input.actions = {
     { id = "ui_back", keys = { "escape", "backspace" }, pad = { "b", "back" } },
     { id = "ui_tab_next", keys = { "e", "tab", "pagedown" }, pad = { "rightshoulder" }, repeats = true },
     { id = "ui_tab_prev", keys = { "q", "pageup" }, pad = { "leftshoulder" }, repeats = true },
+    -- bug select: danger level down / up, cycle the sort and the playstyle filter
+    { id = "ui_danger_down", keys = { "z", "-", "[" }, pad = {} },
+    { id = "ui_danger_up", keys = { "x", "=", "]" }, pad = { "y" } },
+    { id = "ui_sort", keys = { "t" }, pad = { "leftstick" } },
+    { id = "ui_style", keys = { "g" }, pad = { "rightstick" } },
 }
 
 local byId = {}

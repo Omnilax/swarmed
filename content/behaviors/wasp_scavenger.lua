@@ -7,6 +7,10 @@ local AI = require("src.game.ai")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.75, 0.6, 0.3 }
+local PFX_2 = { grav = 200 }
+
 return {
     name = "Scavenger",
     init = function(e) e.st.mode, e.st.meals, e.st.ph = "hunt", 0, love.math.random() * 6.28 end,
@@ -39,7 +43,7 @@ return {
             e.z = math.max(0, e.z - dt * 20)
             st.t = st.t - dt
             if love.math.random() < dt * 10 then
-                world.particles:spawn(e.x, e.y, 2, (love.math.random() - 0.5) * 30, (love.math.random() - 0.5) * 30, 20, 0.4, { 0.75, 0.6, 0.3 }, 1, { grav = 200 })
+                world.particles:spawn(e.x, e.y, 2, (love.math.random() - 0.5) * 30, (love.math.random() - 0.5) * 30, 20, 0.4, PFX_1, 1, PFX_2)
             end
             if st.t <= 0 then
                 st.meals = st.meals + 1

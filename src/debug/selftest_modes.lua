@@ -20,9 +20,7 @@ return function(wait, shot)
     ms.menu:focused().onActivate()                  -- -> character select for endless
     wait(0.2)
     local cs = State.top()
-    for _, it in ipairs(cs.menu.items) do            -- the first bug -> starting items
-        if it.character then it.onActivate() break end
-    end
+    cs:pick(cs.list[1].def)                          -- the first bug -> starting items
     local lo = State.top()
     assert(lo.budget and lo.picked, "endless did not open the starting items screen")
     for _, id in ipairs({ "honeydew", "chitin_plate", "royal_jelly" }) do lo:add(Content.items:get(id)) end
@@ -102,7 +100,7 @@ return function(wait, shot)
     local reachWave = function(n) return function(w) return w.spawner.wave >= n and w.spawner.phase == "break" end end
 
     for _, m in ipairs(Content.modes:all()) do
-        if not m.endless then
+        if not m.endless and not m.tutorial then
             local seen = play(m.id, 600, reachWave(6))
             assert(seen.wave >= 6, m.id .. ": stuck at wave " .. seen.wave)
             assert(seen.spawned > 0, m.id .. ": nothing spawned")

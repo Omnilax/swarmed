@@ -10,6 +10,9 @@ local Audio = require("src.core.audio")
 
 local MUD = { 0.42, 0.3, 0.19 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 200 }
+
 local function patchUpdate(world, z, dt, inside)
     local p = world.player
     if inside then
@@ -19,7 +22,7 @@ local function patchUpdate(world, z, dt, inside)
             z.grip = -0.8
             p:slow(0.06, z.stuck)
             world:floatText(p.x, p.y, "STUCK IN MUD", { 0.85, 0.65, 0.4 }, false)
-            world.particles:burst(p.x, p.y, 6, { MUD }, 40, 30, { grav = 200 })
+            world.particles:burst(p.x, p.y, 6, { MUD }, 40, 30, PFX_1)
         end
     else
         z.grip = math.max(0, (z.grip or 0) - dt * 2)
@@ -54,7 +57,7 @@ return {
             e.mx, e.my = 0, 0
             AI.hover(e, world, dt, 1)
             st.t = st.t - dt
-            if love.math.random() < dt * 20 then world.particles:spawn(e.x, e.y, 2, 0, 0, 20, 0.4, MUD, 1, { grav = 200 }) end
+            if love.math.random() < dt * 20 then world.particles:spawn(e.x, e.y, 2, 0, 0, 20, 0.4, MUD, 1, PFX_1) end
             if st.t <= 0 then
                 world.hazards:addZone({ kind = "mud", x = e.x, y = e.y, r = params.radius or 16, life = params.life or 8,
                     slow = params.slow or 0.55, set = params.set or 0.9, stuck = params.stuck or 0.7,

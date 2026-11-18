@@ -1,0 +1,31 @@
+-- A fallen log: soft rotten wood and bark. Termites everywhere, wood and carpenter ants'
+-- neighbours, carpenter bees (fauna, src/game/spawner.lua).
+return {
+    name = "Rotting Log",
+    description = "The top of a fallen oak gone soft and spongy. Termites have eaten it hollow, and they don't share.",
+    order = 9,
+    size = 740,
+    seed = 63,
+    patioInset = 0.18,
+    jointSpacing = 64,
+    cracks = 70,
+    leaves = 90,
+    edgeGrass = 20,
+    cliffDepth = 30,
+    palette = {
+        concrete = "#7a5a3c", concreteDark = "#523a24", concreteLight = "#94704c", joint = "#3e2a18", crack = "#2e1e10",
+        grass1 = "#22301a", grass2 = "#2e4220", grass3 = "#3e5828", grass4 = "#527030", flower = "#e0d8b0",
+        blade1 = "#3a5a26", blade2 = "#4a7030", blade3 = "#2a441c", bladeTip = "#90b060",
+        soil1 = "#3a2616", soil2 = "#4a321c", soil3 = "#2a1a0e", pebble = "#6a5a4a",
+        leafA = "#8a5a2a", leafB = "#a8742e", leafVein = "#4a3018",
+    },
+    ambient = "#78706a",
+    ambients = { day = "#f2ead8", sunset = "#d89870", night = "#3a3c5e", dawn = "#c0a8a0" },
+    weather = { clear = 30, fog = 14, rain = 10, drizzle = 12, fireflies = 16, petals = 4, windy = 6, pollen = 2 },
+    props = { pebble = 2, twig = 10 },
+    events = { acorns = 3, flood = 0, lawnmower = 0 },
+    fauna = { first = "termite_worker", termite = 4, wood_ant = 3, carpenter_bee = 3, bulldog_ant = 1.5,
+        bee = 0.5, hornet = 0.6, desert_ant = 0, honeypot_ant = 0, other = 0.5 },
+    spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
+        maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
+}

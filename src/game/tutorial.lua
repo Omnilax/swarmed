@@ -65,6 +65,14 @@ Tutorial.hints = {
         text = function() return "A queen! Slay her for an extra item to choose from" end },
 }
 
+-- A card shown as soon as the current one is gone (Gentle Start's "NEW" cards,
+-- src/game/onramp.lua). tag is the word before the title ("TIP" by default).
+Tutorial.queue = {}
+function Tutorial.notify(title, text, tag)
+    if Tutorial.off then return end
+    Tutorial.queue[#Tutorial.queue + 1] = { title = title, text = text, tag = tag }
+end
+
 function Tutorial.load()
     Tutorial.seen = {}
     if love.filesystem.getInfo(Tutorial.FILE) then
@@ -76,7 +84,10 @@ function Tutorial.load()
     end
     Settings.onChange(function(key)
         if key == "tutorialHints" and Settings.get(key) then
-            Tutorial.seen = {}
+            -- hints show again; systems already met (Gentle Start, "sys:" keys) stay met
+            local keep = {}
+            for k, v in pairs(Tutorial.seen) do if type(k) == "string" and k:sub(1, 4) == "sys:" then keep[k] = v end end
+            Tutorial.seen = keep
             Tutorial.save()
         end
     end)
@@ -91,6 +102,7 @@ end
 function Tutorial.attach(world)
     Tutorial.run = { world = world, T = { px = world.player.x, py = world.player.y } }
     Tutorial.current = nil
+    Tutorial.queue = {}
     local T = Tutorial.run.T
     local p = world.player
     -- no dash/special events exist, so watch the timers
@@ -100,7 +112,8 @@ end
 function Tutorial.update(world, dt)
     local run = Tutorial.run
     if not run or run.world ~= world then return end
-    if Tutorial.off or not Settings.get("tutorialHints") or world.mode ~= "run" or world.flags.demo then
+    if Tutorial.off or not Settings.get("tutorialHints") or world.mode ~= "run" or world.flags.demo
+        or (world.modeDef and world.modeDef.tutorial) then
         Tutorial.current = nil
         return
     end
@@ -127,6 +140,13 @@ function Tutorial.update(world, dt)
     if p.dead then return end
     T.gap = (T.gap or 0) - dt
     if T.gap > 0 then return end
+    local q = table.remove(Tutorial.queue, 1)
+    if q then
+        Tutorial.current = { text = q.text, title = q.title, tag = q.tag, t = 0, life = 10, hint = {} }
+        Audio.play("hint")
+        T.gap = 1.5
+        return
+    end
     -- the first time a bug is played: its own tip (content/characters `tip`), after the very
     -- first "move" hint so a brand new player learns to walk first
     local def = p.def
@@ -168,7 +188,7 @@ function Tutorial.draw(world, covered)
     local lh = lg.getFont():getHeight()
     local head = cur.title and Theme.font("label", "bold") or nil
     local headH = head and head:getHeight() + u(4) or 0
-    local bw, bh = math.max(tw, head and head:getWidth("TIP  ·  " .. cur.title:upper()) or 0) + u(36), n * lh + u(26) + headH
+    local bw, bh = math.max(tw, head and head:getWidth((cur.tag or "TIP") .. "  ·  " .. cur.title:upper()) or 0) + u(36), n * lh + u(26) + headH
     local bx = math.floor((w - bw) / 2)
     local by = math.floor(h * 0.7 + (1 - k) * u(12))
     if by + bh > h - u(10) then by = math.floor(h - u(10) - bh) end
@@ -180,7 +200,7 @@ function Tutorial.draw(world, covered)
     if head then
         lg.setFont(head)
         lg.setColor(c.focus[1], c.focus[2], c.focus[3], k)
-        lg.printf("TIP  ·  " .. cur.title:upper(), bx, by + u(10), bw, "center")
+        lg.printf((cur.tag or "TIP") .. "  ·  " .. cur.title:upper(), bx, by + u(10), bw, "center")
         lg.setFont(Theme.font("body"))
     end
     Theme.rich(cur.text, bx + u(18), by + u(13) + headH, bw - u(36), "center", c.text, k)

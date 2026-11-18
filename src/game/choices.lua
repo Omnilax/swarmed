@@ -40,8 +40,10 @@ function Choices.pickDef(world, taken, pred)
     -- locked items and ones switched off in the item pool never show (src/game/unlocks.lua);
     -- molted items only come from molting
     local inPool = require("src.game.unlocks").inPool
-    local function ok(d) return not d.molted and not taken[d.id] and not banned[d.id] and inPool(d.id) and (not pred or pred(d)) end
-    return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
+    local function ok(d) return not d.molted and (not d.parasite or require("src.game.parasites").weight(world, d) > 0) and not taken[d.id] and not banned[d.id] and inPool(d.id) and (not pred or pred(d)) end
+    -- parasites: once each, a few at most, and the Parasites setting (src/game/parasites.lua)
+    local pw = require("src.game.parasites").weight
+    return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight * pw(world, d) end,
         function(d) return ok(d) and Rarities[d.rarity].minWave <= w end)
         or Content.items:pickWeighted(function() return 1 end, ok)
 end
@@ -68,6 +70,16 @@ function Choices.roll(world, n, minRarity, keep, avoid)
             for _, it in pairs(out) do taken[it.id] = true end
             avoid = nil
             d = Choices.pickDef(world, taken, pred)
+        end
+        -- `rarityBump` items (Ladybug Spots): now and then the card rolls one tier higher
+        if d and not pred then
+            local inv = world.player and world.player.inventory
+            local bump = inv and inv:sum("rarityBump") or 0
+            if bump > 0 and love.math.random() < bump then
+                local o = Rarities[d.rarity].order
+                local up = Choices.pickDef(world, taken, function(x) return Rarities[x.rarity].order > o and x.rarity ~= "cursed" end)
+                if up then d = up end
+            end
         end
         if d then taken[d.id] = true; return Inventory.newItem(d.id) end
     end
@@ -109,7 +121,25 @@ function Choices.deal(world, n, minRarity)
     if not next(keep) then
         for i = #items, 2, -1 do local j = love.math.random(i); items[i], items[j] = items[j], items[i] end
     end
+    Choices.seal(world, items)
     return items
+end
+
+-- Sometimes one card comes sealed in a cocoon: rare or better, but you don't see what it is
+-- until you take it. Not before wave SEALED.wave, and never a locked card.
+Choices.SEALED = { chance = 0.15, wave = 4, rarity = "rare" }
+function Choices.seal(world, items, force)
+    local S = Choices.SEALED
+    if not force and (wave(world) < S.wave or love.math.random() >= S.chance) then return end
+    local free = {}
+    for i, it in ipairs(items) do if not it.locked then free[#free + 1] = i end end
+    if #free == 0 then return end
+    local avoid = {}
+    for _, it in ipairs(items) do avoid[it.id] = true end
+    local got = Choices.roll(world, 1, S.rarity, nil, avoid)[1]
+    if not got or Rarities[got.def.rarity].order < Rarities[S.rarity].order then return end
+    got.sealed = true
+    items[free[love.math.random(#free)]] = got
 end
 
 -- Cards the player locked, remembered for the next choice (call when the screen closes).

@@ -190,7 +190,7 @@ function Hazards:update(dt)
                     s.hitSet[e] = true
                     local nx, ny = util.normalize(s.vx, s.vy)
                     Combat.damage(world, e, s.damage, { knockback = s.knockback or 70, kbx = nx, kby = ny, procDepth = s.procDepth or 1, slow = s.slow,
-                        poison = s.poison, corrode = s.corrode, stun = s.stun, source = s._src })
+                        poison = s.poison, corrode = s.corrode, stun = s.stun, source = s._src, cstatus = s.cstatus, look = s.look })
                     s.pierce = s.pierce - 1
                     if s.pierce < 0 then done = true break end
                 end
@@ -356,10 +356,12 @@ function Hazards:drawGround()
 end
 
 -- Projectiles fly above the floor: shadow on the ground, glowing blob in the air.
-function Hazards:drawAir()
+-- onlyEnemy: just the enemy shots, drawn again over the player's effects (Enemy Shots On Top)
+function Hazards:drawAir(onlyEnemy)
     local lg = love.graphics
     local atlas, glow = Sprites.atlas, Sprites.glow
     for _, s in ipairs(self.shots) do
+      if not (onlyEnemy and s.friendly) then
         local gx, gy = Iso.toScreen(s.x, s.y)
         local ax, ay = Iso.toScreen(s.x, s.y, s.z)
         if s.lob then
@@ -400,6 +402,7 @@ function Hazards:drawAir()
             lg.setColor(1, 1, 0.8, 1)
             lg.draw(atlas, Sprites.pixel, math.floor(ax), math.floor(ay), 0, 2, 2)
         end
+      end
     end
     lg.setColor(1, 1, 1, 1)
 end

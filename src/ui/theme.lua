@@ -420,4 +420,16 @@ function Theme.footer(hints)
     Theme.hints(hints, w / 2, h - Theme.u(34))
 end
 
+-- The usual footer for a list screen: browse, pick (named by `pick`, default "Select") and back,
+-- in the keys of the device in use. Nothing on touch (the rows are tapped).
+function Theme.navFooter(pick)
+    local Input = require("src.core.input")
+    if Input.lastDevice == "touch" then return end
+    if Input.lastDevice == "gamepad" then
+        Theme.footer({ { "D-pad", "Browse" }, { "A", pick or "Select" }, { "B", "Back" } })
+    else
+        Theme.footer({ { "Arrows", "Browse" }, { "Enter", pick or "Select" }, { "Esc", "Back" } })
+    end
+end
+
 return Theme

@@ -63,8 +63,16 @@ return {
     -- dash = Shift: the movement move (false = a plain dash)
     dash = "wolf_spider",
 
+    -- PASSIVES, LOOKS, MOVEMENT, MUSIC (no code needed; every option in docs/CUSTOM_BUGS.md)
+    passives = { thorns = { damage = 8 } },     -- camo, regen, aura, thorns, venom, shell, spawn...
+    effects = { glow = { color = "#80ff70", radius = 50 } },   -- glow, trail, sparkle, shimmer
+    -- movement = { slide = 0.4, hover = 8, sprint = { after = 1, speed = 1.4 } },
+    -- music = "chug",                         -- creep, chug, bubble, rattle, flute, kalimba
+
     -- Borrow a built-in bug's item rule (dung_beetle, hermit_crab, orb_weaver, hissing_roach,
-    -- scorpion ...) and skill tree (any built-in bug id). Leave out for none.
+    -- scorpion ...). Skill tree: a built-in bug's id, a preset ("preset:tank", also brawler,
+    -- speedster, ranged, control) or a whole tree of its own. Leave out for the preset that
+    -- fits the playstyle.
     -- rules = "dung_beetle",
     skillTree = "rhino_beetle",
     -- immune = true,           -- no debuffs (slow, poison...) like the hissing roach
@@ -100,10 +108,26 @@ return {
 --      skillTree = { branches = { { name = "...", nodes = { ... } } } }   its own tree
 --      attack = { release = function(me, charge) ... end }   hold to charge
 --      dash = { mode = true, enter = ..., tick = ..., exit = ... }    a stamina mode
+--      me.hit({ shape = "box", length = 70, width = 30, windup = 0.25, damage = 30,
+--          hitstop = 0.06, shake = 0.2, sweet = { from = 0.7, mult = 1.5 } })   hitbox + feel
+--      attack = { blocks = { { "lunge", distance = 40 }, { "arc", radius = 50, damage = 10 } } }
+--      attack = { combo = { window = 0.7, { ...blocks }, { ...blocks }, function(me) end } }
+--      forms = { { name, attack, stats, look, art } }      hold Shift: form 2
+--      molt = { wave = 10, name, stats, art, scale }       changes for good mid-run
+--      pets = { { preset = "mite", count = 2 } }           mite, guard, moth, spitter
+--      statuses = { burn = { preset = "burn", onHit = 0.25 } }   burn, frost, toxic, daze, charm, weaken
+--      ultimate = { name, color, blocks = { ... }, buff = { stats = { ... }, time = 6 } }
+--      hitFx = { number = "#80ff80", sparks = { color = "#80ff80", count = 3 } }
+--      soundPack = { attack = "swing", hurt = "zap", death = "boom" }
+--      poses = { idle = ..., death = ..., victory = ... }
+--      card = { motto = "...", color = "#ffd070", frame = "gold" }
+--      challenges = { { goal = "nohit" }, { goal = "kills", n = 2000 } }
+--      art.wings = { size = 5, flap = 30 }, art.antennae = { length = 5 }
 --
 --  Worked examples (Bug Creator > Examples):
 --      content/characters/_example_stick_insect.lua   own art + three moves in code
 --      content/characters/_example_velvet_worm.lua    everything else
+--      content/bugtemplates/*.lua                     ten more (Bug Creator > Template Gallery)
 -- ===========================================================================================
 
 -- ===========================================================================================

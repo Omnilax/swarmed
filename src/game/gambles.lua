@@ -8,13 +8,13 @@
 --     a rarer best card in the next item choice.
 --   * gamble_flower: pay nectar to spin it. Items, blessings, nectar back... or ants and curses.
 --
--- One may be placed at the start of each wave from wave 2 (Settings "Map Gambles"). Anything
+-- One may be placed at the start of each wave from wave 2 (run rule "mapGambles", src/game/rules.lua). Anything
 -- left unused goes when the next wave starts. Blessings and curses last the whole run (they are
 -- kept in run saves) and show in the pause screen's stat list like any other bonus.
 --
 -- Numbers: src/config/gambles.lua (a mode can override them with `gambles = { ... }`).
 local Content = require("src.content")
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
 local Env = require("src.game.envfx")
@@ -53,7 +53,7 @@ function Gambles:on()
     local w = self.world
     if w.mode ~= "run" or w.flags.demo then return false end
     if w.modeDef and w.modeDef.gambles == false then return false end
-    return Settings.get("mapGambles") ~= "off"
+    return Rules.get("mapGambles") ~= "off"
 end
 
 -- Is the wave on? (shrines only fill and bells only ring while it is)
@@ -91,7 +91,8 @@ function Gambles:onWaveStart(n)
         end
     end
     if not self:on() or n < self.cfg.from then return end
-    local often = Settings.get("mapGambles") == "often"
+    if not require("src.game.onramp").allows(world, "gambles", n) then return end
+    local often = Rules.get("mapGambles") == "often"
     local count = 0
     if love.math.random() < (often and self.cfg.oftenChance or self.cfg.chance) then count = 1 end
     if often and count == 1 and love.math.random() < self.cfg.secondChance then count = 2 end

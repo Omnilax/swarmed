@@ -24,7 +24,7 @@ end
 function Hud.paceText(sp, sub)
     local parts = {}
     for _, d in ipairs(sp.mods or {}) do parts[#parts + 1] = d.name:upper() end
-    parts[#parts + 1] = sub
+    if sub and sub ~= "" then parts[#parts + 1] = sub end
     if sp.par and sp.par < math.huge then
         if sp.waveTime <= sp.par then
             local left = math.ceil(sp.par - sp.waveTime)
@@ -95,13 +95,16 @@ function Hud.draw(game, covered)
 
     -- Health
     local maxHp = p.stats:get("maxHp")
+    require("src.gfx.clarity").drawLowHealth(p, maxHp, w, h)     -- Low Health Pulse
+    require("src.gfx.camfx").drawBossCard(world, w, h, Theme.font("title"))   -- Boss Intro Camera
     local bw = u(260)
     bar(u(20), u(20), bw, u(22), p.hp / maxHp, { c.hp[1], c.hp[2], c.hp[3], alpha })
     lg.setFont(Theme.font(16))
     lg.setColor(1, 1, 1, alpha)
     lg.print(math.ceil(p.hp) .. " / " .. math.floor(maxHp), u(28), u(21))
-    -- Nectar: the run's currency (src/game/nectar.lua); the bead swells for a moment on a pickup
-    do
+    -- Nectar: the run's currency (src/game/nectar.lua); the bead swells for a moment on a pickup.
+    -- Hidden until Gentle Start opens the shop (src/game/onramp.lua): nothing to spend it on yet.
+    if require("src.game.onramp").allows(world, "shop") then
         local nx, ny = u(20) + bw + u(18), u(31)
         local amount = math.floor(world.nectar or 0)
         if amount ~= Hud.lastNectar then
@@ -160,8 +163,9 @@ function Hud.draw(game, covered)
         Theme.printShadow(world.latchCount > 0 and ("GRABBED x" .. world.latchCount) or "SLOWED", sx, u(44), { 1, 0.85, 0.5, alpha })
     end
 
-    -- Boss health
+    -- Boss health (a named champion gets the bar when no queen is about, src/game/bosses.lua)
     local boss = world.boss
+    if not (boss and not boss.dead) then boss = world.champion end
     if boss and not boss.dead then
         local bw2 = math.min(u(520), w * 0.5)
         local bx = (w - bw2) / 2
@@ -199,8 +203,8 @@ function Hud.draw(game, covered)
         end
     end
 
-    -- Wave and timer
-    if world.mode == "run" then
+    -- Wave and timer (not in the tutorial: its lesson panel sits there instead)
+    if world.mode == "run" and not world.lessons then
         local sp = world.spawner
         lg.setFont(Theme.font(24))
         local sub
@@ -216,6 +220,8 @@ function Hud.draw(game, covered)
             Theme.printShadow(Hud.waveLabel(sp), 0, u(16), { c.text[1], c.text[2], c.text[3], alpha }, "center", w)
             sub = sp.endless and ("next level in " .. math.max(1, math.ceil(sp.levelT)))
                 or (sp:remaining() .. (sp.mode.families and not require("src.core.util").contains(sp.mode.families, "ant") and " left" or " ants left"))
+            -- the enemies-left chip at the top right already counts them: don't say it twice
+            if not sp.endless and Settings.get("showEnemyCount") then sub = "" end
             if not sp.endless then sub = Hud.paceText(sp, sub) end
         else
             Theme.printShadow(sp.wave > 0 and ("WAVE " .. sp.wave .. " CLEARED") or "GET READY", 0, u(16), { c.focus[1], c.focus[2], c.focus[3], alpha }, "center", w)
@@ -226,11 +232,16 @@ function Hud.draw(game, covered)
             -- the wave's rewards are waiting in the bloom: that comes first
             if world.pendingChoice and not world.pendingChoice.opened and world.rewardFlow and world.rewardFlow:bloom() then
                 sub = "walk into the reward bloom  ·  " .. key .. " brings it to you"
+            else
+                -- the next wave is on a new map (src/game/acts.lua)
+                local move = require("src.game.acts").nextLine(world)
+                if move then sub = move .. (sp:waiting() and ("  ·  " .. key .. " to go") or ("  ·  in " .. math.max(1, math.ceil(sp.timer)))) end
             end
         end
-        if Settings.get("showTimer") then
+        if (Settings.get("showTimer") and Settings.get("hudDetail") ~= "clean") then
             local t = math.floor(world.time)
-            sub = sub .. string.format("  ·  %d:%02d", math.floor(t / 60), t % 60)
+            local clock = string.format("%d:%02d", math.floor(t / 60), t % 60)
+            sub = (sub ~= "" and (sub .. "  ·  ") or "") .. clock
         end
         lg.setFont(Theme.font(16))
         Theme.printShadow(sub, 0, u(46), { c.dim[1], c.dim[2], c.dim[3], alpha }, "center", w)
@@ -274,7 +285,7 @@ function Hud.draw(game, covered)
     local RunHud = require("src.ui.runhud")
     RunHud.attach(world)
     local countY = u(16)
-    if Settings.get("showKoCounter") then
+    if (Settings.get("showKoCounter") and Settings.get("hudDetail") ~= "clean") then
         countY = u(100)
         lg.setFont(Theme.font(44))
         local ko = tostring(world.kos)
@@ -297,7 +308,7 @@ function Hud.draw(game, covered)
 
     -- KO milestone popup (every 100 KOs)
     local m = world.milestone
-    if m and not covered then
+    if m and not covered and Settings.get("hudDetail") ~= "clean" then
         local pop = m.t < 0.15 and (1.6 - m.t / 0.15 * 0.6) or 1
         local fade = math.min(1, (1.6 - m.t) / 0.4)
         lg.setFont(Theme.font(math.floor(48 * pop)))
@@ -338,6 +349,8 @@ function Hud.draw(game, covered)
 
     -- arrows to queens and elites off screen, first-run hints (src/game/feedback.lua)
     require("src.game.feedback").drawHud(game, covered)
+    -- a queen's or champion's title card
+    require("src.game.bosses").drawHud(world, covered, alpha)
     -- event banners, the boss encounter's bar, the merchant's price (src/game/director.lua)
     require("src.game.director").drawHud(game, covered)
 

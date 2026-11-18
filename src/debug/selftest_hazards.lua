@@ -5,11 +5,12 @@
 local State = require("src.core.state")
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 
 return function(wait, shot)
     local Game = require("src.states.game")
-    local levelUps = Settings.get("levelUps")
-    Settings.set("levelUps", "points")          -- no level-up cards over the screenshots
+    local levelUps = Rules.test.levelUps
+    Rules.set("levelUps", "points")          -- no level-up cards over the screenshots
     for _, b in ipairs(Content.bosses:all()) do
         if b.hazard then
             local game = State.switch(Game.new({ mode = "run", character = "rhino_beetle", stage = "backyard" }))
@@ -54,6 +55,6 @@ return function(wait, shot)
             assert(not dir.hazard, b.id .. " should have left")
         end
     end
-    Settings.set("levelUps", levelUps)
+    Rules.set("levelUps", levelUps)
     print("[selftest] hazards OK")
 end

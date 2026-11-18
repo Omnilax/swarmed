@@ -1,28 +1,31 @@
 -- The merchant beetle (the "merchant" event): wanders the arena with a pack of wares while
--- the wave goes on. Its price is paid in KOs made while it is around; walk into it once you
--- have enough and the ware goes straight into your bag (never on the ground). Two sales, then
--- it packs up, and it leaves when the wave ends.
+-- the wave goes on. It takes nectar, like the shop, a little under shop price; walk into it once
+-- you have enough and the ware goes straight into your bag (never on the ground). Two sales,
+-- then it packs up, and it leaves when the wave ends.
 local PA = require("src.gfx.propart")
 local Paint = require("src.gfx.paint")
 local Audio = require("src.core.audio")
 local Sprites = require("src.gfx.sprites")
 
-local PRICE = { common = 18, uncommon = 30, rare = 45, legendary = 70 }
+local Economy = require("src.game.economy")
+
+-- a field discount, and each later sale costs a bit more
+local DISCOUNT, MARKUP = 0.8, 0.25
 
 local function nextWare(world, o)
     o.ware = world:rollItem()
-    local base = PRICE[o.ware.def.rarity] or 30
-    o.price = math.floor(base * (1 + (o.sold or 0) * 0.5) * (1 + math.max(0, (world.spawner.wave or 1) - 2) * 0.06))
+    local base = Economy.itemPrice(world, o.ware.def)
+    o.price = math.max(1, math.floor(base * DISCOUNT * (1 + (o.sold or 0) * MARKUP) + 0.5))
 end
 
-local function scrip(world, o) return world.kos - o.kos0 - o.spent end
+local function scrip(world, o) return world.nectar or 0 end
 
 return {
     name = "Merchant Beetle",
     radius = 9,
     labelZ = 30,
     init = function(world, o)
-        o.kos0, o.spent, o.sold, o.anim, o.face = world.kos, 0, 0, 0, 0
+        o.sold, o.anim, o.face = 0, 0, 0
         o.say = 0
         o.maxSales = o.maxSales or 2
         nextWare(world, o)
@@ -52,8 +55,7 @@ return {
         -- a sale: touch it with enough KOs
         if not p.dead and (p.x - o.x) ^ 2 + (p.y - o.y) ^ 2 < (p.radius + o.r + 4) ^ 2 and o.say <= 0 then
             local have = scrip(world, o)
-            if have >= o.price then
-                o.spent = o.spent + o.price
+            if have >= o.price and world:spendNectar(o.price) then
                 o.sold = o.sold + 1
                 local name = o.ware.def.name
                 local eaten = world:giveItem(o.ware.def.id)
@@ -62,7 +64,7 @@ return {
                 world.events:emit("merchant_sale", o.ware.def.id)
                 if o.sold >= o.maxSales then o.packedUp = true o.def.leave(world, o) else nextWare(world, o) end
             else
-                world:floatText(o.x, o.y - 14, ("%d more KOs"):format(o.price - have), { 1, 0.7, 0.5 })
+                world:floatText(o.x, o.y - 14, ("%d more nectar"):format(o.price - have), { 1, 0.7, 0.5 })
             end
             o.say = 1.4
         end
@@ -88,7 +90,7 @@ return {
     drawAir = function(world, o, sx, sy)
         if o.leaving then return end
         local lg = love.graphics
-        -- the ware on offer floating above, with a bar filling up as the KOs come in
+        -- the ware on offer floating above, with a bar filling up as nectar comes in
         local y = sy - 34 + math.sin(world.time * 2) * 1.5
         local icon = Sprites.get(o.ware.def.icon)
         local k = math.min(1, scrip(world, o) / o.price)
@@ -108,6 +110,6 @@ return {
         if o.leaving then return o.packedUp and "SOLD OUT" or nil, { 0.8, 0.8, 0.7 } end
         local have = math.max(0, scrip(world, o))
         if have >= o.price then return o.ware.def.name .. ": walk in to buy", { 1, 0.9, 0.4 } end
-        return ("%s  %d / %d KO"):format(o.ware.def.name, have, o.price), { 0.95, 0.85, 0.7 }
+        return ("%s  %d / %d nectar"):format(o.ware.def.name, have, o.price), { 0.95, 0.85, 0.7 }
     end,
 }

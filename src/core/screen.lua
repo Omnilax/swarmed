@@ -14,9 +14,15 @@ local POST = [[
 extern number brightness;
 extern number cbOn;
 extern mat3 cb;
+extern vec4 grade;      // tint rgb, saturation (Colour Grade)
+extern number haze;     // Heat Haze amount
+extern number htime;
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
+    if (haze > 0.0) tc.x += sin(tc.y * 140.0 + htime * 3.0) * 0.0009 * haze * (1.0 - tc.y * 0.5);
     vec4 c = Texel(tex, tc) * color;
     vec3 rgb = c.rgb;
+    float l = dot(rgb, vec3(0.299, 0.587, 0.114));
+    rgb = clamp(mix(vec3(l), rgb, grade.a) * grade.rgb, 0.0, 1.0);
     if (cbOn > 0.5) {
         vec3 sim = cb * rgb;
         vec3 err = rgb - sim;
@@ -35,6 +41,8 @@ local CB = {
 
 function Screen.init()
     Screen.post = love.graphics.newShader(POST)
+    Screen.post:send("grade", { 1, 1, 1, 1 })
+    Screen.post:send("haze", 0)
     Screen.setResolution(Settings.get("renderResolution"))
 end
 
@@ -57,7 +65,7 @@ local function fitCanvas()
     else vh = math.min(math.floor(bh * 1.6), math.floor(bw * h / w + 0.5)) end
     if vw == Screen.VW and vh == Screen.VH then return end
     Screen.VW, Screen.VH = vw, vh
-    local cw, ch = math.ceil(vw / Screen.ZOOM_MIN), math.ceil(vh / Screen.ZOOM_MIN)
+    local cw, ch = math.ceil(vw / Screen.ZOOM_MIN), math.ceil(vh / Screen.ZOOM_MIN / 0.88)
     Screen.canvas = love.graphics.newCanvas(cw, ch)
     -- The light map is soft blobs only, so it is drawn at half resolution and smoothly
     -- stretched over the scene: a quarter of the pixels to fill for the same look.
@@ -96,11 +104,19 @@ function Screen.updateScale()
 end
 
 -- Size of the visible world region in canvas pixels (viewW x viewH) for a zoom level.
+local HEIGHT = { low = 0.9, normal = 1, high = 1.08 }
+function Screen.heightK()
+    return Screen.worldView and HEIGHT[Settings.get("cameraHeight")] or 1
+end
+
 function Screen.setZoom(z)
     z = math.max(Screen.ZOOM_MIN, math.min(Screen.ZOOM_MAX, z or 1))
     Screen.zoom = z
     Screen.viewW = math.min(Screen.canvas:getWidth(), math.floor(Screen.VW / z + 0.5))
-    Screen.viewH = math.min(Screen.canvas:getHeight(), math.floor(Screen.VH / z + 0.5))
+    -- Camera Height: Low shows more ground rows squashed (a lower, grazing angle), High fewer
+    -- rows stretched (looking down more steeply)
+    local hk = Screen.heightK()
+    Screen.viewH = math.min(Screen.canvas:getHeight(), math.floor(Screen.VH / z / hk + 0.5))
     Screen.quad:setViewport(0, 0, Screen.viewW, Screen.viewH)
     local lw, lh = Screen.light:getDimensions()
     Screen.lightQuad:setViewport(0, 0, math.min(lw, math.ceil(Screen.viewW / Screen.LIGHT_DIV)),
@@ -108,8 +124,14 @@ function Screen.setZoom(z)
 end
 
 -- zoom: the camera's zoom (omit for 1, e.g. the title screen's demo arena)
-function Screen.beginWorld(bg, zoom)
-    if (zoom or 1) ~= Screen.zoom or not Screen.viewW then Screen.setZoom(zoom or 1) end
+-- world (optional): true for a run's arena, so Camera Height applies (not menus' demo arenas)
+function Screen.beginWorld(bg, zoom, world)
+    local wv = world and true or false
+    if (zoom or 1) ~= Screen.zoom or not Screen.viewW or wv ~= Screen.worldView or Screen._hk ~= Screen.heightK() then
+        Screen.worldView = wv
+        Screen.setZoom(zoom or 1)
+        Screen._hk = Screen.heightK()
+    end
     love.graphics.setCanvas(Screen.canvas)
     -- the canvas is sized for the widest zoom; only the visible part needs clearing
     love.graphics.setScissor(0, 0, Screen.viewW, Screen.viewH)
@@ -124,6 +146,13 @@ function Screen.endWorld()
     Screen.post:send("brightness", Settings.get("brightness") / 100)
     Screen.post:send("cbOn", CB[mode] and 1 or 0)
     Screen.post:send("cb", CB[mode] or CB.protanopia)
+    -- Colour Grade and Heat Haze come from the arena being drawn (src/gfx/ambience.lua)
+    local w = Screen.worldView and Screen.gradeWorld
+    local Amb = require("src.gfx.ambience")
+    local r, g, b, sat = Amb.grade(w)
+    Screen.post:send("grade", { r, g, b, sat })
+    Screen.post:send("haze", w and Amb.haze(w) or 0)
+    Screen.post:send("htime", love.timer.getTime())
     love.graphics.setShader(Screen.post)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(Screen.canvas, Screen.quad, Screen.ox, Screen.oy, 0,
@@ -142,6 +171,8 @@ function Screen.endWorldInto(x, y, w, h, srcW, srcH)
     local mode = Settings.get("colorblindMode")
     Screen.post:send("brightness", Settings.get("brightness") / 100)
     Screen.post:send("cbOn", CB[mode] and 1 or 0)
+    Screen.post:send("grade", { 1, 1, 1, 1 })
+    Screen.post:send("haze", 0)
     Screen.post:send("cb", CB[mode] or CB.protanopia)
     love.graphics.setShader(Screen.post)
     love.graphics.setColor(1, 1, 1, 1)

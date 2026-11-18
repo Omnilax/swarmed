@@ -6,6 +6,10 @@
 local AI = require("src.game.ai")
 local Combat = require("src.game.combat")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.7, 0.66, 0.58 }
+local PFX_2 = { grav = 40 }
+
 return {
     name = "Heat sprinter",
     init = function(e) e.st.mode, e.st.t, e.st.head = "search", 0, 0 end,
@@ -29,7 +33,7 @@ return {
             e.mx, e.my = st.dx * s, st.dy * s
             st.t = st.t - dt
             if love.math.random() < dt * 20 then
-                world.particles:spawn(e.x, e.y, 1, -st.dx * 20, -st.dy * 20, 10, 0.3, { 0.7, 0.66, 0.58 }, 1, { grav = 40 })
+                world.particles:spawn(e.x, e.y, 1, -st.dx * 20, -st.dy * 20, 10, 0.3, PFX_1, 1, PFX_2)
             end
             if st.t <= 0 then st.mode, st.t, e.hitPad = "rest", params.rest or 0.6, 0 end
         else -- rest / stagger: stand still (cooling off on a grass stalk)

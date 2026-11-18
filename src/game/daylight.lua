@@ -8,12 +8,19 @@ local util = require("src.core.util")
 
 local Daylight = {}
 
-Daylight.COLORS = { day = "#fff6ea", sunset = "#e0a07c", evening = "#7a8090", night = "#4a5274", dawn = "#c9aab8" }
+Daylight.COLORS = { day = "#fff6ea", sunset = "#e0a07c", evening = "#7a8090", night = "#4a5274", dawn = "#c9aab8",
+    golden = "#ffd8a0", bluehour = "#6c7aa8", moon = "#46557e" }
 
 -- The cycle as keyframes over 0..1 of a day.
 local CYCLE = {
     { 0.00, "day" }, { 0.42, "day" }, { 0.50, "sunset" }, { 0.58, "night" },
     { 0.88, "night" }, { 0.94, "dawn" }, { 1.00, "day" },
+}
+-- Rich Day Palette (setting): a golden hour before sunset, a blue hour after it, cool moonlight
+-- in the middle of the night. A stage's `ambients` can set golden / bluehour / moon too.
+local RICH = {
+    { 0.00, "day" }, { 0.36, "day" }, { 0.44, "golden" }, { 0.50, "sunset" }, { 0.555, "bluehour" },
+    { 0.60, "night" }, { 0.73, "moon" }, { 0.86, "night" }, { 0.94, "dawn" }, { 1.00, "day" },
 }
 local START = 0.05     -- runs start in the morning
 
@@ -42,8 +49,9 @@ function Daylight.ambient(stage, t)
         return c[1], c[2], c[3]
     end
     local f = Daylight.phase(t)
-    for i = 1, #CYCLE - 1 do
-        local a, b = CYCLE[i], CYCLE[i + 1]
+    local cyc = Settings.get("richDay") and RICH or CYCLE
+    for i = 1, #cyc - 1 do
+        local a, b = cyc[i], cyc[i + 1]
         if f <= b[1] then
             local k = (f - a[1]) / math.max(0.0001, b[1] - a[1])
             local ca, cb = color(stage, a[2]), color(stage, b[2])

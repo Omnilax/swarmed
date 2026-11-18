@@ -22,11 +22,36 @@ local Elites = require("src.game.elites")
 local Combat = require("src.game.combat")
 local Grab = require("src.game.grab")
 local Daylight = require("src.game.daylight")
+local Lighting = require("src.gfx.lighting")
+local Shading = require("src.gfx.shading")
+local Clarity = require("src.gfx.clarity")
+local CamFx = require("src.gfx.camfx")
+local Ambience = require("src.gfx.ambience")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
 local RunStats = require("src.game.runstats")
 local Director = require("src.game.director")
 local Nectar = require("src.game.nectar")
+
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.95, 0.7 }
+local PFX_2 = { glow = true, grav = 60 }
+local PFX_3 = { 1, 1, 1 }
+local PFX_4 = { glow = true, grav = 120 }
+local PFX_5 = { 0.55, 0.42, 0.3 }
+local PFX_6 = { 0.4, 0.3, 0.22 }
+local PFX_7 = { grav = 300 }
+local PFX_8 = { 0.75, 0.95, 0.35 }
+local PFX_9 = { glow = true, grav = -15 }
+local PFX_10 = { 0.6, 1, 0.3 }
+local PFX_11 = { glow = true, grav = -10 }
+local PFX_LIST_1 = { PFX_1 }
+local PFX_LIST_2 = { PFX_5, PFX_6 }
+
+-- death spray: options for droplets that do / don't leave a stain, and a scratch colour
+local STAIN, NO_STAIN = { stain = true, grav = 380 }, { stain = false, grav = 380 }
+local DROP = { 0, 0, 0 }
+local function setRGB(t, r, g, b) t[1], t[2], t[3] = r, g, b return t end
 
 local World = {}
 World.__index = World
@@ -49,6 +74,9 @@ function World.new(opts)
         self.customWaves = self.modeDef.set
     end
     self.gameMode = self.modeDef.id
+    -- run rules (src/game/rules.lua): the main game always plays with the defaults; only a mode
+    -- (a Custom Waves set's rules, a mode file's `rules`) changes them, never Settings
+    require("src.game.rules").begin(self.modeDef.rules)
     -- danger level of this run (src/config/danger.lua): every level adds one rule
     self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)
     -- no stage given: the location picked in Cosmetics
@@ -101,6 +129,7 @@ function World.new(opts)
     local sx, sy = Iso.toScreen(self.player.x, self.player.y)
     self.camera = Camera.new(sx, sy)
     self.weather = Weather.new(self)
+    self.events:on("wave_cleared", function() CamFx.onWaveCleared(self) end)
     -- frenzy meter, streak buffs, mini-goals, treasure ant, route gates (src/game/rewards.lua)
     self.rewards = require("src.game.rewards").new(self)
     -- molting after a queen wave, brood cell chests opening by themselves when the wave ends
@@ -109,6 +138,20 @@ function World.new(opts)
     self.route = nil        -- the route gate taken into this wave (content/routes), if any
     -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
     self.director = Director.new(self)
+    -- Gentle Start: systems held back over a new player's first runs, with a "NEW" card each
+    require("src.game.onramp").attach(self)
+    -- artifacts (content/artifacts): run rules switched on before the run
+    require("src.game.artifacts").apply(self, opts.artifacts)
+    -- parasites: the Green Mushroom that cures them sprouts at wave starts (src/game/parasites.lua)
+    require("src.game.parasites").attach(self)
+    -- a keepsake (src/config/keepsakes.lua): one small trade carried into the run
+    require("src.game.keepsakes").apply(self, opts.keepsake)
+    -- queens with phases, the Empress, named champions (src/game/bosses.lua)
+    require("src.game.bosses").attach(self)
+    -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
+    require("src.game.playlog").attach(self)
+    -- the guided tutorial (content/modes/tutorial.lua): lessons instead of waves
+    require("src.game.lessons").attach(self)
     -- wave rewards as moments in the arena: the reward bloom, rewards flying in, gain cards
     self.rewardFlow = require("src.game.rewardflow").new(self)
     -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
@@ -162,6 +205,8 @@ function World:spawnEnemy(def, x, y, elite)
         rs.seen[def.id] = true
         self.events:emit("species_seen", def, e)
     end
+    if elite then self.events:emit("elite_spawned", e) end
+    CamFx.onSpawn(self, e)
     return e
 end
 
@@ -181,6 +226,7 @@ function World:killEnemy(e)
     local def = e.def
     self.kos = self.kos + 1
     self.killsThisFrame = self.killsThisFrame + 1
+    if e.elite or def.boss or def.encounter then Lighting.pop(self, e.x, e.y, def.boss or def.encounter) end
     -- nectar beads worth the enemy's `xp` (plus a gilded elite's bonusXP): skill XP and
     -- nectar once collected; maybe a ground pickup (src/game/nectar.lua)
     if not e.noBeads then self.beads:onKill(e) end
@@ -231,7 +277,8 @@ function World:killEnemy(e)
         local s = 50 + love.math.random() * 140
         local j = (love.math.random() - 0.5) * 0.1
         self.particles:spawn(e.x, e.y, 3, math.cos(a) * s, math.sin(a) * s, 30 + love.math.random() * 70,
-            1.2, { blood[1] + j, blood[2] + j, blood[3] + j }, 1, { stain = mark and love.math.random() < 0.5, grav = 380 })
+            -- (spawn copies the colour, so one scratch table does for every droplet)
+            1.2, setRGB(DROP, blood[1] + j, blood[2] + j, blood[3] + j), 1, (mark and love.math.random() < 0.5) and STAIN or NO_STAIN)
     end
     -- Body bits: legs and fragments that tumble and stay on the ground.
     for _ = 1, Particles.count(2 + e.radius * 0.6) do
@@ -239,9 +286,9 @@ function World:killEnemy(e)
         local s = 30 + love.math.random() * 90
         local c = gibs[love.math.random(#gibs)]
         self.particles:spawn(e.x, e.y, 4, math.cos(a) * s, math.sin(a) * s, 60 + love.math.random() * 80,
-            1.2, c, love.math.random() < 0.4 and 2 or 1, { stain = mark, grav = 380 })
+            1.2, c, love.math.random() < 0.4 and 2 or 1, mark and STAIN or NO_STAIN)
     end
-    self.particles:burst(e.x, e.y, 2, { { 1, 0.95, 0.7 } }, 40, 30, { glow = true, grav = 60 })
+    self.particles:burst(e.x, e.y, 2, PFX_LIST_1, 40, 30, PFX_2)
 
     -- The body gets knocked away spinning, Warriors style, then stays on the floor as remains.
     if #self.corpses >= 150 then
@@ -253,13 +300,15 @@ function World:killEnemy(e)
             sprite = e.sprite, x = e.x, y = e.y, z = 2, angle = e.angle, scale = e.scale,
             vx = nx * speed, vy = ny * speed, vz = 60 + love.math.random() * 50,
             spin = (love.math.random() - 0.5) * 30, t = 0, life = 0.6, shadow = e.shadow, mark = mark,
+            style = Ambience.styleOf(e.def),
         }
     end
-    Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008 })
+    local ksx, ksy = Iso.toScreen(e.x, e.y)
+    Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008, sx = ksx, sy = ksy })
     local elite = e.elite
     if elite then
         local c = Elites.color(elite)
-        self.particles:burst(e.x, e.y, 10, { c, { 1, 1, 1 } }, 90, 70, { glow = true, grav = 120 })
+        self.particles:burst(e.x, e.y, 10, { c, PFX_3 }, 90, 70, PFX_4)
         -- gilded elites: a big bead of bonus XP (added in Nectar:onKill)
         if elite.onDeath then
             local x, y = e.x, e.y
@@ -329,7 +378,7 @@ function World:escapeEnemy(e, text)
     if e.dead then return end
     e.dead, e.escaped = true, true
     if self.boss == e then self.boss = nil end
-    self.particles:burst(e.x, e.y, 10, { { 0.55, 0.42, 0.3 }, { 0.4, 0.3, 0.22 } }, 60, 50, { grav = 300 })
+    self.particles:burst(e.x, e.y, 10, PFX_LIST_2, 60, 50, PFX_7)
     if text then self:floatText(e.x, e.y, text, { 1, 0.6, 0.4 }, true) end
     self.events:emit("enemy_escaped", e)
 end
@@ -382,8 +431,13 @@ end
 function World:rollItem()
     local Rarities = require("src.config.rarities")
     local wave = self.spawner and math.max(1, self.spawner.wave) or 1
+    local inPool = require("src.game.unlocks").inPool
+    local function fits(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed and not d.molted end
+    -- only items that are unlocked and in the player's pool (same rule as the item choice)
     local def = Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
-        function(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed end) or Content.items:all()[1]
+        function(d) return fits(d) and inPool(d.id) end)
+        or Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end, fits)
+        or Content.items:all()[1]
     return Inventory.newItem(def.id)
 end
 
@@ -415,7 +469,7 @@ end
 
 -- e (optional): the enemy hit. With "Combine Damage Numbers" on, quick hits on the same enemy
 -- add up into one number that keeps counting instead of a spray of small ones.
-function World:damageNumber(x, y, value, crit, e)
+function World:damageNumber(x, y, value, crit, e, col)
     local mode = Settings.get("damageNumbers")
     if mode == "off" or (mode == "crits" and not crit) then return end
     if e and Settings.get("combineDamageNumbers") then
@@ -425,15 +479,15 @@ function World:damageNumber(x, y, value, crit, e)
             t.text = tostring(t.value)
             t.t, t.z, t.vz = 0, math.max(t.z, 10), 30
             t.x, t.y = e.x, e.y
-            if crit and not t.big then t.big, t.color, t.life = true, { 1, 0.85, 0.2 }, 0.9 end
+            if crit and not t.big then t.big, t.color, t.life = true, col or { 1, 0.85, 0.2 }, 0.9 end
             return
         end
-        t = self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
+        t = self:floatText(x, y, tostring(value), col or (crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }), crit)
         t.value, t.owner, t.life = value, e, t.life + 0.2
         e._dmgText = t
         return
     end
-    self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
+    self:floatText(x, y, tostring(value), col or (crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }), crit)
 end
 
 -- XP for the skill tree: collected nectar beads (kills) and bonus sources (goals, treasure)
@@ -441,6 +495,7 @@ end
 -- floats none, so sweeping up a trail doesn't spam the screen.
 function World:grantXP(amount, x, y, quiet)
     if not amount or amount <= 0 then return end
+    if self.xpMul then amount = amount * self.xpMul end
     self.xp = (self.xp or 0) + amount
     if self.player and self.player.skills then self.player.skills:gainXP(amount) end
     self.events:emit("xp_gained", amount, x, y)
@@ -452,6 +507,8 @@ end
 
 function World:addNectar(amount, x, y)
     if not amount or amount <= 0 then return end
+    -- a keepsake can change what you earn (src/game/keepsakes.lua)
+    if self.nectarMul then amount = math.max(1, math.floor(amount * self.nectarMul + 0.5)) end
     self.nectar = self.nectar + amount
     self.nectarEarned = self.nectarEarned + amount
     self.events:emit("nectar_changed", self.nectar, amount)
@@ -516,6 +573,7 @@ end
 
 function World:update(dt)
     dt = dt * self.timeScale * (Settings.get("gameSpeed") / 100)
+    dt = dt * require("src.ui.inspect").timeScale(self)      -- Hold To Inspect
     dt = dt * self.rewards:timeScale(dt)       -- slow motion on big moments
     if self.queryPool then self.queryPool.n = 0 end
 
@@ -526,6 +584,19 @@ function World:update(dt)
         return
     end
     self.time = self.time + dt
+    Lighting.update(self, dt)
+    if self.highlightDue then
+        self.highlightDue = self.highlightDue - dt
+        if self.highlightDue <= 0 then
+            self.highlightDue = nil
+            local ok = pcall(love.filesystem.createDirectory, "highlights")
+            local name = string.format("highlights/run%s_wave%d_%dkills.png", os.date("%Y%m%d_%H%M%S"), self.spawner and self.spawner.wave or 0, self.bestBurst or 0)
+            if ok then love.graphics.captureScreenshot(name) end
+            self.lastHighlight = name
+        end
+    end
+    Shading.update(self, dt)
+    Ambience.update(self, dt)
     self.killsThisFrame = 0
     -- last frame's kills become visible to behaviours; start a fresh list
     self.recentDeaths, self.deathsNow = self.deathsNow, self.recentDeaths
@@ -551,6 +622,7 @@ function World:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
     self.director:update(dt)
+    require("src.game.bosses").update(self, dt)
     self.rewardFlow:update(dt)
     require("src.game.economy").update(self, dt)     -- the shop restocks every minute or so
     if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
@@ -591,6 +663,12 @@ function World:update(dt)
         self.hitstop = math.min(feel.stopMax, feel.stopMin + self.killsThisFrame * feel.stopPerKill)
         self.hitstopCd = feel.stopCooldown
         self.camera:shake(math.min(0.4, self.killsThisFrame * 0.02))
+        -- Highlight Shots: the run's biggest multi-kill so far is saved as a picture
+        if Settings.get("highlightShots") and not self.flags.demo and self.mode == "run"
+            and self.killsThisFrame >= 15 and self.killsThisFrame > (self.bestBurst or 0) then
+            self.bestBurst = self.killsThisFrame
+            self.highlightDue = 0.12      -- a beat later, when the bodies are flying
+        end
     end
     for j = #self.fx, 1, -1 do
         local fx = self.fx[j]
@@ -617,6 +695,7 @@ function World:update(dt)
     local p = self.player
     local px, py = Iso.toScreen(p.x, p.y)
     local ax, ay = Iso.toScreen(p.aimX, p.aimY)
+    CamFx.update(self, dt)                      -- auto-zoom, framing, size zoom (src/gfx/camfx.lua)
     self.camera:follow(px, py - 4, ax, ay)
     self.camera:update(dt)
 end
@@ -765,7 +844,7 @@ function World:updateEnemies(dt)
             if e.corrodeT > 0 then
                 e.corrodeT = e.corrodeT - dt
                 if love.math.random() < dt * 5 then
-                    self.particles:spawn(e.x, e.y, 4, 0, 0, 16, 0.4, { 0.75, 0.95, 0.35 }, 1, { glow = true, grav = -15 })
+                    self.particles:spawn(e.x, e.y, 4, 0, 0, 16, 0.4, PFX_8, 1, PFX_9)
                 end
             end
             if e.poisonT > 0 then
@@ -775,7 +854,7 @@ function World:updateEnemies(dt)
                 if e.poisonTick >= 0.5 then
                     e.poisonTick = e.poisonTick - 0.5
                     Combat.damage(self, e, e.poisonDps * 0.5, { noCrit = true, dot = true, procDepth = Combat.MAX_PROC_DEPTH, source = e.poisonSrc or "Poison" })
-                    self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, { 0.6, 1, 0.3 }, 1, { glow = true, grav = -10 })
+                    self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, PFX_10, 1, PFX_11)
                 end
                 if e.poisonT <= 0 then e.poisonDps = 0 end
             end
@@ -967,6 +1046,7 @@ local function sortByDepth(list, n)
 end
 
 function World:draw()
+    Lighting.nq = 0
     local vw, vh = Screen.viewW, Screen.viewH
     local ox, oy = self.camera:origin(vw, vh)
     local atlas = Sprites.atlas
@@ -974,7 +1054,13 @@ function World:draw()
     lg.push()
     lg.translate(-ox, -oy)
 
+    local gsh = Clarity.groundShader()           -- Background Dim / Actors Pop
+    if gsh then lg.setShader(gsh) end
     self.ground:draw()
+    if gsh then lg.setShader() end
+    Shading.drawWet(self, ox, oy, vw, vh)           -- Wet Ground after rain
+    Ambience.drawGround(self)                       -- Horde Tracks
+    Ambience.drawDecor(self)                        -- Night Glow Decor
     self.hazards:drawGround()
     Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
     self.rewards:drawGround()                       -- route tunnels, guarded critters
@@ -1036,6 +1122,8 @@ function World:draw()
         end
     end
 
+    -- Sun Shadows and Contact Shadows (src/gfx/shading.lua)
+    Shading.drawGround(self, list, n)
     -- Shadows first (all one texture -> batched).
     lg.setColor(1, 1, 1, 1)
     for i = 1, n do
@@ -1049,6 +1137,7 @@ function World:draw()
         lg.setColor(1, 1, 1, 1)
     end
 
+    Clarity.drawCompass(self)                       -- Danger Compass
     -- Pebbles, twigs, cocoons, allies, the merchant (src/game/props.lua)
     self.director:drawProps()
 
@@ -1108,12 +1197,17 @@ function World:draw()
             local k = math.min(1, c.t / (c.life * 0.6))
             local v = 0.8 - k * 0.38
             lg.setColor(v, v * 0.92, v * 0.88, 1)
-            Sprites.draw(c.sprite, 1, sx, sy, c.angle, false, c.scale)
+            local ca, csx, csy = Ambience.corpseStyle(c)         -- Death Styles
+            Sprites.draw(c.sprite, 1, sx, sy, ca, false, csx, csy)
         end
     end
     lg.setColor(1, 1, 1, 1)
 
     local flashOk = Settings.get("hitFlash") and not Settings.get("reduceFlashing")
+    Clarity.drawOutlines(self, list, n)             -- Threat Outlines
+    Shading.drawRims(self, list, n)                 -- Rim Light (enemies, one batch)
+    local hordeDepth = Settings.get("hordeDepth")
+    local squash = Settings.get("squashStretch")
     local sheens, nSheen = self.sheens, 0
     if not sheens then sheens = {} self.sheens = sheens end
     for i = 1, n do
@@ -1210,6 +1304,7 @@ function World:draw()
             local facing = o.reversed and o.wangle + math.pi or o.wangle
             Anim.applyTo(pose, Anim.sample(o), facing, sxs, sys)    -- attack clips (src/gfx/anim.lua)
             if o.lungeT > 0.09 then sxs, sys = sxs * 1.06, sys * 0.94 end
+            if o == p and not p.alpha then Shading.drawPlayerRim(self, o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, sxs, sys, pose) end
             Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, flash, sxs, sys, a, pose)
         elseif o ~= p and o.def.drawBody then
             -- big creatures drawn by their own code (encounter bosses: content/enemies/predators.lua)
@@ -1226,7 +1321,15 @@ function World:draw()
             elseif alpha < 1 then
                 lg.setColor(1, 1, 1, alpha)
             end
+            -- Horde Depth: the back of a big pack a little darker than the front
+            local dk = hordeDepth and not el and Clarity.depthShade(math.sqrt((o.x - p.x) ^ 2 + (o.y - p.y) ^ 2))
+            if dk then
+                local r, g, b, a2 = lg.getColor()
+                lg.setColor(r * dk, g * dk, b * dk, a2)
+                o._dk = true
+            end
             local fy = o._sy - (o.z or 0) - (o.dropH or 0)
+            if squash and (o.flash or 0) > 0 then sxs, sys = sxs * 1.14, sys * 0.86 end     -- Squash & Stretch
             Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, flash, sxs, sys)
             if el then
                 -- the sheen is drawn after the crowd in one additive batch (switching blend modes
@@ -1239,7 +1342,7 @@ function World:draw()
         end
         if skinShader then lg.setShader() end
         -- plain ants leave the colour white; skip the reset for them (it adds up in a horde)
-        if o == p or o.model or o.elite or o.tint or (o.alpha or 1) < 1 or o.def.drawBody then lg.setColor(1, 1, 1, 1) end
+        if o == p or o.model or o.elite or o.tint or (o.alpha or 1) < 1 or o.def.drawBody or o._dk then lg.setColor(1, 1, 1, 1) o._dk = nil end
     end
 
     if nSheen > 0 then
@@ -1287,6 +1390,9 @@ function World:draw()
     self.director:drawAir()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
+    Shading.drawRays(self, ox, oy, vw, vh)          -- Sun Rays at golden hour and dawn
+    Ambience.drawLeaves(self, ox, oy, vw, vh)       -- Falling Leaves
+    CamFx.drawForeground(self, ox, oy, vw, vh)      -- Foreground Grass
     self.weather:drawGlow(ox, oy, vw, vh)
     if self.freezeT > 0 then
         -- frost pickup: a cold blue wash over the arena while the swarm is frozen
@@ -1301,10 +1407,17 @@ function World:draw()
     end
 
     -- Additive glow pass: attack swooshes, sparks, explosions.
+    -- (Glare Guard / Own Effects Opacity: drawn on their own layer and soft-capped, src/gfx/lighting.lua)
+    local fxLayer = Lighting.fxLayer(self)
+    if fxLayer then Lighting.beginFx() end
     lg.setBlendMode("add")
     self:drawFx()
+    if self.player.def.custom then require("src.game.bugtraits").drawGlow(self.player, self) end
     self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
+    if fxLayer then Lighting.endFx() end
+    if Settings.get("shotsOnTop") then self.hazards:drawAir(true) end     -- Enemy Shots On Top
+    Clarity.drawSilhouette(self)                    -- See-Through Silhouettes
     if Settings.get("showHitboxes") then self:drawHitboxes(list, n) end
     if Settings.get("showSpatialGrid") then self:drawGrid() end
     lg.pop()
@@ -1330,21 +1443,30 @@ function World:drawLighting(ox, oy, list, n)
         ar, ag, ab = ar * k, ag * k, ab * k
     end
     local L = Sprites.light
+    -- Bold lights: the map holds half the light so it can reach 2x (src/gfx/lighting.lua)
+    local lm, am = Lighting.lightMul((ar + ag + ab) / 3), Lighting.ambientMul()
     -- light(x, y, radius, r, g, b, a): an ellipse squashed 2:1 to sit on the iso ground.
     local function light(x, y, r, cr, cg, cb, ca)
-        lg.setColor(cr, cg, cb, ca)
+        lg.setColor(cr, cg, cb, math.min(1, ca * lm))
         lg.draw(L, x, y, 0, r / 64, r / 128, 64, 64)
     end
 
     lg.push("all")
     lg.setCanvas(Screen.light)
-    lg.clear(ar, ag, ab, 1)
+    lg.clear(ar * am, ag * am, ab * am, 1)
     lg.setBlendMode("add")
     -- the light map is smaller than the scene (Screen.LIGHT_DIV): same projected coordinates, scaled down
     local div = Screen.LIGHT_DIV
     lg.origin()
     lg.scale(1 / div)
     lg.translate(-ox, -oy)
+    -- Cloud Shadows: soft dark shapes taken out of the light (src/gfx/shading.lua)
+    lg.setBlendMode("subtract")
+    Shading.clouds(self, function(x, y, r, k)
+        lg.setColor(1, 1, 1, k * am)
+        lg.draw(L, x, y, 0, r / 64, r / 128, 64, 64)
+    end, ox, oy, Screen.viewW, Screen.viewH)
+    lg.setBlendMode("add")
     local p = self.player
     if not p.dead then
         local px, py = Iso.toScreen(p.x, p.y)
@@ -1355,6 +1477,7 @@ function World:drawLighting(ox, oy, list, n)
             if not sl._c then sl._c = util.hex(sl.color) end
             light(px, py, sl.radius or 60, sl._c[1], sl._c[2], sl._c[3], sl.intensity or 0.5)
         end
+        if p.def.custom then require("src.game.bugtraits").light(p, self, light, px, py) end
     end
     for i = 1, n do
         local e = list[i]
@@ -1369,6 +1492,8 @@ function World:drawLighting(ox, oy, list, n)
         end
     end
     self.hazards:lights(light)
+    Lighting.extras(self, light, list, n)
+    Ambience.lights(self, light)
     for _, l in ipairs(self.ground.decorLights or {}) do
         local tw = l.twinkle and (0.75 + 0.25 * math.sin(self.time * l.twinkle + l.x)) or 1
         light(l.x, l.y, l.radius, l.color[1], l.color[2], l.color[3], (l.intensity or 0.5) * tw)
@@ -1399,11 +1524,15 @@ function World:drawLighting(ox, oy, list, n)
             end
         end
     end
-    lg.setCanvas(Screen.canvas)
-    lg.setBlendMode("multiply", "premultiplied")
-    lg.origin()
-    lg.setColor(1, 1, 1, 1)
-    lg.draw(Screen.light, Screen.lightQuad, 0, 0, 0, div, div)
+    if Lighting.bold() then
+        Lighting.composite(div)
+    else
+        lg.setCanvas(Screen.canvas)
+        lg.setBlendMode("multiply", "premultiplied")
+        lg.origin()
+        lg.setColor(1, 1, 1, 1)
+        lg.draw(Screen.light, Screen.lightQuad, 0, 0, 0, div, div)
+    end
     lg.pop()
 end
 
@@ -1565,7 +1694,7 @@ function World:drawText(fonts)
     for _, t in ipairs(self.texts) do
         local wx, wy = self:toWindow(t.x, t.y, t.z)
         local f = t.big and fonts.big or fonts.small
-        local a = 1 - math.max(0, (t.t / t.life - 0.6) / 0.4)
+        local a = (1 - math.max(0, (t.t / t.life - 0.6) / 0.4)) * Clarity.textFade(self, wx, wy)
         lg.setFont(f)
         local w = f:getWidth(t.text)
         lg.setColor(0, 0, 0, 0.8 * a)
@@ -1574,6 +1703,7 @@ function World:drawText(fonts)
         lg.print(t.text, math.floor(wx - w / 2), math.floor(wy))
     end
     lg.setColor(1, 1, 1, 1)
+    require("src.ui.inspect").draw(self, fonts)
 end
 
 return World

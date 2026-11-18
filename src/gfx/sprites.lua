@@ -262,12 +262,13 @@ function Sprites.build(registry)
     local aw, ah = atlasW, atlasH
     local function quad(p) return love.graphics.newQuad(p.x, p.y, p.data:getWidth(), p.data:getHeight(), aw, ah) end
     for _, entry in pairs(Sprites.byId) do
-        for dir = 1, entry.dirs do
+        -- (custom bug art built earlier has its own image and quads already)
+        if not entry.image then for dir = 1, entry.dirs do
             for i = 1, #entry.frames[dir] do
                 entry.frames[dir][i] = quad(entry.frames[dir][i])
                 if entry.flash then entry.flash[dir][i] = quad(entry.flash[dir][i]) end
             end
-        end
+        end end
     end
     Sprites.glow = quad(glowPiece)
 
@@ -569,6 +570,14 @@ function drawLimbs(model, body, limbs, part, x, y, angle, sx, sy, ztop, tr, tg, 
                     local al = alt[i] or sg
                     len, ya, pa = len + (al[1] - sg[1]) * k2, ya + ((al[2] or 0) - sg[2]) * k2, pa + ((al[3] or 0) - p0) * k2
                 end
+                -- flapping wings, swaying feelers and tails (custom bugs: limb.wave)
+                local wv = limb.wave
+                if wv then
+                    local fall = i == 1 and 1 or (wv.follow or 0.5)
+                    local ph = love.timer.getTime() * wv.speed + (wv.phase or 0) - (i - 1) * (wv.lag or 0.6)
+                    local sn = math.sin(ph)
+                    ya, pa = ya + sn * wv.yaw * fall, pa + sn * wv.pitch * fall
+                end
                 yaw = yaw + ya * m
                 pitch = pitch + pa
                 local cp = math.cos(pitch)
@@ -601,7 +610,24 @@ function drawLimbs(model, body, limbs, part, x, y, angle, sx, sy, ztop, tr, tg, 
                 local ex, ey = limbPts[n - 1], limbPts[n]
                 local tl = (limb.tipLen or 3)
                 lg.setLineWidth(math.max(1, w - 1))
-                if tip == "pincer" then
+                if tip == "wing" then
+                    -- a see-through membrane fanned along the last segment
+                    local L, W = tl * 2.2, tl * 0.9 * (limb.tipW or 1)
+                    local cy, sy2 = math.cos(yaw), math.sin(yaw)
+                    local pts = {}
+                    for i2 = 0, 10 do
+                        local t2 = i2 / 10 * math.pi * 2
+                        local du, dv = (1 - math.cos(t2)) * 0.5 * L, math.sin(t2) * W * m
+                        local qx, qy = project(u - cy * L * 0.15 + cy * du - sy2 * dv, v - sy2 * L * 0.15 + sy2 * du + cy * dv, z, c, s, sx, sy)
+                        pts[#pts + 1], pts[#pts + 2] = x + qx, y + qy
+                    end
+                    lg.setColor(math.min(1, col[1] * 1.2 + 0.2) * tr, math.min(1, col[2] * 1.2 + 0.2) * tg, math.min(1, col[3] * 1.2 + 0.2) * tb, a * 0.4)
+                    local ok, tris = pcall(love.math.triangulate, pts)
+                    if ok then for _, tri in ipairs(tris) do lg.polygon("fill", tri) end end
+                    lg.setColor(col[1] * tr, col[2] * tg, col[3] * tb, a * 0.8)
+                    lg.setLineWidth(1)
+                    lg.line(pts)
+                elseif tip == "pincer" then
                     local op = 0.15 + e.open * 0.75
                     for side = -1, 1, 2 do
                         local ya = yaw + op * side

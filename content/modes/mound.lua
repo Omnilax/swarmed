@@ -1,9 +1,11 @@
 -- Termites only: few species, so the mound throws more of them and its queen comes early.
 return {
+    icon = "termite_soldier",          -- the enemy sprite shown for the mode in mode select
     name = "Mound",
     tagline = "Termites, and a lot of them.",
     description = "A termite mound empties onto the patio. Workers tunnel under you, soldiers drum for help, and the queen arrives on boss waves.",
     order = 6,
+    group = "classic",
     finalWave = 15,
     families = { "termite" },
     queensAnyWave = true,

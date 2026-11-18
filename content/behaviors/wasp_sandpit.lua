@@ -9,6 +9,9 @@ local Audio = require("src.core.audio")
 
 local SAND = { 0.78, 0.66, 0.45 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 300 }
+
 local function pitDraw(z, sx, sy, fade)
     local lg = love.graphics
     local r = z.r * math.min(1, z.t / 0.3)
@@ -58,7 +61,7 @@ return {
             -- sand flying out behind it
             if love.math.random() < dt * 25 then
                 local a = e.angle + math.pi + (love.math.random() - 0.5)
-                world.particles:spawn(e.x, e.y, 2, math.cos(a) * 60, math.sin(a) * 60, 40, 0.5, SAND, 1, { grav = 300 })
+                world.particles:spawn(e.x, e.y, 2, math.cos(a) * 60, math.sin(a) * 60, 40, 0.5, SAND, 1, PFX_1)
             end
             if st.t <= 0 then
                 world.hazards:addZone({ kind = "pit", x = e.x, y = e.y, r = params.pit or 24, life = params.life or 7,

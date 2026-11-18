@@ -73,13 +73,33 @@ function Spawner.new(world, stage)
         return x.id < y.id
     end)
     self.introOrder = Pacing.shuffleOrder(self, order)
+    -- a stage can name the species that opens its first wave (content/stages `fauna.first`)
+    local first = self.world.stage and self.world.stage.fauna and self.world.stage.fauna.first
+    if first then
+        for i, d in ipairs(self.introOrder) do
+            if d.id == first then table.insert(self.introOrder, 1, table.remove(self.introOrder, i)) break end
+        end
+    end
     return self
 end
 
 -- Whether the game mode lets this species take part (its families / enemies / exclude lists).
+-- The stage's own wildlife (content/stages `fauna`): how much more often a species turns up
+-- here (1 = normal, 0 = never; keys are enemy ids or family ids, the id wins).
+function Spawner:faunaMul(d)
+    local f = self.world.stage and self.world.stage.fauna
+    if not f or not d then return 1 end
+    local m = f[d.id]
+    if m == nil then m = f[d.family] end
+    if m == nil then m = f.other end
+    return m or 1
+end
+
 function Spawner:allows(d)
     local m, util = self.mode, require("src.core.util")
     if m.exclude and util.contains(m.exclude, d.id) then return false end
+    -- a stage can leave a species out entirely, unless the mode names it
+    if self:faunaMul(d) <= 0 and not (m.enemies and util.contains(m.enemies, d.id)) then return false end
     if not m.families and not m.enemies then return true end
     return (m.families ~= nil and util.contains(m.families, d.family)) or (m.enemies ~= nil and util.contains(m.enemies, d.id))
 end
@@ -166,6 +186,8 @@ end
 
 function Spawner:startWave(n)
     local cfg, world = self.cfg, self.world
+    -- the run moves to its next act's map first (src/game/acts.lua; Game sets holdWave)
+    if not n and self.holdWave and self.holdWave(self.wave + 1) then return end
     if n and n > self.wave + 1 then self:catchUp(n) end
     self.wave = n or self.wave + 1
     self.finalThisWave, self.crownLeft, self.crownE = false, 0, nil
@@ -202,6 +224,11 @@ function Spawner:startWave(n)
         if queen then
             local e = entries[1]
             self.queue[#self.queue + 1] = { def = queen, count = 1, x = e[1], y = e[2], at = 2 }
+            -- the Twin Queens artifact (content/artifacts): a second queen from another side
+            for i = 1, (world.danger and world.danger.twinQueens or 0) do
+                local q2, e2 = self:pickQueen() or queen, entries[1 + (i % #entries)] or e
+                self.queue[#self.queue + 1] = { def = q2, count = 1, x = e2[1], y = e2[2], at = 6 }
+            end
             groups = math.ceil(groups * 0.5)
         else
             self.bossWave = false
@@ -581,7 +608,7 @@ function Spawner:pickEnemy()
     end
     local newest = self.knownList[#self.knownList]
     return util.weightedPick(self.knownList, function(d)
-        local wgt = d.spawn.weight
+        local wgt = d.spawn.weight * self:faunaMul(d)
         if d == newest and #self.knownList > 1 then wgt = math.max(wgt * 1.5, 25) end
         return wgt
     end)
@@ -637,8 +664,11 @@ function Spawner:spawnGroup(def, count, x, y, opts)
 end
 
 -- The mode's elite settings, with the current route's elite multiplier on top.
+local NO_ELITES = { chance = 0 }
 function Spawner:eliteMode()
     -- the wave's elite chances (wave modifiers, src/game/pacing.lua), scaled by a route gate
+    -- Gentle Start (src/game/onramp.lua): no elites in a new player's first waves
+    if not require("src.game.onramp").allows(self.world, "elites", self.wave) then return NO_ELITES end
     local m, route = self.eliteCfg or self.mode.elites, self.world.route
     local dk = self.world.danger and self.world.danger.eliteMul or 1     -- danger levels (src/config/danger.lua)
     if (not route or route.eliteMul == 1) and dk == 1 then return m end
@@ -679,7 +709,7 @@ function Spawner:updateStreams(dt)
             q.radius = q.radius * st.crown.scale ^ 0.5
             q.title = "Crowned " .. q.def.name
             world.boss = q
-            world.milestone = { text = self.crownLeft > 0 and "THE CROWNED QUEEN" or "THE LAST QUEEN", t = 0 }
+            -- her title card comes from src/game/bosses.lua (the last one is the Empress)
             self.crownE, self.crownUid = q, q.uid
         end
         if st.left <= 0 then

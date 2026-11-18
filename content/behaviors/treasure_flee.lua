@@ -3,6 +3,10 @@
 -- params: escape (s, 14), panic (speed x when the player is close, 1.35), near (90), jink (s between swerves, 0.6)
 local AI = require("src.game.ai")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.9, 0.4 }
+local PFX_2 = { glow = true, grav = 10 }
+
 return {
     name = "Treasure runner",
     init = function(e) e.st.t, e.st.jink, e.st.side = 0, 0, 1 end,
@@ -31,7 +35,7 @@ return {
         local s = e.speed * (d < (params.near or 90) and (params.panic or 1.35) or 1)
         e.mx, e.my = ax / l * s, ay / l * s
         if love.math.random() < dt * 10 then
-            world.particles:spawn(e.x, e.y, 2, 0, 0, 12, 0.5, { 1, 0.9, 0.4 }, 1, { glow = true, grav = 10 })
+            world.particles:spawn(e.x, e.y, 2, 0, 0, 12, 0.5, PFX_1, 1, PFX_2)
         end
     end,
     -- the last few seconds: a countdown ring so the chase has a clock
