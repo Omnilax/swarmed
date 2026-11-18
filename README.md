@@ -311,15 +311,24 @@ can `draw`. `src/game/grab.lua` holds and throws ants for grab specials.
 ## Skill trees
 
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
-engine `src/game/skills.lua`). Every kill is 1 XP (gilded elites give bonus XP); each level is a
-skill point, shown on the thin XP bar at the bottom of the screen. Spend points in the bag's
-**SKILLS** tab (Tab, then E / RB, or tap the tab). Each tree has three branches (attack, special,
-dash/body) with five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger
-upgrade and a capstone that changes how a move plays (echoes, fans of extra copies, every-Nth
-empowered strikes, thrown ants that land as explosions, procs on kills and hits...). A whole tree
-costs more points than a long run earns, so every run builds the bug differently. The sandbox's
-Player tab has **+5 skill points** and **Reset skill tree**; `love . --selftest --skills` buys every
-node of every tree (both fork sides) and fights with it.
+engine `src/game/skills.lua`). Kills give XP and every level opens a level-up card pick; the cards
+are stat boosts only, and **skipping** a pick is what banks a **skill point** (so each level is a
+boost now or a step down the tree). Spend points in the bag's **SKILLS** tab (Tab, then E / RB, or
+tap the tab). A tree has four branches:
+
+- three of the bug's own (attack, special, dash/body), each with a one-line blurb under its name and
+  five tiers: a 3-rank stat node, an upgrade, an either/or fork, a stronger upgrade and a capstone
+  that changes how a move plays (echoes, fans of extra copies, every-Nth empowered strikes, thrown
+  ants that land as explosions, procs on kills and hits...);
+- a fourth **kin** branch shared by the bug's lineage (`content/skillbranches`: Beetle, Spider,
+  Arachnid, Tidepool, Myriapod and Insect Kin, matched by character tags and priority), topped by the
+  tree's own **signature** node (`signature = {...}` in the tree file), the bug's own trick.
+
+A whole tree costs ~45 points, more than a run that skipped every pick could earn, so every run
+builds the bug differently. The screen shows points spent per branch, what a locked node needs and
+which fork side a node would close. The sandbox's Player tab has **+5 skill points** and **Reset
+skill tree**; `love . --selftest --skills` buys every node of every tree (both fork sides) and
+fights with it.
 
 ## Wave rewards: the reward bloom
 
@@ -332,7 +341,7 @@ prop `content/props/reward_bloom.lua`, numbers `src/config/bloom.lua`):
 2. It bursts and the item choice opens (with At Wave End level-ups, a **steps strip** at the top,
    LEVEL 7 > LEVEL 8 > ITEM, shows where you are and what is left).
 3. What you took **flies out of the bloom into your bug**, and a card on the left of the screen says
-   what you got and what it does (NEW ITEM, LEVEL CARD, SKILL, BOUGHT...). Shop buys and level-ups
+   what you got and what it does (NEW ITEM, LEVEL CARD, SKIPPED, BOUGHT...). Shop buys and level-ups
    outside the bloom use the same cards.
 
 Setting **Wave Rewards: Open at Once** skips the walk. Test: `love . --selftest --rewards`.
@@ -346,13 +355,14 @@ switches tabs; Tab, Esc or pad B closes it. The sandbox panel moved to F2.
 ## Level-up cards
 
 Each level is a pick of 3 cards (`src/game/levelups.lua`, screen `src/states/levelup.lua`, numbers
-in `src/config/levelups.lua`): nodes from your bug's skill tree (bought outright, no points) and
-global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
+in `src/config/levelups.lua`): global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
 common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
 The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
 Levels play a chime, half a second of slow motion and a ring of light; the cards open right
 there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
-At Wave End** saves them for the wave's reward bloom instead). Instead of a card you can bank a skill point for the SKILLS tab. Setting
+At Wave End** saves them for the wave's reward bloom instead). The skill tree is never on the cards:
+**Skip (+1 skill point)** under the cards takes none of them and banks a point for the SKILLS tab,
+the only way to earn skill points. Setting
 **Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.
@@ -638,6 +648,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/characters` | playable bugs: stats, attack, starting items | character select |
 | `content/attacks` | attack patterns (`fire`) | characters |
 | `content/skilltrees` | per-character skill trees: nodes mod stats, move params, echoes, procs | bag SKILLS tab |
+| `content/skillbranches` | kin branches: the 4th skill tree branch shared by a lineage, matched by tags | bag SKILLS tab |
 | `content/items` | stat changes and procs (`onHit`, `onKill`, `onHurt`, `onDash`, `onWaveStart`) | shop (step 2), sandbox |
 | `content/stages` | arena size, yard palette, path/fence/dirt look, spawn pacing | runs |
 | `content/sprites` | text-grid pixel art | everything |

@@ -17,7 +17,7 @@ end
 return {
     character = "wolf_spider",
     branches = {
-        { name = "Snapping Burst", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Snapping Burst", blurb = "Venom bursts all around", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "ws_fangs", tier = 1, ranks = 3, name = "Sharp Fangs", desc = "+15% burst damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "ws_quick", tier = 2, name = "Quick Snaps", desc = "Bursts come 15% faster.",
@@ -35,7 +35,7 @@ return {
                   if (sk.counters.attack or 0) % 4 == 0 then brood(ctx, 3) end
               end } } },
         } },
-        { name = "Brood", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Brood", blurb = "Spiderlings that hunt for you", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "ws_brood", tier = 1, ranks = 3, name = "Bigger Clutch", desc = "+2 spiderlings per swarm per rank.",
               secondary = { count = 2 } },
             { id = "ws_bite", tier = 2, name = "Sharp Brood", desc = "Spiderlings bite 30% harder and once more each.",
@@ -50,7 +50,7 @@ return {
               secondary = { damage = { mul = 0.3 } },
               procs = { { trigger = "onKill", chance = 0.08, effect = function(ctx) brood(ctx, 1) end } } },
         } },
-        { name = "Hunter", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Hunter", blurb = "Dart off and vanish", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "ws_legs", tier = 1, ranks = 3, name = "Running Legs", desc = "+6 speed and +3% crit chance per rank.",
               stats = { moveSpeed = 6, critChance = 3 } },
             { id = "ws_sprint", tier = 2, name = "Leaf Litter", desc = "Dash further and stay hidden 0.8 s longer.",
@@ -68,4 +68,7 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_wolf_howl", name = "Mother Wolf", desc = "Every 5th venom burst is a howl: twice as wide and twice as hard.",
+          empower = { move = "attack", every = 5, text = "HOWL!", shake = 0.1, mods = { radius = { mul = 1 }, damage = { mul = 1 } } } },
 }

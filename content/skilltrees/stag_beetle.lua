@@ -7,7 +7,7 @@ local AMBER = { 1, 0.8, 0.55 }
 return {
     character = "stag_beetle",
     branches = {
-        { name = "Mandibles", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Mandibles", blurb = "Snip and toss with antler jaws", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "sb_crush", tier = 1, ranks = 3, name = "Crushing Jaws", desc = "+15% bite damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "sb_reach", tier = 2, name = "Long Jaws", desc = "Bites reach further.",
@@ -29,7 +29,7 @@ return {
                   if e then fx.fling(ctx, e, ctx.ax, ctx.ay, 110, { damage = 10, landDamage = ctx.params.damage, radius = 28, height = 22, color = AMBER }) end
               end } } },
         } },
-        { name = "Swing & Hurl", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Swing & Hurl", blurb = "Swing ants as clubs and hurl them", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "sb_arm", tier = 1, ranks = 3, name = "Strong Neck", desc = "+15% swing and throw damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "sb_fast", tier = 2, name = "Restless", desc = "Swing & Hurl recharges 30% faster.",
@@ -49,7 +49,7 @@ return {
                   w.particles:burst(x, y, 14, { { 1, 0.7, 0.3 }, { 1, 0.4, 0.1 } }, 140, 90, { glow = true, grav = -20 })
               end } },
         } },
-        { name = "Armour", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Armour", blurb = "Plates, flights and fury", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "sb_plate", tier = 1, ranks = 3, name = "Plated", desc = "+12 max HP and +1 armor per rank.",
               stats = { maxHp = 12, armor = 1 } },
             { id = "sb_hop", tier = 2, name = "Strong Wings", desc = "Flights go further and higher.",
@@ -80,4 +80,11 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_stag_giant", name = "Giant Stag", desc = "Thrown ants land harder and burst into shell shards, and every landing heals you 2 HP.",
+          throw = { landMul = 0.3, onLand = function(w, x, y)
+              local c = fx.ctx(w)
+              fx.shards(c, x, y, 8, 8, AMBER, { range = 70 })
+              fx.heal(c, 2)
+          end } },
 }

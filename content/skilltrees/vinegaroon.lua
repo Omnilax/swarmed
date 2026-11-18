@@ -14,7 +14,7 @@ end
 return {
     character = "vinegaroon",
     branches = {
-        { name = "Acid Squirt", color = ACID, nodes = {
+        { name = "Acid Squirt", blurb = "Acid that melts their armour", color = ACID, nodes = {
             { id = "vg_acid", tier = 1, ranks = 3, name = "Strong Vinegar", desc = "+15% squirt damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "vg_drops", tier = 2, name = "Wide Nozzle", desc = "Each squirt sprays 2 more droplets.",
@@ -28,7 +28,7 @@ return {
             { id = "vg_douse", tier = 5, name = "Douse", desc = "Every 4th squirt is a drenching wave: 8 more droplets across a wide fan.",
               empower = { move = "attack", every = 4, text = "DOUSE!", mods = { drops = 8, spread = 1 } } },
         } },
-        { name = "Acid Bomb", color = { 0.6, 0.9, 0.3 }, nodes = {
+        { name = "Acid Bomb", blurb = "Soak an ant, hurl it as a bomb", color = { 0.6, 0.9, 0.3 }, nodes = {
             { id = "vg_bomb", tier = 1, ranks = 3, name = "Heavy Bomb", desc = "+15% acid bomb damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "vg_pool", tier = 2, name = "Flood", desc = "Acid pools are 15 wider and last 2 s longer.",
@@ -45,7 +45,7 @@ return {
                   if e and e.corrodeT and e.corrodeT > 0 then splash(ctx, ctx.x, ctx.y, 22, 6) end
               end } } },
         } },
-        { name = "Acid Skip", color = { 0.55, 0.45, 0.4 }, nodes = {
+        { name = "Acid Skip", blurb = "Skip about and spit back", color = { 0.55, 0.45, 0.4 }, nodes = {
             { id = "vg_shell", tier = 1, ranks = 3, name = "Plated Back", desc = "+10 max HP and +1 armor per rank.",
               stats = { maxHp = 10, armor = 1 } },
             { id = "vg_counter", tier = 2, name = "Spit Back", desc = "Vinegar puffs do +6 damage and spread 10 wider.",
@@ -66,4 +66,9 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_vinegar_giant", name = "Giant Vinegaroon", desc = "Ants you kill have a 35% chance to splash acid on the ants around them.",
+          procs = { { trigger = "onKill", chance = 0.35, effect = function(ctx)
+              fx.nova(ctx, ctx.x, ctx.y, 30, 8, { 0.75, 1, 0.3 }, { knockback = 40 })
+          end } } },
 }

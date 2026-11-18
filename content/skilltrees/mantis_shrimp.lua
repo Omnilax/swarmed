@@ -9,7 +9,7 @@ local WATER = { 0.8, 0.95, 1 }
 return {
     character = "mantis_shrimp",
     branches = {
-        { name = "Smashing Club", color = CLUB, nodes = {
+        { name = "Smashing Club", blurb = "Punches that leave bubbles", color = CLUB, nodes = {
             { id = "ms_club", tier = 1, ranks = 3, name = "Dense Club", desc = "+15% punch damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "ms_load", tier = 2, name = "Long Arm", desc = "Punches reach 6 further and throw ants further.",
@@ -27,7 +27,7 @@ return {
                   fx.shards(ctx, p.x, p.y, 5, ctx.params.damage * 0.7, WATER, { angle = math.atan2(ctx.ay, ctx.ax), spread = 0.8, range = 110, pierce = 3, speed = 320 })
               end } } },
         } },
-        { name = "Flurry", color = { 1, 0.7, 0.45 }, nodes = {
+        { name = "Flurry", blurb = "Ten jabs in a blink", color = { 1, 0.7, 0.45 }, nodes = {
             { id = "ms_fl", tier = 1, ranks = 3, name = "Fast Hands", desc = "+15% flurry damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "ms_more", tier = 2, name = "Combo", desc = "4 more punches per flurry.",
@@ -43,7 +43,7 @@ return {
                   fx.nova(ctx, ctx.target.x, ctx.target.y, 14, 4, WATER)
               end } } },
         } },
-        { name = "Recoil", color = { 0.5, 0.85, 0.6 }, nodes = {
+        { name = "Recoil", blurb = "Charged punches that launch you", color = { 0.5, 0.85, 0.6 }, nodes = {
             { id = "ms_shell", tier = 1, ranks = 3, name = "Armoured Body", desc = "+10 max HP and +1 armor per rank.",
               stats = { maxHp = 10, armor = 1 } },
             { id = "ms_rp", tier = 2, name = "Spring Loaded", desc = "The recoil punch winds up 30% faster, does +12 damage and reaches 8 further.",
@@ -60,4 +60,11 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_shrimp_peacock", name = "Peacock Smasher", desc = "Every 5th punch boils the water: a cavitation blast at double damage.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_mshrimp", 5) then return end
+              local p = ctx.player
+              fx.explode(ctx, p.x + ctx.ax * 36, p.y + ctx.ay * 36, 46, (ctx.params.damage or 12) * 2, { 1, 0.5, 0.4 })
+          end } } },
 }

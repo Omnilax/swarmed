@@ -1,13 +1,23 @@
 -- TEMPLATE. Copy to content/skilltrees/<character id>.lua to give a playable bug its skill tree.
--- Engine: src/game/skills.lua. Every kill = 1 XP (enemy `xp` field; gilded elites give bonus XP),
--- XP fills levels and every level is one skill point. Points are spent in the bag screen
--- (Tab or the SKILLS tab). A whole tree costs ~33 points and a long run earns ~20, and forks
--- are either/or, so no run gets everything: make each branch a different way to play.
+-- Engine: src/game/skills.lua. Kills give XP and every level opens a level-up card pick; the
+-- cards are stat boosts, and SKIPPING a pick banks one skill point (setting "Level-Ups: Skill
+-- Points": every level is a point). Points are spent in the bag screen (Tab or the SKILLS tab).
+-- A whole tree costs ~45 points and a run levels ~35 times (and you won't skip them all), and
+-- forks are either/or, so no run gets everything: make each branch a different way to play.
 --
--- Layout: 3 branches side by side (usually: main attack, special, dash/body). Inside a branch
--- nodes stack by `tier` (1 at the bottom). Two or three nodes on the same tier are a FORK:
--- buying one locks the others (set fork = false on a node to opt out). Put them on col = -1
--- and col = 1 (col 0 = centred).
+-- Layout: 3 branches side by side (usually: main attack, special, dash/body), plus a 4th KIN
+-- branch added for you: the shared branch of the bug's lineage (content/skillbranches, picked by
+-- the character's tags), topped by this tree's `signature` node. Inside a branch nodes stack by
+-- `tier` (1 at the top). Two or three nodes on the same tier are a FORK: buying one locks the
+-- others (set fork = false on a node to opt out). Put them on col = -1 and col = 1 (col 0 = centred).
+--
+-- Branch fields: name, color, blurb (one short line under the name saying what the branch is
+-- about), nodes.
+--
+-- Tree fields besides branches:
+--   signature = { node }   the bug's own capstone at the top of the kin branch (one tier above
+--                          the kin nodes, 3 points by default). Make it the bug's signature trick.
+--   kin = "<id>" | false   pick a kin branch by id instead of by tags, or have none.
 --
 -- Node fields:
 --   id, name, desc        unique id, short name, one line saying what it does
@@ -41,7 +51,7 @@
 --       `move` limits a proc to hits made by that move ("attack" | "secondary" | "dash").
 --       Helpers: local fx = require("src.game.skills").fx  ->  fx.explode, fx.nova, fx.line,
 --       fx.chain, fx.shards, fx.patch, fx.web, fx.buff, fx.fling, fx.poison, fx.slow, fx.pull,
---       fx.heal, fx.near, fx.say, fx.dir, fx.ctx (see src/game/skills.lua). Pass ctx through so
+--       fx.heal, fx.near, fx.say, fx.dir, fx.ctx, fx.every (see src/game/skills.lua). Pass ctx through so
 --       procs can't set each other off forever.
 --
 -- `--selftest --skills` buys every node of every tree and fights with it.
@@ -50,7 +60,7 @@ local fx = require("src.game.skills").fx
 return {
     character = "my_bug",
     branches = {
-        { name = "Sweep", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Sweep", blurb = "Wide sweeps that toss ants", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "mb_power", tier = 1, ranks = 3, name = "Heavy Horn", desc = "+15% sweep damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "mb_wide", tier = 2, name = "Wide Sweep", desc = "Sweeps reach further and wider.",
@@ -69,4 +79,10 @@ return {
         } },
         -- { name = "Special", ... }, { name = "Body", ... }
     },
+    -- the top of the kin branch: this bug's own trick
+    signature = { id = "sig_my_bug", name = "Big Horn", desc = "Every 4th sweep is a quake around you.",
+        procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+            if not fx.every(sk, "sig_my_bug", 4) then return end
+            fx.nova(ctx, ctx.player.x, ctx.player.y, 60, 12, { 1, 0.8, 0.4 })
+        end } } },
 }

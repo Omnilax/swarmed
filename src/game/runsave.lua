@@ -42,7 +42,7 @@ function RunSave.snapshot(game)
         hp = p.hp, rows = p.inventory.rows,
         bag = {}, known = {}, usedQueens = {},
         skills = { xp = p.skills and p.skills.xp or 0, ranks = util.deepcopy(p.skills and p.skills.ranks or {}),
-            points = p.skills and p.skills.points or 0, carded = p.skills and p.skills.carded or 0 },
+            points = p.skills and p.skills.points or 0, carded = p.skills and p.skills.carded or 0, skipped = p.skills and p.skills.skipped or 0 },
         levelups = w.levelups and w.levelups:snapshot() or nil,
         saved = os.time(),
         -- the run's seed and daily run (src/game/daily.lua), and the item choice's rerolls,
@@ -180,7 +180,7 @@ function RunSave.restore(world, snap)
             end
         end
         -- level-up cards bought nodes without points: the saved count wins (old saves: as before)
-        if snap.skills.points then sk.points, sk.carded = snap.skills.points, snap.skills.carded or 0 end
+        if snap.skills.points then sk.points, sk.carded, sk.skipped = snap.skills.points, snap.skills.carded or 0, snap.skills.skipped or 0 end
         p.skills = sk
         sk:apply()
     end

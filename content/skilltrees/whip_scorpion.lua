@@ -8,7 +8,7 @@ local SPINE = { 1, 0.85, 0.6 }
 return {
     character = "whip_scorpion",
     branches = {
-        { name = "Left Palp", color = SPINE, nodes = {
+        { name = "Left Palp", blurb = "Long raking palp arcs", color = SPINE, nodes = {
             { id = "ws_left", tier = 1, ranks = 3, name = "Spined Palp", desc = "+15% rake damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "ws_reach", tier = 2, name = "Long Reach", desc = "The rake reaches 18 further.",
@@ -23,7 +23,7 @@ return {
               empower = { move = "attack", every = 3, text = "CAGE!", shake = 0.08,
                   mods = { arc = { set = 6.3 }, damage = { mul = 1 } } } },
         } },
-        { name = "Right Palp", color = { 1, 0.65, 0.45 }, nodes = {
+        { name = "Right Palp", blurb = "A heavy palp slam from afar", color = { 1, 0.65, 0.45 }, nodes = {
             { id = "ws_right", tier = 1, ranks = 3, name = "Raptorial Palp", desc = "+15% tip slam damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "ws_grab", tier = 2, name = "Heavy Tip", desc = "The tip's blast is bigger and splashes harder.",
@@ -40,7 +40,7 @@ return {
                   fx.fling(ctx, ctx.target, -p.aimX, -p.aimY, 70, { damage = 10, landDamage = 16, radius = 26, height = 22, color = SPINE })
               end } } },
         } },
-        { name = "Feelers", color = { 0.7, 0.55, 0.45 }, nodes = {
+        { name = "Feelers", blurb = "Feelers that pull you in", color = { 0.7, 0.55, 0.45 }, nodes = {
             { id = "ws_sense", tier = 1, ranks = 3, name = "Feeler Sense", desc = "+5% crit chance and +4 max HP per rank.",
               stats = { critChance = 5, maxHp = 4 } },
             { id = "ws_step", tier = 2, name = "Many Feelers", desc = "One more antenna whip charge.",
@@ -61,4 +61,7 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_whip_amblypygi", name = "Amblypygi", desc = "Your left palp lashes a second time 35% of the time, harder than the first.",
+          echo = { move = "attack", delay = 0.18, mult = 1.1, chance = 0.35, sameAim = true, text = "LASH!" } },
 }

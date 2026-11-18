@@ -7,7 +7,7 @@ local SHELL = { 1, 0.6, 0.45 }
 return {
     character = "crab",
     branches = {
-        { name = "Snips", color = { 1, 0.6, 0.45 }, nodes = {
+        { name = "Snips", blurb = "Two claws, nonstop snipping", color = { 1, 0.6, 0.45 }, nodes = {
             { id = "cr_sharp", tier = 1, ranks = 3, name = "Sharp Claws", desc = "+12% snip damage per rank.",
               attack = { damage = { mul = 0.12 } } },
             { id = "cr_wide", tier = 2, name = "Big Claws", desc = "Claws snap over a much wider patch.",
@@ -26,7 +26,7 @@ return {
                   ctx.world:floatText(e.x, e.y, "SNIP", SHELL, false)
               end } } },
         } },
-        { name = "Snip in Two", color = { 1, 0.85, 0.6 }, nodes = {
+        { name = "Snip in Two", blurb = "Cut ants in half, fling the halves", color = { 1, 0.85, 0.6 }, nodes = {
             { id = "cr_halves", tier = 1, ranks = 3, name = "Heavy Halves", desc = "+20% half damage and they fly further per rank.",
               secondary = { damage = { mul = 0.2 }, halves = 20 } },
             { id = "cr_quick", tier = 2, name = "Practised", desc = "Snip in Two recharges 30% faster.",
@@ -42,7 +42,7 @@ return {
                   fx.shards(ctx, ctx.x, ctx.y, 8, 8, SHELL, { speed = 260, range = 90, pierce = 2 })
               end } } },
         } },
-        { name = "Shell", color = { 0.6, 0.85, 1 }, nodes = {
+        { name = "Shell", blurb = "A hard shell and sideways scuttles", color = { 0.6, 0.85, 1 }, nodes = {
             { id = "cr_armour", tier = 1, ranks = 3, name = "Thick Shell", desc = "+1.5 armor and +6 max HP per rank.",
               stats = { armor = 1.5, maxHp = 6 } },
             { id = "cr_scurry", tier = 2, name = "Scurry", desc = "Scuttle further and faster.",
@@ -61,4 +61,11 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_crab_carcin", name = "Carcinization", desc = "Everything becomes crab: every snip-in-two sprays shell shards ahead of you.",
+          procs = { { trigger = "onSpecial", effect = function(ctx)
+              local p = ctx.player
+              fx.shards(ctx, p.x + ctx.ax * 30, p.y + ctx.ay * 30, 5, 7, { 1, 0.6, 0.45 },
+                  { angle = math.atan2(ctx.ay, ctx.ax), spread = 1.4, range = 90 })
+          end } } },
 }

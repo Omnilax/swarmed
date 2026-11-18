@@ -7,7 +7,7 @@ local BLUE = { 0.6, 0.95, 1 }
 return {
     character = "rhino_beetle",
     branches = {
-        { name = "Horn Sweep", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Horn Sweep", blurb = "Wide sweeps that toss ants", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "rb_heft", tier = 1, ranks = 3, name = "Heavy Horn", desc = "+15% sweep damage and +10% knockback per rank.",
               attack = { damage = { mul = 0.15 }, knockback = { mul = 0.1 } } },
             { id = "rb_wide", tier = 2, name = "Wide Sweep", desc = "Sweeps reach further and cover a wider arc.",
@@ -28,7 +28,7 @@ return {
                   ctx.world.particles:burst(p.x + ctx.ax * 70, p.y + ctx.ay * 70, 8, { { 0.6, 0.55, 0.5 } }, 80, 50, { grav = 260 })
               end } } },
         } },
-        { name = "Horn Pierce", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Horn Pierce", blurb = "Gore lines of ants with the horn", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "rb_lance", tier = 1, ranks = 3, name = "Long Horn", desc = "+15% pierce damage and +10 reach per rank.",
               secondary = { damage = { mul = 0.15 }, range = 10 } },
             { id = "rb_quick", tier = 2, name = "Quick Thrust", desc = "Horn Pierce recharges 30% faster.",
@@ -48,7 +48,7 @@ return {
                   fx.fling(ctx, ctx.target, p.aimX, p.aimY, 120, { damage = 10, landDamage = 14, radius = 26, color = BLUE })
               end } } },
         } },
-        { name = "Charge", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Charge", blurb = "Charge in and heave them up", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "rb_shell", tier = 1, ranks = 3, name = "Thick Shell", desc = "+10 max HP and +1 armor per rank.",
               stats = { maxHp = 10, armor = 1 } },
             { id = "rb_ram", tier = 2, name = "Battering Ram", desc = "Your charge hits harder, barges ants further and heaves the scooped ones down harder.",
@@ -73,4 +73,8 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_rhino_hercules", name = "Hercules", desc = "+15% damage, +30% knockback, and every 3rd sweep is a double-damage, wider heave.",
+          stats = { damage = 15, knockback = 30 },
+          empower = { move = "attack", every = 3, text = "HERCULES!", shake = 0.1, mods = { damage = { mul = 1 }, radius = { mul = 0.3 } } } },
 }
