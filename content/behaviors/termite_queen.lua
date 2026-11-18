@@ -12,6 +12,10 @@ local Content = require("src.content")
 local Audio = require("src.core.audio")
 local Iso = require("src.core.iso")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.95, 0.92, 0.82 }
+local PFX_LIST_1 = { PFX_1 }
+
 local function kingAlive(st)
     local k = st.king
     return k and k.uid == st.kingUid and not k.dead
@@ -82,7 +86,7 @@ return {
                     world.spawner:spawnGroup(def, cnt, e.x, e.y, { noElites = true })
                 end
             end
-            world.particles:burst(e.x, e.y, 10, { { 0.95, 0.92, 0.82 } }, 60, 40)
+            world.particles:burst(e.x, e.y, 10, PFX_LIST_1, 60, 40)
         end
     end,
     -- a faint golden line to her king while he tends her

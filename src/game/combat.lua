@@ -3,6 +3,12 @@
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.8, 0.3 }
+local PFX_2 = { 1, 0.45, 0.15 }
+local PFX_3 = { 0.4, 0.3, 0.3 }
+local PFX_LIST_1 = { PFX_1, PFX_2, PFX_3 }
+
 local Combat = {}
 
 -- Procs may trigger other procs, but only this deep (stops infinite chains). The live limit
@@ -187,7 +193,7 @@ end
 -- Explosion: area damage plus a visible blast ring, sound and shake.
 function Combat.explode(world, x, y, radius, base, opts)
     world:addFx({ kind = "ring", x = x, y = y, r = radius, life = 0.25, color = (opts and opts.color) or { 1, 0.6, 0.2 } })
-    world.particles:burst(x, y, 10, { { 1, 0.8, 0.3 }, { 1, 0.45, 0.15 }, { 0.4, 0.3, 0.3 } }, 120, 90)
+    world.particles:burst(x, y, 10, PFX_LIST_1, 120, 90)
     world.camera:shake(0.15)
     Audio.play("boom")
     local o = { knockback = 120 }

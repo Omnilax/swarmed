@@ -3,6 +3,9 @@
 -- critters. Inventory:update runs the timed parts every frame (see the "onTick" trigger).
 local Combat = require("src.game.combat")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { glow = true, grav = -6 }
+
 local ItemFx = {}
 
 -- A scratch table for one item on this player (cooldowns, charges used this wave...).
@@ -95,7 +98,7 @@ function ItemFx.update(world, player, dt)
                 end
                 if love.math.random() < 0.6 then
                     local a, r = love.math.random() * math.pi * 2, love.math.random() * z.r
-                    world.particles:spawn(z.x + math.cos(a) * r, z.y + math.sin(a) * r, 1, 0, 0, 14, 0.7, z.color, 1, { glow = true, grav = -6 })
+                    world.particles:spawn(z.x + math.cos(a) * r, z.y + math.sin(a) * r, 1, 0, 0, 14, 0.7, z.color, 1, PFX_1)
                 end
             end
         end

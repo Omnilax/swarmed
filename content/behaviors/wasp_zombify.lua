@@ -10,6 +10,11 @@ local Elites = require("src.game.elites")
 local util = require("src.core.util")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.45, 1, 0.4 }
+local PFX_2 = { glow = true, grav = 40 }
+local PFX_LIST_1 = { PFX_1 }
+
 local function zombify(world, o, elite)
     o.elite = elite
     o.maxHp = math.max(1, math.floor(o.maxHp * elite.hp + 0.5))
@@ -23,7 +28,7 @@ local function zombify(world, o, elite)
     o.params = Elites.params(o.def, elite)
     o.flash = 0.2
     world:floatText(o.x, o.y, "ZOMBIFIED", { 0.5, 1, 0.45 }, false)
-    world.particles:burst(o.x, o.y, 8, { { 0.45, 1, 0.4 } }, 50, 40, { glow = true, grav = 40 })
+    world.particles:burst(o.x, o.y, 8, PFX_LIST_1, 50, 40, PFX_2)
 end
 
 return {

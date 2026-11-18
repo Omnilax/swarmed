@@ -7,6 +7,11 @@ local AI = require("src.game.ai")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 1, 1 }
+local PFX_2 = { grav = 40 }
+local PFX_LIST_1 = { PFX_1 }
+
 local function partnerOf(e)
     local pt = e.st.partner
     if pt and pt.uid == e.st.partnerUid and not pt.dead and pt.st.partner == e then return pt end
@@ -68,7 +73,7 @@ return {
                 if p.dashT > 0 then
                     st.cutT, pt.st.cutT = 3, 3
                     world:floatText(p.x, p.y, "SNIP!", { 1, 1, 1 }, false)
-                    world.particles:burst(p.x, p.y, 6, { { 1, 1, 1 } }, 60, 30, { grav = 40 })
+                    world.particles:burst(p.x, p.y, 6, PFX_LIST_1, 60, 30, PFX_2)
                     Audio.play("hit", { pitch = 2 })
                 else
                     st.touch = true

@@ -2,6 +2,12 @@
 local Combat = require("src.game.combat")
 local ItemFx = require("src.game.itemfx")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.65, 0.25 }
+local PFX_2 = { 0.9, 0.85, 0.6 }
+local PFX_3 = { glow = true, grav = -20 }
+local PFX_LIST_1 = { PFX_1, PFX_2 }
+
 return {
     name = "Hivemind Spore",
     description = "Every kill gives +1.5% Damage until the wave ends, up to 40% (+40% per stack), and bursts into spores that poison ants nearby for 8 damage a second (+8 per stack).",
@@ -24,7 +30,7 @@ return {
                 for _, o in ipairs(Combat.collect(w, ctx.x, ctx.y, r)) do
                     o.poisonT, o.poisonDps = math.max(o.poisonT, 3), math.max(o.poisonDps, 8 * stacks)
                 end
-                w.particles:burst(ctx.x, ctx.y, 4, { { 1, 0.65, 0.25 }, { 0.9, 0.85, 0.6 } }, 40, 30, { glow = true, grav = -20 })
+                w.particles:burst(ctx.x, ctx.y, 4, PFX_LIST_1, 40, 30, PFX_3)
             end,
         },
         {

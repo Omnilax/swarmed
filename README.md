@@ -964,6 +964,11 @@ and the centipede back in line).
 - Splats are a few tinted blob stamps from the atlas; particle spawns scale down as the pool fills;
   bodies in the air are capped; glowing-particle lights are capped; hit stop has a cooldown so
   constant mass kills don't feel like stutter.
+- Particle colours and options are module constants (`PFX_n`), not a new table per spawn; the
+  death spray reuses one scratch colour and two option tables.
+- `love . --profile --crowd --nojit --cpudraw` benchmarks a fixed horde; add `--gclines` to list
+  the source lines that allocate the most each frame. Most of what is left on the interpreter is
+  LÖVE's own `love.math.random` (kept: seeded runs depend on it).
 
 ## UI style guide
 

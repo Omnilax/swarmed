@@ -6,6 +6,12 @@ local Content = require("src.content")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.95, 0.92, 0.82 }
+local PFX_2 = { 0.8, 0.76, 0.6 }
+local PFX_3 = { stain = true, grav = 300 }
+local PFX_LIST_1 = { PFX_1, PFX_2 }
+
 return {
     name = "Egg clutch",
     init = function(e, world, params)
@@ -27,7 +33,7 @@ return {
                 local o = def and world:spawnEnemy(def, e.x + math.cos(a) * 4, e.y + math.sin(a) * 4)
                 if o and o.behavior.surface then o.behavior.surface(o, world, o.params) end
             end
-            world.particles:burst(e.x, e.y, 8, { { 0.95, 0.92, 0.82 }, { 0.8, 0.76, 0.6 } }, 50, 40, { stain = true, grav = 300 })
+            world.particles:burst(e.x, e.y, 8, PFX_LIST_1, 50, 40, PFX_3)
             Audio.play("dash", { pitch = 1.6 })
             -- the shells are left behind, not a kill
             e.dead = true

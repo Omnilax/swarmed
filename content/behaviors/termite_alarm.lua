@@ -11,6 +11,10 @@ local Audio = require("src.core.audio")
 local Combat = require("src.game.combat")
 local Content = require("src.content")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.55, 0.2 }
+local PFX_2 = { glow = true, grav = -20 }
+
 local function alarm(e)
     local st = e.st
     if st.alarmCd > 0 or st.mode == "drum" or st.mode == "stagger" then return end
@@ -73,7 +77,7 @@ return {
                     if not o.dead and o.def.family == "termite" and not o.def.boss and o.slowT <= 0 then
                         -- slowMul above 1 is a haste (world.lua scales movement by it while slowT runs)
                         o.slowT, o.slowMul = time, mul
-                        world.particles:spawn(o.x, o.y, 6, 0, 0, 25, 0.5, { 1, 0.55, 0.2 }, 1, { glow = true, grav = -20 })
+                        world.particles:spawn(o.x, o.y, 6, 0, 0, 25, 0.5, PFX_1, 1, PFX_2)
                     end
                 end
                 world:addFx({ kind = "ring", x = e.x, y = e.y, r = r, life = 0.35, color = { 1, 0.6, 0.25 } })

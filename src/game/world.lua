@@ -28,6 +28,26 @@ local RunStats = require("src.game.runstats")
 local Director = require("src.game.director")
 local Nectar = require("src.game.nectar")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.95, 0.7 }
+local PFX_2 = { glow = true, grav = 60 }
+local PFX_3 = { 1, 1, 1 }
+local PFX_4 = { glow = true, grav = 120 }
+local PFX_5 = { 0.55, 0.42, 0.3 }
+local PFX_6 = { 0.4, 0.3, 0.22 }
+local PFX_7 = { grav = 300 }
+local PFX_8 = { 0.75, 0.95, 0.35 }
+local PFX_9 = { glow = true, grav = -15 }
+local PFX_10 = { 0.6, 1, 0.3 }
+local PFX_11 = { glow = true, grav = -10 }
+local PFX_LIST_1 = { PFX_1 }
+local PFX_LIST_2 = { PFX_5, PFX_6 }
+
+-- death spray: options for droplets that do / don't leave a stain, and a scratch colour
+local STAIN, NO_STAIN = { stain = true, grav = 380 }, { stain = false, grav = 380 }
+local DROP = { 0, 0, 0 }
+local function setRGB(t, r, g, b) t[1], t[2], t[3] = r, g, b return t end
+
 local World = {}
 World.__index = World
 
@@ -244,7 +264,8 @@ function World:killEnemy(e)
         local s = 50 + love.math.random() * 140
         local j = (love.math.random() - 0.5) * 0.1
         self.particles:spawn(e.x, e.y, 3, math.cos(a) * s, math.sin(a) * s, 30 + love.math.random() * 70,
-            1.2, { blood[1] + j, blood[2] + j, blood[3] + j }, 1, { stain = mark and love.math.random() < 0.5, grav = 380 })
+            -- (spawn copies the colour, so one scratch table does for every droplet)
+            1.2, setRGB(DROP, blood[1] + j, blood[2] + j, blood[3] + j), 1, (mark and love.math.random() < 0.5) and STAIN or NO_STAIN)
     end
     -- Body bits: legs and fragments that tumble and stay on the ground.
     for _ = 1, Particles.count(2 + e.radius * 0.6) do
@@ -252,9 +273,9 @@ function World:killEnemy(e)
         local s = 30 + love.math.random() * 90
         local c = gibs[love.math.random(#gibs)]
         self.particles:spawn(e.x, e.y, 4, math.cos(a) * s, math.sin(a) * s, 60 + love.math.random() * 80,
-            1.2, c, love.math.random() < 0.4 and 2 or 1, { stain = mark, grav = 380 })
+            1.2, c, love.math.random() < 0.4 and 2 or 1, mark and STAIN or NO_STAIN)
     end
-    self.particles:burst(e.x, e.y, 2, { { 1, 0.95, 0.7 } }, 40, 30, { glow = true, grav = 60 })
+    self.particles:burst(e.x, e.y, 2, PFX_LIST_1, 40, 30, PFX_2)
 
     -- The body gets knocked away spinning, Warriors style, then stays on the floor as remains.
     if #self.corpses >= 150 then
@@ -272,7 +293,7 @@ function World:killEnemy(e)
     local elite = e.elite
     if elite then
         local c = Elites.color(elite)
-        self.particles:burst(e.x, e.y, 10, { c, { 1, 1, 1 } }, 90, 70, { glow = true, grav = 120 })
+        self.particles:burst(e.x, e.y, 10, { c, PFX_3 }, 90, 70, PFX_4)
         -- gilded elites: a big bead of bonus XP (added in Nectar:onKill)
         if elite.onDeath then
             local x, y = e.x, e.y
@@ -342,7 +363,7 @@ function World:escapeEnemy(e, text)
     if e.dead then return end
     e.dead, e.escaped = true, true
     if self.boss == e then self.boss = nil end
-    self.particles:burst(e.x, e.y, 10, { { 0.55, 0.42, 0.3 }, { 0.4, 0.3, 0.22 } }, 60, 50, { grav = 300 })
+    self.particles:burst(e.x, e.y, 10, PFX_LIST_2, 60, 50, PFX_7)
     if text then self:floatText(e.x, e.y, text, { 1, 0.6, 0.4 }, true) end
     self.events:emit("enemy_escaped", e)
 end
@@ -782,7 +803,7 @@ function World:updateEnemies(dt)
             if e.corrodeT > 0 then
                 e.corrodeT = e.corrodeT - dt
                 if love.math.random() < dt * 5 then
-                    self.particles:spawn(e.x, e.y, 4, 0, 0, 16, 0.4, { 0.75, 0.95, 0.35 }, 1, { glow = true, grav = -15 })
+                    self.particles:spawn(e.x, e.y, 4, 0, 0, 16, 0.4, PFX_8, 1, PFX_9)
                 end
             end
             if e.poisonT > 0 then
@@ -792,7 +813,7 @@ function World:updateEnemies(dt)
                 if e.poisonTick >= 0.5 then
                     e.poisonTick = e.poisonTick - 0.5
                     Combat.damage(self, e, e.poisonDps * 0.5, { noCrit = true, dot = true, procDepth = Combat.MAX_PROC_DEPTH, source = e.poisonSrc or "Poison" })
-                    self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, { 0.6, 1, 0.3 }, 1, { glow = true, grav = -10 })
+                    self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, PFX_10, 1, PFX_11)
                 end
                 if e.poisonT <= 0 then e.poisonDps = 0 end
             end

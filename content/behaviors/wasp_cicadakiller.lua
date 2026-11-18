@@ -9,6 +9,11 @@ local Grab = require("src.game.grab")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.5, 0.42, 0.32 }
+local PFX_2 = { grav = 300 }
+local PFX_LIST_1 = { PFX_1 }
+
 local function drop(e, world)
     local st = e.st
     if Grab.valid(st.h) then
@@ -80,7 +85,7 @@ return {
                     p:knock(p.x - st.fx + 0.01, p.y - st.fy, 160)
                 end
                 world:addFx({ kind = "ring", x = st.fx, y = st.fy, r = r, life = 0.2, color = { 0.9, 0.75, 0.5 } })
-                world.particles:burst(st.fx, st.fy, 8, { { 0.5, 0.42, 0.32 } }, 70, 50, { grav = 300 })
+                world.particles:burst(st.fx, st.fy, 8, PFX_LIST_1, 70, 50, PFX_2)
                 world.camera:shake(0.15)
                 Audio.play("boom", { pitch = 1.8 })
                 st.mode, st.h, st.cd = "hunt", nil, params.cooldown or 2.5

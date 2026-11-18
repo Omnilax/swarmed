@@ -10,6 +10,10 @@ local Audio = require("src.core.audio")
 
 local SOIL = { { 0.36, 0.26, 0.17 }, { 0.5, 0.38, 0.24 }, { 0.24, 0.17, 0.11 } }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 300, stain = true }
+local PFX_2 = { grav = 300 }
+
 local function bury(e)
     e.hidden = true
     e.st.mode = "under"
@@ -23,7 +27,7 @@ local function surface(e, world, params)
     local up = (params and params.up) or { 2.2, 3.4 }
     st.t = up[1] + love.math.random() * (up[2] - up[1])
     e.squash = 0.25
-    world.particles:burst(e.x, e.y, 7, SOIL, 60, 70, { grav = 300, stain = true })
+    world.particles:burst(e.x, e.y, 7, SOIL, 60, 70, PFX_1)
 end
 
 return {
@@ -58,7 +62,7 @@ return {
             e.mx, e.my = 0, 0
             st.t = st.t - dt
             if love.math.random() < dt * 20 then
-                world.particles:spawn(e.x, e.y, 2, (love.math.random() - 0.5) * 50, (love.math.random() - 0.5) * 50, 40, 0.5, SOIL[love.math.random(3)], 1, { grav = 300 })
+                world.particles:spawn(e.x, e.y, 2, (love.math.random() - 0.5) * 50, (love.math.random() - 0.5) * 50, 40, 0.5, SOIL[love.math.random(3)], 1, PFX_2)
             end
             if st.t <= 0 then
                 bury(e)

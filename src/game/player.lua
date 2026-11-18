@@ -13,6 +13,13 @@ local Skills = require("src.game.skills")
 local Stamina = require("src.game.stamina")
 local RunStats = require("src.game.runstats")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.8, 0.85, 0.9 }
+local PFX_2 = { grav = 120 }
+local PFX_3 = { 0.6, 0.85, 1 }
+local PFX_4 = { glow = true, grav = 0 }
+local PFX_LIST_1 = { PFX_1 }
+
 local Player = {}
 Player.__index = Player
 
@@ -50,7 +57,7 @@ function Player:releaseShove(params)
     end
     self.iframes = math.max(self.iframes, 0.15)
     world:addFx({ kind = "ring", x = self.x, y = self.y, r = r, life = 0.22, color = { 0.85, 0.92, 1 } })
-    world.particles:burst(self.x, self.y, 8, { { 0.8, 0.85, 0.9 } }, 110, 10, { grav = 120 })
+    world.particles:burst(self.x, self.y, 8, PFX_LIST_1, 110, 10, PFX_2)
     Audio.play("dash", { pitch = 0.7, volume = 0.6 })
 end
 
@@ -283,7 +290,7 @@ function Player:update(dt)
     if self.dashT > 0 then
         self.dashT = self.dashT - dt
         vx, vy = self.dashX * DASH_SPEED, self.dashY * DASH_SPEED
-        world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, { 0.6, 0.85, 1 }, 1, { glow = true, grav = 0 })
+        world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, PFX_3, 1, PFX_4)
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
             * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1)
