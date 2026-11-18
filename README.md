@@ -469,6 +469,25 @@ Glass Carapace, Teeming, Giants, Royal Guard, Twin Queens (a second queen every 
 
 Test: `love . --selftest --artifacts`.
 
+## Maps and their wildlife
+
+Every stage can have its own `fauna` (content/stages): how much more often each species or
+family turns up there (`desert_ant = 5`, `termite = 2`, `bee = 0.15`; 0 = never, `other` = the
+rest, the id beats the family) and `first`, the species that opens wave 1. Favoured species are
+also met sooner in the run (`Spawner:faunaMul`, `Pacing.shuffleOrder`). A mode's own families
+still apply on top. Content checks every fauna key at start-up.
+
+New maps (bought in the Burrow): **Dune Field** (desert, honeypot and pebble ants, velvet ants,
+sand wasps, harvester termites), **Rainforest Floor** (army, driver and bullet ants, leafcutters,
+orchid and stingless bees), **Rotting Log** (termites, wood ants, carpenter bees) and
+**Wildflower Meadow** (bees, wasps and hornets). The old maps got a lighter touch of fauna too
+(Sandstone Wash leans desert, Mossy Flagstones woodland, the lawn fire ants...).
+
+Mode select opens on a **Map** row (left and right to change, any open map) with the map's
+description and who lives there.
+
+Test: `love . --selftest --maps`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):

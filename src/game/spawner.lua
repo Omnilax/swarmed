@@ -73,13 +73,33 @@ function Spawner.new(world, stage)
         return x.id < y.id
     end)
     self.introOrder = Pacing.shuffleOrder(self, order)
+    -- a stage can name the species that opens its first wave (content/stages `fauna.first`)
+    local first = self.world.stage and self.world.stage.fauna and self.world.stage.fauna.first
+    if first then
+        for i, d in ipairs(self.introOrder) do
+            if d.id == first then table.insert(self.introOrder, 1, table.remove(self.introOrder, i)) break end
+        end
+    end
     return self
 end
 
 -- Whether the game mode lets this species take part (its families / enemies / exclude lists).
+-- The stage's own wildlife (content/stages `fauna`): how much more often a species turns up
+-- here (1 = normal, 0 = never; keys are enemy ids or family ids, the id wins).
+function Spawner:faunaMul(d)
+    local f = self.world.stage and self.world.stage.fauna
+    if not f or not d then return 1 end
+    local m = f[d.id]
+    if m == nil then m = f[d.family] end
+    if m == nil then m = f.other end
+    return m or 1
+end
+
 function Spawner:allows(d)
     local m, util = self.mode, require("src.core.util")
     if m.exclude and util.contains(m.exclude, d.id) then return false end
+    -- a stage can leave a species out entirely, unless the mode names it
+    if self:faunaMul(d) <= 0 and not (m.enemies and util.contains(m.enemies, d.id)) then return false end
     if not m.families and not m.enemies then return true end
     return (m.families ~= nil and util.contains(m.families, d.family)) or (m.enemies ~= nil and util.contains(m.enemies, d.id))
 end
@@ -586,7 +606,7 @@ function Spawner:pickEnemy()
     end
     local newest = self.knownList[#self.knownList]
     return util.weightedPick(self.knownList, function(d)
-        local wgt = d.spawn.weight
+        local wgt = d.spawn.weight * self:faunaMul(d)
         if d == newest and #self.knownList > 1 then wgt = math.max(wgt * 1.5, 25) end
         return wgt
     end)

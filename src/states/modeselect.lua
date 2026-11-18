@@ -71,9 +71,41 @@ function ModeSelect.facts(m)
     return f
 end
 
+-- The map row's panel: the chosen location and who lives there (content/stages `fauna`).
+function ModeSelect.mapInfo()
+    local Cosmetics = require("src.game.cosmetics")
+    local st = Content.stages:get(Cosmetics.location())
+    local f = st.fauna or {}
+    local list = {}
+    for k, v in pairs(f) do
+        if k ~= "first" and k ~= "other" and type(v) == "number" and v > 1 then list[#list + 1] = { k, v } end
+    end
+    table.sort(list, function(a, b) if a[2] ~= b[2] then return a[2] > b[2] end return a[1] < b[1] end)
+    local names = {}
+    for i = 1, math.min(5, #list) do
+        local id = list[i][1]
+        local e = Content.enemies:get(id)
+        local fam
+        for _, x in ipairs(Families) do if x.id == id then fam = x.label end end
+        names[#names + 1] = e and e.name or fam or id
+    end
+    local facts = { { "Lives here", #names > 0 and table.concat(names, ", ") or "A bit of everything" } }
+    local open, all = #Cosmetics.locations(), #Content.stages:all()
+    if open < all then facts[#facts + 1] = { "More maps", ("%d more in the Burrow"):format(all - open) } end
+    return { name = st.name, tagline = "Where the run is fought. Left and right to change.", description = st.description or "", facts = facts }
+end
+
 function ModeSelect.new()
     local self = setmetatable({ t = 0 }, ModeSelect)
-    local items, focus = {}, 1
+    local items, focus = {}, 2
+    -- the map: any open location (bought in the Burrow); also in Cosmetics > Location
+    do
+        local Cosmetics = require("src.game.cosmetics")
+        local opts = {}
+        for _, s in ipairs(Cosmetics.locations()) do opts[#opts + 1] = { value = s.id, label = s.name } end
+        items[#items + 1] = { type = "choice", label = "Map", options = opts, map = true,
+            get = Cosmetics.location, set = Cosmetics.setLocation }
+    end
     for _, m in ipairs(Content.modes:filter(function(d) return not d.hidden end)) do
         local Amber = require("src.game.amber")
         local open = Amber.modeOpen(m.id)
@@ -142,7 +174,7 @@ function ModeSelect:draw()
     self.menu:draw()
 
     local it = self.menu:focused()
-    local m = it and it.mode
+    local m = it and (it.map and ModeSelect.mapInfo() or it.mode)
     if not m then return end
     local px = math.min(u(320), w * 0.32) + u(100)
     local pw, ph = w - px - u(60), h - u(200)

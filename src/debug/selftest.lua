@@ -674,6 +674,7 @@ local function script(flags)
     if flags["--tutorial"] then require("src.debug.selftest_tutorial")(wait, shot) love.event.quit() return end
     if flags["--amber"] then require("src.debug.selftest_amber")(wait, shot) love.event.quit() return end
     if flags["--artifacts"] then require("src.debug.selftest_artifacts")(wait, shot) love.event.quit() return end
+    if flags["--maps"] then require("src.debug.selftest_maps")(wait, shot) love.event.quit() return end
     if flags["--gentle"] then require("src.debug.selftest_gentle")(wait, shot) love.event.quit() return end
     if flags["--gambles"] then require("src.debug.selftest_gambles")(wait, shot) love.event.quit() return end
     if flags["--hazards"] then require("src.debug.selftest_hazards")(wait, shot) love.event.quit() return end

@@ -24,6 +24,7 @@ return {
     mechanic = { type = "shrinking_lawn", most = 0.26, time = 50 },
     props = { pebble = 4, twig = 5 },
     events = { lawnmower = 16, acorns = 4 },
+    fauna = { fire_ant = 3, worker_ant = 2, pharaoh_ant = 1.5, crazy_ant = 1.5, jumping_ant = 1.5, termite = 0.6 },
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
 }

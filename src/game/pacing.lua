@@ -50,6 +50,9 @@ function Pacing.shuffleOrder(sp, order)
     local key = {}
     for i, d in ipairs(order) do
         key[d] = i == 1 and -math.huge or d.spawn.minWave * (jit.scale or 0.6) + sp.rng:random() * (jit.spread or 5)
+        -- the stage's own wildlife comes sooner (content/stages `fauna`), the rest later
+        local fm = sp.faunaMul and sp:faunaMul(d) or 1
+        if i > 1 and fm ~= 1 then key[d] = key[d] - math.log(fm) * 4 end
     end
     local out = {}
     for i, d in ipairs(order) do out[i] = d end

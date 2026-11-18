@@ -24,6 +24,7 @@ return {
     mechanic = { type = "rising_puddle", x = 0.62, y = 0.38, base = 45, perWave = 9, rise = 45, riseTime = 40, max = 175 },
     props = { pebble = 6, twig = 3 },
     events = { flood = 14, dew_drops = 12 },
+    fauna = { flying_ant = 2.5, crazy_ant = 2, pharaoh_ant = 2, mud_dauber = 2, desert_ant = 0.2, honeypot_ant = 0.3 },
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
 }

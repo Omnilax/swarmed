@@ -213,6 +213,13 @@ local function crossCheck()
     for _, st in ipairs(Content.stages:all()) do
         if st.mechanic then need(Content.mechanics, st.mechanic.type, "stage '" .. st.id .. "' mechanic") end
         for id in pairs(st.props or {}) do need(Content.props, id, "stage '" .. st.id .. "' props") end
+        -- fauna keys: enemy ids, family ids, "first" (an enemy id) or "other"
+        local fams = {}
+        for _, f in ipairs(require("src.config.families")) do fams[f.id] = true end
+        for k, v in pairs(st.fauna or {}) do
+            if k == "first" then need(Content.enemies, v, "stage '" .. st.id .. "' fauna.first")
+            elseif k ~= "other" and not fams[k] then need(Content.enemies, k, "stage '" .. st.id .. "' fauna") end
+        end
     end
     for _, sk in ipairs(Content.skins:all()) do
         if sk.character then need(Content.characters, sk.character, "skin '" .. sk.id .. "'") end

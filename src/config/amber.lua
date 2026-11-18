@@ -40,10 +40,14 @@ return {
                 items = { "glass_wings", "parasitoid_egg", "bullet_ant_venom", "hungry_tapeworm", "fools_gold_scarab", "queens_pheromone" } },
         } },
         { id = "maps", name = "Maps", list = {
-            { id = "stage_dappled_garden", name = "Dappled Garden", cost = 40, kind = "stage", stage = "dappled_garden" },
-            { id = "stage_puddle_patio", name = "Puddled Patio", cost = 40, kind = "stage", stage = "puddle_patio" },
-            { id = "stage_forest_floor", name = "Forest Floor", cost = 50, kind = "stage", stage = "forest_floor" },
-            { id = "stage_sandstone_wash", name = "Sandstone Wash", cost = 50, kind = "stage", stage = "sandstone_wash" },
+            { id = "stage_dappled_garden", cost = 40, kind = "stage", stage = "dappled_garden" },
+            { id = "stage_puddle_patio", cost = 40, kind = "stage", stage = "puddle_patio" },
+            { id = "stage_forest_floor", cost = 50, kind = "stage", stage = "forest_floor" },
+            { id = "stage_sandstone_wash", cost = 50, kind = "stage", stage = "sandstone_wash" },
+            { id = "stage_dune_field", cost = 60, kind = "stage", stage = "dune_field" },
+            { id = "stage_rotting_log", cost = 60, kind = "stage", stage = "rotting_log" },
+            { id = "stage_wildflower_meadow", cost = 65, kind = "stage", stage = "wildflower_meadow" },
+            { id = "stage_rainforest_floor", cost = 75, kind = "stage", stage = "rainforest_floor" },
         } },
         { id = "modes", name = "Modes", list = {
             { id = "mode_hive", cost = 40, kind = "mode", mode = "hive" },
