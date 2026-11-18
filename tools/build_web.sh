@@ -13,10 +13,12 @@ OUT="$(cd "$GAME/.." && pwd)/web"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-(cd "$GAME" && zip -9 -qr "$TMP/swarmed.love" . -x "tools/*" "docs/*" "*.md" ".git/*" ".gitignore")
+(cd "$GAME" && zip -9 -qr "$TMP/swarmed.love" . -x "tools/*" "docs/*" "*.md" ".git/*" ".gitignore" "assets/icon/*.ico" "assets/icon/*.icns")
 rm -rf "$OUT"
 npx --yes love.js@11.4.1 -c -t Swarmed -m 134217728 "$TMP/swarmed.love" "$OUT" >/dev/null
 cp "$GAME/tools/web/index.html" "$OUT/index.html"
+cp "$GAME/assets/icon/icon_64.png" "$OUT/favicon.png"            # browser tab icon
+cp "$GAME/assets/icon/icon_256.png" "$OUT/apple-touch-icon.png"  # home-screen icon on phones
 cp "$TMP/swarmed.love" "$OUT/../swarmed.love"      # same game for the LÖVE app (Android, desktop)
 rm -rf "$OUT/theme"
 (cd "$OUT" && rm -f ../swarmed-web.zip && zip -9 -qr ../swarmed-web.zip .)

@@ -20,6 +20,7 @@ local Touch = require("src.core.touch")
 local Records = require("src.game.records")
 local Music = require("src.core.music")
 local Feedback = require("src.game.feedback")
+local Presence = require("src.game.presence")
 
 local selftest
 
@@ -58,6 +59,7 @@ function love.load(args)
     -- tests and the balance bot drive one world: no moving to a new map between acts
     require("src.game.acts").off = Records.noSave or flags["--balance"] or false
     Music.init()
+    Presence.init(flags)  -- Discord status (src/game/presence.lua)
     Sprites.build(Content.sprites)
     -- custom bugs load after the atlas: their own art is built as small images of its own
     if not (Records.noSave or flags["--balance"]) then
@@ -88,6 +90,7 @@ function love.load(args)
         State.switch(require("src.debug.roster").new({ shot = flags["--shot"], t = 0.3 }))
         return
     end
+    if flags["--makeicon"] then State.switch(require("src.debug.iconmaker").new()) return end
     if flags["--profile"] then require("src.debug.profile").start(flags) return end
     if flags["--balance"] then require("src.debug.balance").start() return end
     if flags["--selftest"] then
@@ -104,6 +107,7 @@ function love.update(dt)
     Feedback.update(dt)
     Music.update(dt)
     Records.update(dt)
+    Presence.update(dt)
     Input.endFrame()
     Touch.endFrame()
 end
@@ -212,6 +216,7 @@ function love.quit()
     local game = State.find(require("src.states.game"))
     if game and game.closing then game:closing() end
     Records.quit()
+    Presence.quit()
 end
 
 -- Default LÖVE loop plus an optional frame cap (used when VSync is off).
