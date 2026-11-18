@@ -169,6 +169,150 @@ return { name = "Kitchen Sink", playstyle = "brawler",
     assert(bp.dead and bp._anims and bp._anims.pose_death, "death pose")
     CustomBugs.unregister(big.id)
 
+
+    -- 6. the template gallery: every template compiles without warnings and plays a short fight
+    local Creator = require("src.states.creator")
+    Creator._templates = nil
+    local files = {}
+    for _, f in ipairs(love.filesystem.getDirectoryItems("content/bugtemplates")) do if f:match("%.lua$") then files[#files + 1] = f end end
+    assert(#files >= 10, "expected 10 templates, found " .. #files)
+    for _, f in ipairs(files) do
+        local src = love.filesystem.read("content/bugtemplates/" .. f)
+        assert(src:match("%-%-%s*KIND:"), f .. " has no KIND line")
+        local d, info = CustomBugs.compile(src, f)
+        assert(d, f .. ": " .. tostring(info.errors[1]) .. " (line " .. tostring(info.line) .. ")")
+        for _, wm in ipairs(info.warnings) do print("[selftest] " .. f .. " warn: " .. wm) end
+        assert(#info.warnings == 0, f .. " warned: " .. tostring(info.warnings[1]))
+        CustomBugs.register(d, src)
+        local tw = World.new({ mode = "sandbox", character = d.id })
+        tw.flags.god = true
+        tw.pilot = { pressed = {}, down = {} }
+        local tp = tw.player
+        local hits = 0
+        tw.events:on("enemy_hit", function() hits = hits + 1 end)
+        for fr = 1, 420 do
+            if fr % 60 == 1 then tw:spawnRing("worker_ant", 8, tp.x, tp.y, 45) end
+            local ph = fr % 140
+            tw.pilot.down = { attack = ph < 70, secondary = ph >= 70 and ph < 100, dash = ph >= 110 and ph < 130 }
+            tw.pilot.pressed = { secondary = ph == 70, dash = ph == 110, attack = ph % 10 == 0 and ph < 70 }
+            if fr == 300 then tw.rewards.frenzy.charge = tw.rewards.frenzy.max tw.rewards.frenzy:unleash() end
+            tw:update(1 / 60)
+            if fr == 200 then love.graphics.origin() tw:draw() end
+        end
+        assert(not SM.errors[d.id], f .. " code failed: " .. tostring(SM.errors[d.id]))
+        assert(hits > 5, f .. " barely hit anything (" .. hits .. ")")
+        tw.events.handlers = {}
+        CustomBugs.unregister(d.id)
+        print(("[selftest] creator2: template %s ok (%d hits)"):format(d.name, hits))
+    end
+    CustomBugs.noSave = true
+    local cr = State.switch(Creator.new())
+    cr.page = "templates" cr:build()
+    wait(0.3)
+    shot("c2_templates")
+    assert(#cr.menu.items >= 12, "the gallery lists the templates")
+
+    -- 7. share codes round trip, and a bad one
+    local src0 = love.filesystem.read("content/bugtemplates/10_spark_wasp.lua")
+    local code = CustomBugs.shareCode(src0)
+    assert(code and code:find("^SWARMED%-BUG:") and #code < #src0, "share code")
+    assert(CustomBugs.fromShareCode("look: " .. code .. " !") == src0, "share code round trip")
+    assert(CustomBugs.fromShareCode("SWARMED-BUG:abc") == nil, "a broken code is refused")
+    print(("[selftest] creator2: share code ok (%d -> %d letters)"):format(#src0, #code))
+
+    -- 8. the mixer's new rows: status, pet, molt, hit look, sounds, card, ultimate survive a save
+    local Mixer = require("src.states.bugmixer")
+    local mx = State.push(Mixer.new())
+    local mm2 = mx.m
+    mm2.name = "Mixed Extras"
+    mm2.status, mm2.statusChance = "burn", 50
+    mm2.pet, mm2.petCount = "mite", 2
+    mm2.moltWave = 5
+    mm2.hitNum = "#ff4040"
+    mm2.cardColor, mm2.cardFrame, mm2.motto = "#40ff40", "gold", "Hello there."
+    mx:build(true) mx:refresh(true)
+    wait(0.3)
+    shot("c2_mixer_extras")
+    local msrc = mx:source()
+    local md, minfo = CustomBugs.compile(msrc)
+    assert(md, "mixer script broke: " .. tostring(minfo.errors[1]) .. "\n" .. msrc)
+    assert(md.statuses and md.statuses.burn, "mixer: status lost")
+    assert(md.pets and #md.pets >= 1, "mixer: pet lost")
+    assert(md.molt and md.molt.wave == 5, "mixer: molt lost")
+    assert(md.hitLook and md.hitLook.number, "mixer: hit look lost")
+    assert(md.card and md.card.motto == "Hello there." and md.card.frame == "gold", "mixer: card lost")
+    -- block editor from the mixer
+    mx:openBlocks("attack")
+    local be = State.top()
+    assert(be.steps and #be.steps[1] > 0, "block editor opens with a starter move")
+    be.steps[2] = { { "lunge", distance = 20 }, { "circle", radius = 40, damage = 9 } }
+    be:build(true) be:refresh(true)
+    wait(0.5)
+    shot("c2_blockeditor")
+    local bv = be:value()
+    assert(bv.combo and #bv.combo == 2, "two steps make a combo")
+    be:done()
+    assert(State.top() == mx and mm2.attackOwn and mm2.attackOwn.combo, "block editor hands the move back")
+    local md2 = CustomBugs.compile(mx:source())
+    assert(md2 and md2.attack and not md2.scripted, "a block move stays a plain mix")
+    State.pop()
+    print("[selftest] creator2: mixer extras + block editor ok")
+
+    -- 9. painter: kit parts, a limb, save as a new bug, then tweak its art
+    local Painter = require("src.states.painter")
+    local pt = State.push(Painter.new())
+    for tab = 1, 5 do pt.tab = tab wait(0.15) shot("c2_painter_" .. tab) end
+    local psrc = pt:source()
+    local pd, pinfo = CustomBugs.compile(psrc)
+    assert(pd and pd.art, "painter script: " .. tostring(pinfo and pinfo.errors[1]))
+    pt:save()
+    assert(pt.entry and pt.entry.def.art, "painter save: " .. tostring(pt.flash and pt.flash[1]))
+    local pid = pt.entry.id
+    local pt2 = Painter.new({ entry = pt.entry })
+    local d3 = CustomBugs.compile(pt2:source())
+    assert(d3 and d3.id == pid, "painting over a saved bug keeps it")
+    State.pop()
+    print("[selftest] creator2: painter ok")
+
+    -- 10. title card on bug select
+    local cs = State.push(require("src.states.charselect").new({}))
+    wait(0.3)
+    shot("c2_charselect")
+    State.pop()
+
+    -- 11. test arena: dummies, hitboxes shown, back to the creator from pause
+    State.switch(Creator.new())
+    local ag = State.push(require("src.states.game").new({ mode = "sandbox", character = pid, arena = true }))
+    wait(0.6)
+    assert(HS.show, "the arena shows hitboxes")
+    assert(#ag.world.enemies >= 6, "the arena has dummies")
+    shot("c2_arena")
+    local ps = State.push(require("src.states.pause").new(ag))
+    local backRow
+    for _, it in ipairs(ps.menu.items) do if (it.label or ""):find("Bug Creator") then backRow = it end end
+    assert(backRow, "pause has Back to the Bug Creator")
+    backRow.onActivate()
+    assert(getmetatable(State.top()) == Creator and not HS.show, "back in the creator")
+
+    -- 12. rating: a short run
+    local Rating = require("src.game.bugrating")
+    local keepT = Rating.TIME
+    Rating.TIME = 6
+    local rt = Rating.new(pid)
+    local guard = 0
+    while not rt.score and guard < 5000 do rt:step(200) guard = guard + 1 end
+    Rating.TIME = keepT
+    assert(rt.score and not rt.error, "rating: " .. tostring(rt.error))
+    local rs = State.push(require("src.states.rating").new(pt.entry.def))
+    rs.rating = rt
+    wait(0.2)
+    shot("c2_rating")
+    State.pop()
+    assert(require("src.game.records").get().characters[pid].power == rt.score, "the power level is saved")
+    print("[selftest] creator2: rating ok (" .. rt.score .. ")")
+    CustomBugs.delete(pid)
+    CustomBugs.noSave = nil
+
     if _G.CREATOR2_MORE then _G.CREATOR2_MORE(wait, shot) end
     State.switch(require("src.states.menu").new())
 end

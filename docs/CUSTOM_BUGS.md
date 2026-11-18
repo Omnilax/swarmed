@@ -19,7 +19,28 @@ Swarmed has a **Bug Creator** (main menu > Bug Creator). It makes custom playabl
 Custom bugs join the bug select screen with the others (Show: **Custom Bugs**). They are just for
 fun: they don't count towards the play-every-bug achievements and never come up as the daily bug.
 
-The Creator shows how each custom bug has done (runs, wins, best wave).
+The Creator shows how each custom bug has done (runs, wins, best wave, power level, challenges).
+
+More in the Creator (round 3):
+
+* **Paint a Bug** – the Bug Painter: a pixel grid with pen, fill, colour picker and mirror; a
+  **body-part kit** (7 heads, 6 middles, 6 backs that fit together); drag the leg joints; add
+  claws, blades, tails, horns, feelers and wings from a list; change each palette colour. The bug
+  walks round in a preview as you paint. **Paint Art** on a saved bug repaints it.
+* **Template Gallery** – ten ready bugs to start from (tank, summoner, sniper, trickster,
+  berserker, bomber, vampire, shapeshifter, pet master, glass cannon), in
+  [`content/bugtemplates/`](../content/bugtemplates). Each is a full script showing a different
+  part of what follows.
+* **Build from blocks** (in the mixer) – make a move with no code: a list of blocks (lunge, wait,
+  swing, slam, thrust, shockwave, spinning sweep, shoot, lob, puddle, push, pull, wall, hatch
+  helpers, heal, shield, speed, plant feet, vanish, afflict, ring, shake, hitstop, sound), each with
+  its own sliders. Add more steps to make a **combo**. The preview shows every hitbox.
+* The mixer also sets the **ultimate**, the **hit look and sounds**, a **status effect**, **pets**,
+  a **molt** and the **title card**.
+* Per bug: **Test Arena** (dummy ants that don't die, hitboxes shown, a damage-per-second meter;
+  Pause > Back to the Bug Creator), **Rate It** (a power level: the bug plays the same short fight
+  as three built-in bugs, 100 = as strong as them), and **challenges** shown in its panel.
+
 
 ## Sharing a bug
 
@@ -27,7 +48,8 @@ Every custom bug is one `.lua` file, so sharing one means sharing that text.
 
 | To... | Do this |
 |---|---|
-| Give someone your bug | Bug Creator > your bug > **Copy Code**, then paste it in a message. |
+| Give someone your bug | Bug Creator > your bug > **Copy Share Code** (one short line, `SWARMED-BUG:...`) or **Copy Code** (the script), then paste it in a message. |
+| Add a bug from a share code | Bug Creator > **Paste a Script** takes share codes too. |
 | Add a bug someone gave you | Copy their script, then Bug Creator > **Paste a Script**. On a computer you can also drop the `.lua` file onto the game window. |
 | Edit files by hand | Bug Creator > **Open the Bug Folder** (desktop). Each bug is `custom_bugs/<id>.lua` in the save folder; press **Reload Bug Files** after changing them. |
 | Write a bug in your own editor | Bug Creator > **Copy the Blueprint**, or open [`content/characters/_custom_blueprint.lua`](../content/characters/_custom_blueprint.lua). |
@@ -366,6 +388,138 @@ Every hit and shot takes the same extras: `knockback` (0 .. 900), `poison = { dp
 | `ring{ radius, color, x, y, life }`, `particles{ count, color, speed, glow }`, `shake(amount)`, `say(text, color)` | Effects and floating text. |
 | `count(radius)`, `nearest(radius)`, `enemies(radius)` | How many ants are near; x, y of the nearest; a list of up to 40 `{ x, y, hp, maxHp, id, boss, queen, elite, flying, poisoned, slowed }`. |
 | `props(radius)`, `kickProps{ radius, strength, ahead, x, y }` | Rocks, sticks and leaves near the bug (`{ x, y, id, size }`); knock them flying. `grab` picks up props too. |
+
+### Hitboxes and feel (`me.hit`)
+
+`me.hit{...}` is the one call behind every hit in code. It lays a **shape** along the aim, can
+wait a **wind-up** first (with a telegraph on the ground), can stay **live** for a while (moving
+with the bug and sweeping round), and sets the **feel** of every contact. `hitArc`, `hitCircle`,
+`hitLine`, `hitBox` and `hitRing` are short forms of it and take all the same fields.
+
+| Shape (`shape =`) | Numbers |
+|---|---|
+| `"circle"` | `radius` |
+| `"arc"` (or `"cone"`) | `radius`, `degrees` (or `arc` in radians), `inner` (a hollow middle) |
+| `"ring"` | `radius`, `inner` |
+| `"box"` | `length`, `width`, `back` (how far it starts behind the hit point) |
+| `"line"` | `length`, `width` (thickness each side) |
+| `"poly"` | `points = { {forward, side}, ... }` up to 16 corners, any outline |
+
+| Field | What it does |
+|---|---|
+| `ahead`, `side`, `turn`, `x`, `y` | Where: pixels along the aim, across it, a turn (radians), or a fixed place. |
+| `windup` | Seconds before it lands, with a telegraph (`telegraph = false` hides it). |
+| `active`, `rehit` | Seconds the shape stays live; seconds between hits on the same ant while live. |
+| `follow` | `true` moves with the bug, `"aim"` also turns with the aim. |
+| `sweep = { from, to }` | Turns the shape from one angle to another (radians) over `active`: spins, sweeps. |
+| `maxTargets` | Stop after this many ants. |
+| `damage`, `knockback`, `kb` | `kb = "out"` (default), `"aim"`, `"in"` (pull), `"side"`, `"player"` (towards the bug). |
+| `stagger`, `stun`, `poison`, `slow`, `status` | Extra effects; `status` names one of the bug's own `statuses`. |
+| `sweet = { from, to, mult, color, text }` | A sweet spot: ants between `from` and `to` (0 = base, 1 = tip) take `mult` times the damage, with their own colour and text ("TIP!"). |
+| `hitstop`, `shake` | A freeze (up to 0.25 s, at most every 0.15 s) and screen shake when it lands. |
+| `sound`, `hitSound` | A sound on the swing, a sound on each contact. |
+| `number`, `sparks = { color, count }` | The damage number colour and hit sparks for this hit. |
+| `fx`, `color`, `fxLife` | The swing drawing: `"slash"`, `"ring"`, `"stab"`, `"outline"`, `"none"`. |
+| `onHit = function(me, ev)` | Runs for each ant hit (`ev.x`, `ev.y`, `ev.damage`, `ev.hp`, `ev.killed`, `ev.boss`, `ev.sweet`). |
+| `debug = true` | Draws this hitbox. `me.showHitboxes(true)` draws all of them; so does the Test Arena. |
+
+```lua
+-- a slow overhead smash: plants its feet, winds up, freezes on impact, tip hits harder
+fire = function(me)
+    me.root(0.3)
+    me.hit({ shape = "box", length = 70, width = 30, windup = 0.25, damage = 30, kb = "aim",
+        knockback = 400, hitstop = 0.06, shake = 0.2, sweet = { from = 0.7, mult = 1.5, text = "CRUNCH" } })
+end
+-- a spinning blade that stays out for a third of a second
+me.hit({ shape = "arc", radius = 58, degrees = 50, active = 0.32, sweep = { -3.3, 3.3 }, follow = true, damage = 14 })
+```
+
+More toolkit calls: `me.hitstop(s)`, `me.root(s)` (stand still), `me.cooldown(s)` (set this
+move's cooldown now), `me.statusArea{ status, radius, x, y }`, `me.form(n)`, `me.formNow()`,
+`me.pets()`, `me.addPet(i)`, `me.showHitboxes(on)`. Colours can be `"#rrggbb"` anywhere.
+
+### Moves from blocks, and combos
+
+A move can be a list of **blocks** instead of code. It is what the mixer's **Build from blocks**
+makes, and it can be written by hand:
+
+```lua
+attack = { name = "Leap Slash", cooldown = 0.8, blocks = {
+    { "lunge", distance = 50 },
+    { "wait", time = 0.1 },                                 -- holds back the blocks after it
+    { "arc", radius = 50, degrees = 140, damage = 12, windup = 0.1 },
+    { "pool", radius = 20, life = 3, dps = 4 },
+} }
+```
+
+Block kinds: `lunge, wait, arc, circle, box, ring, sweep, shoot, lob, pool, push, pull, wall,
+summon, heal, shield, speed, root, cloak, status, ring_fx, shake, hitstop, sound`.
+
+A **combo** plays the next step when pressed again within `window` seconds, else starts over.
+Each step is a list of blocks or a `function(me)`:
+
+```lua
+attack = { name = "Fury", cooldown = 0.28, combo = { window = 0.7,
+    { { "arc", radius = 46, degrees = 120, damage = 9 } },
+    { { "lunge", distance = 18 }, { "arc", radius = 50, degrees = 140, damage = 11 } },
+    function(me) me.hit({ shape = "ring", radius = 60, damage = 20 }) me.cooldown(0.6) end,
+} }
+```
+
+### Forms, molts, pets, statuses and the ultimate
+
+```lua
+-- Forms: hold Shift to turn into form 2 (let go to turn back). Each form can change the moves,
+-- stats, colours and art. formSwitch = "code" leaves Shift alone and switches with me.form(n).
+forms = { { name = "Crusher", say = "Crusher!", look = "rhino_beetle", stats = { armor = 6, moveSpeed = -45 },
+    attack = { name = "Slam", cooldown = 1, blocks = { { "circle", radius = 60, ahead = 20, damage = 30 } } } } },
+
+-- Molt: once in a run, at a wave (wave = 10) or after some kills (kills = 200), the bug changes for good.
+molt = { wave = 10, name = "Spark Queen", say = "Long live the queen!", stats = { maxHp = 50 }, scale = 1.3,
+    attack = { ... }, art = { ... } },
+
+-- Pets: helpers that follow the bug. ai = "hunt" (chase ants), "guard" (stay close, bite),
+-- "orbit" (circle the bug, hurt what they touch), "shooter" (shoot from beside the bug).
+-- Ready ones: "mite", "guard", "moth", "spitter" (preset = ... and change any field).
+pets = { { preset = "mite", count = 2 }, { name = "Fly", ai = "orbit", count = 3, damage = 3, range = 40,
+    art = { ".a.", "aba", ".a." }, palette = { a = "#303030", b = "#80c0ff" }, status = "burn" } },
+
+-- Status effects: name, color, time, dps, slow (0..1), stun, confuse (wander), charm (attack
+-- other ants), weaken (they deal less), vulnerable (they take more), spread (to nearby ants on
+-- death), stacks; onHit = 0.3 puts it on 30% of every hit. Ready ones: burn, frost, toxic, daze,
+-- charm, weaken (preset = ...). Moves use them with status = "burn".
+statuses = { burn = { preset = "burn", onHit = 0.25 }, rot = { name = "Rot", color = "#80a040", dps = 2, time = 6, spread = 30 } },
+
+-- The ultimate (replaces the Frenzy meter's power): fire = function(me) or blocks, plus a
+-- timed stat buff. charge = how fast the meter fills (1 = normal).
+ultimate = { name = "Bloodlust", color = "#ff4030", charge = 1.2, duration = 0.3,
+    blocks = { { "shake", amount = 0.3 }, { "ring", radius = 140, inner = 0, damage = 50 } },
+    buff = { stats = { damage = 40, attackSpeed = 40 }, time = 6 } },
+```
+
+### Hit look, sounds, poses, title card and challenges
+
+```lua
+hitFx = { number = "#80ff80", crit = "#ffd040", sparks = { color = "#80ff80", count = 3 }, sound = "zap" },
+-- a sound for each event: a built-in name, { sound, pitch, volume }, or a synth like `sounds`.
+-- Names: boom, zap, dash, hit, swing, special, chime, drop, kill, pickup, equip, bell, hurt
+soundPack = { attack = { sound = "swing", pitch = 0.8 }, hurt = "zap", death = "boom", kill = "chime" },
+-- poses (any anims clip; death and victory hold their last frame). `poses` is the same as anims.
+poses = { idle = { time = 1.2, keys = { { 0 }, { 0.5, lift = 2 }, { 1 } } },
+          death = { time = 0.6, keys = { { 0 }, { 1, roll = 3.1 } } }, victory = { ... } },
+-- the bug select card
+card = { motto = "Nothing gets through.", color = "#ffd070", frame = "shell" },  -- plain, leaf, gold, bone, web, shell
+-- challenges in the Creator panel: goal = win, wave (n), kills (n), nodash (n), nohit, fast
+-- (minutes), ultimate (n). Without this list the bug gets six standard ones.
+challenges = { { name = "Untouchable", goal = "nohit" }, { goal = "kills", n = 2000 } },
+```
+
+### Wings, feelers and moving limbs
+
+`art.wings = { size = 5, color = "#e8f4ff", flap = 30 }` and `art.antennae = { length = 5,
+color = "#2a2010" }` add a pair of flapping wings or swaying feelers without writing limbs. Any
+limb in `art.limbs` can move on its own with `flap = <beats per second>` or `sway = <amount>`,
+and `tip = "wing"` draws a see-through wing.
 
 ### Code on game events
 

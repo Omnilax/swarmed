@@ -304,9 +304,11 @@ local function buildMove(slot, v, reg, errs, warns)
                 local bl = MB.clean(v.blocks, warns, slot .. ".blocks")
                 gen = bl and #bl > 0 and MB.compile(bl) or nil
             end
+            local pure = true
+            for _, st in ipairs(type(v.combo) == "table" and v.combo or {}) do if type(st) == "function" then pure = false end end
             if gen then
                 local v2 = copyTable(v)
-                v2[key], v2.type = gen, nil
+                v2[key], v2.type, v2.fromBlocks = gen, nil, pure or nil
                 if slot == "dash" and v2.distance == nil then v2.distance = 0 end
                 v = v2
             end
@@ -314,7 +316,6 @@ local function buildMove(slot, v, reg, errs, warns)
             warns[#warns + 1] = slot .. ": combo is ignored when " .. key .. " is written in code"
         end
         params = CustomBugs.plain(v)
-        params.combo = nil
         clampParams(params, 0)
         -- functions and no type: a move written in code
         if params.type == nil then
@@ -889,7 +890,7 @@ function CustomBugs.build(raw)
     end
     -- moves written in code (src/game/scriptmoves.lua runs them)
     for _, slot in ipairs({ "attack", "secondary", "dash" }) do
-        if type(def[slot]) == "table" and tostring(def[slot].type):match("^scripted") then def.scripted = true end
+        if type(def[slot]) == "table" and tostring(def[slot].type):match("^scripted") and not def[slot].fromBlocks then def.scripted = true end
     end
     if def.hooks or def.ownTree then def.scripted = true end
     -- colours: a built-in skin's fields
@@ -928,7 +929,12 @@ function CustomBugs.build(raw)
         if def.formSwitch ~= "code" then def.dash = Extras.formDash(def) def.mix.dash = "form" end
         def.scripted = true
     end
-    if def.ownFrenzy or def.molt or def.pets or def.statuses then def.scripted = true end
+    -- only what the mixer can't make again marks the bug as written in code
+    if def.ownFrenzy and not def.mix.ultimate then def.scripted = true end
+    if def.molt and not def.mix.moltSimple then def.scripted = true end
+    for _, pt in ipairs(def.pets or {}) do if not pt.preset then def.scripted = true end end
+    for id, st in pairs(def.statuses or {}) do if st.preset ~= id then def.scripted = true end end
+    if def.pets and #def.pets > 1 then def.scripted = true end
     if type(raw.skillTree) == "table" then def.ownTree = buildTree(def, raw.skillTree, errs, warns) end
     if not (def.ownTree or def.skillTree or def.presetTree) then def.presetTree = Presets.forPlaystyle(def.playstyle) end
     if def.hooks or def.ownTree then def.scripted = true end
@@ -1124,7 +1130,7 @@ end
 
 local KEY_ORDER = { "name", "description", "lore", "tip", "look", "scale", "radius", "colors", "playstyle",
     "stats", "attack", "secondary", "dash", "rules", "skillTree", "immune", "startingItems", "tags",
-    "passives", "effects", "movement", "music", "hitFx", "soundPack", "card", "challenges" }
+    "passives", "effects", "movement", "music", "hitFx", "soundPack", "card", "statuses", "pets", "molt", "ultimate", "challenges" }
 
 local function isIdent(k) return type(k) == "string" and k:match("^[%a_][%w_]*$") ~= nil end
 
@@ -1206,13 +1212,38 @@ function CustomBugs.tweakSource(source, t)
     table.sort(keys)
     if #keys > 0 then line("bug.stats = bug.stats or {}") end
     for _, k in ipairs(keys) do line(("bug.stats.%s = %s"):format(k, ser(t.stats[k], ""))) end
-    for _, k in ipairs({ "music", "passives", "effects", "movement" }) do
+    for _, k in ipairs({ "art", "music", "passives", "effects", "movement", "hitFx", "soundPack", "card", "statuses", "pets", "molt", "ultimate" }) do
         local v = t.extras and t.extras[k]
         if v == false then line("bug." .. k .. " = nil")
         elseif v ~= nil then line("bug." .. k .. " = " .. ser(v, "")) end
     end
     line("return bug")
     return table.concat(out)
+end
+
+-- Share codes: a bug's whole script packed into one line of text ("SWARMED-BUG:..."), easy to
+-- paste into a chat. Paste a Script in the Bug Creator reads them back.
+CustomBugs.SHARE_PREFIX = "SWARMED-BUG:"
+function CustomBugs.shareCode(source)
+    local ok, packed = pcall(love.data.compress, "string", "zlib", source, 9)
+    if not ok then return nil end
+    local ok2, text = pcall(love.data.encode, "string", "base64", packed)
+    if not ok2 then return nil end
+    return CustomBugs.SHARE_PREFIX .. text:gsub("%s", "")
+end
+-- text -> the script, or nil if it isn't a share code (or a broken one: nil, why)
+function CustomBugs.fromShareCode(text)
+    if type(text) ~= "string" then return nil end
+    local body = text:match(CustomBugs.SHARE_PREFIX:gsub("%-", "%%-") .. "%s*([%w%+/=%s]+)")
+    if not body then return nil end
+    body = body:gsub("%s", "")
+    if #body > 60000 then return nil, "that share code is too long" end
+    local ok, packed = pcall(love.data.decode, "string", "base64", body)
+    if not ok then return nil, "the share code is cut short or mistyped" end
+    local ok2, src = pcall(love.data.decompress, "string", "zlib", packed)
+    if not ok2 or type(src) ~= "string" then return nil, "the share code is cut short or mistyped" end
+    if #src > CustomBugs.MAX_SOURCE then return nil, "too big" end
+    return src
 end
 
 function CustomBugs.blueprint()

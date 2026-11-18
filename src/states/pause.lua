@@ -24,7 +24,13 @@ function Pause.new(game)
         { type = "button", label = "Settings", onActivate = function() State.push(require("src.states.settings").new()) end },
         { type = "button", label = "Restart", onActivate = function() game:restart() end },
     }
-    if RunSave.allowed(game) then
+    if game.params and game.params.arena then
+        items[#items + 1] = { type = "button", label = "Back to the Bug Creator", onActivate = function()
+            require("src.game.hitshapes").show = false
+            State.pop()
+            State.pop()
+        end }
+    elseif RunSave.allowed(game) then
         items[#items + 1] = { type = "button", label = "Save & Quit", onActivate = function() game:saveAndQuit() end }
         items[#items + 1] = { type = "button", label = "Abandon Run", onActivate = function() State.switch(require("src.states.menu").new()) end }
     else

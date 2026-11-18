@@ -84,6 +84,28 @@ Extras.GOALS = {
 Extras.DEFAULT_CHALLENGES = { { goal = "wave", n = 5 }, { goal = "wave", n = 15 }, { goal = "win" }, { goal = "nohit" },
     { goal = "nodash", n = 10 }, { goal = "kills", n = 1000 } }
 
+-- Ready-made ones for the mixer (and statuses = { "burn" } / pets = { "mite" } in a script).
+Extras.STATUS_PRESETS = {
+    burn = { name = "Burn", color = "#ff7a30", dps = 5, time = 3, stacks = 3 },
+    frost = { name = "Frost", color = "#80c8ff", slow = 0.4, time = 2.5 },
+    toxic = { name = "Toxic", color = "#90e040", dps = 3, time = 4, spread = 30 },
+    daze = { name = "Daze", color = "#c0a0ff", confuse = true, time = 1.5 },
+    charm = { name = "Charm", color = "#ff80c0", charm = true, time = 2.5, charmDamage = 6 },
+    weaken = { name = "Weaken", color = "#b0a890", weaken = 0.6, vulnerable = 1.3, time = 4 },
+}
+Extras.STATUS_ORDER = { "burn", "frost", "toxic", "daze", "charm", "weaken" }
+Extras.PET_PRESETS = {
+    mite = { name = "Mites", ai = "hunt", count = 2, damage = 4, speed = 170, art = { ".a.", "aba", ".a." },
+        palette = { a = "#8a4a2a", b = "#e0a060" } },
+    guard = { name = "Guard Beetle", ai = "guard", count = 1, damage = 8, rate = 0.7, speed = 130,
+        art = { ".aa.", "abba", "abba", ".aa." }, palette = { a = "#2a3a50", b = "#5a80b0" } },
+    moth = { name = "Moon Moths", ai = "orbit", count = 2, damage = 4, speed = 3, range = 34,
+        art = { "a.a", ".b.", "a.a" }, palette = { a = "#e0d8b0", b = "#806040" } },
+    spitter = { name = "Spitter", ai = "shooter", count = 1, damage = 5, rate = 0.8, range = 170,
+        art = { ".a.", "aba", "a.a" }, palette = { a = "#507a30", b = "#c0f070" } },
+}
+Extras.PET_ORDER = { "mite", "guard", "moth", "spitter" }
+
 -- A small pixel picture (pets): rows of palette letters -> clean rows, or nil.
 local function pixelRows(rows, pal, maxW, maxH)
     if type(rows) ~= "table" or #rows == 0 or #rows > maxH then return nil end
@@ -130,6 +152,10 @@ function Extras.build(raw, def, errs, warns, rebuild)
         for id, s in pairs(raw.statuses) do
             n = n + 1
             if n > 8 then warns[#warns + 1] = "statuses: 8 at most" break end
+            if type(id) == "number" and Extras.STATUS_PRESETS[s] then id, s = s, setmetatable({ preset = s }, { __index = Extras.STATUS_PRESETS[s] }) end
+            if type(s) == "table" and Extras.STATUS_PRESETS[s.preset] and getmetatable(s) == nil then
+                s = setmetatable(s, { __index = Extras.STATUS_PRESETS[s.preset] })
+            end
             if type(id) ~= "string" or not id:match("^[%a_][%w_]*$") or type(s) ~= "table" then
                 warns[#warns + 1] = "statuses." .. tostring(id) .. " dropped (statuses = { burn = { dps = 4 } })"
             else
@@ -138,7 +164,8 @@ function Extras.build(raw, def, errs, warns, rebuild)
                     stun = s.stun == true or nil, confuse = s.confuse == true or nil, charm = s.charm == true or nil,
                     charmDamage = clamp(s.charmDamage, 0, 100, 5),
                     weaken = s.weaken and clamp(s.weaken, 0, 1, 0.5), spread = s.spread and clamp(s.spread, 4, 150, 30),
-                    stacks = math.floor(clamp(s.stacks, 1, 10, 1)), vulnerable = s.vulnerable and clamp(s.vulnerable, 1, 3, 1.3) }
+                    stacks = math.floor(clamp(s.stacks, 1, 10, 1)), vulnerable = s.vulnerable and clamp(s.vulnerable, 1, 3, 1.3),
+                    onHit = s.onHit and clamp(s.onHit, 0, 1, 0.25), preset = Extras.STATUS_PRESETS[s.preset] and s.preset or nil }
             end
         end
         if not next(def.statuses) then def.statuses = nil end
@@ -148,6 +175,8 @@ function Extras.build(raw, def, errs, warns, rebuild)
         def.pets = {}
         for i, p in ipairs(raw.pets) do
             if i > 6 then warns[#warns + 1] = "pets: 6 kinds at most" break end
+            if type(p) == "string" and Extras.PET_PRESETS[p] then p = { preset = p } end
+            if type(p) == "table" and Extras.PET_PRESETS[p.preset] then p = setmetatable(p, { __index = Extras.PET_PRESETS[p.preset] }) end
             if type(p) ~= "table" then warns[#warns + 1] = "pets[" .. i .. "] must be a table" else
                 local pal = {}
                 for k, v in pairs(type(p.palette) == "table" and p.palette or {}) do
@@ -162,7 +191,8 @@ function Extras.build(raw, def, errs, warns, rebuild)
                     damage = clamp(p.damage, 0, 300, 5), speed = clamp(p.speed, 20, 500, ai == "orbit" and 3 or 150),
                     range = clamp(p.range, 10, 400, ai == "orbit" and 36 or ai == "shooter" and 160 or 120),
                     rate = clamp(p.rate, 0.1, 10, ai == "shooter" and 1 or 0.6), status = type(p.status) == "string" and p.status or nil,
-                    shotColor = hex(p.shotColor, nil), knockback = clamp(p.knockback, 0, 400, 30) }
+                    shotColor = hex(p.shotColor, nil), knockback = clamp(p.knockback, 0, 400, 30),
+                    preset = Extras.PET_PRESETS[p.preset] and p.preset or nil }
             end
         end
         if #def.pets == 0 then def.pets = nil end
@@ -175,6 +205,9 @@ function Extras.build(raw, def, errs, warns, rebuild)
             local MB = require("src.game.moveblocks")
             local bl = MB.clean(u.blocks, warns, "ultimate.blocks")
             fire = bl and #bl > 0 and MB.compile(bl) or nil
+            if fire and def.mix and type(tick) ~= "function" then
+                def.mix.ultimate = { name = u.name, color = u.color, blocks = bl, duration = u.duration, charge = u.charge }
+            end
         end
         if type(fire) ~= "function" then errs[#errs + 1] = "ultimate needs fire = function(me) ... end (or blocks = { ... })"
         else
@@ -284,6 +317,11 @@ function Extras.build(raw, def, errs, warns, rebuild)
         end
         if type(raw.molt) == "table" then
             local d = variant(raw.molt, "molt", "_m")
+            local simple = true
+            for k in pairs(raw.molt) do
+                if not (k == "wave" or k == "name" or k == "say" or k == "stats" or k == "scale") then simple = false end
+            end
+            if d and def.mix then def.mix.moltSimple = simple or nil end
             if d then
                 def.molt = { wave = math.floor(clamp(raw.molt.wave, 2, 100, 10)), def = d, name = text(raw.molt.name, 24) or "Molted",
                     kills = raw.molt.kills and math.floor(clamp(raw.molt.kills, 10, 100000, 300)) or nil }
@@ -689,10 +727,71 @@ end
 function Extras.event(player, name, ctx)
     local base = player.def.baseDef or player.def
     if name == "onKill" then player.killsRun = (player.killsRun or 0) + 1 end
+    if name == "onDash" and player.onDashCount then player.onDashCount() end
+    -- statuses with onHit = chance stick on any hit (copied moves too)
+    if name == "onHit" and base.statuses and ctx.target and (ctx.procDepth or 0) < 2 then
+        for id, S in pairs(base.statuses) do
+            if S.onHit and love.math.random() < S.onHit then Extras.applyStatus(player.world, ctx.target, id) end
+        end
+    end
     if name == "onWaveStart" and base.molt and not player.molted and not base.molt.kills then
         local wave = ctx.wave or (player.world and player.world.spawner and player.world.spawner.wave) or 0
         if wave >= base.molt.wave then Extras.doMolt(player) end
     end
+end
+
+-- Challenges -----------------------------------------------------------------------------------
+-- Records.track calls this for a custom bug's runs: goals met are kept in its record
+-- (characters[id].challenges[goal id] = true) with a banner when one is done.
+function Extras.track(world, run, rec)
+    local base = world.player.def.baseDef or world.player.def
+    local list = base.challenges
+    if not list or #list == 0 then return end
+    rec.challenges = rec.challenges or {}
+    local done = rec.challenges
+    local custom = world.modeDef and world.modeDef.custom
+    local dashes, ults = 0, 0
+    local function complete(ch)
+        if done[ch.id] then return end
+        done[ch.id] = true
+        world.milestone = { text = "CHALLENGE: " .. ch.name:upper(), t = 0 }
+        require("src.core.audio").play("chime", { pitch = 1.2 })
+        pcall(require("src.game.records").save)
+    end
+    local function check(kind, value)
+        if custom then return end           -- Custom Waves can be as easy as you make them
+        for _, ch in ipairs(list) do
+            if not done[ch.id] then
+                local g = ch.goal
+                if g == "wave" and kind == "wave" and value >= ch.n then complete(ch)
+                elseif g == "nodash" and kind == "wave" and value >= ch.n and dashes == 0 then complete(ch)
+                elseif g == "kills" and kind == "kill" and run.kills >= ch.n then complete(ch)
+                elseif g == "nohit" and kind == "cleared" and value then complete(ch)
+                elseif g == "win" and kind == "won" then complete(ch)
+                elseif g == "fast" and kind == "won" and world.time < ch.n * 60 then complete(ch)
+                elseif g == "ultimate" and kind == "ult" and ults >= ch.n then complete(ch) end
+            end
+        end
+    end
+    local ev = world.events
+    ev:on("wave_started", function(wave) check("wave", wave) end)
+    ev:on("enemy_died", function() check("kill") end)
+    ev:on("wave_cleared", function() check("cleared", run.waveDamage <= 0) end)
+    ev:on("run_won", function() check("won") end)
+    ev:on("frenzy_unleashed", function() ults = ults + 1 check("ult") end)
+    world.player.onDashCount = function() dashes = dashes + 1 end
+end
+
+-- How many of a bug's challenges are done: done, total, list { name, done }
+function Extras.challengeState(def)
+    local rec = require("src.game.records").get().characters[def.id]
+    local done = rec and rec.challenges or {}
+    local out, n = {}, 0
+    for _, ch in ipairs(def.challenges or {}) do
+        out[#out + 1] = { name = ch.name, done = done[ch.id] == true }
+        if done[ch.id] then n = n + 1 end
+    end
+    return n, #out, out
 end
 
 return Extras

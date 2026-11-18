@@ -230,7 +230,7 @@ return function(wait, shot)
     Prefs.get().last = { character = "mantis", gameMode = "swarm" }
     local menu = State.switch(require("src.states.menu").new())
     local found = {}
-    for _, it in ipairs(menu.menu.items) do found[it.label:match("^[^:]+")] = true end
+    for _, it in ipairs(menu.menu.items) do found[it.label:match("^(.-)%s+·") or it.label:match("^[^:]+")] = true end
     assert(found["Play Again"] and found.Practice, "title shortcuts")
     wait(0.3)
     shot("qol_title")

@@ -125,6 +125,7 @@ function Player:setCharacter(def)
     -- round 3: hitboxes, forms, molt, pets, statuses, poses (src/game/hitshapes.lua, src/game/bugextras.lua)
     self.hitboxes, self.scriptStopAt, self.scriptCd, self.formIndex, self.molted = nil, nil, nil, nil, nil
     self.pets, self.petsOut, self.statusTargets, self.killsRun, self.ultUses, self.idleClipT, self.wonPose = nil, nil, nil, nil, nil, nil, nil
+    self.onDashCount = nil
     self.slowT, self.slowAmt = 0, 1                 -- timed slow (pebble daze)
     self.venomT, self.venomDps, self.venomTick = 0, 0, 0   -- poison from venomous bites
     self.stunT, self.blindT, self.gumT, self.gumMul = 0, 0, 0, 1   -- paralysed, blinded, attacks gummed up (bees, wasps)

@@ -228,6 +228,7 @@ function CharSelect:draw()
         local reserve = not Unlocks.bug(def.id) and Theme.u(84) or (Theme.u(78) + (BugRules[def.custom and (def.rules or "") or def.id] and Theme.u(24) or 0))
         bh = math.max(Theme.u(50), bh - reserve)
         self.preview:draw(bx, by, bw, bh)
+        if def.card then CharSelect.drawFrame(def.card, bx, by, bw, bh, self.t) end
         ty = by + bh + Theme.u(22)
     elseif def.model then
         -- slowly turning 3D model on a soft shadow
@@ -248,7 +249,8 @@ function CharSelect:draw()
     lg.setColor(1, 1, 1, 1)
 
     lg.setFont(Theme.font(30))
-    Theme.printShadow(def.name, px, ty, Theme.colors.text, "center", pw)
+    local card = def.card
+    Theme.printShadow(def.name, px, ty, card and card.color and { card.color[1], card.color[2], card.color[3], 1 } or Theme.colors.text, "center", pw)
     -- the favourite star: click it (or tap it) to pin the bug to the top of the list
     local nw = lg.getFont():getWidth(def.name)
     local sr = Theme.u(9)
@@ -257,7 +259,12 @@ function CharSelect:draw()
     Menu.star(sx, sy, sr, on and Theme.colors.focus or { 0.4, 0.34, 0.28, 1 })
     self.starRect = { x = sx - sr * 1.6, y = sy - sr * 1.6, w = sr * 3.2, h = sr * 3.2, def = def }
     local style = Playstyles.byId[def.playstyle or ""]
-    if style then
+    if card and card.motto then
+        lg.setFont(Theme.font("small", "bold"))
+        local cc = card.color or Theme.colors.accent
+        lg.setColor(cc[1], cc[2], cc[3], 1)
+        lg.printf((style and (style.label:upper() .. "   ") or "") .. "\"" .. card.motto .. "\"", px, ty - Theme.u(18), pw, "center")
+    elseif style then
         lg.setFont(Theme.font("small", "bold"))
         lg.setColor(Theme.colors.accent)
         lg.printf(style.label:upper(), px, ty - Theme.u(18), pw, "center")
@@ -322,6 +329,63 @@ end
 
 -- Bottom of the panel: the bug's rule, its danger level picker and mastery stars, or what
 -- unlocks it.
+-- A custom bug's portrait frame (card = { frame, color }, Bug Creator).
+function CharSelect.drawFrame(card, x, y, w, h, t)
+    local lg = love.graphics
+    local u = Theme.u
+    local c = card.color or { 0.9, 0.75, 0.45 }
+    local f = card.frame or "plain"
+    lg.setLineStyle("rough")
+    lg.setColor(c[1], c[2], c[3], 0.9)
+    lg.setLineWidth(f == "gold" and 2 or 1)
+    lg.rectangle("line", x - 2, y - 2, w + 4, h + 4)
+    if f == "gold" then
+        lg.setColor(c[1], c[2], c[3], 0.5)
+        lg.setLineWidth(1)
+        lg.rectangle("line", x - 6, y - 6, w + 12, h + 12)
+        for _, p in ipairs({ { x - 6, y - 6 }, { x + w + 6, y - 6 }, { x - 6, y + h + 6 }, { x + w + 6, y + h + 6 } }) do
+            lg.setColor(c[1], c[2], c[3], 1)
+            lg.polygon("fill", p[1], p[2] - u(6), p[1] + u(6), p[2], p[1], p[2] + u(6), p[1] - u(6), p[2])
+        end
+    elseif f == "leaf" then
+        for i, p in ipairs({ { x, y, 1, 1 }, { x + w, y, -1, 1 }, { x, y + h, 1, -1 }, { x + w, y + h, -1, -1 } }) do
+            local sway = math.sin(t * 1.5 + i) * 0.1
+            for k = 0, 2 do
+                local a = (k * 0.6 + 0.2 + sway) * (math.pi / 2)
+                local lx, ly = p[1] + math.cos(a) * u(14) * p[3], p[2] + math.sin(a) * u(14) * p[4]
+                lg.setColor(c[1] * 0.7, c[2] * 0.9, c[3] * 0.6, 0.9)
+                lg.ellipse("fill", (p[1] + lx) / 2, (p[2] + ly) / 2, u(6), u(3))
+            end
+        end
+    elseif f == "bone" then
+        lg.setColor(c[1], c[2], c[3], 0.8)
+        for i = 0, 7 do
+            local k = i / 7
+            lg.circle("fill", x + w * k, y - 2, u(3))
+            lg.circle("fill", x + w * k, y + h + 2, u(3))
+        end
+    elseif f == "web" then
+        lg.setColor(c[1], c[2], c[3], 0.45)
+        for _, p in ipairs({ { x, y, 1, 1 }, { x + w, y, -1, 1 }, { x, y + h, 1, -1 }, { x + w, y + h, -1, -1 } }) do
+            for k = 1, 3 do
+                local r = u(10) * k
+                lg.line(p[1] + r * p[3], p[2], p[1] + r * 0.7 * p[3], p[2] + r * 0.7 * p[4], p[1], p[2] + r * p[4])
+            end
+            lg.line(p[1], p[2], p[1] + u(34) * p[3], p[2] + u(34) * p[4])
+        end
+    elseif f == "shell" then
+        lg.setColor(c[1], c[2], c[3], 0.7)
+        local n = math.max(4, math.floor(w / u(18)))
+        for i = 0, n - 1 do
+            local cx = x + (i + 0.5) * w / n
+            lg.arc("line", "open", cx, y - 2, w / n / 2, math.pi, math.pi * 2)
+            lg.arc("line", "open", cx, y + h + 2, w / n / 2, 0, math.pi)
+        end
+    end
+    lg.setLineWidth(1)
+    lg.setColor(1, 1, 1, 1)
+end
+
 function CharSelect:drawMastery(def, px, py, pw, ph)
     local lg = love.graphics
     local u = Theme.u
