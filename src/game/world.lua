@@ -22,6 +22,7 @@ local Elites = require("src.game.elites")
 local Combat = require("src.game.combat")
 local Grab = require("src.game.grab")
 local Daylight = require("src.game.daylight")
+local Lighting = require("src.gfx.lighting")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
 local RunStats = require("src.game.runstats")
@@ -214,6 +215,7 @@ function World:killEnemy(e)
     local def = e.def
     self.kos = self.kos + 1
     self.killsThisFrame = self.killsThisFrame + 1
+    if e.elite or def.boss or def.encounter then Lighting.pop(self, e.x, e.y, def.boss or def.encounter) end
     -- nectar beads worth the enemy's `xp` (plus a gilded elite's bonusXP): skill XP and
     -- nectar once collected; maybe a ground pickup (src/game/nectar.lua)
     if not e.noBeads then self.beads:onKill(e) end
@@ -563,6 +565,7 @@ function World:update(dt)
         return
     end
     self.time = self.time + dt
+    Lighting.update(self, dt)
     self.killsThisFrame = 0
     -- last frame's kills become visible to behaviours; start a fresh list
     self.recentDeaths, self.deathsNow = self.deathsNow, self.recentDeaths
@@ -1005,6 +1008,7 @@ local function sortByDepth(list, n)
 end
 
 function World:draw()
+    Lighting.nq = 0
     local vw, vh = Screen.viewW, Screen.viewH
     local ox, oy = self.camera:origin(vw, vh)
     local atlas = Sprites.atlas
@@ -1339,10 +1343,14 @@ function World:draw()
     end
 
     -- Additive glow pass: attack swooshes, sparks, explosions.
+    -- (Glare Guard / Own Effects Opacity: drawn on their own layer and soft-capped, src/gfx/lighting.lua)
+    local fxLayer = Lighting.fxLayer()
+    if fxLayer then Lighting.beginFx() end
     lg.setBlendMode("add")
     self:drawFx()
     self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
+    if fxLayer then Lighting.endFx() end
     if Settings.get("showHitboxes") then self:drawHitboxes(list, n) end
     if Settings.get("showSpatialGrid") then self:drawGrid() end
     lg.pop()
@@ -1368,15 +1376,17 @@ function World:drawLighting(ox, oy, list, n)
         ar, ag, ab = ar * k, ag * k, ab * k
     end
     local L = Sprites.light
+    -- Bold lights: the map holds half the light so it can reach 2x (src/gfx/lighting.lua)
+    local lm, am = Lighting.lightMul((ar + ag + ab) / 3), Lighting.ambientMul()
     -- light(x, y, radius, r, g, b, a): an ellipse squashed 2:1 to sit on the iso ground.
     local function light(x, y, r, cr, cg, cb, ca)
-        lg.setColor(cr, cg, cb, ca)
+        lg.setColor(cr, cg, cb, math.min(1, ca * lm))
         lg.draw(L, x, y, 0, r / 64, r / 128, 64, 64)
     end
 
     lg.push("all")
     lg.setCanvas(Screen.light)
-    lg.clear(ar, ag, ab, 1)
+    lg.clear(ar * am, ag * am, ab * am, 1)
     lg.setBlendMode("add")
     -- the light map is smaller than the scene (Screen.LIGHT_DIV): same projected coordinates, scaled down
     local div = Screen.LIGHT_DIV
@@ -1407,6 +1417,7 @@ function World:drawLighting(ox, oy, list, n)
         end
     end
     self.hazards:lights(light)
+    Lighting.extras(self, light, list, n)
     for _, l in ipairs(self.ground.decorLights or {}) do
         local tw = l.twinkle and (0.75 + 0.25 * math.sin(self.time * l.twinkle + l.x)) or 1
         light(l.x, l.y, l.radius, l.color[1], l.color[2], l.color[3], (l.intensity or 0.5) * tw)
@@ -1437,11 +1448,15 @@ function World:drawLighting(ox, oy, list, n)
             end
         end
     end
-    lg.setCanvas(Screen.canvas)
-    lg.setBlendMode("multiply", "premultiplied")
-    lg.origin()
-    lg.setColor(1, 1, 1, 1)
-    lg.draw(Screen.light, Screen.lightQuad, 0, 0, 0, div, div)
+    if Lighting.bold() then
+        Lighting.composite(div)
+    else
+        lg.setCanvas(Screen.canvas)
+        lg.setBlendMode("multiply", "premultiplied")
+        lg.origin()
+        lg.setColor(1, 1, 1, 1)
+        lg.draw(Screen.light, Screen.lightQuad, 0, 0, 0, div, div)
+    end
     lg.pop()
 end
 

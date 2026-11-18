@@ -6,7 +6,7 @@
 --   choice: options = { {value=..., label=...}, ... }
 --   window = true  -> changing it re-applies the window mode
 local S = {
-    categories = { "Video", "Audio", "Gameplay", "Interface", "Accessibility", "Controls", "Developer" },
+    categories = { "Video", "Lighting", "Camera", "Audio", "Gameplay", "Interface", "Accessibility", "Controls", "Developer" },
 }
 
 local function add(t) S[#S + 1] = t end
@@ -199,6 +199,29 @@ add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Mark
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }
 add { key = "cursorStyle", category = "Interface", label = "Cursor", type = "choice", default = "crosshair",
     options = { { value = "crosshair", label = "Crosshair" }, { value = "system", label = "System" }, { value = "hidden", label = "Hidden In Game" } } }
+
+-- Lighting (src/gfx/lighting.lua) -------------------------------------------------------
+add { key = "lightStyle", category = "Lighting", label = "Light Style", type = "choice", default = "bold",
+    options = { { value = "bold", label = "Bold" }, { value = "soft", label = "Soft" } },
+    desc = "Bold: lights glow past daylight and bright spots roll off softly instead of turning white. Soft: the gentler original look, where lights only lift the shade." }
+add { key = "lightStrength", category = "Lighting", label = "Light Strength", type = "slider", default = 100, min = 50, max = 150, step = 10, format = percent,
+    desc = "How strong lights are with the Bold light style." }
+add { key = "glareGuard", category = "Lighting", label = "Glare Guard", type = "toggle", default = true,
+    desc = "Caps how bright sparks, swooshes, fireflies and lightning can get, so glare never hides your bug or the ants." }
+add { key = "ownEffects", category = "Lighting", label = "Own Effects Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent,
+    desc = "Fade your own attack glows and sparks so you can see the ants inside them." }
+add { key = "richDay", category = "Lighting", label = "Rich Day Palette", type = "toggle", default = true,
+    desc = "The day cycle passes through a golden hour, a blue hour and cool moonlight instead of plain day, sunset and night." }
+add { key = "warningLights", category = "Lighting", label = "Warning Lights", type = "toggle", default = true,
+    desc = "Attack warnings light up the ground red as they charge, so they read in the dark." }
+add { key = "hazardGlow", category = "Lighting", label = "Hazard Glow", type = "toggle", default = true,
+    desc = "Puddles and pools on the ground give off a soft light in their colour." }
+add { key = "threatLights", category = "Lighting", label = "Threat Lights", type = "toggle", default = true,
+    desc = "Queens, bosses and elites carry their own light, so the dangerous ones stand out at night." }
+add { key = "nightLantern", category = "Lighting", label = "Night Lantern", type = "toggle", default = true,
+    desc = "At dusk and night a soft pool of light falls where you are aiming." }
+add { key = "killLights", category = "Lighting", label = "Kill Light Pops", type = "toggle", default = false,
+    desc = "Elites, queens and bosses light up the area for a moment when they die." }
 
 -- Accessibility -------------------------------------------------------------------------
 add { key = "reduceFlashing", category = "Accessibility", label = "Reduce Flashing", type = "toggle", default = false,

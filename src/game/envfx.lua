@@ -192,6 +192,8 @@ end
 -- Warning stripes along a lane: a pulsing red band (telegraph), k = 0..1 how close it is.
 function Env.warnLane(x1, y1, x2, y2, w, k, t, color)
     local lg = love.graphics
+    local dx, dy = x2 - x1, y2 - y1
+    require("src.gfx.lighting").queueWarn((x1 + x2) / 2, (y1 + y2) / 2, math.max(w, sqrt(dx * dx + dy * dy) * 0.5), k, color)
     local c = color or { 1, 0.25, 0.15 }
     lg.setColor(c[1], c[2], c[3], 0.12 + 0.18 * k + 0.08 * math.sin(t * (8 + k * 14)))
     Env.lane("fill", x1, y1, x2, y2, w)
@@ -202,6 +204,7 @@ end
 -- Warning ring for a circle about to be hit: an outline, filling in as k goes 0..1.
 function Env.warnCircle(x, y, r, k, t, color)
     local lg = love.graphics
+    require("src.gfx.lighting").queueWarn(x, y, r, k, color)
     local c = color or { 1, 0.25, 0.15 }
     lg.setColor(c[1], c[2], c[3], 0.5 + 0.3 * math.sin(t * 12))
     Env.ellipse("line", x, y, r)
