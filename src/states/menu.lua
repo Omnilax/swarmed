@@ -56,18 +56,21 @@ function MainMenu.quickStart(character, gameMode)
     end
 end
 
+-- Two short pages: the main list (carry on / play / make), and Collection (catalogues,
+-- records, cosmetics). Esc on Collection goes back.
 function MainMenu:buildItems()
+    if self.page == "collection" then return self:buildCollection() end
     local items = {}
     -- a run left with Save & Quit (or closed mid-run) carries on from where it was
     local RunSave = require("src.game.runsave")
     local snap = RunSave.peek()
     if snap then
-        items[#items + 1] = { type = "button", label = "Resume: " .. RunSave.describe(snap), onActivate = function()
+        items[#items + 1] = { type = "button", label = "Continue  ·  " .. RunSave.describe(snap), onActivate = function()
             local s = RunSave.peek()
             if s then State.switch(require("src.states.game").new(RunSave.params(s))) end
         end }
     end
-    items[#items + 1] = { type = "button", label = "Play", onActivate = function()
+    items[#items + 1] = { type = "button", label = snap and "New Run" or "Play", onActivate = function()
         State.push(require("src.states.modeselect").new())
     end }
     -- the last bug and mode played, one press away
@@ -75,7 +78,7 @@ function MainMenu:buildItems()
     local lc = last and Content.characters:get(last.character)
     local lm = last and Content.modes:get(last.gameMode or "colony")
     if lc and lm then
-        items[#items + 1] = { type = "button", label = "Play Again: " .. lc.name .. "  ·  " .. lm.name, onActivate = function()
+        items[#items + 1] = { type = "button", label = "Play Again  ·  " .. lc.name .. ", " .. lm.name, onActivate = function()
             MainMenu.quickStart(lc.id, lm.id)
         end }
     end
@@ -85,11 +88,24 @@ function MainMenu:buildItems()
     items[#items + 1] = { type = "button", label = "Bug Creator", onActivate = function()
         State.push(require("src.states.creator").new())
     end }
-    if Settings.get("devMode") then
-        items[#items + 1] = { type = "button", label = "Sandbox", onActivate = function()
-            State.switch(require("src.states.game").new({ mode = "sandbox" }))
-        end }
+    items[#items + 1] = { type = "button", label = "Collection  >", onActivate = function()
+        self.page = "collection"
+        self:buildItems()
+    end }
+    items[#items + 1] = { type = "button", label = "Settings", onActivate = function()
+        State.push(require("src.states.settings").new())
+    end }
+    -- (a browser tab or iPhone app is closed from outside; quitting would just leave it blank)
+    local os = love.system.getOS()
+    if os ~= "Web" and os ~= "iOS" then
+        items[#items + 1] = { type = "button", label = "Quit", onActivate = function() love.event.quit() end }
     end
+    self.menu.opts.onBack = nil
+    self:setRows(items)
+end
+
+function MainMenu:buildCollection()
+    local items = { { type = "header", label = "Collection" } }
     items[#items + 1] = { type = "button", label = "Bug Catalogue", onActivate = function()
         State.push(require("src.states.catalogue").new())
     end }
@@ -102,21 +118,35 @@ function MainMenu:buildItems()
     items[#items + 1] = { type = "button", label = "Cosmetics", onActivate = function()
         State.push(require("src.states.cosmetics").new())
     end }
-    items[#items + 1] = { type = "button", label = "Settings", onActivate = function()
-        State.push(require("src.states.settings").new())
-    end }
-    -- (a browser tab or iPhone app is closed from outside; quitting would just leave it blank)
-    local os = love.system.getOS()
-    if os ~= "Web" and os ~= "iOS" then
-        items[#items + 1] = { type = "button", label = "Quit", onActivate = function() love.event.quit() end }
+    if Settings.get("devMode") then
+        items[#items + 1] = { type = "button", label = "Sandbox", onActivate = function()
+            State.switch(require("src.states.game").new({ mode = "sandbox" }))
+        end }
     end
-    -- more rows than usual: a little tighter so the list still fits under the title
+    local function back()
+        self.page = nil
+        self:buildItems()
+        -- land back on the Collection row
+        for i, it in ipairs(self.menu.items) do if it.label == "Collection  >" then self.menu.focus = i end end
+    end
+    items[#items + 1] = { type = "button", label = "Back", onActivate = back }
+    self.menu.opts.onBack = back
+    self:setRows(items)
+    self.menu.focus = 2
+end
+
+function MainMenu:setRows(items)
     local many = #items > 8
     self.menu.opts.rowHeight, self.menu.opts.fontSize = many and 38 or 46, many and 22 or 26
     self.menu:setItems(items)
 end
 
-function MainMenu:resume() self:buildItems() end
+function MainMenu:resume()
+    local f = self.menu.focus
+    self:buildItems()
+    self.menu.focus = math.min(f, #self.menu.items)
+    self.menu:fixFocus(1)
+end
 
 function MainMenu:update(dt)
     self.t = self.t + dt

@@ -61,19 +61,32 @@ function ModeSelect.facts(m)
     return f
 end
 
+ModeSelect.GROUPS = { "classic", "challenge", "free" }
+ModeSelect.GROUP_NAMES = { classic = "Classic", challenge = "Challenges", free = "Endless & More" }
+
 function ModeSelect.new()
     local self = setmetatable({ t = 0 }, ModeSelect)
-    local items, focus = {}, 1
-    for _, m in ipairs(Content.modes:all()) do
-        items[#items + 1] = { type = "button", label = m.name, mode = m, onActivate = function()
+    local items, focus = {}, 2     -- (row 1 is a heading)
+    local function add(m, onActivate)
+        items[#items + 1] = { type = "button", label = m.name, mode = m, onActivate = onActivate }
+        if m.id and m.id == lastMode then focus = #items end
+    end
+    local function pick(m)
+        return function()
             lastMode = m.id
             if m.custom then
                 State.push(require("src.states.wavebuilder").new())     -- build or pick a set first
             else
                 State.push(require("src.states.charselect").new({ gameMode = m.id }))
             end
-        end }
-        if m.id == lastMode then focus = #items end
+        end
+    end
+    -- grouped under headings so the long list reads at a glance
+    local byGroup = {}
+    for _, m in ipairs(Content.modes:all()) do
+        local g = ModeSelect.GROUP_NAMES[m.group] and m.group or "challenge"
+        byGroup[g] = byGroup[g] or {}
+        table.insert(byGroup[g], m)
     end
     -- the daily run: today's seed picks the bug, stage, species order and wave modifiers
     local Daily = require("src.game.daily")
@@ -83,9 +96,16 @@ function ModeSelect.new()
         tagline = "Same bug, same waves, for everyone today.",
         description = "Today's seed picks your bug, the stage, the order the species arrive in and every wave modifier. Colony rules. A new run every day.",
         dailyFacts = { { "Date", d.key }, { "Bug", dc and dc.name or d.character }, { "Stage", ds and ds.name or d.stage } } }
-    items[#items + 1] = { type = "button", label = "Daily Run", mode = dailyMode, onActivate = function()
-        State.switch(require("src.states.game").new(Daily.params()))
-    end }
+    for _, g in ipairs(ModeSelect.GROUPS) do
+        local list = byGroup[g] or {}
+        if #list > 0 or g == "free" then
+            items[#items + 1] = { type = "header", label = ModeSelect.GROUP_NAMES[g] }
+            for _, m in ipairs(list) do add(m, pick(m)) end
+            if g == "free" then
+                add(dailyMode, function() State.switch(require("src.states.game").new(Daily.params())) end)
+            end
+        end
+    end
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() State.pop() end }
     self.menu = Menu.new({
         items = items,

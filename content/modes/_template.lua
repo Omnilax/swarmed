@@ -6,6 +6,7 @@ return {
     tagline = "One short line for the mode list.",
     description = "A sentence or two shown on the mode select screen.",
     order = 50,                 -- position in the mode list
+    group = "challenge",        -- heading it is listed under: "classic", "challenge" or "free"
 
     finalWave = 15,             -- the run is won after this wave (you may keep going); false = no end
 

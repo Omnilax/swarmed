@@ -4,6 +4,7 @@ return {
     tagline = "Eight huge waves, no rest. A quick run.",
     description = "A short run for when you have ten minutes: eight waves, each far bigger than the last, coming in from every side with no breather between them. Two new species a wave, frail ants, and level-ups come fast.",
     order = 11,
+    group = "challenge",
     finalWave = 8,
     spawn = { groups = 4, groupsPerWave = 1.2, group = { 14, 22 }, growth = 0.25, breakTime = 0, firstBreak = 1,
         introEvery = 1, entries = { 4, 8 }, trickle = 3, bossEvery = 4 },
