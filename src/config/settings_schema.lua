@@ -181,6 +181,9 @@ add { key = "bagSort", category = "Interface", label = "Bag Sort Order", type = 
 add { key = "catalogueGroup", category = "Interface", label = "Item Catalogue Groups", type = "choice", default = "category",
     options = { { value = "category", label = "By Category" }, { value = "rarity", label = "By Rarity" } },
     desc = "How the Item Catalogue lists items. G switches it there too." }
+add { key = "hudDetail", category = "Interface", label = "HUD Detail", type = "choice", default = "full",
+    options = { { value = "full", label = "Full" }, { value = "clean", label = "Clean" } },
+    desc = "Clean keeps health, stamina, XP and what the wave needs from you, and hides the run timer, KO counter, KO milestones and next-wave preview. The switches below still apply in Full." }
 add { key = "showTimer", category = "Interface", label = "Show Run Timer", type = "toggle", default = true }
 add { key = "showEnemyCount", category = "Interface", label = "Enemies Left", type = "toggle", default = true,
     desc = "A counter under the KO count with how many enemies are still to beat this wave, and a bar of how much of it is done." }

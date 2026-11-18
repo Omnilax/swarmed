@@ -24,7 +24,7 @@ end
 function Hud.paceText(sp, sub)
     local parts = {}
     for _, d in ipairs(sp.mods or {}) do parts[#parts + 1] = d.name:upper() end
-    parts[#parts + 1] = sub
+    if sub and sub ~= "" then parts[#parts + 1] = sub end
     if sp.par and sp.par < math.huge then
         if sp.waveTime <= sp.par then
             local left = math.ceil(sp.par - sp.waveTime)
@@ -217,6 +217,8 @@ function Hud.draw(game, covered)
             Theme.printShadow(Hud.waveLabel(sp), 0, u(16), { c.text[1], c.text[2], c.text[3], alpha }, "center", w)
             sub = sp.endless and ("next level in " .. math.max(1, math.ceil(sp.levelT)))
                 or (sp:remaining() .. (sp.mode.families and not require("src.core.util").contains(sp.mode.families, "ant") and " left" or " ants left"))
+            -- the enemies-left chip at the top right already counts them: don't say it twice
+            if not sp.endless and Settings.get("showEnemyCount") then sub = "" end
             if not sp.endless then sub = Hud.paceText(sp, sub) end
         else
             Theme.printShadow(sp.wave > 0 and ("WAVE " .. sp.wave .. " CLEARED") or "GET READY", 0, u(16), { c.focus[1], c.focus[2], c.focus[3], alpha }, "center", w)
@@ -229,9 +231,10 @@ function Hud.draw(game, covered)
                 sub = "walk into the reward bloom  ·  " .. key .. " brings it to you"
             end
         end
-        if Settings.get("showTimer") then
+        if (Settings.get("showTimer") and Settings.get("hudDetail") ~= "clean") then
             local t = math.floor(world.time)
-            sub = sub .. string.format("  ·  %d:%02d", math.floor(t / 60), t % 60)
+            local clock = string.format("%d:%02d", math.floor(t / 60), t % 60)
+            sub = (sub ~= "" and (sub .. "  ·  ") or "") .. clock
         end
         lg.setFont(Theme.font(16))
         Theme.printShadow(sub, 0, u(46), { c.dim[1], c.dim[2], c.dim[3], alpha }, "center", w)
@@ -275,7 +278,7 @@ function Hud.draw(game, covered)
     local RunHud = require("src.ui.runhud")
     RunHud.attach(world)
     local countY = u(16)
-    if Settings.get("showKoCounter") then
+    if (Settings.get("showKoCounter") and Settings.get("hudDetail") ~= "clean") then
         countY = u(100)
         lg.setFont(Theme.font(44))
         local ko = tostring(world.kos)
@@ -298,7 +301,7 @@ function Hud.draw(game, covered)
 
     -- KO milestone popup (every 100 KOs)
     local m = world.milestone
-    if m and not covered then
+    if m and not covered and Settings.get("hudDetail") ~= "clean" then
         local pop = m.t < 0.15 and (1.6 - m.t / 0.15 * 0.6) or 1
         local fade = math.min(1, (1.6 - m.t) / 0.4)
         lg.setFont(Theme.font(math.floor(48 * pop)))

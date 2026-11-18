@@ -692,6 +692,7 @@ local function script(flags)
     if flags["--itemorg"] then require("src.debug.selftest_itemorg")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
     if flags["--creator"] then require("src.debug.selftest_creator")(wait, shot) love.event.quit() return end
+    if flags["--flow"] then require("src.debug.selftest_flow")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end

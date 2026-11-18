@@ -488,6 +488,18 @@ description and who lives there.
 
 Test: `love . --selftest --maps`.
 
+## One currency, a cleaner HUD
+
+A run has one currency, nectar. The merchant beetle sells for nectar too, a fifth under shop
+price (each later sale 25% more), instead of its own count of KOs.
+
+Settings > Interface > **HUD Detail**: Full (the default) or Clean. Clean keeps health, stamina,
+XP, the frenzy meter and how many enemies are left, and hides the run timer, KO counter, KO
+milestones and the next-wave preview. With Enemies Left on, the line under the wave title no
+longer repeats the count.
+
+Test: `love . --selftest --flow`.
+
 ## Records and achievements
 
 **Records** on the main menu keeps the save (`records.lua` in the save folder, `src/game/records.lua`):
@@ -599,8 +611,8 @@ wave up: a wave still ends only when every enemy is dead, and events still going
   follows you, then flattens everything under it), a flood (water from one side: wading, a current,
   small ants drown), colony war (a red rival colony fights yours), dew drops rolling across in
   lines, falling acorns (they stay as things to roll), a lawnmower lane, web cocoons (break one to
-  free a bug that fights beside you for 20 s) and the merchant beetle (its prices are KOs made while
-  it is around; walk into it to buy, the item goes straight into the bag). A stage's
+  free a bug that fights beside you for 20 s) and the merchant beetle (it takes nectar, a fifth under
+  shop price; walk into it to buy, the item goes straight into the bag). A stage's
   `events = { id = weight }` and a mode's `eventWeights` / `events = false` change the odds.
 - **Boss encounters** (`content/bosses`, setting **Boss Encounters**): every 5th wave except the
   final one, something big joins the queen. Bugs are fights: the antlion (a sand pit that drags

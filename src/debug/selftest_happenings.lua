@@ -178,18 +178,19 @@ return function(wait, shot)
     assert(not world.props:find("ally")[1], "the ally should leave after its time")
 
     center()
-    -- merchant: KOs pay, touching buys, the item goes in the bag
+    -- merchant: nectar pays, touching buys, the item goes in the bag
     world:clearEnemies()
     ev = dir:start("merchant")
     local m = ev.st.m
     m.x, m.y = pl.x + 200, pl.y
-    world.kos = world.kos + m.price + 1
+    world.nectar = m.price + 1
     local bag0 = #pl.inventory.bag
     m.update = nil
     m.x, m.y = pl.x + 2, pl.y
     m.say = 0
     m.def.update(world, m, 0)
-    assert(m.sold == 1, "touching the merchant with enough KOs should buy its ware")
+    assert(m.sold == 1, "touching the merchant with enough nectar should buy its ware")
+    assert(world.nectar == 1, "the merchant takes its price in nectar")
     assert(#pl.inventory.bag > bag0 or true, "bought items go in the bag")
     shot("prop_merchant")
     dir:stop(ev)
