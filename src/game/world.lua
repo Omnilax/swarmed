@@ -382,8 +382,13 @@ end
 function World:rollItem()
     local Rarities = require("src.config.rarities")
     local wave = self.spawner and math.max(1, self.spawner.wave) or 1
+    local inPool = require("src.game.unlocks").inPool
+    local function fits(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed and not d.molted end
+    -- only items that are unlocked and in the player's pool (same rule as the item choice)
     local def = Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
-        function(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed end) or Content.items:all()[1]
+        function(d) return fits(d) and inPool(d.id) end)
+        or Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end, fits)
+        or Content.items:all()[1]
     return Inventory.newItem(def.id)
 end
 

@@ -36,7 +36,9 @@ function Cosmetics.save()
 end
 
 function Cosmetics.isUnlocked(def)
-    return not def.locked or Cosmetics.data.unlocked[def.id] == true
+    if not def.locked or Cosmetics.data.unlocked[def.id] == true then return true end
+    -- Settings > Gameplay > "Unlock Everything" opens locked skins, decor and stages too
+    return require("src.game.unlocks").all()
 end
 
 function Cosmetics.unlock(id)

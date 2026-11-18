@@ -25,9 +25,31 @@ return function(wait, shot)
         assert(Unlocks.bug(c.id) or Unlocks.bugGoal(c.id), "locked bug without a goal: " .. c.id)
     end
     assert(not Unlocks.item("amber") and not Unlocks.inPool("amber"), "amber should start locked")
+    -- every goal names a real bug / item (a renamed or removed one would leave a dead goal)
+    local UC = require("src.config.unlocks")
+    for _, id in ipairs(UC.starters) do assert(Content.characters:get(id), "unknown starter bug: " .. id) end
+    for id in pairs(UC.bugs) do assert(Content.characters:get(id), "unlock goal for unknown bug: " .. id) end
+    for id in pairs(UC.items) do assert(Content.items.byId[id], "unlock goal for unknown item: " .. id) end
     Settings.set("unlockAll", true)
     assert(Unlocks.bug("crab") and Unlocks.item("amber") and Unlocks.maxDanger("crab") == 5, "unlock all")
+    -- Unlock Everything covers every bug, item and locked cosmetic, including ones added later
+    local Cosmetics = require("src.game.cosmetics")
+    assert(select(1, Unlocks.bugCount()) == Content.characters:count(), "unlock all: a bug stayed locked")
+    for _, d in ipairs(Content.items:all()) do assert(Unlocks.item(d.id), "unlock all: item locked " .. d.id) end
+    for _, reg in ipairs({ Content.skins, Content.decor, Content.stages }) do
+        for _, d in ipairs(reg and reg:all() or {}) do
+            assert(Cosmetics.isUnlocked(d), "unlock all: cosmetic locked " .. tostring(d.id))
+        end
+    end
     Settings.set("unlockAll", false)
+    assert(not Unlocks.bug("crab") and not Cosmetics.isUnlocked(Content.skins:get("gilded"))
+        or Cosmetics.data.unlocked.gilded, "turning Unlock Everything off should lock again")
+    -- random item gifts (practice, sandbox) also skip locked items
+    local World = require("src.game.world")
+    for _ = 1, 300 do
+        local it = World.rollItem({ spawner = { wave = 99 } })
+        assert(Unlocks.item(it.def.id), "rollItem gave a locked item: " .. it.def.id)
+    end
     -- every locked bug / item has an achievement in the Unlocks category
     local reg = Content.achievements
     assert(reg:get(Unlocks.bugAchievement("crab")) and reg:get(Unlocks.itemAchievement("amber")), "unlock achievements missing")
