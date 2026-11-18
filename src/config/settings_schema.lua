@@ -81,6 +81,9 @@ add { key = "midWaveEvents", category = "Gameplay", label = "Mid-Wave Events", t
 add { key = "mapGambles", category = "Gameplay", label = "Map Gambles", type = "choice", default = "normal",
     options = { { value = "often", label = "Often" }, { value = "normal", label = "Normal" }, { value = "off", label = "Off" } },
     desc = "Risky spots that pop up in a wave: a dewdrop shrine to stand in for a blessing, a challenge bell that calls a tough pack, a gamble flower to spin with nectar." }
+add { key = "parasites", category = "Gameplay", label = "Parasites", type = "choice", default = "normal",
+    options = { { value = "often", label = "Often" }, { value = "normal", label = "Normal" }, { value = "off", label = "Off" } },
+    desc = "Curse-like items that live inside your bug: a huge change (Flu doubles damage, Cordyceps walks for you) with a real cost. They can't be eaten or scrapped: only a rare Green Mushroom purges them." }
 add { key = "bossEncounters", category = "Gameplay", label = "Boss Encounters", type = "toggle", default = true,
     desc = "Every 5th wave something big joins the queen: an antlion's pit to fight, or a sparrow or giant anteater hunting the arena as a stage hazard." }
 add { key = "weatherEffects", category = "Gameplay", label = "Weather Effects", type = "toggle", default = true,

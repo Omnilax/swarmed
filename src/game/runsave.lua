@@ -75,6 +75,7 @@ function RunSave.snapshot(game)
     for _, e in ipairs(p.inventory.bag) do
         snap.bag[#snap.bag + 1] = { id = e.item.id, x = e.x, y = e.y, rot = e.item.rot or 0 }
     end
+    snap.parasites = require("src.game.parasites").save(p.inventory)
     for _, d in ipairs(sp.knownList) do snap.known[#snap.known + 1] = d.id end
     for id in pairs(sp.usedQueens) do snap.usedQueens[#snap.usedQueens + 1] = id end
     local pc = w.pendingChoice
@@ -177,6 +178,8 @@ function RunSave.restore(world, snap)
             end
         end
     end
+    -- parasites (they live in the bug, not the bag)
+    require("src.game.parasites").restore(inv, snap.parasites)
     -- the skill tree: XP back (quietly), then every node bought
     local sk = p.skills
     if sk and snap.skills then

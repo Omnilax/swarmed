@@ -235,6 +235,8 @@ function Player:update(dt)
     end
     local mag = util.len(mx, my)
     local wx, wy = Iso.screenDirToWorld(mx, my)
+    -- a parasite can take the wheel (Cordyceps, Horsehair Worm; src/game/parasites.lua)
+    if self.steer and not stunned then wx, wy, mag = self.steer(self, wx, wy, mag, dt) end
     self.moving = mag > 0.1
 
     -- Dash: each bug's own kind (content/dashes), all paid for from one stamina pool

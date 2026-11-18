@@ -40,8 +40,10 @@ function Choices.pickDef(world, taken, pred)
     -- locked items and ones switched off in the item pool never show (src/game/unlocks.lua);
     -- molted items only come from molting
     local inPool = require("src.game.unlocks").inPool
-    local function ok(d) return not d.molted and not taken[d.id] and not banned[d.id] and inPool(d.id) and (not pred or pred(d)) end
-    return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
+    local function ok(d) return not d.molted and (not d.parasite or require("src.game.parasites").weight(world, d) > 0) and not taken[d.id] and not banned[d.id] and inPool(d.id) and (not pred or pred(d)) end
+    -- parasites: once each, a few at most, and the Parasites setting (src/game/parasites.lua)
+    local pw = require("src.game.parasites").weight
+    return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight * pw(world, d) end,
         function(d) return ok(d) and Rarities[d.rarity].minWave <= w end)
         or Content.items:pickWeighted(function() return 1 end, ok)
 end

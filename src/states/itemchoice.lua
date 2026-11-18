@@ -427,7 +427,7 @@ function Choice.drawCard(self, i, entry, c, ctx)
     ty = ty + u(26)
     lg.setFont(Theme.font(14))
     lg.setColor(cursed and CURSE_COL or COL.dim)
-    local meta = item and (Rarities[def.rarity].label .. "  ·  " .. #def.cells .. (#def.cells == 1 and " cell" or " cells"))
+    local meta = item and (Rarities[def.rarity].label .. "  ·  " .. (def.parasite and "in you" or (#def.cells .. (#def.cells == 1 and " cell" or " cells"))))
         or "Stat boost  ·  no bag space"
     if item then
         -- what it is for (its category chip), then rarity and size, centred as one line

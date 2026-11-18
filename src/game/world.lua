@@ -139,6 +139,8 @@ function World.new(opts)
     require("src.game.onramp").attach(self)
     -- artifacts (content/artifacts): run rules switched on before the run
     require("src.game.artifacts").apply(self, opts.artifacts)
+    -- parasites: the Green Mushroom that cures them sprouts at wave starts (src/game/parasites.lua)
+    require("src.game.parasites").attach(self)
     -- a keepsake (src/config/keepsakes.lua): one small trade carried into the run
     require("src.game.keepsakes").apply(self, opts.keepsake)
     -- queens with phases, the Empress, named champions (src/game/bosses.lua)

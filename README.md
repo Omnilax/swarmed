@@ -161,6 +161,14 @@ Test: `love . --selftest --nectar`.
 - **Cursed items** (purple, from wave 3): a big upside with a real cost, written in purple on the
   card. They can't be eaten, only scrapped (for nothing). Hungry Tapeworm, Glass Wings, Fool's Gold
   Scarab, Queen's Pheromone, Bullet Ant Venom, Parasitoid Egg.
+- **Parasites** (red, from wave 3; `src/game/parasites.lua`): curse-like items that live *in* your
+  bug, not the bag, so nothing can eat, scrap, sell or clone them. One of each, three at most.
+  Some devour their host items in your bag when they get in (Void-style) for a permanent bonus.
+  Horsehair Worm, Deer Tick, Head Lice, Follicle Mite, Flu, Cordyceps Puppeteer, Toxoplasma,
+  Botfly Larva, Lancet Fluke, Guinea Worm. The only cure is a rare **Green Mushroom** that sprouts
+  while you carry one: walk into it to purge them all. Settings > Gameplay > Parasites (Normal /
+  Often / Off). Icons: `PYTHONPATH=tools python3 tools/make_parasite_icons.py`. Test:
+  `love . --selftest --parasites`.
 - **Hyperbolic stacking**: Luck, the proc snowball and extra copies never push a chance to 100%
   (`Inventory.stackChance`). A proc whose effect doesn't grow with copies can set `chanceStack` to
   fire more often per copy instead. The bag tooltip shows each item's chance right now. Dodge has a
