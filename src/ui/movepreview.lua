@@ -28,7 +28,7 @@ function Preview.new(charId)
     self.def = def
     local sec = def.secondary and Content.attacks:get(def.secondary.type)
     local dash = Content.dashes:get((def.dash or { type = "dash" }).type)
-    self.names = { secondary = sec and sec.name, dash = dash and dash.name }
+    self.names = { secondary = def.secondary and def.secondary.name or (sec and sec.name), dash = (def.dash and def.dash.name) or (dash and dash.name) }
     self:refill()
     -- settle the camera on the bug
     Audio.muted = true

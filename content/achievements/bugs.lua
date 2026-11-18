@@ -4,16 +4,21 @@ local list = {}
 local function add(a) a.category = "Bugs"; list[#list + 1] = a; a.order = #list end
 
 add({ id = "play_all", name = "Menagerie", description = "Play a run with every bug.",
-    goal = function() return Content.characters:count() end,
+    -- custom bugs (Bug Creator) don't count towards these
+    goal = function()
+        local n = 0
+        for _, c in ipairs(Content.characters:all()) do if not c.custom then n = n + 1 end end
+        return n
+    end,
     value = function(p)
         local n = 0
-        for _, c in ipairs(Content.characters:all()) do if p.characters[c.id] and p.characters[c.id].runs > 0 then n = n + 1 end end
+        for _, c in ipairs(Content.characters:all()) do if not c.custom and p.characters[c.id] and p.characters[c.id].runs > 0 then n = n + 1 end end
         return n
     end })
 add({ id = "win_5bugs", name = "Diverse Portfolio", description = "Win with 5 different bugs.", goal = 5,
     value = function(p)
         local n = 0
-        for _, c in pairs(p.characters) do if c.wins > 0 then n = n + 1 end end
+        for id, c in pairs(p.characters) do if c.wins > 0 and id:sub(1, 7) ~= "custom_" then n = n + 1 end end
         return n
     end })
 for _, c in ipairs(Content.characters:all()) do

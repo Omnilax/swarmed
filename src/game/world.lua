@@ -1062,6 +1062,7 @@ function World:draw()
     if p.dashDef and p.dashDef.draw then p.dashDef.draw(p, self, p.dashParams) end
     if p.secondary and p.secondary.type.draw then p.secondary.type.draw(p, self, p.secondary.params) end
     if p.attack and p.attack.type.draw then p.attack.type.draw(p, self, p.attack.params) end
+    if p.def.custom then require("src.game.scriptmoves").draw(p, self) end
     -- stunned ants (hissing roach) see stars
     for i = 1, n do
         local o = list[i]

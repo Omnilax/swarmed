@@ -18,7 +18,7 @@ function RunHud.icon(id, cx, cy, size, alpha)
     if not s or not Sprites.atlas then return false end
     local k = math.min(size / s.w, size / s.h)
     love.graphics.setColor(1, 1, 1, alpha or 1)
-    love.graphics.draw(Sprites.atlas, s.frames[1][1], math.floor(cx), math.floor(cy), 0, k, k, s.ox, s.oy)
+    love.graphics.draw(s.image or Sprites.atlas, s.frames[1][1], math.floor(cx), math.floor(cy), 0, k, k, s.ox, s.oy)
     return true
 end
 

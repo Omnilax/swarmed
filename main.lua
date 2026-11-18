@@ -40,6 +40,14 @@ function love.load(args)
     Records.regrant()     -- re-apply cosmetic rewards of achievements already earned
     -- test runs must not touch the player's save
     Records.noSave = flags["--selftest"] or flags["--profile"] or false
+    -- the player's own bugs from the Bug Creator (tests and the bot never see them)
+    local CustomBugs = require("src.game.custombugs")
+    if Records.noSave or flags["--balance"] then
+        CustomBugs.dir, CustomBugs.noSave = "selftest_custom_bugs", true
+    else
+        local okC, errC = pcall(CustomBugs.loadAll)
+        if not okC then print("[custombugs] " .. tostring(errC)) end
+    end
     require("src.game.tutorial").load()
     require("src.game.prefs").noSave = Records.noSave or flags["--balance"] or false
     require("src.game.runsave").noSave = Records.noSave or flags["--balance"] or false
@@ -102,12 +110,32 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
     Touch.otherInput()
+    -- a text editor on top (Bug Creator script editor) gets every key itself
+    local top = State.top()
+    if top and top.wantsText then
+        Input.lastDevice = "keyboard"
+        State.call("keypressed", key, scancode, isrepeat)
+        return
+    end
     if not Input.isCapturing() and Dev.keypressed(key) then return end
     Input.keypressed(key, isrepeat)
     State.call("keypressed", key, scancode, isrepeat)
 end
 
-function love.textinput(t) if not Dev.textinput(t) then State.call("textinput", t) end end
+function love.textinput(t)
+    if Dev.textinput(t) then return end
+    State.call("textinput", t)
+end
+
+-- A file dropped on the window (desktop): the Bug Creator imports .lua bug scripts.
+function love.filedropped(file)
+    local top = State.top()
+    if top and type(top.filedropped) == "function" then
+        top:filedropped(file)
+    elseif top and getmetatable(top) == require("src.states.menu") then
+        State.push(require("src.states.creator").new()):filedropped(file)
+    end
+end
 
 -- Mouse events made up from touches are dropped: src/core/touch.lua turns touches into
 -- stick and button input, taps into clicks and drags into scrolling.
