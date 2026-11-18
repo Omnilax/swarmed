@@ -190,7 +190,10 @@ function Director:scriptedWave(sw)
     end
     local boss = sw.encounter and Content.bosses:get(sw.encounter)
     if boss then
-        self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
+        -- early, like the first event: a small scripted wave can be cleared before a stage
+        -- hazard's usual arrival time, and the wave's maker asked to see it
+        local at = math.min(boss.arrive or self.cfg.encounterAt, 3)
+        self.pendingBoss = { def = boss, at = at }
         if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
     end
 end
