@@ -7,6 +7,7 @@ return {
     description = "+10 Max HP. Once per wave (+1 per stack), a killing bite leaves you at 1 HP, curled up and untouchable for 2 seconds.",
     effect = "Once per wave (+1 per stack), a killing bite leaves you at 1 HP, curled up and untouchable for 2 seconds.",
     rarity = "legendary",
+    category = "guard",
     size = { 1, 1 },
     stats = { maxHp = 10 },
     procs = {

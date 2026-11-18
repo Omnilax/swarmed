@@ -5,6 +5,7 @@ return {
     description = "+7% Dodge, +4 Speed. Dodging shakes off a cloud of scales that slows every ant around you for 1.5 seconds (+0.5 per stack).",
     effect = "Dodging shakes off a cloud of scales that slows every ant around you for 1.5 seconds (+0.5 per stack).",
     rarity = "uncommon",
+    category = "guard",
     shape = { "XX", "X." },
     stats = { dodge = 7, moveSpeed = 4 },
     procs = {

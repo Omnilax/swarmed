@@ -3,6 +3,7 @@ return {
     description = "+4 Armor. When bitten, 30% chance to fire 3 spines (+1 per stack) outward for 10 damage each.",
     effect = "When bitten, 30% chance to fire 3 spines (+1 per stack) outward for 10 damage each.",
     rarity = "uncommon",
+    category = "guard",
     shape = { "X", "X" },
     stats = { armor = 4 },
     procs = {

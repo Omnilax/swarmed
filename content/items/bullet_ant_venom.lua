@@ -5,6 +5,7 @@ return {
     description = "+40% Attack Speed, +20% Damage. Cursed: every wave starts with you at half HP at most.",
     curse = "Every wave starts with you at half HP at most.",
     rarity = "cursed",
+    category = "cursed",
     size = { 1, 2 },
     stats = { attackSpeed = 40, damage = 20 },
     procs = {

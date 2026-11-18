@@ -5,6 +5,7 @@ return {
     description = "+1 Armor. When bitten, 50% chance to prick every ant touching you for 5 damage (+5 per stack).",
     effect = "When bitten, 50% chance to prick every ant touching you for 5 damage (+5 per stack).",
     rarity = "common",
+    category = "guard",
     size = { 1, 1 },
     stats = { armor = 1 },
     procs = {

@@ -5,6 +5,7 @@ return {
     name = "Mycelium Thread",
     description = "Every kill gives +1% Damage until the wave ends, up to 25% (+25% per stack).",
     rarity = "rare",
+    category = "attack",
     size = { 1, 4 },
     procs = {
         {

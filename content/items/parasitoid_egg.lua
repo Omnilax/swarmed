@@ -16,6 +16,7 @@ return {
     effect = "Every wave start: +6% Damage for the rest of the run (per stack).",
     curse = "-3 Max HP at every wave start (per stack), for the rest of the run.",
     rarity = "cursed",
+    category = "cursed",
     shape = { "X.", "XX" },
     onAdd = function(player) apply(player) end,
     procs = {

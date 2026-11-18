@@ -5,6 +5,7 @@ return {
     name = "Nematode",
     description = "Hits have a 15% chance to infest the ant (4 damage a second, +4 per stack). Infested ants that die spread worms to 2 (+1 per stack) more.",
     rarity = "uncommon",
+    category = "elemental",
     size = { 1, 2 },
     procs = {
         {

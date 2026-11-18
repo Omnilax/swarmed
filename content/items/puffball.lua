@@ -4,6 +4,7 @@ return {
     name = "Puffball",
     description = "When bitten, 25% chance to burst a spore cloud: ants around you are slowed and poisoned for 4 damage a second (+4 per stack).",
     rarity = "uncommon",
+    category = "elemental",
     size = { 1, 1 },
     procs = {
         {

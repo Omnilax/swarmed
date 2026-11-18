@@ -150,6 +150,18 @@ local function roll(world, keep, avoid, notIds)
             end
         end
     end
+    -- new item offers line up by category (Attack, Elemental, Guard...); locked ones keep their place
+    local Categories = require("src.config.categories")
+    local free, fresh = {}, {}
+    for i = 1, slot do
+        if not keep[i] and out[i] then free[#free + 1] = i; fresh[#fresh + 1] = out[i] end
+    end
+    table.sort(fresh, function(a, b)
+        local ka, kb = Categories.rank(a.item.def.category), Categories.rank(b.item.def.category)
+        if ka ~= kb then return ka < kb end
+        return a.item.id < b.item.id
+    end)
+    for k, i in ipairs(free) do out[i] = fresh[k] end
     for _ = 1, c.boosts do
         slot = slot + 1
         if keep[slot] then

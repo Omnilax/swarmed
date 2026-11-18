@@ -5,6 +5,7 @@ return {
     name = "Ember Gland",
     description = "15% chance for killed enemies to explode for 12 damage (+12 per stack).",
     rarity = "rare",
+    category = "elemental",
     size = { 1, 1 },
     procs = {
         {

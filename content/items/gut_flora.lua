@@ -5,6 +5,7 @@ return {
     description = "+5 Max HP. Eating an item heals 50% more (+50% per stack) and gives +15% Damage for 15 seconds.",
     effect = "Eating an item heals 50% more (+50% per stack) and gives +15% Damage for 15 seconds.",
     rarity = "uncommon",
+    category = "mend",
     size = { 2, 1 },
     stats = { maxHp = 5 },
     procs = {

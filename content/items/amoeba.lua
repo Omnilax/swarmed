@@ -3,6 +3,7 @@ return {
     name = "Amoeba",
     description = "Hitting an ant below 10% health (+4% per stack) engulfs it outright. Not bosses.",
     rarity = "uncommon",
+    category = "elemental",
     size = { 1, 1 },
     procs = {
         {

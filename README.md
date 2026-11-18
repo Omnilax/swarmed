@@ -191,7 +191,17 @@ dragging an item out of the case eats it, and pointing at a stat explains its nu
 stat's `info` in `src/config/stats.lua`). The pause screen lists every stat and every item's
 full effect. Test: `love . --selftest --choiceqol`. Bag size lives in
 `src/config/equipment.lua`; an item's `shape` (or `size`), `icon` and `effect` text in its file;
-icons are modelled by `tools/make_item_icons.py` (needs numpy) with a small renderer in `tools/icon_render.py`: each item is built from lit 3D shapes with real materials (gloss, grain, translucency), lit by a warm low sun and cool dusk ambient, at 28 px per cell, then reduced to a small palette. `python3 tools/make_item_icons.py --preview out.png [ids]` renders a contact sheet.
+icons are modelled by `tools/make_item_icons.py` (needs numpy) with a small renderer in `tools/icon_render.py`: each item is built from lit 3D shapes with real materials (gloss, grain, translucency), lit by a warm low sun and cool dusk ambient, at 28 px per cell, then reduced to a small palette. `render_fit` zooms each drawing so it fills its cells, and the sun side gets a thin lit edge so dark items still stand out in the dark bag. `python3 tools/make_item_icons.py --preview out.png [ids]` renders a contact sheet.
+
+**Item categories.** Every item has one `category` saying what it is FOR (`src/config/categories.lua`):
+Attack, Elemental, Guard, Mend, Move, Control, Fortune, Cursed. Tags are the many themes an item
+shares for set bonuses; the category is the one big answer. In the bag an item's fill is its
+category colour (its outline is its rarity) with a small category badge (Interface > Item Category
+Badges), SORT lines the bag up by category (Interface > Bag Sort Order: category, rarity or size;
+it falls back to packing by size when the bag is too full), the shop lines its new offers up by
+category, cards and tooltips show a category chip, and the Item Catalogue groups by category or
+rarity (G). An item without `category` gets a guess from its rarity and tags. Test:
+`love . --selftest --itemorg`.
 
 There are 67 items, drawn from Risk of Rain, Isaac and Brotato and themed on things a bug finds
 in the dirt: microbes (tardigrade, nematode, amoeba, rotifer, bacterial bloom, slime mold, gut
@@ -640,8 +650,8 @@ On by default while we build (Settings > Developer). It adds:
   family filter F, search /). Pick one and set variant, amount and health with the chips beside it,
   then *Spawn here*, *March in*, *All elites*, *Play as*, or *Place*: the catalogue closes and every
   click or tap on the arena drops that bug there until *Done* (or right click). Works by touch.
-- **Item Catalogue** (main menu, or C in the sandbox): every item as a wall of icons by rarity, with
-  rarity tabs (Q / E), a kind filter (K: tags and proc triggers), name search (/) and full details.
+- **Item Catalogue** (main menu, or C in the sandbox): every item as a wall of icons grouped by
+  category or by rarity (G switches), with rarity tabs (Q / E), a kind filter (K: tags and proc triggers), name search (/) and full details.
   In the sandbox it gives items (click a picked item again, Enter, Shift for 5) and takes them back
   (right click / Delete). `love . --selftest --sandboxkit` checks both.
 - **Console** with `` ` ``: `help`, `spawn fire_ant 200`, `give ember_gland 3`, `stat damage 50`,

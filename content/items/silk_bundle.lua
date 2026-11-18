@@ -3,6 +3,7 @@ return {
     description = "+15% Area, +5 Armor. Hits have a 12% chance to wrap the ant in silk, slowing it to a crawl for 2 seconds.",
     effect = "Hits have a 12% chance to wrap the ant in silk, slowing it to a crawl for 2 seconds.",
     rarity = "rare",
+    category = "control",
     shape = { ".X.", "XXX", ".X." },
     stats = { area = 15, armor = 5 },
     procs = {

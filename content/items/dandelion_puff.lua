@@ -3,6 +3,7 @@ return {
     description = "+6 Speed. Dashing scatters 4 seeds (+2 per stack) that drift out and cut through ants for 6 damage each.",
     effect = "Dashing scatters 4 seeds (+2 per stack) that drift out and cut through ants for 6 damage each.",
     rarity = "uncommon",
+    category = "move",
     size = { 1, 2 },
     stats = { moveSpeed = 6 },
     procs = {

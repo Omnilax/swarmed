@@ -61,6 +61,11 @@ Content.items = Registry.new("item", {
         size = { 1, 1 } },
     validate = function(def)
         def.icon = def.icon or ("icon_" .. def.id)
+        local Categories = require("src.config.categories")
+        if def.category and not Categories.index[def.category] then
+            return false, "unknown category '" .. tostring(def.category) .. "' (see src/config/categories.lua)"
+        end
+        def.category = def.category or Categories.guess(def)
         -- cells it covers: from `shape` rows ("X" = filled), else the full `size` rectangle
         def.cells = {}
         if def.shape then

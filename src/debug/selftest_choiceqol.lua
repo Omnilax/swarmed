@@ -146,7 +146,15 @@ return function(wait, shot)
     e = inv.bag[1]
     px, py = L.bag.x + (e.x + 0.5) * L.C, L.bag.y + (e.y + 0.5) * L.C
     bagState:mousepressed(px, py, 1)
-    local tx, ty = L.bag.x + (inv.cols - 0.5) * L.C, L.bag.y + (inv.rows - 0.5) * L.C
+    -- aim at an empty cell (where the sort left room depends on the Bag Sort Order)
+    local ex, ey
+    for yy = inv.rows - 1, 0, -1 do
+        for xx = inv.cols - 1, 0, -1 do
+            if not ex and not inv:entryAt(xx, yy) then ex, ey = xx, yy end
+        end
+    end
+    ex, ey = ex or inv.cols - 1, ey or inv.rows - 1
+    local tx, ty = L.bag.x + (ex + 0.5) * L.C, L.bag.y + (ey + 0.5) * L.C
     bagState:mousemoved(tx, ty)
     bagState:mousereleased(tx, ty, 1)
     assert(not bagState.held and #inv.bag == n0 - 1, "drag inside the bag lost the item")

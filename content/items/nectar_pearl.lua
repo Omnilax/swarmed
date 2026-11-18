@@ -4,6 +4,7 @@ return {
     description = "+18 Max HP, +1.5 HP Regen. Kills have a 15% chance to heal 4 HP (+4 per stack).",
     effect = "Kills have a 15% chance to heal 4 HP (+4 per stack).",
     rarity = "molted",
+    category = "mend",
     size = { 1, 1 },
     stats = { maxHp = 18, hpRegen = 1.5 },
     procs = {
