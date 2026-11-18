@@ -97,7 +97,19 @@ return function(wait, shot)
     for _, s in ipairs(Schema) do
         if (s.category == "Lighting" or s.category == "Camera") then Settings.set(s.key, s.default) end
     end
+    Settings.set("timeOfDay", "cycle")
+    Settings.set("darkness", 100)
+    assert(#require("src.config.look_presets") >= 10, "fewer than 10 looks")
     assert(SS.current(require("src.config.look_presets")).id == "standard", "defaults are not the Standard look")
+    -- a picture of each look (VISLOOKS=1)
+    if os.getenv("VISLOOKS") then
+        for _, lp in ipairs(require("src.config.look_presets")) do
+            SS.applyPreset(lp)
+            for _ = 1, 30 do wait(1 / 60) end
+            shot("look_" .. lp.id)
+        end
+        SS.applyPreset(require("src.config.look_presets")[1])
+    end
     -- hold to inspect: slows the run and labels nearby enemies
     Settings.set("timeOfDay", "day")
     local Input = require("src.core.input")

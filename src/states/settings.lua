@@ -35,7 +35,7 @@ function SettingsState:build()
     local items = {}
     if cat == "Video" then items[#items + 1] = SettingsState.presetItem() end
     if cat == "Lighting" then items[#items + 1] = SettingsState.presetItem(require("src.config.look_presets"), "Look",
-        "Sets the lighting, visibility and camera looks below in one go (changing one after makes it Custom). Clarity is for seeing the fight, Cinematic for showing off, Classic is the look from before.") end
+        "Ten ready-made looks that set every Lighting and Camera option (and the time of day) in one go; changing one after makes it Custom. Standard is the default, Classic the look from before, Clarity the easiest to read, Dark always night, Sunny always day.") end
     local group
     for _, s in ipairs(Settings.schema) do
         if s.category == cat then
