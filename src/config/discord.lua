@@ -8,7 +8,7 @@
 -- largeImage: the big picture on the status card. Discord takes either an https link to a
 -- picture or the name of an image uploaded under Rich Presence > Art Assets of that app.
 return {
-    appId = "",
+    appId = "1572775997701361724",
     largeImage = "https://raw.githubusercontent.com/Omnilax/swarmed/main/assets/icon/icon_512.png",
     largeText = "Swarmed",
     -- Discord drops updates sent faster than 5 per 20 s, so changes wait at least this long
