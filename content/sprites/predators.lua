@@ -1,4 +1,4 @@
--- Small sprites for the boss encounter predators (content/enemies/predators.lua). In the arena
+-- Small antlion sprite for catalogues (the antlion is now a stage hazard, content/bosses/antlion.lua).
 -- they are drawn by their own drawBody code at full size; these are for catalogues, the
 -- sandbox and shadow sizing. Face right.
 return {

@@ -247,9 +247,8 @@ return function(wait, shot)
     Rules.set("weatherEffects", true)
     w:set(Content.weather:require("clear"), 60)
 
-    -- boss encounters. Bugs (the antlion) are real enemies the wave waits for; animals too big
-    -- to fight (sparrow, anteater) are stage hazards: no enemy, they kill ants and hit the
-    -- player, they can't be hurt, and they leave when the wave is cleared.
+    -- stage hazards (antlion, sparrow, anteater): no enemy, they kill ants and hit the
+    -- player, they can't be hurt or grabbed, and they leave when the wave is cleared.
     world.flags.freezeAI = false
     local realHurt = Env.hurtPlayer
     for _, b in ipairs(Content.bosses:all()) do
@@ -265,6 +264,11 @@ return function(wait, shot)
             local h = dir:startBoss(b.id)
             assert(h and dir.hazard == h, b.id .. " hazard did not arrive")
             assert(world.enemyCount == 0, b.id .. " should not be an enemy")
+            -- dig the antlion's pit right beside the player, so the slope gets a go at them
+            if b.id == "antlion" then
+                h.st.x, h.st.y = pl.x + 50, pl.y
+                h.st.body.x, h.st.body.y = h.st.x, h.st.y
+            end
             local killed, seen, t = 0, {}, 0
             while t < 40 do
                 if alive() < 25 then crowd(pl.x + love.math.random(-120, 120), pl.y + love.math.random(-120, 120), 12, 40) end
@@ -275,7 +279,7 @@ return function(wait, shot)
                 if alive() < before then killed = killed + (before - alive()) end
                 seen[h.st.mode or "?"] = true
                 local m = h.st.mode
-                if not seen["shot_" .. tostring(m)] and (m == "swoop" or m == "peckWarn" or m == "sweep" or m == "rakeWarn" or m == "flickWarn" or m == "gustWarn") then
+                if not seen["shot_" .. tostring(m)] and (m == "swoop" or m == "peckWarn" or m == "sweep" or m == "rakeWarn" or m == "flickWarn" or m == "gustWarn" or m == "wait") then
                     seen["shot_" .. m] = true
                     shot("hazard_" .. b.id .. "_" .. m)
                 end
@@ -312,42 +316,64 @@ return function(wait, shot)
         print("[selftest] encounter " .. b.id .. " OK")
     end
 
-    -- a boss wave with a bug lines up an encounter and the wave can't end before it is dead
+    -- a wave a hazard visits lines it up; it arrives and doesn't hold the wave
     local function bossWave(n, want)
         world:clearEnemies()
         sp.enabled = true
         Rules.set("bossEncounters", true)
-        dir.usedBosses = {}
+        dir.usedBosses, dir.lastHazardWave = {}, nil
         for _, b in ipairs(Content.bosses:all()) do if b.id ~= want then dir.usedBosses[b.id] = true end end
+        local roll = dir.rollHazard
+        dir.rollHazard = function() return true end
         sp:startWave(n)
+        dir.rollHazard = roll
         assert(dir.pendingBoss and dir.pendingBoss.def.id == want, "wave " .. n .. " should bring " .. want)
-        for _ = 1, 60 * 20 do
+        for _ = 1, 60 * 30 do
             world:update(1 / 60)
             if dir.encounter or dir.hazard then break end
         end
         assert(dir.encounter or dir.hazard, "the encounter never arrived")
     end
-    bossWave(5, "antlion")
-    local boss = dir.encounter.e
-    -- kill everything but the predator: the wave must still be on
-    for _ = 1, 60 * 40 do
-        sp.queue, sp.streams, sp.portals = {}, {}, {}
-        for i = 1, world.enemyCount do
-            local e = world.enemies[i]
-            if e ~= boss and not e.dead then world:killEnemy(e) end
+
+    -- stage hazard scheduling: random, late-weighted, never with a queen or on the final wave
+    do
+        local saved = dir.lastHazardWave
+        assert(dir:hazardChance(3) == 0 and dir:hazardChance(5) == 0, "no hazards early in a run")
+        assert(dir:hazardChance(12) > dir:hazardChance(7), "hazards should get likelier late")
+        local hits = { early = 0, late = 0 }
+        for i = 1, 400 do
+            dir.lastHazardWave = nil
+            sp.bossWave = false
+            if dir:rollHazard(7) then hits.early = hits.early + 1 end
+            dir.lastHazardWave = nil
+            if dir:rollHazard(13) then hits.late = hits.late + 1 end
         end
-        world:update(1 / 60)
-        if world.enemyCount == 1 then break end
+        assert(hits.late > hits.early, "late waves should roll hazards more often")
+        sp.bossWave = true
+        dir.lastHazardWave = nil
+        for _ = 1, 50 do assert(not dir:rollHazard(14), "no hazard on a queen wave") end
+        sp.bossWave = false
+        dir.lastHazardWave = 12
+        for _ = 1, 50 do assert(not dir:rollHazard(13), "hazards should be spaced out") end
+        dir.lastHazardWave = saved
+        print(("[selftest] hazard rolls: wave 7 %d/400, wave 13 %d/400"):format(hits.early, hits.late))
     end
-    world:update(1 / 60)
-    assert(sp.phase == "wave", "the wave ended with the predator still alive")
-    world:killEnemy(boss)
-    for _ = 1, 30 do
+
+    -- the antlion is a stage hazard too: nothing to hit or grab
+    bossWave(6, "antlion")
+    assert(dir.hazard and dir.hazard.def.id == "antlion", "the antlion should come as a stage hazard")
+    for i = 1, world.enemyCount do
+        assert(world.enemies[i].def.id ~= "antlion", "the antlion should not be an enemy")
+    end
+    for _ = 1, 60 * 40 do
         sp.queue, sp.streams, sp.portals = {}, {}, {}
         for i = 1, world.enemyCount do if not world.enemies[i].dead then world:killEnemy(world.enemies[i]) end end
         world:update(1 / 60)
+        if sp.phase == "break" then break end
     end
-    assert(sp.phase == "break", "the wave should end once the predator is dead")
+    assert(sp.phase == "break", "the antlion should not hold the wave up")
+    for _ = 1, 60 * 5 do world:update(1 / 60) if not dir.hazard then break end end
+    assert(not dir.hazard, "the antlion should be gone after the wave")
     world.pendingChoice = nil
     sp.enabled = false
 

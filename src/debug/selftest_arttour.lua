@@ -70,7 +70,10 @@ return function(wait, shot)
     shot("art_props")
     if world.props.clear then world.props:clear() end
     world:clearEnemies()
-    local al = world:spawnEnemy("antlion", pl.x + 40, pl.y + 40)
+    -- the antlion is a stage hazard now: dig its pit next to the player
+    local h = world.director:startBoss("antlion")
+    h.st.x, h.st.y = pl.x + 40, pl.y + 40
+    h.st.body.x, h.st.body.y = h.st.x, h.st.y
     world.camera.targetZoom, world.camera.zoom = 3, 3
     world.flags.freezeAI = false
     wait(1.5)

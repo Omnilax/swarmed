@@ -1307,7 +1307,7 @@ function World:draw()
             if o == p and not p.alpha then Shading.drawPlayerRim(self, o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, sxs, sys, pose) end
             Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, flash, sxs, sys, a, pose)
         elseif o ~= p and o.def.drawBody then
-            -- big creatures drawn by their own code (encounter bosses: content/enemies/predators.lua)
+            -- big creatures drawn by their own code (def.drawBody)
             if not o.hidden then o.def.drawBody(o, self, o._sx, o._sy, sxs, sys, flash) end
         elseif not o.hidden then
             local el = o.elite
