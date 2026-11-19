@@ -453,7 +453,10 @@ function Choice.drawCard(self, i, entry, c, ctx)
         lg.printf(l.text, x + u(8), ty, c.w - u(16), "center")
         ty = ty + u(18)
     end
-    local effect = def.effect or (#def.procs > 0 and #(self.previews[i] or {}) == 0 and def.description)
+    -- words for what it does: its effect, else the description when the numbers don't say it
+    -- (proc items, and items like Cuckoo Wasp Shell that change a rule instead of a stat)
+    local desc = def.description ~= "" and def.description or nil
+    local effect = def.effect or (#(self.previews[i] or {}) == 0 and desc)
     local bottom = y + c.h - u(30)
     if def.curse then
         -- the curse's cost, in purple, just above the footer

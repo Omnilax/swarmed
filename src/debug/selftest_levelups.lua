@@ -36,10 +36,10 @@ return function(wait, shot)
     local p, sk, lu = world.player, world.player.skills, world.levelups
     assert(lu and lu:enabled(), "a run should use level-up cards")
 
-    -- a level queues a pick instead of a skill point, with the fanfare
+    -- a level gives a skill point and queues a pick, with the fanfare
     local fx0 = #world.fx
     world:grantXP(Skills.xpFor(1))
-    assert(sk.level == 1 and sk.points == 0 and #lu.queue == 1, "a level should queue a card pick (points " .. sk.points .. ", queue " .. #lu.queue .. ")")
+    assert(sk.level == 1 and sk.points == 1 and #lu.queue == 1, "a level should give a point and queue a card pick (points " .. sk.points .. ", queue " .. #lu.queue .. ")")
     assert(world.rewards.slowT > 0, "level-up should slow the game for a moment")
     assert(#world.fx >= fx0 + 1, "level-up should flash a ring")
 
@@ -81,7 +81,7 @@ return function(wait, shot)
     assert(#lu.queue == 0, "the pick should leave the queue")
     assert(p.stats:get("moveSpeed") > speed * 1.1, "Swift Legs (legendary) should add ~12% speed")
 
-    -- the skill tree is never on the cards: skipping a pick is the skill point
+    -- the skill tree is never on the cards: skipping a pick banks an extra skill point
     for _ = 1, 40 do
         for _, c in ipairs(lu:deal({ level = 20 })) do assert(c.kind == "stat", "level-up cards should be cards, never skill nodes") end
     end

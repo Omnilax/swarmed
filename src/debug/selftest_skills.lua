@@ -79,8 +79,8 @@ return function(wait, shot)
     assert(sk:buy(n1.id), "could not buy a tier 1 node")
     assert(pl.attack.params.damage > hpBefore, "buying Heavy Horn did not raise sweep damage")
     assert(Content.characters:get("rhino_beetle").attack.damage == hpBefore, "skill mods leaked into the character def")
-    -- a run can't finish the whole tree by wave ~20: points only come from skipping level-up
-    -- cards, so even a run that skipped every single pick (~20k XP by wave 20) falls short
+    -- a run can't finish the whole tree by wave ~20 on level points alone: every level gives one
+    -- point (~20k XP by wave 20), skips add more, and the tree still asks for more than the levels
     local lv, xp = 0, 20000
     while xp >= Skills.xpFor(lv + 1) do xp = xp - Skills.xpFor(lv + 1); lv = lv + 1 end
     for _, t in ipairs(Content.skilltrees:all()) do

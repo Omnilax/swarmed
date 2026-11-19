@@ -73,7 +73,7 @@ return {
     },
     {
         id = "spiny_back", name = "Spiny Back", family = "perk", weight = 5, maxRank = 3,
-        text = function(pw) return ("When an ant bites you, spines hit every ant touching you for %d"):format(r(5 * pw)) end,
+        text = function(pw) return ("When an ant bites you, spines hit up to 5 ants touching you for %d"):format(r(5 * pw)) end,
         procs = { { trigger = "onHurt", cooldown = 0.4,
             effect = function(ctx, pw)
                 local p = ctx.player

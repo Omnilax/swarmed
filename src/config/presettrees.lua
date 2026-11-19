@@ -35,7 +35,7 @@ local function shell(id)
         { id = id .. "_hide", tier = 1, ranks = 3, name = "Thick Hide", desc = "+12 max HP per rank.", stats = { maxHp = 12 } },
         { id = id .. "_plates", tier = 2, ranks = 2, name = "Plates", desc = "+1 armor per rank.", stats = { armor = 1 } },
         { id = id .. "_mend", tier = 3, col = -1, name = "Mend", desc = "+0.6 HP per second.", stats = { hpRegen = 0.6 } },
-        { id = id .. "_thorns", tier = 3, col = 1, name = "Thorny", desc = "Getting hit hurts every ant around you.",
+        { id = id .. "_thorns", tier = 3, col = 1, name = "Thorny", desc = "Getting hit hurts up to 5 ants around you.",
           procs = { { trigger = "onHurt", cooldown = 0.6, effect = function(ctx)
               local p = ctx.player
               fx.nova(ctx, p.x, p.y, 30, 10, GOLD)

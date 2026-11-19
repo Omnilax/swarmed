@@ -16,7 +16,7 @@ return {
     stats = { maxHp = 30, moveSpeed = 200, dodge = 12, pickupRange = 70 },
     attack = { type = "dragonstrike", damage = 13, cooldown = 0.45, gust = 46, arc = 3.4, gustMult = 0.9, reach = 70, lungeSpeed = 1.7, knockback = 90, color = { 0.5, 0.85, 1 } },
     secondary = { type = "dragongrab", cooldown = 1, reach = 34, bomb = 26, radius = 34, groundMult = 0.6, squeeze = 0, color = { 0.5, 0.85, 1 } },
-    dash = { type = "wingflight", stamina = 5, regen = 2.5, minStart = 0.15, speed = 1, groundSpeed = 0, height = 12, downdraft = 8, radius = 40 },
+    dash = { type = "wingflight", stamina = 6, regen = 3.2, minStart = 0.1, speed = 1.3, groundSpeed = 0, height = 12, downdraft = 8, radius = 40 },
     anims = {
         attack = { time = 0.24, limbs = { BASKET }, build = function(params, p)
             if p.airborne then

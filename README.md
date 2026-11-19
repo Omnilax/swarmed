@@ -376,8 +376,8 @@ safety limit is in **[docs/CUSTOM_BUGS.md](docs/CUSTOM_BUGS.md)**. Test: `love .
 
 Every bug has its own skill tree (`content/skilltrees/<character>.lua`, schema in `_template.lua`,
 engine `src/game/skills.lua`). Kills give XP and every level opens a level-up card pick; the cards
-are stat boosts only, and **skipping** a pick is what banks a **skill point** (so each level is a
-boost now or a step down the tree). Spend points in the bag's **SKILLS** tab (Tab, then E / RB, or
+are stat boosts only. Every level also gives one **skill point**, and **skipping** the pick banks
+an **extra** point (so each level is a boost now or a bigger step down the tree). Spend points in the bag's **SKILLS** tab (Tab, then E / RB, or
 tap the tab). A tree has four branches:
 
 - three of the bug's own (attack, special, dash/body), each with a one-line blurb under its name and
@@ -425,8 +425,8 @@ The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches abo
 Levels play a chime, half a second of slow motion and a ring of light; the cards open right
 there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
 At Wave End** saves them for the wave's reward bloom instead). The skill tree is never on the cards:
-**Skip (+1 skill point)** under the cards takes none of them and banks a point for the SKILLS tab,
-the only way to earn skill points. Setting
+every level gives one skill point, and **Skip (+1 extra skill point)** under the cards takes none
+of them and banks a second point for the SKILLS tab. Setting
 **Level-Ups: Skill Points** brings back the old way (every level is a point). Other systems grant
 picks with `require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })`.
 Sandbox Player tab: **Level-up card pick**. Test: `love . --selftest --levelups`.

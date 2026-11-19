@@ -967,6 +967,8 @@ function World:updateEnemies(dt)
                     p:hurt(e.damage, e)
                     local venom = def.venom or (e.elite and e.elite.venom)
                     if venom then p:poison(venom.dps * e.damage / math.max(0.1, def.damage), venom.time) end
+                    local shred = def.shred or (e.elite and e.elite.shred)    -- cracks your armor (src/config/defense.lua)
+                    if shred then p:shred(shred.armor or 2, shred.time, shred.max) end
                     e.squash = 0.1
                 end
             end

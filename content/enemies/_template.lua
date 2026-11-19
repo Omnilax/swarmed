@@ -20,6 +20,7 @@ return {
     swarmShade = nil,               -- e.g. 0.2: dark underlay that merges crowds into one mass
     light = nil,                    -- e.g. { radius = 10, color = "#ff6a2a", intensity = 0.4 }
     biteRate = 0.9,                 -- seconds between bites while touching the player (every ant bites)
+    -- shred = { armor = 2, time = 4, max = 10 },  -- optional: every bite cracks the player's armor (stacks to max, src/config/defense.lua)
     -- solid = true,                -- the player can't walk through it (dashing still can)
     -- shield = { block = 0.75, width = 2.2 },  -- soaks hits aimed at ants behind it
     -- boss = true,                 -- a queen/boss: shows a boss bar; spawned by boss waves, not normally

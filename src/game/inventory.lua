@@ -406,7 +406,23 @@ end
 
 -- proc.chance may be a number or function(stacks) -> chance (0..1). Luck scales it (see
 -- Inventory.stackChance). proc.effect(ctx, stacks) does the work.
+-- Payback procs (anything that fires when you are hurt or block a bite) hit at most a few ants
+-- each (src/config/defense.lua retaliate.maxTargets, applied in Combat.area).
+local RETALIATE = { onHurt = true, onBlock = true }
+
 function Inventory:trigger(name, ctx)
+    local w0 = ctx and ctx.world
+    if RETALIATE[name] and w0 and not w0.retaliateCap then
+        w0.retaliateCap = require("src.config.defense").retaliate.maxTargets
+        local ok, err = pcall(self.triggerAll, self, name, ctx)
+        w0.retaliateCap = nil
+        if not ok then error(err, 0) end
+        return
+    end
+    return self:triggerAll(name, ctx)
+end
+
+function Inventory:triggerAll(name, ctx)
     -- luck, and the proc snowball: chances grow with every wave (src/config/rewards.lua procs)
     local luck = self:luckMul()
     -- the bug's own rule (src/config/bugrules.lua) sees every trigger and can bend procs

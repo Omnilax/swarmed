@@ -3,11 +3,12 @@ return {
     name = "Bulldog Ant",
     description = "Hangs back and watches you with enormous eyes. The moment you turn your back it rushes in, and its sting is venomous.",
     lore = "Australian bulldog ants can see an intruder a metre away and will chase it down, stinging again and again.",
-    tip = "Keep facing them and they hesitate. Hit one mid-rush to stagger it for a counter.",
+    tip = "Keep facing them and they hesitate. Hit one mid-rush to stagger it for a counter. Its bites crack your armor.",
     sprite = "bulldog_ant",
     hp = 12,
     speed = 48,
     damage = 5,
+    shred = { armor = 2, time = 4, max = 10 },   -- bites crack your armor (src/config/defense.lua)
     radius = 4.5,
     mass = 1.6,
     behavior = "stalker",

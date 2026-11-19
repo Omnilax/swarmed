@@ -46,7 +46,7 @@ Traits.PASSIVES = {
     aura = { name = "Aura", desc = "Ants near you keep taking damage (and can be slowed).",
         check = function(t) return { radius = clamp(t.radius, 10, 200, 36), dps = clamp(t.dps, 0, 200, 4),
             slow = clamp(t.slow, 0.1, 1, nil), color = hexOr(t.color, { 0.6, 1, 0.5 }) } end },
-    thorns = { name = "Thorns", desc = "Getting hit hurts every ant around you.",
+    thorns = { name = "Thorns", desc = "Getting hit hurts up to 5 ants around you.",
         check = function(t) return { damage = clamp(t.damage, 0, 300, 10), radius = clamp(t.radius, 10, 200, 32) } end },
     feast = { name = "Feast", desc = "Kills can heal you.",
         check = function(t) return { hp = clamp(t.hp, 0, 50, 2), chance = clamp(t.chance, 0, 1, 0.5) } end },

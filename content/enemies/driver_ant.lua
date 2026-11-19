@@ -3,11 +3,12 @@ return {
     name = "Driver Ant",
     description = "Pours in as a living river. Each one that reaches you locks its jaws on, hangs on and keeps biting, and the more hang on, the slower you go.",
     lore = "Siafu soldiers bite so hard their jaws stay locked even after death. In East Africa they were once used to stitch wounds closed.",
-    tip = "Dash to shake every one of them off at once. Don't let a river catch you standing still.",
+    tip = "Dash to shake every one of them off at once. Don't let a river catch you standing still. A crowd of them cracks your armor fast.",
     sprite = "driver_ant",
     hp = 4,
     speed = 50,
     damage = 1.5,
+    shred = { armor = 1, time = 3, max = 8 },   -- bites crack your armor (src/config/defense.lua)
     radius = 3.5,
     mass = 0.9,
     behavior = "latcher",

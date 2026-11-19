@@ -18,8 +18,8 @@ return {
     radius = 7,
     scale = 1.0,
     stats = { maxHp = 48, moveSpeed = 112, critChance = 10, area = 15 },
-    attack = { type = "palpstrike", hand = "left", feelers = true, damage = 10, cooldown = 0.5, reach = 76, arc = 1.9, color = { 1, 0.85, 0.6 } },
-    secondary = { type = "palpstrike", hand = "right", damage = 34, cooldown = 0.9, reach = 100, radius = 14, splash = 0.35, stun = 0.4, color = { 1, 0.8, 0.55 } },
+    attack = { type = "palpstrike", hand = "left", feelers = true, damage = 10, cooldown = 0.85, reach = 76, arc = 1.9, color = { 1, 0.85, 0.6 } },
+    secondary = { type = "palpstrike", hand = "right", damage = 34, cooldown = 1.4, reach = 100, radius = 14, splash = 0.35, stun = 0.4, color = { 1, 0.8, 0.55 } },
     dash = { type = "feelerpull", range = 140, speed = 1.6, charges = 2, damage = 8, crack = 14, radius = 26 },
     anims = {
         attack = { time = 0.3, limbs = { LEFT }, keys = { { 0 }, { 0.3, L = 1, twist = -0.25, lunge = 1 }, { 0.6, L = 0.6, twist = 0.2 }, { 1 } } },

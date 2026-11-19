@@ -3,8 +3,8 @@ local Combat = require("src.game.combat")
 
 return {
     name = "Scarab Shell",
-    description = "+8 Armor, +15 Max HP. When hurt, 30% chance to lash every ant around you for 10 damage (+10 per stack).",
-    effect = "When hurt, 30% chance to lash every ant around you for 10 damage (+10 per stack).",
+    description = "+8 Armor, +15 Max HP. When hurt, 30% chance to lash up to 5 ants around you for 10 damage (+10 per stack).",
+    effect = "When hurt, 30% chance to lash up to 5 ants around you for 10 damage (+10 per stack).",
     rarity = "rare",
     category = "guard",
     shape = { "XXX", ".X." },
