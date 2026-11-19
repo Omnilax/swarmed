@@ -43,7 +43,9 @@ function Choices.pickDef(world, taken, pred)
     local function ok(d) return not d.molted and (not d.parasite or require("src.game.parasites").weight(world, d) > 0) and not taken[d.id] and not banned[d.id] and inPool(d.id) and (not pred or pred(d)) end
     -- parasites: once each, a few at most, and the Parasites setting (src/game/parasites.lua)
     local pw = require("src.game.parasites").weight
-    return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight * pw(world, d) end,
+    -- shore items: more often for their kin (crustaceans) and on the beach (src/game/shore.lua)
+    local sw = require("src.game.shore").weight
+    return Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight * pw(world, d) * sw(world, d) end,
         function(d) return ok(d) and Rarities[d.rarity].minWave <= w end)
         or Content.items:pickWeighted(function() return 1 end, ok)
 end
@@ -267,6 +269,7 @@ end
 -- { { id, label, before, after, text = "Speed 120 » 138", good }, ... } in stat order.
 function Choices.preview(stats, def)
     local add, mult = def.stats or {}, def.statsMult or {}
+    if stats.owner and def.kin then add, mult = require("src.game.shore").statsFor(def, stats.owner) end
     local after = stats:peek(add, mult)
     local out = {}
     for _, sd in ipairs(Stats.defs) do

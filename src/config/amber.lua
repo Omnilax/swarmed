@@ -45,6 +45,7 @@ return {
             { id = "stage_forest_floor", cost = 50, kind = "stage", stage = "forest_floor" },
             { id = "stage_sandstone_wash", cost = 50, kind = "stage", stage = "sandstone_wash" },
             { id = "stage_dune_field", cost = 60, kind = "stage", stage = "dune_field" },
+            { id = "stage_tide_pools", cost = 50, kind = "stage", stage = "tide_pools" },
             { id = "stage_rotting_log", cost = 60, kind = "stage", stage = "rotting_log" },
             { id = "stage_wildflower_meadow", cost = 65, kind = "stage", stage = "wildflower_meadow" },
             { id = "stage_rainforest_floor", cost = 75, kind = "stage", stage = "rainforest_floor" },

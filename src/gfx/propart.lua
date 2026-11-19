@@ -78,10 +78,12 @@ end
 
 -- ------------------------------------------------------------------ twig (lying flat; origin: middle)
 -- painted along +u, L long; knot (0..1) is where its side shoot grows
-function PA.twig(L, knot)
+-- bleached = true paints sun-and-salt bleached driftwood instead of fresh bark
+local DRIFT = ramp("#5a5248", "#7c7266", "#9c9284", "#bab0a0", "#d6cebe")
+function PA.twig(L, knot, bleached)
     local kq = floor(knot * 5 + 0.5)
-    return Paint.get("twig" .. L .. "_" .. kq, function()
-        local bark = ramp("#2e1c0e", "#4a2e16", "#664222", "#845a32", "#9c7044")
+    return Paint.get((bleached and "drift" or "twig") .. L .. "_" .. kq, function()
+        local bark = bleached and DRIFT or ramp("#2e1c0e", "#4a2e16", "#664222", "#845a32", "#9c7044")
         local p = Paint.pic(L + 6, 14, floor(L / 2) + 3, 7)
         local h = L / 2
         -- the stick: a long lit cylinder with bark streaks along it, thinner at one end
@@ -100,6 +102,38 @@ function PA.twig(L, knot)
         local ku = -h + L * kq / 5
         p:stroke(ku, -1, ku + 5, -5, 1.0, 0.5, bark)
         p:stroke(h - 3, 1, h - 1, 3, 0.8, 0.5, bark)
+        p:outline()
+        return p
+    end)
+end
+
+-- ------------------------------------------------------------------ seashell (origin: its middle)
+-- A scallop or cockle lying on the sand: a ribbed fan with two little ears at the hinge.
+-- variant 0 cream scallop, 1 pink scallop, 2 brown-banded cockle.
+local SHELLS = {
+    ramp("#8a7458", "#b09878", "#cdb898", "#e6d6ba", "#f6ecd8"),
+    ramp("#8a5050", "#b47070", "#d29090", "#e8b4aa", "#f8d6cc"),
+    ramp("#5a3a22", "#7e5634", "#a0784e", "#c09a6c", "#dcbe92"),
+}
+function PA.seashell(r, variant)
+    r = max(3, floor(r + 0.5))
+    variant = variant % 3
+    return Paint.get("seashell" .. r .. "_" .. variant, function()
+        local C3 = SHELLS[variant + 1]
+        local w = r * 3 + 6
+        local p = Paint.pic(w, r * 3 + 6, floor(w / 2), floor(r * 1.5) + 3)
+        local hv = r * 0.9                                   -- the hinge sits below the middle
+        -- ears at the hinge
+        p:blob(-r * 0.45, hv - 0.5, r * 0.4, r * 0.28, 0, C3)
+        p:blob(r * 0.45, hv - 0.5, r * 0.4, r * 0.28, 0, C3)
+        -- the fan: lit dome with ribs running out from the hinge, banded on the cockle
+        p:blob(0, -r * 0.1, r * 1.25, r * 1.05, 0, C3, function(u, v, i, a, b)
+            local ang = math.atan2(u, hv - v)
+            local rib = sin(ang * 9)
+            local k = i + rib * 0.16
+            if variant == 2 and floor(math.sqrt(u * u + (v - hv) ^ 2) / 2.2) % 2 == 0 then k = k - 0.18 end
+            return C3[max(1, min(5, floor(k * 5) + 1))]
+        end)
         p:outline()
         return p
     end)
