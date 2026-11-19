@@ -988,7 +988,7 @@ function CharSelect:drawMastery(def, px, y, pw, bh, rule, ruleLines, stars)
         lg.printf(Unlocks.progressText(Unlocks.bugGoal(def.id)), px + u(48), y + u(32), pw - u(96), "center")
         lg.setFont(Theme.font(13))
         lg.setColor(c.dim)
-        lg.printf("Or open every bug: Settings > Gameplay > Unlock Everything", px + u(16), y + bh - u(18), pw - u(32), "center")
+        lg.printf("Or open every bug: Settings > Developer > Unlock Everything", px + u(16), y + bh - u(18), pw - u(32), "center")
         lg.setColor(1, 1, 1, 1)
         return
     end

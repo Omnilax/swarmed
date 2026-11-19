@@ -361,7 +361,11 @@ function Player:update(dt)
         self.aimX, self.aimY = Iso.screenDirToWorld(sx, sy)
     else
         local mode = demo and "nearest" or Settings.get("aimMode")
-        if mode == "mouse" and Input.lastDevice == "touch" then mode = "nearest" end
+        -- touch has no pointer: aim at the nearest ant, or (manual attack, as in the Full Control
+        -- preset) the way you walk, so nothing aims for you
+        if mode == "mouse" and Input.lastDevice == "touch" then
+            mode = Settings.get("autoAttack") and "nearest" or "move"
+        end
         if mode == "nearest" then
             target = world:nearestEnemy(self.x, self.y, range * 1.6)
             if target then
