@@ -32,7 +32,7 @@ return {
         { title = "Garden events", system = "events", text = "The garden joins the fight: honeydew rain, floods, a boot, a lawnmower, falling acorns. Each hurts ants too, so use it." },
         { title = "Map gambles", system = "gambles", text = "Dewdrop shrines give a permanent blessing if you stand in them long enough. Challenge bells call a tough pack for a prize. Gamble flowers take nectar for a spin." },
         { title = "Route tunnels", system = "routes", text = "Between waves two tunnels may open: a safe one and a hard one. Walk into one to start the next wave that way. Hard routes pay more." },
-        { title = "Big visitors", system = "encounters", text = "On some queen waves something huge joins in: an antlion pit, a sparrow, a giant anteater. Whatever they do hurts ants as much as you." },
+        { title = "Big visitors", system = "encounters", text = "Now and then, more often late in a run, something huge visits: an antlion pit, a sparrow, a giant anteater. You can't hurt them, and whatever they do hurts ants as much as you." },
         { title = "Props and nest holes", text = "Walk into pebbles and twigs to roll them, or hit them to launch them through the crowd. Hit a nest hole three times, or dash over it, to seal it." },
     } },
     { group = "Progress", pages = {

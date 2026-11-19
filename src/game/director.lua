@@ -5,12 +5,12 @@
 --     cocoons with a bug to free, a merchant beetle. A few are scheduled into each wave from
 --     wave 2 on (run rule "midWaveEvents", src/game/rules.lua); they never hold a wave up, and whatever is still
 --     going when the last ant falls ends with the wave.
---   * Boss encounters (content/bosses): every 5th wave (not the final one) something big joins
---     the queen. Bugs (the antlion in its pit) are real enemies: the wave lasts until it is
---     killed. Animals far too big to fight (the sparrow, the giant anteater) are stage hazards
---     instead (def.hazard): godly attacks sweeping the arena that eat ants and hurt you alike.
---     You can't hit them; they hunt until the wave is cleared, then leave. Run rule "Boss
---     Encounters".
+--   * Stage hazards (content/bosses, def.hazard): the antlion pit, the sparrow, the giant
+--     anteater. Godly things that eat ants and hurt you alike; you can't hit or grab them, they
+--     don't hold the wave up, and they leave after a while or when the wave is cleared. They
+--     visit at random, more often the later the run gets (never on a queen's wave or the final
+--     one), see Director:rollHazard. Run rule "Boss Encounters". A content/bosses entry with
+--     `enemy` instead of `hazard` (a fightable boss) still works for modders.
 --   * Stage mechanics (content/mechanics): a stage's `mechanic` changes how it plays (a rising
 --     puddle, a lawn that shrinks in, patches of sun and shade).
 --   * Weather effects: a spell's `effects` (content/weather) push and slow or speed things up.
@@ -42,8 +42,12 @@ Director.DEFAULTS = {
     eventsFrom = 2,             -- first wave with mid-wave events
     eventAt = { 6, 24 },        -- seconds into a wave an event may start
     eventGap = 9,               -- at least this many seconds between two events' starts
-    encounterEvery = 5,         -- a boss encounter on every 5th wave (0 = never)
-    encounterAt = 5,            -- seconds into the wave it arrives
+    -- stage hazards: none before hazardFrom; then each wave rolls hazardRamp more chance per
+    -- wave (up to hazardMax, x hazardMul), at least hazardGap waves apart, never on queen waves
+    hazardFrom = 6, hazardRamp = 0.07, hazardMax = 0.5, hazardMul = 1, hazardGap = 2,
+    hazardAt = { 6, 20 },       -- seconds into the wave it may arrive
+    encounterEvery = 1,         -- 0 = no stage hazards at all (kept for old mode files)
+    encounterAt = 5,            -- seconds into the wave a fightable boss arrives
     props = { pebble = 5, twig = 3 },   -- shovable props when the stage names none
 }
 
@@ -104,7 +108,7 @@ end
 
 function Director:encountersOn()
     local w = self.world
-    if w.mode ~= "run" or w.flags.demo or self.cfg.encounterEvery <= 0 then return false end
+    if w.mode ~= "run" or w.flags.demo or (self.cfg.encounterEvery or 1) <= 0 then return false end
     if w.modeDef and w.modeDef.encounters == false then return false end
     return Rules.get("bossEncounters") ~= false
 end
@@ -152,13 +156,13 @@ function Director:onWaveStart(n)
     -- a scripted wave (Custom Waves, content/modes `waves`) names its own events and encounter
     local sw = sp and sp.scriptWave and sp:scriptWave(n)
     if sw then return self:scriptedWave(sw) end
-    -- a predator joins the queen on boss waves (not the run's final wave)
-    local every = self.cfg.encounterEvery
-    if self:encountersOn() and every > 0 and n % every == 0 and not (sp.isFinal and sp:isFinal(n))
-        and require("src.game.onramp").allows(world, "encounters", n) then
+    -- now and then a stage hazard visits (more often late in the run)
+    if self:encountersOn() and self:rollHazard(n) then
         local boss = self:pickBoss(n)
         if boss then
-            self.pendingBoss = { def = boss, at = boss.arrive or self.cfg.encounterAt }
+            local at = self.cfg.hazardAt
+            self.pendingBoss = { def = boss, at = at[1] + love.math.random() * (at[2] - at[1]) }
+            self.lastHazardWave = n
             -- paint the hazard's pictures now rather than on the frame it arrives
             if boss.hazard and boss.pictures then Beasts.prepare(boss.pictures) end
         end
@@ -243,7 +247,25 @@ function Director:isActive(id)
 end
 
 ----------------------------------------------------------------------------------------------
--- Boss encounters
+-- Boss encounters / stage hazards
+
+-- The chance a stage hazard visits wave n: nothing early, then rising wave by wave.
+function Director:hazardChance(n)
+    local c = self.cfg
+    if n < c.hazardFrom then return 0 end
+    return math.min(c.hazardMax, (n - c.hazardFrom + 1) * c.hazardRamp) * (c.hazardMul or 1)
+end
+
+-- Does a stage hazard visit wave n? Never on a queen's wave or the final wave (a queen is
+-- chaos enough), never too soon after the last one, and not during Gentle Start's first runs.
+function Director:rollHazard(n)
+    local sp, c = self.world.spawner, self.cfg
+    if c.encounterEvery <= 0 then return false end
+    if sp.bossWave or (sp.isFinal and sp:isFinal(n)) then return false end
+    if self.lastHazardWave and n - self.lastHazardWave < c.hazardGap then return false end
+    if not require("src.game.onramp").allows(self.world, "encounters", n) then return false end
+    return love.math.random() < self:hazardChance(n)
+end
 
 function Director:pickBoss(wave)
     local options, fresh = {}, {}
@@ -408,7 +430,7 @@ function Director:update(dt)
         Env.current = nil
         if m.def.env then m.def.env(world, m, env) end
     end
-    -- the stage hazard (sparrow, anteater): hunts until the wave is cleared, then leaves
+    -- the stage hazard (antlion, sparrow, anteater): hunts until the wave is cleared, then leaves
     local h = self.hazard
     if h then
         h.t = h.t + dt
