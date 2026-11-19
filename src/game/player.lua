@@ -12,6 +12,7 @@ local Inventory = require("src.game.inventory")
 local Skills = require("src.game.skills")
 local Stamina = require("src.game.stamina")
 local RunStats = require("src.game.runstats")
+local DefenseCfg = require("src.config.defense")
 
 -- particle colours and options, made once (not a new table every frame)
 local PFX_1 = { 0.8, 0.85, 0.9 }
@@ -137,6 +138,7 @@ function Player:setCharacter(def)
     self.slowT, self.slowAmt = 0, 1                 -- timed slow (pebble daze)
     self.venomT, self.venomDps, self.venomTick = 0, 0, 0   -- poison from venomous bites
     self.stunT, self.blindT, self.gumT, self.gumMul = 0, 0, 0, 1   -- paralysed, blinded, attacks gummed up (bees, wasps)
+    self.shredArmor, self.shredT = 0, 0    -- armor cracked by shredder bites (Player:shred)
     self.stepFrame, self._anims = 0, nil
     self.delayed = {}       -- attack follow-ups: { t = seconds, fn = function(player, world) }
     self.hurtFxT, self.dmgAccum, self.dmgShowT = 0, 0, 0
@@ -258,6 +260,7 @@ function Player:update(dt)
     -- a parasite can take the wheel (Cordyceps, Horsehair Worm; src/game/parasites.lua)
     if self.steer and not stunned then wx, wy, mag = self.steer(self, wx, wy, mag, dt) end
     self.moving = mag > 0.1
+    self.moveDirX, self.moveDirY = self.moving and wx or 0, self.moving and wy or 0   -- where the stick / keys point (world)
 
     -- Dash: each bug's own kind (content/dashes), all paid for from one stamina pool
     -- (src/game/stamina.lua), which refills faster with Dash Cooldown items.
@@ -496,6 +499,10 @@ function Player:update(dt)
         self.gumT = self.gumT - dt
         if self.gumT <= 0 then self.gumMul = 1 end
     end
+    if self.shredArmor > 0 then
+        if self.shredT > 0 then self.shredT = self.shredT - dt
+        else self.shredArmor = math.max(0, self.shredArmor - DefenseCfg.shred.fade * dt) end
+    end
     -- Venom: damage over time in half-second ticks (a dash's i-frames skip a tick).
     if self.venomT > 0 then
         self.venomT = self.venomT - dt
@@ -617,6 +624,30 @@ local function armorMultiplier(armor)
     return (15 - armor) / 15
 end
 
+-- Shredder bites (def.shred, src/config/defense.lua): crack `amount` armor for `time` s,
+-- stacking up to `max`. Each bite refreshes the timer.
+function Player:shred(amount, time, max)
+    if self.def.immune then return end     -- hissing roach: shrugs off every debuff
+    local before = self.shredArmor
+    self.shredArmor = math.min(math.max(before, max or 12), before + amount)
+    self.shredT = math.max(self.shredT, time or 4)
+    if math.floor(self.shredArmor / 4) > math.floor(before / 4) then
+        self.world:floatText(self.x, self.y - 10, "armor cracked", { 1, 0.7, 0.4 })
+    end
+end
+
+-- Armor that counts against the next bite: the stat, minus shredder bites, minus the crowd on
+-- you (every biting ant cracks a little, up to most of your positive armor).
+function Player:effectiveArmor()
+    local armor = self.stats:get("armor") - (self.shredArmor or 0)
+    local n = self.world and self.world.attackers or 0
+    if armor > 0 and n > 1 then
+        local c = DefenseCfg.crowd
+        armor = armor - math.min(armor * c.maxFrac, (n - 1) * c.perAnt)
+    end
+    return armor
+end
+
 -- Where the player is pointing in the world: the mouse, or ahead along the aim on a pad.
 function Player:pointer()
     local dev = Input.lastDevice
@@ -644,7 +675,7 @@ function Player:hurt(amount, source)
     end
     -- No invulnerability after a hit: every bite lands, so a bigger crowd hurts more.
     -- Only dashing (and dodge) avoid damage. Feedback is throttled so swarms don't spam it.
-    local dmg = math.max(0.5, amount * armorMultiplier(self.stats:get("armor")) * (self.guardMul or 1)
+    local dmg = math.max(0.5, amount * armorMultiplier(self:effectiveArmor()) * (self.guardMul or 1)
         * (type(source) == "table" and source.cWeak or 1)
         * require("src.game.itemfx").guardMul(self))
     self.hp = self.hp - dmg

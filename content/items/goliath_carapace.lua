@@ -3,8 +3,8 @@ local Combat = require("src.game.combat")
 
 return {
     name = "Goliath Carapace",
-    description = "+18 Armor, +30 Max HP. When hurt, 50% chance to lash every ant around you for 30 damage (+30 per stack).",
-    effect = "When hurt, 50% chance to lash every ant around you for 30 damage (+30 per stack).",
+    description = "+18 Armor, +30 Max HP. When hurt, 50% chance to lash up to 5 ants around you for 30 damage (+30 per stack).",
+    effect = "When hurt, 50% chance to lash up to 5 ants around you for 30 damage (+30 per stack).",
     rarity = "molted",
     category = "guard",
     size = { 2, 2 },

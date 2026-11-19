@@ -193,9 +193,19 @@ function Combat.collectLine(world, x1, y1, x2, y2, width)
 end
 
 -- Hit every enemy within `radius` of (x, y). Returns the number hit.
+-- opts.maxTargets (or world.retaliateCap, set while hurt / block procs run: src/config/defense.lua)
+-- caps it to the nearest N.
 function Combat.area(world, x, y, radius, base, opts)
     local hits = 0
-    for _, e in ipairs(Combat.collect(world, x, y, radius)) do
+    local list = Combat.collect(world, x, y, radius)
+    local cap = (opts and opts.maxTargets) or world.retaliateCap
+    if cap and #list > cap then
+        table.sort(list, function(a, b)
+            return (a.x - x) ^ 2 + (a.y - y) ^ 2 < (b.x - x) ^ 2 + (b.y - y) ^ 2
+        end)
+        for i = #list, cap + 1, -1 do list[i] = nil end
+    end
+    for _, e in ipairs(list) do
         local nx, ny = util.normalize(e.x - x, e.y - y)
         local o = { kbx = nx, kby = ny }
         for k, v in pairs(opts or {}) do o[k] = v end

@@ -1,6 +1,6 @@
 -- Skill trees. Every kill gives XP (World:grantXP); XP fills levels and every level opens a
--- level-up card pick (src/game/levelups.lua). Cards are stat boosts only: SKIPPING a pick is what
--- earns a skill point, so every level is a choice between a boost now and the tree. (With the
+-- level-up card pick (src/game/levelups.lua) plus one skill point. Cards are stat boosts only:
+-- SKIPPING a pick banks an extra skill point, so every level is a boost now or more tree. (With the
 -- "levelUps" run rule on "points", every level is simply a point.) Points buy nodes in the
 -- character's own tree (content/skilltrees/<character>.lua, schema in content/skilltrees/_template.lua)
 -- plus a 4th "kin" branch shared by its lineage (content/skillbranches), capped by a signature
@@ -252,7 +252,7 @@ end
 
 -- silent: XP handed back quietly (resumed runs, practice, sandbox swaps). Silent levels always
 -- give skill points, so nothing is lost when no card pick can be shown. In card mode a level
--- gives no point by itself: skipping its card pick does (LevelUps:take a "point" card).
+-- gives a point too, and skipping its card pick banks an extra one (LevelUps:take a "point" card).
 function Skills:gainXP(n, silent)
     self.xp = self.xp + n
     self.into = self.into + n
@@ -263,6 +263,8 @@ function Skills:gainXP(n, silent)
         local p = self.player
         local lu = p.world and p.world.levelups
         if not silent and self:cardsMode() then
+            -- every level is a skill point AND a card pick; skipping the pick banks one more
+            self.points = self.points + 1
             lu:onLevel(self.level)
             self.flashT = 2.5
             lu:fanfare(p, "LEVEL UP!")

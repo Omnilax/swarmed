@@ -1,8 +1,8 @@
 -- Level-up cards: pick one of three stat cards that rolled a rarity (src/game/levelups.lua).
 -- Same feel as the item choice: input waits a moment after it opens (space / A are also dash),
 -- and a card needs two presses, one to pick, one to take.
--- The SKIP button under the cards takes no card and banks a skill point instead: the only way to
--- earn points for the bag's SKILLS tab. It is two presses too and is focus slot #cards + 1.
+-- Every level already gives one skill point; the SKIP button under the cards takes no card and
+-- banks an extra point for the bag's SKILLS tab instead. It is two presses too and is focus slot #cards + 1.
 -- The game is paused while this is open.
 local State = require("src.core.state")
 local Input = require("src.core.input")
@@ -81,7 +81,7 @@ function LevelUp:take(i)
     self:close()
 end
 
--- Skip the cards: +1 skill point.
+-- Skip the cards: +1 extra skill point (the level already gave one).
 function LevelUp:bank()
     self.lu:take(require("src.game.levelups").skipCard())
     Audio.play("ui_confirm", { pitch = 1.3 })
@@ -313,7 +313,7 @@ function LevelUp:draw()
         lg.rectangle("line", br.x + 0.5, br.y + 0.5, br.w - 1, br.h - 1)
         lg.setFont(Theme.font(15, "bold"))
         local key = pad and " (B)" or touch and "" or " (Esc)"
-        lg.printf("SKIP  ·  +1 SKILL POINT" .. key, br.x, br.y + math.floor((br.h - lg.getFont():getHeight()) / 2), br.w, "center")
+        lg.printf("SKIP  ·  +1 EXTRA SKILL POINT" .. key, br.x, br.y + math.floor((br.h - lg.getFont():getHeight()) / 2), br.w, "center")
         if self.armed == self:bankIndex() then
             lg.setFont(Theme.font(14, "bold"))
             local pulse = 0.75 + 0.25 * math.sin(self.t * 8)
@@ -322,7 +322,7 @@ function LevelUp:draw()
             lg.setFont(Theme.font(14))
             lg.setColor(SKILL_COL[1], SKILL_COL[2], SKILL_COL[3], 0.8)
             local pts = sk.points
-            lg.printf(pts > 0 and ("You have " .. pts .. (pts == 1 and " skill point" or " skill points") .. " waiting") or "Skill points are only earned by skipping",
+            lg.printf(pts > 0 and ("You have " .. pts .. (pts == 1 and " skill point" or " skill points") .. " waiting") or "Every level gives a skill point, skipping gives one more",
                 0, br.y - u(22), w, "center")
         end
     end

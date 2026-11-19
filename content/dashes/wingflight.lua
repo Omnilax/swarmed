@@ -5,7 +5,7 @@
 -- there only flying enemies (bees, wasps, hornets, flying ants) can touch it, while its own
 -- strikes still reach everything. Letting go (or running dry) lands it with a downdraft that
 -- blows ants back. Stamina only refills on the ground.
--- params: stamina (seconds of flight, 4), regen (1/s), speed (x in the air, 1), groundSpeed
+-- params: stamina (seconds of flight, 4), regen (1/s), speed (x in the air, 1; the dragonfly flies at 1.3), groundSpeed
 --         (x walking on the ground, 0 = can't walk), height (12), downdraft (landing damage, 8), radius (landing gust, 40)
 local Stamina = require("src.game.stamina")
 local Combat = require("src.game.combat")

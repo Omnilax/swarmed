@@ -28,7 +28,7 @@ return {
           procs = { { trigger = "onKill", chance = 0.12, effect = function(ctx)
               fx.nova(ctx, ctx.x, ctx.y, 30, 4, SEA, { slow = { 0.4, 1.5 }, knockback = 20 })
           end } } },
-        { id = "kin_crust_pinch", tier = 4, col = 1, name = "Counter Pinch", desc = "Getting hit snaps back at every ant touching you (every 2 s).",
+        { id = "kin_crust_pinch", tier = 4, col = 1, name = "Counter Pinch", desc = "Getting hit snaps back at up to 5 ants touching you (every 2 s).",
           procs = { { trigger = "onHurt", cooldown = 2, effect = function(ctx)
               local p = ctx.player
               fx.nova(ctx, p.x, p.y, 32, 16, { 1, 0.6, 0.45 }, { knockback = 120 })

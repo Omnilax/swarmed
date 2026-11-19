@@ -721,7 +721,8 @@ function Inv:tooltip(item, x, y)
     local fName, fSmall = Theme.font(17, "bold"), Theme.font(14)
     local lines = statLines(def)
     local descLines = {}
-    local effect = def.effect or (#def.procs > 0 and #lines == 0 and def.description)
+    local desc = def.description ~= "" and def.description or nil
+    local effect = def.effect or (#lines == 0 and desc)
     if effect then _, descLines = fSmall:getWrap(effect, tw - u(20)) end
     -- a curse's cost, in purple
     local curseLines = {}

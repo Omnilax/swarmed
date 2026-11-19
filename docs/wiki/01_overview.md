@@ -48,7 +48,7 @@ These were set by Ozy at the start (26 October 2026) and every system since has 
 
 1. **Title screen.** A live demo fight plays behind the menu. Play opens mode select (map, mode, keepsake, artifacts), then the bug select grid.
 2. **Wave 1.** Plain worker ants march in as snaking columns from two sides and break into a ring around you. You attack, dash and use your special. Kills spill nectar beads.
-3. **Levelling.** XP fills fast (the first level is about ten kills). Each level opens three stat cards right away; skipping a pick banks a skill point instead.
+3. **Levelling.** XP fills fast (the first level is about ten kills). Each level opens three stat cards right away; every level also gives a skill point, and skipping a pick banks an extra one.
 4. **Wave clear.** Every bead flies to you. A reward bloom sprouts beside you; walk into it to pick one of three items. The bag is a shaped-item puzzle where everything counts.
 5. **Waves 2 to 4.** One new species per wave, each introduced alone under a "NEW SPECIES" card. Wave modifiers, mini-goals, events, map gambles and route tunnels join over the first few runs.
 6. **Wave 5.** A queen arrives with a royal guard; she lays broods until she dies. Clearing her wave can molt touching items into stronger ones. The run then travels to the next map (act 2).

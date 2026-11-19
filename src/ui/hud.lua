@@ -161,6 +161,14 @@ function Hud.draw(game, covered)
     end
     if (p.slowMul or 1) < 0.95 then
         Theme.printShadow(world.latchCount > 0 and ("GRABBED x" .. world.latchCount) or "SLOWED", sx, u(44), { 1, 0.85, 0.5, alpha })
+        sx = sx + u(90)
+    end
+    -- armor cracked by the crowd on you and by shredder bites (Player:effectiveArmor)
+    if p.effectiveArmor then
+        local lost = p.stats:get("armor") - p:effectiveArmor()
+        if lost >= 1 then
+            Theme.printShadow("ARMOR -" .. math.floor(lost + 0.5), sx, u(44), { 1, 0.65, 0.35, alpha })
+        end
     end
 
     -- Boss health (a named champion gets the bar when no queen is about, src/game/bosses.lua)

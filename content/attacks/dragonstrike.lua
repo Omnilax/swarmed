@@ -18,8 +18,11 @@ return {
         local area = 1 + player.stats:get("area") / 100
         local ang = math.atan2(ay, ax)
         if player.airborne then
-            -- the dive: untouchable from start to finish, raking whatever it passes
+            -- the dive: untouchable from start to finish, raking whatever it passes. It goes where
+            -- you steer (when you are steering), so attacking never yanks the dragonfly off course.
             local reach = (params.reach or 70) * area
+            local mx, my = player.moveDirX or 0, player.moveDirY or 0
+            if params.steerDive ~= false and (mx ~= 0 or my ~= 0) then ax, ay = util.normalize(mx, my) end
             player:lunge(ax, ay, reach, params.lungeSpeed or 1.7)
             player.iframes = math.max(player.iframes, player.dashT + 0.08)
             player.dfLunge = { hit = {}, x = player.x, y = player.y }

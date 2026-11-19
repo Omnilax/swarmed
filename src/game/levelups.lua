@@ -1,8 +1,8 @@
 -- Level-up cards. Every level (XP from World:grantXP -> Skills:gainXP) opens a pick of 3 cards
 -- right away, mid-wave (setting "levelUpWhen" = "wave" saves them for the wave's reward bloom):
 -- global stat cards (content/levelcards) that roll a rarity (common x1 .. legendary x2, Luck tilts
--- the odds). The skill tree is never on the cards: SKIPPING a pick banks one skill point to spend
--- in the bag's SKILLS tab, so each level is a boost now or a step down the tree.
+-- the odds). The skill tree is never on the cards: every level gives one skill point to spend in
+-- the bag's SKILLS tab, and SKIPPING the pick banks one more, so each level is a boost or extra tree.
 -- Run rule "levelUps" = "points" (a Custom Waves set) brings back the old way: levels give skill points to spend.
 --
 -- Card families (a card file's `family`, content/levelcards/_template.lua):
@@ -251,7 +251,7 @@ function LevelUps:maxed(def)
     return have ~= nil and have.rank >= (def.maxRank or 3)
 end
 
--- The card a skip takes: one skill point (LevelUp screen's skip button, the balance bot).
+-- The card a skip takes: one extra skill point (LevelUp screen's skip button, the balance bot).
 function LevelUps.skipCard() return { kind = "point", id = "skill_point", name = "Skill point" } end
 
 ----------------------------------------------------------------------------------------------

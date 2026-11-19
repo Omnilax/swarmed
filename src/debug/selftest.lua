@@ -687,6 +687,7 @@ local function script(flags)
     if flags["--parasites"] then require("src.debug.selftest_parasites")(wait, shot) love.event.quit() return end
     if flags["--gambles"] then require("src.debug.selftest_gambles")(wait, shot) love.event.quit() return end
     if flags["--hazards"] then require("src.debug.selftest_hazards")(wait, shot) love.event.quit() return end
+    if flags["--tanky"] then require("src.debug.selftest_tanky")(wait, shot) love.event.quit() return end
     if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
     if flags["--props"] then require("src.debug.selftest_props")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
@@ -816,7 +817,7 @@ local function script(flags)
     wait(1.2)
     local bloom = game.world.rewardFlow:bloom()
     assert(bloom, "no reward bloom after the wave")
-    assert(State.top() == game, "reward screens opened before the bloom was touched")
+    assert(State.top() == game or State.top().lu, "reward screens opened before the bloom was touched")
     shot("reward_bloom")
     game.world.player.x, game.world.player.y = bloom.x, bloom.y
     wait(1.0)
@@ -852,7 +853,12 @@ local function script(flags)
     game.world:clearEnemies()
     game.world.spawner.streams = {}
     game.world.spawner:startWave(5)
-    waitUntil(function() return game.world.boss ~= nil end, 10)
+    waitUntil(function()
+        -- a level-up pick can open mid-wave and pause the game: take a card and carry on
+        local top = State.top()
+        if top ~= game and top.lu then top.t = 10; top:activate(1); top:activate(1) end
+        return game.world.boss ~= nil
+    end, 10)
     assert(game.world.boss and game.world.boss.def.boss, "no queen on the boss wave")
     print("[selftest] boss wave OK: " .. game.world.boss.def.name)
     shot("boss_wave")

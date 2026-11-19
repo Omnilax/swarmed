@@ -3,8 +3,8 @@ local Combat = require("src.game.combat")
 
 return {
     name = "Bramble Hide",
-    description = "+9 Armor. When bitten, prick every ant touching you for 12 damage (+12 per stack), and 50% chance to fire 6 spines (+2 per stack) for 16 damage each.",
-    effect = "When bitten, prick every ant touching you for 12 damage (+12 per stack), and 50% chance to fire 6 spines (+2 per stack) for 16 damage each.",
+    description = "+9 Armor. When bitten, prick up to 5 ants touching you for 12 damage (+12 per stack), and 50% chance to fire 6 spines (+2 per stack) for 16 damage each.",
+    effect = "When bitten, prick up to 5 ants touching you for 12 damage (+12 per stack), and 50% chance to fire 6 spines (+2 per stack) for 16 damage each.",
     rarity = "molted",
     category = "guard",
     shape = { "X", "X" },
