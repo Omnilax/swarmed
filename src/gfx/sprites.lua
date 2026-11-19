@@ -119,6 +119,42 @@ local function playerOnlySprites()
     return set
 end
 
+-- One sprite definition -> its entry, with every frame (and turn) as a piece from addPiece.
+local function makeEntry(def, addPiece, playerOnly)
+    local dirs = def.rotate == false and 1 or def.directions or Sprites.DIRECTIONS
+    -- Rigged legs are drawn as lines from the rig (drawLegs), never from these pixels, so
+    -- only one unturned frame is kept. Turning all of them cost a third of the atlas.
+    local frameDefs = def.frames
+    if def.rig then dirs, frameDefs = 1, { def.frames[1] } end
+    local entry = { id = def.id, frames = {}, flash = (not playerOnly[def.id]) and {} or nil, fps = def.fps or 8, dirs = dirs }
+    for dir = 1, dirs do
+        entry.frames[dir] = {}
+        if entry.flash then entry.flash[dir] = {} end
+    end
+    for i, rows in ipairs(frameDefs) do
+        local img, fl = rasterize(def, rows)
+        entry.w, entry.h = img:getWidth(), img:getHeight()
+        for dir = 1, dirs do
+            local a = (dir - 1) / dirs * math.pi * 2
+            local ri, rf = img, fl
+            if def.iso then ri, rf = rotateIso(img, a), rotateIso(fl, a)
+            elseif dirs > 1 then ri, rf = rotate(img, a), rotate(fl, a) end
+            entry.frames[dir][i] = addPiece(ri)
+            if entry.flash then entry.flash[dir][i] = addPiece(rf) end
+            entry.size, entry.sizeH = ri:getWidth(), ri:getHeight()
+        end
+    end
+    -- Sprites are drawn centred on their position (bugs lie flat on the ground).
+    entry.iso = def.iso
+    entry.rig, entry.palette = def.rig, def.palette
+    if dirs > 1 then
+        entry.ox, entry.oy = (entry.size - 1) / 2, (entry.sizeH - 1) / 2
+    else
+        entry.ox, entry.oy = def.anchorX or math.floor(entry.w / 2), def.anchorY or math.floor(entry.h / 2)
+    end
+    return entry
+end
+
 function Sprites.build(registry)
     local t0 = love.timer.getTime()
     local playerOnly = playerOnlySprites()
@@ -126,38 +162,7 @@ function Sprites.build(registry)
     local function addPiece(data) pieces[#pieces + 1] = { data = data } return pieces[#pieces] end
 
     for _, def in ipairs(registry:all()) do
-        local dirs = def.rotate == false and 1 or def.directions or Sprites.DIRECTIONS
-        -- Rigged legs are drawn as lines from the rig (drawLegs), never from these pixels, so
-        -- only one unturned frame is kept. Turning all of them cost a third of the atlas.
-        local frameDefs = def.frames
-        if def.rig then dirs, frameDefs = 1, { def.frames[1] } end
-        local entry = { id = def.id, frames = {}, flash = (not playerOnly[def.id]) and {} or nil, fps = def.fps or 8, dirs = dirs }
-        for dir = 1, dirs do
-            entry.frames[dir] = {}
-            if entry.flash then entry.flash[dir] = {} end
-        end
-        for i, rows in ipairs(frameDefs) do
-            local img, fl = rasterize(def, rows)
-            entry.w, entry.h = img:getWidth(), img:getHeight()
-            for dir = 1, dirs do
-                local a = (dir - 1) / dirs * math.pi * 2
-                local ri, rf = img, fl
-                if def.iso then ri, rf = rotateIso(img, a), rotateIso(fl, a)
-                elseif dirs > 1 then ri, rf = rotate(img, a), rotate(fl, a) end
-                entry.frames[dir][i] = addPiece(ri)
-                if entry.flash then entry.flash[dir][i] = addPiece(rf) end
-                entry.size, entry.sizeH = ri:getWidth(), ri:getHeight()
-            end
-        end
-        -- Sprites are drawn centred on their position (bugs lie flat on the ground).
-        entry.iso = def.iso
-        entry.rig, entry.palette = def.rig, def.palette
-        if dirs > 1 then
-            entry.ox, entry.oy = (entry.size - 1) / 2, (entry.sizeH - 1) / 2
-        else
-            entry.ox, entry.oy = def.anchorX or math.floor(entry.w / 2), def.anchorY or math.floor(entry.h / 2)
-        end
-        Sprites.byId[def.id] = entry
+        if not def.ownImage then Sprites.byId[def.id] = makeEntry(def, addPiece, playerOnly) end
     end
 
     local pixelData = love.image.newImageData(2, 2)
@@ -257,12 +262,13 @@ function Sprites.build(registry)
     local aw, ah = atlasW, atlasH
     local function quad(p) return love.graphics.newQuad(p.x, p.y, p.data:getWidth(), p.data:getHeight(), aw, ah) end
     for _, entry in pairs(Sprites.byId) do
-        for dir = 1, entry.dirs do
+        -- (custom bug art built earlier has its own image and quads already)
+        if not entry.image then for dir = 1, entry.dirs do
             for i = 1, #entry.frames[dir] do
                 entry.frames[dir][i] = quad(entry.frames[dir][i])
                 if entry.flash then entry.flash[dir][i] = quad(entry.flash[dir][i]) end
             end
-        end
+        end end
     end
     Sprites.glow = quad(glowPiece)
 
@@ -284,6 +290,45 @@ function Sprites.build(registry)
     Sprites.blobs = {}
     for i, p in ipairs(blobPieces) do Sprites.blobs[i] = quad(p) end
     print(("[sprites] atlas %dx%d, %d pieces, built in %.0f ms"):format(atlasW, atlasH, #pieces, (love.timer.getTime() - t0) * 1000))
+end
+
+-- Sprites added after the atlas was built (custom bugs from the Bug Creator): they get a small
+-- image of their own instead of a rebuilt atlas. Draw code uses `sprite.image or Sprites.atlas`.
+function Sprites.buildSet(defs)
+    local pieces = {}
+    local function addPiece(data) pieces[#pieces + 1] = { data = data } return pieces[#pieces] end
+    local entries = {}
+    local noFlash = setmetatable({}, { __index = function() return true end })   -- flashed with the shader
+    for _, def in ipairs(defs) do entries[#entries + 1] = makeEntry(def, addPiece, noFlash) end
+    local order = {}
+    for i, p in ipairs(pieces) do order[i] = p end
+    table.sort(order, function(a, b) return a.data:getHeight() > b.data:getHeight() end)
+    local W = 512
+    local x, y, shelfH = PAD, PAD, 0
+    for _, p in ipairs(order) do
+        local w, h = p.data:getWidth(), p.data:getHeight()
+        if x + w + PAD > W then x, y, shelfH = PAD, y + shelfH + PAD, 0 end
+        p.x, p.y = x, y
+        x = x + w + PAD
+        shelfH = math.max(shelfH, h)
+    end
+    local H = math.max(1, y + shelfH + PAD)
+    local data = love.image.newImageData(W, H)
+    for _, p in ipairs(pieces) do data:paste(p.data, p.x, p.y, 0, 0, p.data:getWidth(), p.data:getHeight()) end
+    local img = love.graphics.newImage(data)
+    img:setFilter("nearest", "nearest")
+    for _, entry in ipairs(entries) do
+        entry.image = img
+        for dir = 1, entry.dirs do
+            for i = 1, #entry.frames[dir] do
+                local p = entry.frames[dir][i]
+                entry.frames[dir][i] = love.graphics.newQuad(p.x, p.y, p.data:getWidth(), p.data:getHeight(), W, H)
+            end
+        end
+        entry.flash = nil
+        Sprites.byId[entry.id] = entry
+    end
+    return entries
 end
 
 function Sprites.get(id)
@@ -309,16 +354,16 @@ function Sprites.draw(sprite, frame, x, y, angle, flash, sx, sy)
     local quads = (flash and sprite.flash or sprite.frames)[dir]
     local q = quads[((frame - 1) % #quads) + 1]
     sx = sx or 1
-    if flash and not sprite.flash then return Sprites.drawFlash(q, math.floor(x), math.floor(y), sx, sy or sx, sprite.ox, sprite.oy) end
-    love.graphics.draw(Sprites.atlas, q, math.floor(x), math.floor(y), 0, sx, sy or sx, sprite.ox, sprite.oy)
+    if flash and not sprite.flash then return Sprites.drawFlash(q, math.floor(x), math.floor(y), sx, sy or sx, sprite.ox, sprite.oy, sprite.image) end
+    love.graphics.draw(sprite.image or Sprites.atlas, q, math.floor(x), math.floor(y), 0, sx, sy or sx, sprite.ox, sprite.oy)
 end
 
 -- White silhouette of a quad from a sprite without baked flash frames.
-function Sprites.drawFlash(q, x, y, sx, sy, ox, oy)
+function Sprites.drawFlash(q, x, y, sx, sy, ox, oy, image)
     local lg = love.graphics
     local prev = lg.getShader()
     lg.setShader(Sprites.flashShader)
-    lg.draw(Sprites.atlas, q, x, y, 0, sx, sy, ox, oy)
+    lg.draw(image or Sprites.atlas, q, x, y, 0, sx, sy, ox, oy)
     lg.setShader(prev)
 end
 
@@ -338,16 +383,17 @@ end
 local function drawStack(body, q, qf, x, y, h, lift, sx, sy, tr, tg, tb, alpha)
     local lg = love.graphics
     local steps = math.max(1, math.floor(h * sy + 0.5))
+    local img = body.image or Sprites.atlas
     for i = 0, steps - 1 do
         local t = (i + 1) / steps
         local v = 0.2 + 0.45 * t
         local k = 0.8 + 0.2 * math.sqrt(t)
         lg.setColor(v * tr, v * 0.96 * tg, v * 0.92 * tb, alpha)
-        lg.draw(Sprites.atlas, q, x, y - lift * sy - i, 0, sx * k, sy * k, body.ox, body.oy)
+        lg.draw(img, q, x, y - lift * sy - i, 0, sx * k, sy * k, body.ox, body.oy)
     end
     lg.setColor(tr, tg, tb, alpha)
-    if qf == true then return Sprites.drawFlash(q, x, y - lift * sy - steps, sx, sy, body.ox, body.oy) end
-    lg.draw(Sprites.atlas, qf or q, x, y - lift * sy - steps, 0, sx, sy, body.ox, body.oy)
+    if qf == true then return Sprites.drawFlash(q, x, y - lift * sy - steps, sx, sy, body.ox, body.oy, body.image) end
+    lg.draw(img, qf or q, x, y - lift * sy - steps, 0, sx, sy, body.ox, body.oy)
 end
 
 local function hexColor(h)
@@ -524,6 +570,14 @@ function drawLimbs(model, body, limbs, part, x, y, angle, sx, sy, ztop, tr, tg, 
                     local al = alt[i] or sg
                     len, ya, pa = len + (al[1] - sg[1]) * k2, ya + ((al[2] or 0) - sg[2]) * k2, pa + ((al[3] or 0) - p0) * k2
                 end
+                -- flapping wings, swaying feelers and tails (custom bugs: limb.wave)
+                local wv = limb.wave
+                if wv then
+                    local fall = i == 1 and 1 or (wv.follow or 0.5)
+                    local ph = love.timer.getTime() * wv.speed + (wv.phase or 0) - (i - 1) * (wv.lag or 0.6)
+                    local sn = math.sin(ph)
+                    ya, pa = ya + sn * wv.yaw * fall, pa + sn * wv.pitch * fall
+                end
                 yaw = yaw + ya * m
                 pitch = pitch + pa
                 local cp = math.cos(pitch)
@@ -556,7 +610,24 @@ function drawLimbs(model, body, limbs, part, x, y, angle, sx, sy, ztop, tr, tg, 
                 local ex, ey = limbPts[n - 1], limbPts[n]
                 local tl = (limb.tipLen or 3)
                 lg.setLineWidth(math.max(1, w - 1))
-                if tip == "pincer" then
+                if tip == "wing" then
+                    -- a see-through membrane fanned along the last segment
+                    local L, W = tl * 2.2, tl * 0.9 * (limb.tipW or 1)
+                    local cy, sy2 = math.cos(yaw), math.sin(yaw)
+                    local pts = {}
+                    for i2 = 0, 10 do
+                        local t2 = i2 / 10 * math.pi * 2
+                        local du, dv = (1 - math.cos(t2)) * 0.5 * L, math.sin(t2) * W * m
+                        local qx, qy = project(u - cy * L * 0.15 + cy * du - sy2 * dv, v - sy2 * L * 0.15 + sy2 * du + cy * dv, z, c, s, sx, sy)
+                        pts[#pts + 1], pts[#pts + 2] = x + qx, y + qy
+                    end
+                    lg.setColor(math.min(1, col[1] * 1.2 + 0.2) * tr, math.min(1, col[2] * 1.2 + 0.2) * tg, math.min(1, col[3] * 1.2 + 0.2) * tb, a * 0.4)
+                    local ok, tris = pcall(love.math.triangulate, pts)
+                    if ok then for _, tri in ipairs(tris) do lg.polygon("fill", tri) end end
+                    lg.setColor(col[1] * tr, col[2] * tg, col[3] * tb, a * 0.8)
+                    lg.setLineWidth(1)
+                    lg.line(pts)
+                elseif tip == "pincer" then
                     local op = 0.15 + e.open * 0.75
                     for side = -1, 1, 2 do
                         local ya = yaw + op * side
@@ -709,7 +780,7 @@ function Sprites.drawModel(model, frame, x, y, angle, flash, sx, sy, alpha, pose
         drawLegs(rig, phase, x, y, angle, sx, sy, lift, h, col, alpha, "far", model.stride or 1.6, model.kneeUp or 0, model._tint, pose and pose.gu, pose and pose.gv, reach, wide)
     else
         lg.setColor(0.8 * tr, 0.8 * tg, 0.8 * tb, alpha)
-        lg.draw(Sprites.atlas, pick(legs), x, y - sy, 0, sx, sy, legs.ox, legs.oy)
+        lg.draw(legs.image or Sprites.atlas, pick(legs), x, y - sy, 0, sx, sy, legs.ox, legs.oy)
     end
     -- attack poses: the body twists on its planted legs and squashes or stretches
     local legAngle = angle

@@ -5,8 +5,11 @@ return {
     sprite = "jumping_spider",
     model = { legs = "jumping_spider_legs", body = "jumping_spider_body", height = 4, lift = 3, kneeUp = 2 },
     order = 9,
-    radius = 6,
-    stats = { maxHp = 55, moveSpeed = 120, critChance = 15, dodge = 8 },
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Your attack pounces onto the nearest ant. {dash} leaps where you point and leaves a safety line to zip back along.",
+    radius = 5,
+    scale = 0.8,
+    stats = { maxHp = 32, moveSpeed = 135, critChance = 20, dodge = 15, area = -10 },
     attack = { type = "pounce", damage = 14, cooldown = 0.75, distance = 80, radius = 26, knockback = 130, color = { 0.6, 1, 0.9 } },
     secondary = { type = "dragline", damage = 16, cooldown = 1.8, range = 140, poison = { 8, 4 }, color = { 0.6, 1, 0.9 } },
     dash = { type = "safetyline", distance = 125, hop = 18, speed = 1.1, line = 2.5, zip = 1.7 },

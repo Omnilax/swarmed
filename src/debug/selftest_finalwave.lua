@@ -55,6 +55,14 @@ return function(wait, shot)
     -- the game opens the victory screen, then the item choice
     world.time = world.time + 2
     game:update(1 / 60)
+    -- the queens' brood cell chests (and the level-up cards they give) open first
+    for _ = 1, 40 do
+        local t = State.top()
+        if t == game then game:update(1 / 60)
+        elseif t.lu then t.t = 10; t:activate(1); t:activate(1)
+        elseif t.landed then t.t = 99; t:close()
+        else break end
+    end
     local top = State.top()
     assert(top and top.info and top.info.first, "victory screen should open")
     wait(1.2)
@@ -63,7 +71,20 @@ return function(wait, shot)
     top.menu.items[1].onActivate()
     assert(State.top() == game and world.continued, "keep going should return to the game")
     game:update(1 / 60)
-    assert(State.top() ~= game and State.top().items, "the item choice should follow")
+    -- the wave's rewards wait in the reward bloom: walk into it
+    assert(world.pendingChoice and not world.pendingChoice.opened, "the rewards should wait in the bloom")
+    world.rewardFlow:open(world.pendingChoice, pl.x, pl.y)
+    world.time = world.time + 1
+    game:update(1 / 60)
+    -- (level-up cards earned in the final wave come first)
+    for _ = 1, 40 do
+        local t = State.top()
+        if not t.lu then break end
+        t.t = 10
+        t:activate(1); t:activate(1)
+        if State.top() == game then game:update(1 / 60) end
+    end
+    assert(State.top() ~= game and State.top().items, "the item choice should follow (top: " .. tostring(State.top().items) .. ", pending " .. tostring(world.pendingChoice) .. ")")
     State.pop()
     -- and on we go
     world:clearEnemies()

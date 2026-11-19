@@ -52,11 +52,30 @@ local defs = {
                 return lp * 2.5 * (1 - p) ^ 2
             end)
         end },
+    -- ground heaving before ants burst out of it (src/game/entries.lua)
+    rumble = { bus = "sfx", voices = 2, gap = 0.25, volume = 0.45, pitchVar = 0.2,
+        data = function()
+            local lp, lp2 = 0, 0
+            return synth(0.6, function(t, p)
+                lp = lp + (noise() - lp) * 0.04
+                lp2 = lp2 + (lp - lp2) * 0.1
+                local tremble = 0.6 + 0.4 * math.sin(t * 38 * math.pi * 2)
+                return lp2 * 9 * math.sin(p * math.pi) * tremble
+            end)
+        end },
     pickup = { bus = "sfx", voices = 3, gap = 0.05, volume = 0.4,
         data = function()
             return synth(0.18, function(t, p)
                 local f = p < 0.5 and 520 or 780
                 return (math.sin(t * f * math.pi * 2) + math.sin(t * f * 2 * math.pi * 2) * 0.3) * (1 - p) ^ 1.5 * 0.5
+            end)
+        end },
+    -- a nectar bead collected (src/game/nectar.lua plays it with a rising pitch along a chain)
+    nectar = { bus = "sfx", voices = 4, gap = 0.035, volume = 0.28,
+        data = function()
+            return synth(0.11, function(t, p)
+                local f = 1046
+                return (math.sin(t * f * math.pi * 2) + math.sin(t * f * 3 * math.pi * 2) * 0.15) * math.exp(-p * 5) * 0.6
             end)
         end },
     equip = { bus = "ui", voices = 2, gap = 0.03, volume = 0.45,
@@ -120,6 +139,25 @@ local defs = {
                     if d >= 0 then v = v + (math.sin(d * f * math.pi * 2) + 0.3 * math.sin(d * f * 4 * math.pi * 2)) * math.exp(-d * 4) end
                 end
                 return v * 0.35
+            end)
+        end },
+    chime = { bus = "sfx", voices = 2, gap = 0.08, volume = 0.3,
+        data = function()
+            -- a glassy plink (a dew drop): two bright partials, quick decay
+            return synth(0.45, function(t)
+                local v = math.sin(t * 1319 * math.pi * 2) + 0.5 * math.sin(t * 2637 * math.pi * 2)
+                return v * math.exp(-t * 9) * 0.5
+            end)
+        end },
+    bell = { bus = "sfx", voices = 2, gap = 0.2, volume = 0.5,
+        data = function()
+            -- a bell: inharmonic partials ringing out
+            return synth(1.6, function(t)
+                local v = 0
+                for i, pr in ipairs({ { 1, 1 }, { 2.4, 0.6 }, { 3.0, 0.4 }, { 4.5, 0.25 }, { 5.9, 0.15 } }) do
+                    v = v + math.sin(t * 392 * pr[1] * math.pi * 2) * pr[2] * math.exp(-t * (2 + i * 0.9))
+                end
+                return v * 0.4 * math.min(1, t / 0.004)
             end)
         end },
     queen = { bus = "sfx", voices = 1, gap = 1, volume = 0.6,
@@ -190,6 +228,22 @@ local defs = {
                 return math.sin(t * f * math.pi * 2) * math.exp(-t * 10) * 0.6
             end)
         end },
+    -- a level-up: a bright rising arpeggio (C E G C) with a shimmer on top
+    level_up = { bus = "sfx", voices = 2, gap = 0.2, volume = 0.5,
+        data = function()
+            return synth(1.0, function(t)
+                local v = 0
+                for i, f in ipairs({ 523, 659, 784, 1047 }) do
+                    local d = t - (i - 1) * 0.07
+                    if d >= 0 then
+                        v = v + (math.sin(d * f * math.pi * 2) + 0.35 * math.sin(d * f * 2 * math.pi * 2)) * math.exp(-d * (i == 4 and 3 or 6))
+                    end
+                end
+                local sd = t - 0.2
+                if sd > 0 then v = v + math.sin(sd * 2093 * math.pi * 2) * math.sin(sd * 31) * math.exp(-sd * 5) * 0.25 end
+                return v * 0.3
+            end)
+        end },
     ui_move = { bus = "ui", voices = 3, gap = 0.02, volume = 0.3,
         data = function() return synth(0.04, function(t, p) return math.sin(t * 880 * math.pi * 2) * (1 - p) * 0.6 end) end },
     ui_confirm = { bus = "ui", voices = 2, gap = 0.03, volume = 0.35,
@@ -229,6 +283,12 @@ function Audio.play(name, opts)
     local now = love.timer.getTime()
     if now - s.last < s.def.gap then return end
     local vol = busVolume(s.def.bus) * (s.def.volume or 1) * (opts and opts.volume or 1)
+    -- Positional Sound: quieter further from the view's centre
+    if opts and opts.sx and Audio.listener and Settings.get("positionalSound") then
+        local L = Audio.listener
+        local d = math.sqrt((opts.sx - L.x) ^ 2 + ((opts.sy or L.y) - L.y) ^ 2 * 2)
+        vol = vol * math.max(0.25, 1 - d / (L.w * 1.2))
+    end
     if vol <= 0 then return end
     s.last = now
     local src = s.pool[s.next]
@@ -237,9 +297,74 @@ function Audio.play(name, opts)
     src:setVolume(vol)
     local pv = s.def.pitchVar or 0
     src:setPitch((opts and opts.pitch or 1) * (1 + (love.math.random() - 0.5) * pv))
+    Audio.place(src, opts)
     src:play()
 end
 
+-- A sound made from a few numbers (custom bugs' own sounds, src/game/custombugs.lua):
+-- { wave = "sine" | "square" | "saw" | "triangle" | "noise", freq (Hz), to (Hz at the end),
+--   duration (s), volume (0..1), noise (0..1 mixed in), decay (fade curve), vibrato = { rate, depth },
+--   attack (s), notes = { freq, freq, ... } (played one after another, an arpeggio) }
+-- Numbers arrive already clamped. Returns false when there's no audio (headless tests).
+local WAVES = {
+    sine = function(ph) return math.sin(ph * math.pi * 2) end,
+    square = function(ph) return (ph % 1) < 0.5 and 0.6 or -0.6 end,
+    saw = function(ph) return ((ph % 1) * 2 - 1) * 0.7 end,
+    triangle = function(ph) local f = ph % 1 return (f < 0.5 and f * 4 - 1 or 3 - f * 4) end,
+    noise = function() return noise() end,
+}
+function Audio.addSynth(name, spec)
+    if not (love.audio and love.sound) then return false end
+    local wave = WAVES[spec.wave] or WAVES.sine
+    local f0, f1, dur = spec.freq or 440, spec.to or spec.freq or 440, spec.duration or 0.2
+    local mix, decay, attack = spec.noise or 0, spec.decay or 2, spec.attack or 0.005
+    local vr, vd = spec.vibrato and spec.vibrato[1] or 0, spec.vibrato and spec.vibrato[2] or 0
+    local notes = spec.notes
+    local ph = 0
+    local ok, data = pcall(synth, dur, function(t, p)
+        local f
+        if notes and #notes > 0 then f = notes[math.min(#notes, math.floor(p * #notes) + 1)]
+        else f = f0 + (f1 - f0) * p end
+        f = f * (1 + math.sin(t * vr * math.pi * 2) * vd)
+        ph = ph + f / RATE
+        local env = math.min(1, t / attack) * (1 - p) ^ decay
+        return (wave(ph) * (1 - mix) + noise() * mix) * env * 0.8
+    end)
+    if not ok then return false end
+    local def = { bus = "sfx", voices = 4, gap = 0.03, volume = spec.volume or 0.5, pitchVar = spec.pitchVar or 0.1 }
+    local src = love.audio.newSource(data, "static")
+    local pool = { src }
+    for i = 2, def.voices do pool[i] = src:clone() end
+    local old = Audio.sounds[name]
+    if old then for _, s in ipairs(old.pool) do s:stop() end end
+    Audio.sounds[name] = { def = def, pool = pool, next = 1, last = -1 }
+    return true
+end
+
 function Audio.setFocused(f) Audio.focused = f end
+
+local panOf = setmetatable({}, { __mode = "k" })
+
+-- Left / right placement: opts.pan (-1..1) or, with Positional Sound on, opts.sx (projected x)
+-- against the listener. Only mono sources can be placed; the rest play centred.
+function Audio.place(src, opts)
+    local pan = opts and opts.pan
+    if not pan and opts and opts.sx and Audio.listener and Settings.get("positionalSound") then
+        local L = Audio.listener
+        pan = math.max(-1, math.min(1, (opts.sx - L.x) / (L.w * 0.5)))
+    end
+    pan = pan or 0
+    if panOf[src] == pan then return end
+    if src:getChannelCount() ~= 1 then return end
+    if not Audio.distanceSet then
+        Audio.distanceSet = true
+        pcall(love.audio.setDistanceModel, "none")
+    end
+    panOf[src] = pan
+    pcall(function()
+        src:setRelative(true)
+        src:setPosition(pan * 0.8, 0, -math.sqrt(math.max(0, 1 - (pan * 0.8) ^ 2)))
+    end)
+end
 
 return Audio

@@ -2,7 +2,7 @@
 -- A simple bot plays real runs (no drawing, fixed 60 Hz steps) with each character and reports
 -- how far it gets: per wave the time taken, HP left and KOs. The bot is much worse than a person
 -- (it kites crudely, dashes when crowded, fires its special whenever ready, takes a random item
--- card and spends skill points on whatever is available), so "the bot clears wave 15" means a
+-- card, a random level-up card and spends skill points on whatever is available), so "the bot clears wave 15" means a
 -- run is comfortably winnable. Environment variables:
 --   SWARMED_BAL_CHARS = "rhino_beetle,mantis"   characters to test (default: a spread of them)
 --   SWARMED_BAL_RUNS  = 2                       runs per character
@@ -10,6 +10,7 @@
 --   SWARMED_BAL_DIFF  = "worker"                difficulty setting
 local Content = require("src.content")
 local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Input = require("src.core.input")
 local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
@@ -40,11 +41,28 @@ end
 local function pickItem(world)
     local wave = math.max(1, world.spawner.wave)
     local def = Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
-        function(d) return Rarities[d.rarity].minWave <= wave end)
+        function(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed end)
     if def then
         local item = Inventory.newItem(def.id)
         if not world.player.inventory:give(item) then world.player.inventory:eat(item) end
     end
+end
+
+-- The bot's shopping (src/game/economy.lua): interest, then buy what it can afford, left to
+-- right, skipping cursed items. Returns what it spent.
+local function shop(world)
+    local Economy = require("src.game.economy")
+    if not Economy.enabled(world) then return 0 end
+    Economy.payInterest(world)
+    local before = Economy.nectar(world)
+    local s = Economy.shop(world)
+    for i, o in ipairs(s.offers) do
+        if not o.sold and o.def.rarity ~= "cursed" and Economy.canAfford(world, o.price) then
+            local ok, item = Economy.buy(world, i)
+            if ok and item and not world.player.inventory:give(item) then world.player.inventory:eat(item) end
+        end
+    end
+    return before - Economy.nectar(world)
 end
 
 local function spendSkills(p)
@@ -118,6 +136,8 @@ local function steer(world, bot)
         bot.holdT = (bot.holdT or 0) + 1 / 60
         if bot.holdT > 2.5 then bot.holdT = 0 end
         Input.virtualDown.dash = (close >= 6 and bot.holdT < 1) or nil
+        -- bugs that can't walk (dragonfly: groundSpeed 0) fly whenever they can
+        if p.dashParams.groundSpeed == 0 then Input.virtualDown.dash = true end
     end
     if p.secondary and p.secondary.timer <= 0 and near then Input.press("secondary") end
     Input.virtualDown.secondary = near ~= nil or nil
@@ -130,7 +150,7 @@ function Balance.runOne(charId, maxWave)
     world.mouseWorld = function() return bot.aimX, bot.aimY end
     world.events:on("player_hurt", function(ctx)
         local s = ctx.source
-        local id = type(s) == "table" and s.def and s.def.id or tostring(s)
+        local id = type(s) == "table" and (s.def and s.def.id or s.hazard and ("hazard:" .. tostring(s.hazard))) or tostring(s)
         hurtBy[id] = (hurtBy[id] or 0) + (ctx.damage or 0)
     end)
     -- enemy shots: credit the hit to the species that fired it (the nearest enemy when it was shot)
@@ -151,7 +171,7 @@ function Balance.runOne(charId, maxWave)
         spawned[id] = (spawned[id] or 0) + 1
         return spawnEnemy(w, def, ...)
     end
-    local log, lastWave, waveStart, kosAt = {}, 0, 0, 0
+    local log, lastWave, waveStart, kosAt, nectarAt = {}, 0, 0, 0, 0
     local dt, limit = 1 / 60, 60 * 60 * 45
     local result = "timeout"
     local function leftovers()
@@ -174,10 +194,17 @@ function Balance.runOne(charId, maxWave)
         if world.pendingChoice and world.time >= (world.pendingChoice.at or 0) then
             local c = world.pendingChoice
             world.pendingChoice = nil
-            log[#log + 1] = ("  w%-2d %4.0fs  hp %3.0f/%-3.0f  kos %5d  items %2d%s"):format(c.wave, world.time - waveStart,
-                p.hp, p.stats:get("maxHp"), world.kos - kosAt, #p.inventory.bag, c.boss and "  (boss)" or "")
-            waveStart, kosAt = world.time, world.kos
+            local sp = world.spawner
+            local mods = {}
+            for _, d in ipairs(sp.mods or {}) do mods[#mods + 1] = d.id end
+            log[#log + 1] = ("  w%-2d %4.0fs  par %3.0f  hp %3.0f/%-3.0f  kos %5d  nectar %4d  items %2d  xp %5d lv %2d%s%s%s"):format(c.wave, world.time - waveStart,
+                sp.par or 0, p.hp, p.stats:get("maxHp"), world.kos - kosAt, world.nectarEarned - nectarAt, #p.inventory.bag, world.xp or 0, p.skills and p.skills.level or 0, c.boss and "  (boss)" or "",
+                sp.overlapped and "  overlap" or "", #mods > 0 and ("  " .. table.concat(mods, "+")) or "")
+            waveStart, kosAt, nectarAt = world.time, world.kos, world.nectarEarned
+            if world.levelups then world.levelups:autoPickAll() end
             pickItem(world)
+            local spent = shop(world)
+            if spent > 0 then log[#log] = log[#log] .. ("  shop -%d"):format(spent) end
             spendSkills(p)
             if c.wave >= maxWave then result = "WON" break end
         end
@@ -197,7 +224,7 @@ function Balance.runOne(charId, maxWave)
 end
 
 function Balance.start()
-    Settings.set("difficulty", os.getenv("SWARMED_BAL_DIFF") or "worker")
+    Rules.set("difficulty", os.getenv("SWARMED_BAL_DIFF") or "worker")
     Settings.set("autoAttack", true)
     Settings.set("aimMode", "nearest")
     Input.lastDevice = "keyboard"

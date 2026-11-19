@@ -1,0 +1,777 @@
+# Making your own bugs
+
+Swarmed has a **Bug Creator** (main menu > Bug Creator). It makes custom playable bugs in two ways:
+
+* **Mix Parts** – pick a body from one bug, the attack of another, the special and dash of others,
+  then set the size, colour, stats, an item rule and a skill tree. A live preview shows the bug
+  fighting while you change it.
+* **Write a Script** – a bug is a small Lua script. Start from the blueprint (every field
+  explained), or press **Edit as Code** in the mixer to carry on from a mix. A script can be a
+  **completely new bug**: its own pixel art and legs, and moves written in code. The worked
+  example is the **Stick Insect** (Bug Creator > Example: Stick Insect, or
+  [`content/characters/_example_stick_insect.lua`](../content/characters/_example_stick_insect.lua)).
+  The **Velvet Worm** ([`_example_velvet_worm.lua`](../content/characters/_example_velvet_worm.lua))
+  uses everything else: a segmented body with feelers, a hold-to-charge attack, a stamina mode,
+  code that runs when it kills or gets hurt, its own sounds, animations and skill tree.
+* **Tweak** – a bug with its own art or code opens the mixer in tweak mode: change its name,
+  size, colour and stats, and the script stays word for word with a few lines added after it.
+
+Custom bugs join the bug select screen with the others (Show: **Custom Bugs**). They are just for
+fun: they don't count towards the play-every-bug achievements and never come up as the daily bug.
+
+The Creator shows how each custom bug has done (runs, wins, best wave, power level, challenges).
+
+More in the Creator (round 3):
+
+* **Paint a Bug** – the Bug Painter: a pixel grid with pen, fill, colour picker and mirror; a
+  **body-part kit** (7 heads, 6 middles, 6 backs that fit together); drag the leg joints; add
+  claws, blades, tails, horns, feelers and wings from a list; change each palette colour. The bug
+  walks round in a preview as you paint. **Paint Art** on a saved bug repaints it.
+* **Template Gallery** – ten ready bugs to start from (tank, summoner, sniper, trickster,
+  berserker, bomber, vampire, shapeshifter, pet master, glass cannon), in
+  [`content/bugtemplates/`](../content/bugtemplates). Each is a full script showing a different
+  part of what follows.
+* **Build from blocks** (in the mixer) – make a move with no code: a list of blocks (lunge, wait,
+  swing, slam, thrust, shockwave, spinning sweep, shoot, lob, puddle, push, pull, wall, hatch
+  helpers, heal, shield, speed, plant feet, vanish, afflict, ring, shake, hitstop, sound), each with
+  its own sliders. Add more steps to make a **combo**. The preview shows every hitbox.
+* The mixer also sets the **ultimate**, the **hit look and sounds**, a **status effect**, **pets**,
+  a **molt** and the **title card**.
+* Per bug: **Test Arena** (dummy ants that don't die, hitboxes shown, a damage-per-second meter;
+  Pause > Back to the Bug Creator), **Rate It** (a power level: the bug plays the same short fight
+  as three built-in bugs, 100 = as strong as them), and **challenges** shown in its panel.
+
+
+## Sharing a bug
+
+Every custom bug is one `.lua` file, so sharing one means sharing that text.
+
+| To... | Do this |
+|---|---|
+| Give someone your bug | Bug Creator > your bug > **Copy Share Code** (one short line, `SWARMED-BUG:...`) or **Copy Code** (the script), then paste it in a message. |
+| Add a bug from a share code | Bug Creator > **Paste a Script** takes share codes too. |
+| Add a bug someone gave you | Copy their script, then Bug Creator > **Paste a Script**. On a computer you can also drop the `.lua` file onto the game window. |
+| Edit files by hand | Bug Creator > **Open the Bug Folder** (desktop). Each bug is `custom_bugs/<id>.lua` in the save folder; press **Reload Bug Files** after changing them. |
+| Write a bug in your own editor | Bug Creator > **Copy the Blueprint**, or open [`content/characters/_custom_blueprint.lua`](../content/characters/_custom_blueprint.lua). |
+
+On the web build the clipboard only works inside the game, so type the script into the editor or
+import it on the desktop version. The script editor works with an on-screen keyboard on phones.
+
+## The script editor
+
+Typing, arrows, Home / End, Page Up / Down, Tab, Enter keeps the indent. **Ctrl+S** save,
+**F5** (or Ctrl+Enter) check, **Ctrl+V** paste, **Ctrl+C** copy the whole script, **Ctrl+Z** undo,
+**Esc** back. The script is checked as you type: problems show under the text and the line they
+are on turns red. Saving runs a short test fight with the bug, so a move with broken numbers is
+caught there instead of in the middle of a run.
+
+## The blueprint
+
+```lua
+return {
+    name = "Spike Beetle",                 -- the only field you must set (28 letters at most)
+    description = "...",  lore = "...",  tip = "Slash with {attack} ...",
+
+    look = "rhino_beetle",                 -- body, model and animations of a built-in bug
+    scale = 1.1,                           -- 0.7 .. 1.6, the hitbox follows (or set radius = 4..16)
+    colors = { hue = 140, saturation = 1.2 },   -- like a skin: hue, saturation, brightness, tint
+    playstyle = "brawler",                 -- tank | brawler | speedster | ranged | control
+
+    stats = { maxHp = 70, armor = 3, moveSpeed = 110, critChance = 10 },
+
+    attack = { from = "mantis", damage = 12 },   -- left click
+    secondary = { type = "venomsting", damage = 16, cooldown = 2, range = 80, width = 6 },   -- right click
+    dash = "wolf_spider",                  -- Shift
+
+    rules = "dung_beetle",                 -- borrow a bug's item rule
+    skillTree = "rhino_beetle",            -- borrow a bug's skill tree
+    immune = true,                         -- no debuffs, like the hissing roach
+    startingItems = { "honeydew" },        -- up to four item ids
+    tags = { "beetle" },                   -- item synergies
+}
+```
+
+Every field except `name` is optional: anything left out comes from the `look` bug (its moves,
+playstyle and size) or from the game's defaults (stats).
+
+### Moves
+
+`attack`, `secondary` and `dash` each take one of three forms:
+
+| Form | Meaning |
+|---|---|
+| `"mantis"` | Copy that bug's move exactly. |
+| `{ from = "mantis", damage = 20 }` | Copy it, then change some of its numbers. A changed value must be the same kind (number, table...) as the original. |
+| `{ type = "arc", damage = 8, cooldown = 0.8, radius = 40, arc = 2.4 }` | Build it yourself from a move type (tables below). |
+
+`secondary = false` gives no special. `dash = false` gives a plain dash.
+
+Copying is the easy way in: start with `{ from = "..." }` and change one number at a time. The
+examples in the tables below are the exact params the built-in bugs use, so they are a good place
+to see what a move type understands.
+
+### Stats
+
+| Stat | Allowed | Default | | Stat | Allowed | Default |
+|---|---|---|---|---|---|---|
+| `maxHp` | 5 .. 500 | 50 | | `attackSpeed` | -60 .. 150 % | 0 |
+| `hpRegen` | 0 .. 10 /s | 0 | | `area` | -60 .. 150 % | 0 |
+| `armor` | -10 .. 30 | 0 | | `knockback` | -80 .. 200 % | 0 |
+| `dodge` | 0 .. 60 % | 0 | | `critChance` | 0 .. 80 % | 5 |
+| `moveSpeed` | 30 .. 300 | 100 | | `critDamage` | 100 .. 400 % | 150 |
+| `damage` | -80 .. 150 % | 0 | | `luck` | -80 .. 150 % | 0 |
+| `lifesteal` | 0 .. 25 % | 0 | | `pickupRange` | 5 .. 250 | 40 |
+| `dashCooldown` | 0.2 .. 8 s | 1.2 | | | | |
+
+`scale` (drawn size) goes from 0.5 to 2, `radius` (hitbox) from 3 to 22.
+
+Numbers outside the range are moved back inside it, and the Creator says so in a note.
+
+### Your own art
+
+Leave out `look` and give the bug `art` instead. It is drawn the way the built-in bugs are: the
+body is stacked into a raised 3D shell and the legs are jointed lines that walk.
+
+```lua
+art = {
+    palette = { o = "#1c140ab0", a = "#4a3a1e", b = "#94784a", g = "#6a8a3a" },
+    -- top-down, FACING RIGHT, one letter per pixel ("." = empty). Up to 96 x 64 pixels.
+    body = {
+        ".oooooooooooooo.",
+        "oaabbbbbbggggbbo",
+        ".oooooooooooooo.",
+    },
+    -- frames = { {rows}, {rows} }  instead of body for up to 8 animation frames (fps = 8):
+    --   flapping wings, a pulsing glow, a wagging tail
+    -- legs for ONE side (mirrored): { hipU, hipV, kneeU, kneeV, footU, footV } with
+    -- u = pixels forward from the middle of the drawing, v = pixels to the side (negative)
+    legs = { { 4, -1, 8, -6, 12, -9 }, { 0, -1, 0, -7, -2, -11 }, { -4, -1, -8, -6, -12, -9 } },
+    legColor = "#7a6438",
+    height = 2,     -- body thickness, 1..10
+    lift = 3,       -- how high it stands, 0..10
+    kneeUp = 2,     -- knee height, 0..6
+    stride = 2.4,   -- step length, 0.5..4
+},
+```
+
+Colours are `#rrggbb`, or `#rrggbbaa` for see-through (the built-in outlines use `b0`). The
+hitbox is worked out from the drawing (and `scale` / `radius` still work). Up to 10 legs a side,
+each with 2 to 4 joints.
+
+**Extra limbs** (claws, pincers, tails, stingers, fangs, feelers, horns) are jointed and drawn
+in 3D like the lobster's claws. They are always there, and animations can swing them:
+
+```lua
+art = {
+    ...,
+    limbs = {
+        -- attach point (u forward, v sideways, z height), then segments { length, yaw, pitch }
+        -- (radians, each relative to the one before). No `side` = a mirrored pair.
+        { u = 6, v = 3, segs = { { 4, 0.8, 0.2 }, { 4, -0.6, 0 } }, width = 2, color = "c", tip = "pincer" },
+        -- side = 1 or -1: only on one side. tip: pincer, crusher, blade, sting, fang, club
+        { u = -8, v = 0, side = 1, segs = { { 5, 3.1, 0.6 }, { 5, 0, 0.8 }, { 4, 0, 0.8 } }, tip = "sting" },
+    },
+},
+```
+
+`color` is a palette letter or `#rrggbb`; `width` 1 .. 4; up to 12 limbs.
+
+**A segmented body** (centipede, millipede, worm): give `art.chain` and the bug becomes a head
+followed by segments that trail behind it, each with a pair of legs:
+
+```lua
+art = {
+    palette = { ... },
+    chain = {
+        head = { "rows" }, segment = { "rows" }, segment2 = { "rows" },   -- segment2: every other one
+        segments = 9,          -- 2 .. 40
+        spacing = 3,           -- pixels between segments
+        wave = 0.12,           -- how far behind each pair of legs steps
+        leg = { 0, -2, -0.4, -4, -1, -5.5 },   -- one leg (hip, knee, foot), or false for none
+    },
+    legColor = "#6a3a48", height = 3, lift = 1,
+},
+```
+
+### Animations
+
+`anims` gives the bug its own body animations. `attack`, `secondary` and `dash` play by
+themselves when that move is used; any other name plays with `me.anim("name")`. A clip is a list
+of keys over its time (`t` from 0 to 1); channels a key leaves out are 0 there.
+
+```lua
+anims = {
+    attack = { time = 0.3, keys = { { 0, rear = 2, lunge = -2 }, { 0.3, lunge = 4, stretch = 0.2 }, { 1 } } },
+    spin = { time = 0.5, keys = { { 0 }, { 0.5, spin = 3.14 }, { 1, spin = 6.28 } } },
+    dash = "jumping_spider.dash",    -- or a built-in bug's animation by name
+},
+```
+
+Channels: `lunge` (px forward), `side`, `rear` (up), `twist`, `spin` (radians), `stretch`
+(0.2 = 20% longer), `reach` (front feet forward), `spread` (wider stance), `shake`. A clip can
+carry `limbs` (as above) with a `strike` pose and `ch = "<channel>"` naming the channel that
+blends rest to strike, `mirror = true` (left, right, left...) and `hold = "charge"`, `"block"`,
+`"mode"` or `"hold"` to keep the pose while that goes on.
+
+### Own sounds
+
+```lua
+sounds = {
+    squirt = { wave = "noise", freq = 900, to = 300, duration = 0.14, volume = 0.45 },
+    chirp = { wave = "triangle", notes = { 520, 660, 880 }, duration = 0.25 },   -- an arpeggio
+},
+-- then in code: me.sound("squirt")
+```
+
+`wave`: `sine`, `square`, `saw`, `triangle` or `noise`. Also `noise` (0..1 mixed in), `decay`
+(how fast it fades, 0.2..8), `attack` (fade-in seconds), `vibrato = { rate, depth }`. Up to 16.
+
+
+### Passives, looks, movement and music (no code needed)
+
+These are plain settings; the mixer has rows for all of them too.
+
+```lua
+passives = {
+    camo = { after = 0.6, ambush = 50 },   -- stand still to vanish; +50% damage for a moment after
+    aura = { radius = 40, dps = 4, slow = 0.7, color = "#80ff70" },
+    shell = { every = 8 },                 -- a shell blocks the next hit every 8 s
+},
+effects = {
+    glow = { color = "#80ff70", radius = 60, intensity = 0.6, pulse = 2 },   -- a light around the bug
+    trail = { kind = "spark", color = "#ffd870" },   -- dust, spark, bubble, slime, fire, frost, petals, shadow
+    sparkle = { color = "#ffffff", rate = 4 },        -- little lights drifting up
+    shimmer = true,                                   -- a soft pulsing sheen
+},
+movement = {
+    slide = 0.5,                           -- 0..0.95: steering eases in, like ice
+    hover = 8,                             -- float (6+ px: walking ants can't touch it)
+    bob = 1.5,                             -- bob up and down
+    sprint = { after = 1, speed = 1.4 },   -- speeds up after running for a second
+    sideways = { forward = 0.6, side = 1.2 },   -- crab walk: quick sideways, slow forwards
+},
+music = "flute",                           -- or { theme = "flute", key = 2 }
+```
+
+| Passive | What it does | Settings (defaults) |
+|---|---|---|
+| `camo` | Stand still to blend in: ants lose track of you. Moving again gives a short damage boost. | `after` 0.8 s, `alpha` 0.3, `ambush` 40 %, `ambushTime` 1.5 s |
+| `regen` | Heal while standing still (and some while moving). | `still` 2 /s, `moving` 0 |
+| `aura` | Ants near you keep taking damage, and can be slowed. | `radius` 36, `dps` 4, `slow`, `color` |
+| `thorns` | Getting hit hurts every ant around you. | `damage` 10, `radius` 32 |
+| `feast` | Kills can heal you. | `hp` 2, `chance` 0.5 |
+| `rampage` | Kills stack a short buff. | `stat` "damage", `amount` 4, `max` 10, `seconds` 3 |
+| `berserk` | Stronger while badly hurt. | `below` 0.35, `stats` { damage = 30, attackSpeed = 20 } |
+| `planted` | Stats while standing still. | `stats` { armor = 4 } |
+| `momentum` | Stats while moving. | `stats` { damage = 15 } |
+| `venom` | Hits can poison. | `dps` 3, `seconds` 3, `chance` 0.5 |
+| `frost` | Hits can slow. | `mul` 0.5, `seconds` 1.5, `chance` 0.5 |
+| `spark` | Hits can arc lightning to other ants. | `damage` 5, `jumps` 2, `chance` 0.2 |
+| `burst` | Ants you kill can explode. | `damage` 8, `radius` 26, `chance` 0.3, `color` |
+| `shell` | Every few seconds a shell blocks the next hit. | `every` 8 s |
+| `blink` | Dodging a hit hides you for a moment. | `seconds` 1.5 |
+| `magnet` | Pull pickups from further away. | `range` 60 |
+| `spawn` | Every few kills, little helpers hatch and hunt with you. | `every` 15, `count` 2, `damage` 5, `life` 8 |
+| `stampede` | Running into ants knocks them aside and hurts them. | `damage` 3, `push` 140 |
+
+Music themes: `creep` (spiders), `chug` (beetles), `bubble` (crustaceans), `rattle` (myriapods),
+`flute` (flyers), `kalimba`. Leave it out and the bug's tags pick one.
+
+### Skill trees for every bug
+
+Every custom bug has a skill tree, plus the kin branch of its kind (insect, beetle, spider...):
+
+* `skillTree = "preset:brawler"` – a ready-made tree that works with any moves: `brawler`,
+  `tank`, `speedster`, `ranged` (Sharpshooter) or `control` (Trapper). With no `skillTree`, the
+  preset that fits the bug's `playstyle` is used.
+* `skillTree = "mantis"` – borrow a built-in bug's tree.
+* `skillTree = { branches = ... }` – its own (below).
+
+### Moves written in code
+
+Any move can be written as code: give it functions instead of a `type` (or `type = "scripted"`).
+The functions get `me`, a toolkit for acting on the ants around the bug. What the move has
+decides how it works:
+
+| A move with | Works like |
+|---|---|
+| `fire = function(me)` | Attack / special: used when pressed (or on its cooldown with auto-attack). |
+| `hold = function(me, dt, charge)`, `release = function(me, charge)`, `charge = seconds` | Attack / special: **hold to charge**, let go to use. `charge` is 0 .. 1. Auto-attack charges to `autoCharge` (0.5). |
+| `start = function(me)`, `tick = function(me, dt)` | Dash: pressed, uses a stamina charge (`charges`); tick runs while the bug moves. |
+| `hold = function(me, dt, held)` | Dash: runs every frame, `held` = Shift down. Blocks (`me.block`), sprints, flights, aim modes. |
+| `mode = true`, `enter(me)`, `tick(me, dt)`, `exit(me, dry)`, `speed`, `stamina` | Dash: a **stamina mode** like the tiger beetle's run: on while Shift is held, it burns the bar. |
+
+For example:
+
+```lua
+attack = {
+    type = "scripted", name = "Stick Whip", cooldown = 0.55, range = 55,
+    fire = function(me)
+        me.state.swings = (me.state.swings or 0) + 1      -- me.state keeps values between uses
+        if me.state.swings % 3 == 0 then
+            me.hitLine({ length = 95, width = 6, damage = 16, knockback = 160 })
+        else
+            me.hitArc({ radius = 50, arc = 1.6, damage = 8 })
+        end
+    end,
+},
+dash = {
+    type = "scripted", name = "Twig Vault", charges = 2,
+    start = function(me)                                   -- Shift pressed
+        me.lunge(80)
+        me.after(0.22, function(m) m.hitCircle({ radius = 34, damage = 10, stun = 0.4 }) end)
+    end,
+    -- tick = function(me, dt) ... end                     -- every frame while the dash moves you
+},
+```
+
+**Reading the bug**
+
+| In `me` | What it is |
+|---|---|
+| `x`, `y`, `aimX`, `aimY`, `angle` | Where the bug is and where it aims (a unit vector, and in radians). |
+| `moveX`, `moveY` | Dash only: the direction the bug is moving. |
+| `hp`, `maxHp`, `time`, `wave`, `level` | Health, seconds into the run, the wave, the skill level. |
+| `moving`, `flying`, `blocking` | true / false. |
+| `params` | This move's own table (your extra fields too). |
+| `state` | A table kept for the whole run: counters, combos, anything. Shared by all the bug's code. |
+
+**Hitting ants** (each returns how many it hit; damage goes through the bug's stats and items:
+crits, damage %, area %, lifesteal and item procs all apply)
+
+| Call | What it does |
+|---|---|
+| `hitArc{ radius, arc, damage }` | A cone in front (`arc` in radians, 0.1 .. 6.28). |
+| `hitCircle{ radius, damage, ahead, x, y }` | A circle around the bug, `ahead` pixels along the aim, or at `x, y`. |
+| `hitLine{ length, width, damage }` | Every ant in a straight line along the aim. |
+| `hitNearest{ radius, damage }` | The nearest ant only. |
+| `chain{ damage, jumps, range, radius }` | Lightning that jumps from ant to ant. |
+| `shoot{ speed, range, damage, size, pierce, arc, burst = { radius, damage }, pool = { ... } }` | A projectile. `arc = true` lobs it. `burst` explodes where it stops, `pool` leaves a puddle there. 30 per call. |
+| `push{ radius, strength }`, `pull{ radius, strength }` | Shove ants away / drag them in. |
+
+Every hit and shot takes the same extras: `knockback` (0 .. 900), `poison = { dps, seconds }`,
+`slow = { speedMultiplier, seconds }`, `corrode = { damageTakenMultiplier, seconds }`,
+`stun = seconds`, `color = { r, g, b }` (0..1), `turn` (radians away from the aim: fans of shots),
+`fx = false` (no flash).
+
+**Shaping the ground, grabbing, helpers**
+
+| Call | What it does |
+|---|---|
+| `pool{ radius, life, dps, slow, pull, ahead, x, y, color }` | A puddle that hurts / slows / sucks in ants inside it. 12 at once. |
+| `wall{ length, ahead, life, strength, hold, damage }` | A sticky wall across the aim that catches ants (like the orb weaver's web). |
+| `grab(radius)` | Lifts the nearest ant (not queens or bosses) over your head. true if it got one. |
+| `throw{ distance, damage, landDamage, landRadius, height }` | Hurls the held ant along the aim. `holding()` says if you hold one. |
+| `summon{ count, life, damage, speed, bites, size, poison, color }` | Little helpers that run down ants and bite. 60 at once. |
+
+**The bug itself**
+
+| Call | What it does |
+|---|---|
+| `lunge(distance, turn)` | Dashes the bug along the aim (0 .. 400 pixels). |
+| `jump(height)` | During a dash: hop over things (high hops can't be hit). |
+| `speed(multiplier, seconds)` | Faster or slower for a while (0.1 .. 4). |
+| `shield(seconds)` | Nothing can hurt the bug for a moment (5 s at most). |
+| `block(on, shove)` | While on, every hit is blocked and the attacker is shoved back. |
+| `cloak(seconds)` | Camouflage: ants lose track of the bug. |
+| `fly(on, height)` | Up off the ground: walking ants can't reach it. |
+| `heal(n)` | Heals (500 at most per call). |
+| `stamina()`, `useStamina(amount)` | The stamina bar (0..1); spend some of it (false if there's not enough). |
+
+**Timing, looks and senses**
+
+| Call | What it does |
+|---|---|
+| `after(seconds, function(me) ... end)` | Runs a function later (combos, delayed blasts). 32 waiting at most. |
+| `anim(name)` | Plays one of the bug's own animations. |
+| `sound(name, pitch, volume)` | Your own sounds, or `hit`, `swing`, `special`, `zap`, `boom`, `dash`, `chime`, `drop`, `kill`, `pickup`, `equip`, `bell`, `hurt`. |
+| `ring{ radius, color, x, y, life }`, `particles{ count, color, speed, glow }`, `shake(amount)`, `say(text, color)` | Effects and floating text. |
+| `count(radius)`, `nearest(radius)`, `enemies(radius)` | How many ants are near; x, y of the nearest; a list of up to 40 `{ x, y, hp, maxHp, id, boss, queen, elite, flying, poisoned, slowed }`. |
+| `props(radius)`, `kickProps{ radius, strength, ahead, x, y }` | Rocks, sticks and leaves near the bug (`{ x, y, id, size }`); knock them flying. `grab` picks up props too. |
+
+### Hitboxes and feel (`me.hit`)
+
+`me.hit{...}` is the one call behind every hit in code. It lays a **shape** along the aim, can
+wait a **wind-up** first (with a telegraph on the ground), can stay **live** for a while (moving
+with the bug and sweeping round), and sets the **feel** of every contact. `hitArc`, `hitCircle`,
+`hitLine`, `hitBox` and `hitRing` are short forms of it and take all the same fields.
+
+| Shape (`shape =`) | Numbers |
+|---|---|
+| `"circle"` | `radius` |
+| `"arc"` (or `"cone"`) | `radius`, `degrees` (or `arc` in radians), `inner` (a hollow middle) |
+| `"ring"` | `radius`, `inner` |
+| `"box"` | `length`, `width`, `back` (how far it starts behind the hit point) |
+| `"line"` | `length`, `width` (thickness each side) |
+| `"poly"` | `points = { {forward, side}, ... }` up to 16 corners, any outline |
+
+| Field | What it does |
+|---|---|
+| `ahead`, `side`, `turn`, `x`, `y` | Where: pixels along the aim, across it, a turn (radians), or a fixed place. |
+| `windup` | Seconds before it lands, with a telegraph (`telegraph = false` hides it). |
+| `active`, `rehit` | Seconds the shape stays live; seconds between hits on the same ant while live. |
+| `follow` | `true` moves with the bug, `"aim"` also turns with the aim. |
+| `sweep = { from, to }` | Turns the shape from one angle to another (radians) over `active`: spins, sweeps. |
+| `maxTargets` | Stop after this many ants. |
+| `damage`, `knockback`, `kb` | `kb = "out"` (default), `"aim"`, `"in"` (pull), `"side"`, `"player"` (towards the bug). |
+| `stagger`, `stun`, `poison`, `slow`, `status` | Extra effects; `status` names one of the bug's own `statuses`. |
+| `sweet = { from, to, mult, color, text }` | A sweet spot: ants between `from` and `to` (0 = base, 1 = tip) take `mult` times the damage, with their own colour and text ("TIP!"). |
+| `hitstop`, `shake` | A freeze (up to 0.25 s, at most every 0.15 s) and screen shake when it lands. |
+| `sound`, `hitSound` | A sound on the swing, a sound on each contact. |
+| `number`, `sparks = { color, count }` | The damage number colour and hit sparks for this hit. |
+| `fx`, `color`, `fxLife` | The swing drawing: `"slash"`, `"ring"`, `"stab"`, `"outline"`, `"none"`. |
+| `onHit = function(me, ev)` | Runs for each ant hit (`ev.x`, `ev.y`, `ev.damage`, `ev.hp`, `ev.killed`, `ev.boss`, `ev.sweet`). |
+| `debug = true` | Draws this hitbox. `me.showHitboxes(true)` draws all of them; so does the Test Arena. |
+
+```lua
+-- a slow overhead smash: plants its feet, winds up, freezes on impact, tip hits harder
+fire = function(me)
+    me.root(0.3)
+    me.hit({ shape = "box", length = 70, width = 30, windup = 0.25, damage = 30, kb = "aim",
+        knockback = 400, hitstop = 0.06, shake = 0.2, sweet = { from = 0.7, mult = 1.5, text = "CRUNCH" } })
+end
+-- a spinning blade that stays out for a third of a second
+me.hit({ shape = "arc", radius = 58, degrees = 50, active = 0.32, sweep = { -3.3, 3.3 }, follow = true, damage = 14 })
+```
+
+More toolkit calls: `me.hitstop(s)`, `me.root(s)` (stand still), `me.cooldown(s)` (set this
+move's cooldown now), `me.statusArea{ status, radius, x, y }`, `me.form(n)`, `me.formNow()`,
+`me.pets()`, `me.addPet(i)`, `me.showHitboxes(on)`. Colours can be `"#rrggbb"` anywhere.
+
+### Moves from blocks, and combos
+
+A move can be a list of **blocks** instead of code. It is what the mixer's **Build from blocks**
+makes, and it can be written by hand:
+
+```lua
+attack = { name = "Leap Slash", cooldown = 0.8, blocks = {
+    { "lunge", distance = 50 },
+    { "wait", time = 0.1 },                                 -- holds back the blocks after it
+    { "arc", radius = 50, degrees = 140, damage = 12, windup = 0.1 },
+    { "pool", radius = 20, life = 3, dps = 4 },
+} }
+```
+
+Block kinds: `lunge, wait, arc, circle, box, ring, sweep, shoot, lob, pool, push, pull, wall,
+summon, heal, shield, speed, root, cloak, status, ring_fx, shake, hitstop, sound`.
+
+A **combo** plays the next step when pressed again within `window` seconds, else starts over.
+Each step is a list of blocks or a `function(me)`:
+
+```lua
+attack = { name = "Fury", cooldown = 0.28, combo = { window = 0.7,
+    { { "arc", radius = 46, degrees = 120, damage = 9 } },
+    { { "lunge", distance = 18 }, { "arc", radius = 50, degrees = 140, damage = 11 } },
+    function(me) me.hit({ shape = "ring", radius = 60, damage = 20 }) me.cooldown(0.6) end,
+} }
+```
+
+### Forms, molts, pets, statuses and the ultimate
+
+```lua
+-- Forms: hold Shift to turn into form 2 (let go to turn back). Each form can change the moves,
+-- stats, colours and art. formSwitch = "code" leaves Shift alone and switches with me.form(n).
+forms = { { name = "Crusher", say = "Crusher!", look = "rhino_beetle", stats = { armor = 6, moveSpeed = -45 },
+    attack = { name = "Slam", cooldown = 1, blocks = { { "circle", radius = 60, ahead = 20, damage = 30 } } } } },
+
+-- Molt: once in a run, at a wave (wave = 10) or after some kills (kills = 200), the bug changes for good.
+molt = { wave = 10, name = "Spark Queen", say = "Long live the queen!", stats = { maxHp = 50 }, scale = 1.3,
+    attack = { ... }, art = { ... } },
+
+-- Pets: helpers that follow the bug. ai = "hunt" (chase ants), "guard" (stay close, bite),
+-- "orbit" (circle the bug, hurt what they touch), "shooter" (shoot from beside the bug).
+-- Ready ones: "mite", "guard", "moth", "spitter" (preset = ... and change any field).
+pets = { { preset = "mite", count = 2 }, { name = "Fly", ai = "orbit", count = 3, damage = 3, range = 40,
+    art = { ".a.", "aba", ".a." }, palette = { a = "#303030", b = "#80c0ff" }, status = "burn" } },
+
+-- Status effects: name, color, time, dps, slow (0..1), stun, confuse (wander), charm (attack
+-- other ants), weaken (they deal less), vulnerable (they take more), spread (to nearby ants on
+-- death), stacks; onHit = 0.3 puts it on 30% of every hit. Ready ones: burn, frost, toxic, daze,
+-- charm, weaken (preset = ...). Moves use them with status = "burn".
+statuses = { burn = { preset = "burn", onHit = 0.25 }, rot = { name = "Rot", color = "#80a040", dps = 2, time = 6, spread = 30 } },
+
+-- The ultimate (replaces the Frenzy meter's power): fire = function(me) or blocks, plus a
+-- timed stat buff. charge = how fast the meter fills (1 = normal).
+ultimate = { name = "Bloodlust", color = "#ff4030", charge = 1.2, duration = 0.3,
+    blocks = { { "shake", amount = 0.3 }, { "ring", radius = 140, inner = 0, damage = 50 } },
+    buff = { stats = { damage = 40, attackSpeed = 40 }, time = 6 } },
+```
+
+### Hit look, sounds, poses, title card and challenges
+
+```lua
+hitFx = { number = "#80ff80", crit = "#ffd040", sparks = { color = "#80ff80", count = 3 }, sound = "zap" },
+-- a sound for each event: a built-in name, { sound, pitch, volume }, or a synth like `sounds`.
+-- Names: boom, zap, dash, hit, swing, special, chime, drop, kill, pickup, equip, bell, hurt
+soundPack = { attack = { sound = "swing", pitch = 0.8 }, hurt = "zap", death = "boom", kill = "chime" },
+-- poses (any anims clip; death and victory hold their last frame). `poses` is the same as anims.
+poses = { idle = { time = 1.2, keys = { { 0 }, { 0.5, lift = 2 }, { 1 } } },
+          death = { time = 0.6, keys = { { 0 }, { 1, roll = 3.1 } } }, victory = { ... } },
+-- the bug select card
+card = { motto = "Nothing gets through.", color = "#ffd070", frame = "shell" },  -- plain, leaf, gold, bone, web, shell
+-- challenges in the Creator panel: goal = win, wave (n), kills (n), nodash (n), nohit, fast
+-- (minutes), ultimate (n). Without this list the bug gets six standard ones.
+challenges = { { name = "Untouchable", goal = "nohit" }, { goal = "kills", n = 2000 } },
+```
+
+### Wings, feelers and moving limbs
+
+`art.wings = { size = 5, color = "#e8f4ff", flap = 30 }` and `art.antennae = { length = 5,
+color = "#2a2010" }` add a pair of flapping wings or swaying feelers without writing limbs. Any
+limb in `art.limbs` can move on its own with `flap = <beats per second>` or `sway = <amount>`,
+and `tip = "wing"` draws a see-through wing.
+
+### Code on game events
+
+`hooks` runs code when things happen, for the bug's own rules ("every 10th kill...", a
+counter-attack when hurt, a buff every wave):
+
+```lua
+hooks = {
+    onStart = function(me) end,                -- the run begins
+    onTick = function(me, dt) end,             -- every frame
+    onHit = function(me, ev) end,              -- the bug hit an ant (ev.x, ev.y, ev.damage, ev.crit, ev.boss)
+    onKill = function(me, ev) end,             -- an ant died to the bug
+    onHurt = function(me, ev) end,             -- the bug was hit (ev.damage)
+    onDodge = function(me, ev) end, onBlock = function(me, ev) end,
+    onAttack = function(me, ev) end, onSpecial = function(me, ev) end,
+    onDash = function(me, ev) end, onDashEnd = function(me, ev) end,
+    onWaveStart = function(me, ev) end,        -- ev.wave
+    onEat = function(me, ev) end,              -- the bug ate an item
+},
+```
+
+Hits made by event code can set off more events, a few deep, so nothing loops forever.
+
+### An own skill tree
+
+A whole tree of its own (points come from skipping level-up cards, like every bug):
+
+```lua
+skillTree = {
+    branches = {
+        { name = "Glue", color = { 0.95, 0.9, 0.6 }, nodes = {
+            { id = "thick", tier = 1, ranks = 3, name = "Thick Glue", desc = "+15% damage per rank.",
+              stats = { damage = 15 } },
+            { id = "quick", tier = 2, name = "Quick Squirt", desc = "Charges 30% faster.",
+              attack = { charge = { mul = -0.3 } } },          -- change a move's number
+            { id = "sticky", tier = 3, name = "Sticky End", desc = "Kills leave glue.",
+              procs = { { trigger = "onKill", chance = 0.4, effect = function(me, ev, rank)
+                  me.pool({ x = ev.x, y = ev.y, radius = 18, dps = 4 })
+              end } } },
+        } },
+    },
+},
+```
+
+Nodes on the same tier are a fork (taking one locks the others). Up to 4 branches and 40 nodes.
+Node fields: `id`, `name`, `desc`, `tier` (1..6), `ranks`, `cost`, `col` (-1, 0, 1),
+`requires` / `excludes` (other node ids), `stats` / `statsMult`, `attack` / `secondary` / `dash`
+(move number changes: a number is added, or `{ add, mul, set }`), `echo`, `fan`, `empower` (see
+`content/skilltrees/_template.lua`), and `procs` with code (`trigger`, `chance`, `cooldown`,
+`move`, `effect(me, ev, rank)`, `condition(me, ev, rank)`).
+
+All this code runs in the sandbox too, with a budget for every call. If a function breaks or gets
+stuck it switches off for the rest of the run (the Creator shows the error), and saving runs a test
+fight first, so most mistakes are caught before you play.
+
+### Safety limits
+
+Scripts can't harm the game or your computer:
+
+* They run in a **sandbox**: `math`, `string`, `table`, `pairs`, `ipairs`, `print`... work; files,
+  `love`, `require`, `load`, `os`, `io`, `debug` and metatables don't exist.
+* A script gets a budget of about a million steps and 32 MB to build its table, so a loop that
+  never ends stops with an error instead of freezing the game. Compiled bytecode is refused.
+  Scripts can be 256 KB long, and up to 200 custom bugs can be saved.
+* Only **data** comes out, plus the functions the bug's code is made of (moves, hooks, skill
+  procs), which only ever run inside the sandbox with a budget per call and only see the `me`
+  toolkit. Every field is checked, and numbers are kept in ranges that can't break the game
+  (move damage at most 500, cooldowns at least 0.03 s, counts at most 40 per move).
+* Custom bugs can't replace a built-in bug: their ids always start with `custom_`.
+
+### Helpers inside a script
+
+| Helper | Gives |
+|---|---|
+| `bug("tarantula")` | A copy of a built-in bug's data (`name`, `stats`, `attack`, `secondary`, `dash`, `tags`...) with `look` set to it. Change it and return it. |
+| `bugs`, `attacks`, `dashes`, `items`, `statIds` | Lists of every id. |
+| `print(...)` | Shows a line under the editor (handy while experimenting). |
+
+```lua
+-- a glass cannon tarantula
+local b = bug("tarantula")
+b.name = "Glass Tarantula"
+b.stats.maxHp = 30
+b.stats.damage = 40
+b.colors = { hue = 200, saturation = 0.3, brightness = 1.4 }
+return b
+```
+
+```lua
+-- a different attack every time the game starts
+local moves = { "mantis", "scorpion", "crab" }
+return { name = "Lucky Bug", look = "crab", attack = moves[math.random(#moves)] }
+```
+
+## Reference
+
+### Built-in bugs (for `look`, `from`, `rules`, `skillTree`)
+
+| Bug id | Name | Attack | Special | Dash |
+|---|---|---|---|---|
+| `assassin_bug` | Assassin Bug | `rostrum` | `shove` | `stealth` |
+| `bombardier_beetle` | Bombardier Beetle | `spray` | `grenade` | `blast` |
+| `camel_spider` | Camel Spider | `jawpierce` | `frenzy` | `burrow` |
+| `centipede` | Centipede | `jabs` | `tailstab` | `flip` |
+| `crab` | Crab | `clawsnip` | `snipsplit` | `scuttle` |
+| `dragonfly` | Dragonfly | `dragonstrike` | `dragongrab` | `wingflight` |
+| `dung_beetle` | Dung Beetle | `dungbash` | `dungthrow` | `dungride` |
+| `emperor_scorpion` | Emperor Scorpion | `crushclaws` | `grabstab` | `clawwall` |
+| `hermit_crab` | Hermit Crab | `hermitpinch` | `anemone` | `shell` |
+| `hissing_roach` | Hissing Roach | `headbutt` | `hiss` | `scurry` |
+| `jumping_spider` | Jumping Spider | `pounce` | `dragline` | `safetyline` |
+| `lobster` | Lobster | `clawsnap` | `spin` | `block` |
+| `mantis` | Mantis | `slashes` | `snatch` | `leafsway` |
+| `mantis_shrimp` | Mantis Shrimp | `clubpunch` | `flurry` | `recoilpunch` |
+| `millipede` | Millipede | `glandspray` | `coil` | `ballroll` |
+| `orb_weaver` | Orb Weaver | `web` | `silkwall` | `grapple` |
+| `pistol_shrimp` | Pistol Shrimp | `waterjet` | `snapshot` | `cloak` |
+| `rhino_beetle` | Rhino Beetle | `arc` | `pierce` | `horncharge` |
+| `scorpion` | Scorpion | `pinchsting` | `venomsting` | `tailflick` |
+| `stag_beetle` | Stag Beetle | `arc` | `clubthrow` | `clumsyflight` |
+| `stink_bug` | Stink Bug | `stinkcloud` | `acidpool` | `stinkshield` |
+| `tarantula` | Tarantula | `fangslam` | `hairflick` | `leapslam` |
+| `tiger_beetle` | Tiger Beetle | `chargedash` | `lunge` | `run` |
+| `vinegaroon` | Vinegaroon | `acidsquirt` | `acidbomb` | `acidskip` |
+| `whip_scorpion` | Whip Scorpion | `palpstrike` | `palpstrike` | `feelerpull` |
+| `wolf_spider` | Wolf Spider | `nova` | `spiderlings` | `shadowdash` |
+
+### Attack types (`attack`, `secondary`)
+
+| Type | Name | Example (from a built-in bug) |
+|---|---|---|
+| `acidbomb` | Acid Bomb | `{ type = "acidbomb", damage = 14, cooldown = 3, reach = 42, soak = 1.5, distance = 125, pool = 42, poolLife = 4, corrode = { 1.4, 3 } }` |
+| `acidpool` | Acid Pool | `{ type = "acidpool", damage = 10, cooldown = 3, range = 130, radius = 34, life = 6, max = 3 }` |
+| `acidsquirt` | Acid Squirt | `{ type = "acidsquirt", damage = 4, cooldown = 0.32, range = 105, drops = 3, spread = 0.25, corrode = { 1.35, 3 }, burn = { 2, 2 }, cloudEvery = 5, cloudRadius = 26 }` |
+| `anemone` | Sea Anemone | `{ type = "anemone", damage = 3.5, cooldown = 5, range = 110, radius = 24, life = 7, rate = 2.2, slow = { 0.35, 0.8 }, max = 2 }` |
+| `arc` | Sweep | `{ type = "arc", damage = 9, cooldown = 0.75, radius = 46, arc = 2.6, knockback = 160, color = { 0.6, 0.95, 1 } }` |
+| `chargedash` | Charge Dash | `{ type = "chargedash", damage = 14, cooldown = 0.55, charge = 0.75, distance = 50, maxDistance = 150, width = 9, maxMult = 3, knockback = 160, guard = 0.35, crawl = 0.45, color = { 0.6, 1, 0.7 } }` |
+| `chargepunch` | Charge Punch | (not used by a built-in bug yet) |
+| `clawsnap` | Claw Snap | `{ type = "clawsnap", damage = 10, cooldown = 0.35, charge = 1.1, radius = 16, maxRadius = 40, offset = 26, maxMult = 3.5, knockback = 220, color = { 1, 0.6, 0.45 } }` |
+| `clawsnip` | Claw Snips | `{ type = "clawsnip", damage = 7, cooldown = 0.32, radius = 21, offset = 24, spread = 9, color = { 1, 0.6, 0.45 } }` |
+| `clubpunch` | Club Punch | `{ type = "clubpunch", damage = 13, cooldown = 0.32, reach = 36, bubble = 0.5, radius = 28, knockback = 260, color = { 1, 0.45, 0.4 } }` |
+| `clubthrow` | Swing & Hurl | `{ type = "clubthrow", damage = 26, cooldown = 2.6, reach = 36, swing = 0.45, arm = 22, distance = 130, radius = 34 }` |
+| `coil` | Coil | `{ type = "coil", damage = 40, cooldown = 4, guard = 0.15, radius = 85, ooze = 3, time = 2, max = 3.5 }` |
+| `crushclaws` | Crushing Claws | `{ type = "crushclaws", damage = 13, cooldown = 0.7, radius = 20, offset = 26, spread = 9, execute = 1.6, knockback = 120, poison = { 4, 3 }, color = { 0.6, 0.7, 1 } }` |
+| `dragline` | Dragline Yank | `{ type = "dragline", damage = 16, cooldown = 1.8, range = 140, poison = { 8, 4 }, color = { 0.6, 1, 0.9 } }` |
+| `dragongrab` | Seize | `{ type = "dragongrab", cooldown = 1, reach = 34, bomb = 26, radius = 34, groundMult = 0.6, squeeze = 0, color = { 0.5, 0.85, 1 } }` |
+| `dragonstrike` | Sweep / Dive Lunge | `{ type = "dragonstrike", damage = 13, cooldown = 0.45, gust = 46, arc = 3.4, gustMult = 0.9, reach = 70, lungeSpeed = 1.7, knockback = 90, color = { 0.5, 0.85, 1 } }` |
+| `dungbash` | Ball Bash | `{ type = "dungbash", damage = 11, cooldown = 0.55, perSize = 0.16, killGrow = 0.45, knockback = 140, sizeSlow = 1 }` |
+| `dungthrow` | Ball Hurl | `{ type = "dungthrow", damage = 16, cooldown = 1.2, perSize = 0.24, speed = 340, burstSize = 9, minSize = 4, maxSize = 20, grow = 0.011, knockback = 180, slowMax = 0.45, sizeCooldown = 0.12 }` |
+| `fangslam` | Fang Slam | `{ type = "fangslam", damage = 17, cooldown = 0.95, radius = 36, offset = 16, windup = 0.22, stun = 0.8, knockback = 180, color = { 1, 0.6, 0.3 } }` |
+| `flurry` | Flurry | `{ type = "flurry", damage = 5, cooldown = 3, punches = 10, time = 0.7, reach = 28, finisher = 3, color = { 1, 0.5, 0.4 } }` |
+| `frenzy` | Frenzy | `{ type = "frenzy", damage = 11, cooldown = 3, hops = 5, range = 70, radius = 18, bleed = { 4, 3 }, color = { 1, 0.85, 0.55 } }` |
+| `glandspray` | Gland Spray | `{ type = "glandspray", damage = 6, cooldown = 0.5, radius = 14, every = 2, poison = { 5, 3 }, reach = 20 }` |
+| `grabstab` | Grab & Stab | `{ type = "grabstab", damage = 8, cooldown = 3, reach = 46, stabs = 6, minStabs = 3, stabTime = 0.2, splash = 16, poison = { 8, 4 }, slam = 22, color = { 0.75, 1, 0.4 } }` |
+| `grenade` | Chemical Grenade | `{ type = "grenade", damage = 30, cooldown = 2.2, range = 150, radius = 42 }` |
+| `hairflick` | Hair Flick | `{ type = "hairflick", cooldown = 0, damage = 0.6, rate = 0.09, range = 130, spread = 0.22, speed = 300, slow = { 0.6, 1.2 }, color = { 1, 0.6, 0.3 } }` |
+| `headbutt` | Headbutt | `{ type = "headbutt", damage = 9, cooldown = 0.38, reach = 28, arc = 1.7, knockback = 180, heavyEvery = 4, color = { 1, 0.75, 0.45 } }` |
+| `hermitpinch` | Hermit Pinches | `{ type = "hermitpinch", damage = 7, cooldown = 0.38, radius = 20, bigRadius = 29, bigMult = 2.4, offset = 22, color = { 1, 0.6, 0.75 } }` |
+| `hiss` | Hiss | `{ type = "hiss", damage = 3, cooldown = 4, radius = 50, maxRadius = 115, stun = 0.8, maxStun = 2.6, charge = 1 }` |
+| `jabs` | Venom Jabs | `{ type = "jabs", damage = 3, cooldown = 0.13, reach = 30, width = 5, poison = { 2, 2 }, color = { 0.9, 1, 0.5 } }` |
+| `jawpierce` | Jaw Pierce | `{ type = "jawpierce", damage = 7, cooldown = 0.36, reach = 40, width = 6, thrusts = 2, gap = 0.08, bleed = { 2, 3 }, knockback = 40, color = { 1, 0.88, 0.65 } }` |
+| `jawsaw` | Jaw Saw | (not used by a built-in bug yet) |
+| `liquefy` | Liquefy | (not used by a built-in bug yet) |
+| `lunge` | Sprint Strike | `{ type = "lunge", damage = 11, cooldown = 1.1, distance = 60, width = 8, knockback = 110, color = { 0.6, 1, 0.7 } }` |
+| `nova` | Nova | `{ type = "nova", damage = 6, cooldown = 0.6, radius = 38, knockback = 80, color = { 0.65, 1, 0.5 } }` |
+| `palpstrike` | Palp Strike | `{ type = "palpstrike", hand = "left", feelers = true, damage = 10, cooldown = 0.5, reach = 76, arc = 1.9, color = { 1, 0.85, 0.6 } }` |
+| `pierce` | Horn Pierce | `{ type = "pierce", damage = 26, cooldown = 2.5, range = 95, width = 7, knockback = 260, color = { 0.6, 0.95, 1 } }` |
+| `pinchsting` | Pinch & Sting | `{ type = "pinchsting", damage = 8, cooldown = 0.4, radius = 34, stingRange = 85, stingMult = 2.5, knockback = 60, poison = { 3, 3 }, stingPoison = { 8, 4 }, color = { 1, 0.85, 0.5 } }` |
+| `pounce` | Pounce | `{ type = "pounce", damage = 14, cooldown = 0.75, distance = 80, radius = 26, knockback = 130, color = { 0.6, 1, 0.9 } }` |
+| `rampage` | Rampage | (not used by a built-in bug yet) |
+| `rostrum` | Rostrum Stab | `{ type = "rostrum", damage = 7, cooldown = 0.3, reach = 34, width = 4, pierce = 1, leech = 0.2, color = { 1, 0.35, 0.3 } }` |
+| `shove` | Shove | `{ type = "shove", damage = 4, cooldown = 1.4, radius = 40, arc = 1.7, knockback = 380, stun = 0.3 }` |
+| `silkwall` | Silk Wall | `{ type = "silkwall", damage = 2, cooldown = 1.2, range = 120, length = 130, duration = 8, strength = 40, hold = 2.5, max = 3 }` |
+| `slam` | Claw Slam | (not used by a built-in bug yet) |
+| `slashes` | Twin Scythes | `{ type = "slashes", damage = 8, cooldown = 0.65, radius = 44, arc = 1.8, gap = 0.09, knockback = 80, color = { 0.75, 1, 0.5 } }` |
+| `snapshot` | Snap Shot | `{ type = "snapshot", damage = 50, cooldown = 2, aim = 0.5, range = 300, width = 5, radius = 28, cloakMult = 2 }` |
+| `snatch` | Snatch | `{ type = "snatch", damage = 16, cooldown = 3, reach = 52, grabs = 3, bite = 6, heal = 2, munch = 1.6, distance = 110 }` |
+| `snipsplit` | Snip in Two | `{ type = "snipsplit", damage = 12, cooldown = 0.55, reach = 46, lift = 0.1, halves = 100, bossDamage = 16 }` |
+| `spiderlings` | Spiderling Swarm | `{ type = "spiderlings", damage = 4, cooldown = 3, count = 8, bites = 3, speed = 170, life = 4, poison = { 4, 3 } }` |
+| `spin` | Spin | `{ type = "spin", damage = 12, cooldown = 3, radius = 50, turns = 3, turnTime = 0.13, knockback = 220, color = { 1, 0.6, 0.45 } }` |
+| `spray` | Boiling Spray | `{ type = "spray", damage = 4, cooldown = 0.55, range = 95, drops = 7, spread = 0.6, pierce = 2, color = { 1, 0.92, 0.6 } }` |
+| `stinkcloud` | Stink Cloud | `{ type = "stinkcloud", damage = 5, cooldown = 0.7, range = 40, radius = 22, life = 2.6, drift = 14, max = 8, weaken = 1.25, choke = 0.7 }` |
+| `tailstab` | Tail Stab | `{ type = "tailstab", damage = 18, cooldown = 1.6, range = 60, width = 7, knockback = 140, poison = { 8, 4 }, color = { 0.75, 1, 0.3 } }` |
+| `venomchain` | Venom Chain | (not used by a built-in bug yet) |
+| `venomsting` | Venom Strike | `{ type = "venomsting", damage = 14, cooldown = 2, range = 75, width = 6, poison = { 10, 4 }, color = { 0.8, 1, 0.4 } }` |
+| `waterjet` | Water Jet | `{ type = "waterjet", damage = 4, cooldown = 0.2, range = 135, spread = 0.1, popEvery = 6, popRadius = 14, color = { 0.6, 0.85, 1 } }` |
+| `web` | Web Shot | `{ type = "web", damage = 8, cooldown = 0.9, range = 100, radius = 30, slow = 0.3, duration = 4, color = { 1, 1, 0.95 } }` |
+
+### Dash types (`dash`)
+
+| Type | Name | Example (from a built-in bug) |
+|---|---|---|
+| `acidguard` | Acid Guard | (not used by a built-in bug yet) |
+| `acidskip` | Acid Skip | `{ type = "acidskip", distance = 70, speed = 1.1, window = 0.7, damage = 5, radius = 26, corrode = { 1.4, 3 } }` |
+| `ambush` | Ambush | (not used by a built-in bug yet) |
+| `ballroll` | Ball Roll | `{ type = "ballroll", stamina = 2.5, regen = 1, speed = 1.8, damage = 5, knockback = 170, guard = 0.5 }` |
+| `blast` | Blast-off | `{ type = "blast", damage = 18, radius = 38, distance = 110 }` |
+| `block` | Block | `{ type = "block", slow = 0.35, shove = 90 }` |
+| `burrow` | Burrow | `{ type = "burrow", stamina = 2, regen = 0.8, speed = 1.25, damage = 16, radius = 40 }` |
+| `clawwall` | Claw Wall | `{ type = "clawwall", stamina = 3, regen = 1, speed = 0.6, guard = 1.1, ram = 3, push = 160, releaseRadius = 46, releaseShove = 320 }` |
+| `cloak` | Cloak | `{ type = "cloak", time = 2.2, speed = 1.3, distance = 40 }` |
+| `clumsyflight` | Clumsy Flight | `{ type = "clumsyflight", distance = 95, speed = 0.5, hop = 14, turn = 4, damage = 8, radius = 34, knockback = 240 }` |
+| `dash` | Dash | (not used by a built-in bug yet) |
+| `dungride` | Ball Ride | `{ type = "dungride", stamina = 2.2, regen = 0.9, speed = 1.5, damage = 6, knockback = 190, minBall = 1 }` |
+| `feelerpull` | Antenna Whip | `{ type = "feelerpull", range = 140, speed = 1.6, charges = 2, damage = 8, crack = 14, radius = 26 }` |
+| `flip` | Flip | `{ type = "flip", damage = 14, radius = 36, knockback = 260, distance = 30, slow = 0.85 }` |
+| `grapple` | Web Grapple | `{ type = "grapple", range = 160, speed = 1.1 }` |
+| `horncharge` | Horn Charge | `{ type = "horncharge", distance = 75, carry = 3, ram = 10, knockback = 220, toss = 70, tossDamage = 12 }` |
+| `leafsway` | Leaf Sway | `{ type = "leafsway", charges = 2, distance = 58, speed = 1.2, primed = 1.0 }` |
+| `leapslam` | Leap Slam | `{ type = "leapslam", distance = 80, speed = 0.85, hop = 16, damage = 14, radius = 36, stun = 0.6, knockback = 200 }` |
+| `recoilpunch` | Recoil Punch | `{ type = "recoilpunch", damage = 24, reach = 36, distance = 90, charge = 0.8, maxMult = 3, launchMult = 1.2 }` |
+| `run` | Run | `{ type = "run", stamina = 2.4, regen = 1, speed = 1.6, ram = 3, knockback = 130 }` |
+| `safetyline` | Safety Line | `{ type = "safetyline", distance = 125, hop = 18, speed = 1.1, line = 2.5, zip = 1.7 }` |
+| `scurry` | Scurry | `{ type = "scurry", distance = 60, speed = 1.3, charges = 3, startle = 0.4, burst = 1.35, burstTime = 0.6 }` |
+| `scuttle` | Sideways Scuttle | `{ type = "scuttle", distance = 80, speed = 1.3, charges = 2, ram = 5, knockback = 140 }` |
+| `shadowdash` | Shadow Dash | `{ type = "shadowdash", distance = 90, speed = 1.3, hide = 1.4 }` |
+| `shell` | Shell Guard | `{ type = "shell", slow = 0.7, thorns = 4, shove = 70 }` |
+| `sidestep` | Sidestep | (not used by a built-in bug yet) |
+| `stealth` | Stealth | `{ type = "stealth", stamina = 4, regen = 0.8, speed = 1.15, bonus = 2.5, strikeCost = 0.3 }` |
+| `stinkshield` | Stink Shield | `{ type = "stinkshield", time = 1.6, radius = 30, damage = 6 }` |
+| `tailflick` | Tail Flick | `{ type = "tailflick", distance = 70, hop = 6, sting = 14, reach = 70, poison = { 6, 3 } }` |
+| `tumble` | Tumble | (not used by a built-in bug yet) |
+| `wingflight` | Take Wing | `{ type = "wingflight", stamina = 5, regen = 2.5, minStart = 0.15, speed = 1, groundSpeed = 0, height = 12, downdraft = 8, radius = 40 }` |
+
+
+### Item rules (`rules`)
+
+`dung_beetle` (Recycler), `hermit_crab` (Roomy Shell), `orb_weaver` (Web Tension),
+`hissing_roach` (Scavenger) and `scorpion` (Venom Sac). Details in [`src/config/bugrules.lua`](../src/config/bugrules.lua). The bug select screen shows what
+each one does.
+
+### Items (`startingItems`)
+
+`acorn_cap` (Acorn Cap), `alarm_pheromone` (Alarm Pheromone), `aloe_leaf` (Aloe Leaf), `amber` (Amber), `amoeba` (Amoeba), `bacterial_bloom` (Bacterial Bloom), `bombardier_gland` (Bombardier Gland), `bullet_ant_venom` (Bullet Ant Venom), `burdock_burr` (Burdock Burr), `cactus_spine` (Cactus Spine), `chili_pepper` (Chili Pepper), `chitin_plate` (Chitin Plate), `cicada_shell` (Cicada Shell), `click_beetle_hinge` (Click Beetle Hinge), `cockroach_heart` (Cockroach Heart), `coffee_bean` (Coffee Bean), `cordyceps` (Cordyceps), `dandelion_puff` (Dandelion Puff), `dew_drop` (Dew Drop), `dragonfly_wings` (Dragonfly Wings), `dung_ball` (Dung Ball), `earthworm` (Earthworm), `ember_gland` (Ember Gland), `feather` (Feather), `firefly_lantern` (Firefly Lantern), `fly_agaric` (Fly Agaric), `fools_gold_scarab` (Fool's Gold Scarab), `foragers_leaf` (Forager's Leaf), `four_leaf_clover` (Four-Leaf Clover), `fulgurite` (Fulgurite), `glass_mandible` (Glass Mandible), `glass_wings` (Glass Wings), `gnat_swarm` (Gnat Swarm), `grasshopper_legs` (Grasshopper Legs), `gut_flora` (Gut Flora), `honeycomb` (Honeycomb), `honeydew` (Honeydew), `honeypot_ant` (Honeypot Ant), `hornet_stinger` (Hornet Stinger), `hungry_tapeworm` (Hungry Tapeworm), `leech` (Leech), `lichen` (Lichen), `mantis_forelimb` (Mantis Forelimb), `maple_seed` (Maple Seed), `mosquito_proboscis` (Mosquito Proboscis), `moss_clump` (Moss Clump), `moth_wing` (Moth Wing), `mycelium` (Mycelium Thread), `nematode` (Nematode), `nettle_leaf` (Nettle Leaf), `parasitoid_egg` (Parasitoid Egg), `pine_cone` (Pine Cone), `pine_needle` (Pine Needle), `puffball` (Puffball), `quartz_crystal` (Quartz Crystal), `queens_pheromone` (Queen's Pheromone), `rhino_horn` (Rhino Horn), `rose_thorn` (Rose Thorn), `rotifer` (Rotifer), `royal_jelly` (Royal Jelly), `salt_crystal` (Salt Crystal), `scarab_shell` (Scarab Shell), `silk_bundle` (Silk Bundle), `slime_mold` (Slime Mold), `snail_shell` (Snail Shell), `spider_fang` (Spider Fang), `static_antenna` (Static Antenna), `strider_legs` (Water Strider Legs), `sugar_cube` (Sugar Cube), `tardigrade` (Tardigrade), `termite_mandible` (Termite Mandible), `trilobite` (Trilobite Fossil), `venus_flytrap` (Venus Flytrap), `walnut_shell` (Walnut Shell), `woodlouse_shell` (Woodlouse Shell)
+
+## For developers
+
+* Loader and sandbox: [`src/game/custombugs.lua`](../src/game/custombugs.lua) (`CustomBugs.run`,
+  `.build`, `.save`, `.loadAll`, `.toSource`, `.trial`).
+* Code in scripts: [`src/game/scriptmoves.lua`](../src/game/scriptmoves.lua) (the `me` toolkit;
+  hooks through `SM.event` from `Inventory:trigger`, `SM.tick` from `Player:update`, helpers drawn
+  by `SM.draw`), with the move types `content/attacks/scripted.lua`, `scripted_charge.lua` and
+  `content/dashes/scripted.lua`, `scripted_hold.lua`, `scripted_mode.lua`. Own sounds:
+  `Audio.addSynth`. Own skill trees: `def.ownTree`, returned by `Skills.treeFor`. Tweak mode:
+  `CustomBugs.tweakSource` / `.untweaked`.
+  Own art: `Sprites.buildSet` makes a small image of its own per bug (no atlas rebuild).
+* Screens: [`src/states/creator.lua`](../src/states/creator.lua) (hub),
+  [`src/states/bugmixer.lua`](../src/states/bugmixer.lua) (mix parts),
+  [`src/states/codeeditor.lua`](../src/states/codeeditor.lua) (script editor).
+* A custom bug is an ordinary character def with `custom = true`, registered in
+  `Content.characters` (so bug select, records and runs need nothing special). Borrowed rules and
+  trees go through `BugRules.of` and `Skills.treeFor`; colours through `Cosmetics.skinFor`.
+* A custom bug script is almost a `content/characters` file. To turn one into a built-in bug,
+  replace `look` / `from` with the real `sprite`, `model` and move params.
+* Test: `love . --selftest --creator`.

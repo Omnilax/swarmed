@@ -5,8 +5,11 @@ return {
     sprite = "tiger_beetle",
     model = { legs = "tiger_beetle_legs", body = "tiger_beetle_body", height = 3, lift = 3 },
     order = 4,
-    radius = 6,
-    stats = { maxHp = 45, moveSpeed = 130, dashCooldown = 1.2, critChance = 8 },
+    playstyle = "speedster",          -- src/config/playstyles.lua
+    tip = "Hold {attack} to wind up a charge that tears through a line of ants. Hold {dash} to sprint, clipping ants aside.",
+    radius = 5,
+    scale = 0.85,
+    stats = { maxHp = 35, moveSpeed = 175, dashCooldown = 0.8, critChance = 10 },
     attack = { type = "chargedash", damage = 14, cooldown = 0.55, charge = 0.75, distance = 50, maxDistance = 150, width = 9,
         maxMult = 3, knockback = 160, guard = 0.35, crawl = 0.45, color = { 0.6, 1, 0.7 } },
     secondary = { type = "lunge", damage = 11, cooldown = 1.1, distance = 60, width = 8, knockback = 110, color = { 0.6, 1, 0.7 } },

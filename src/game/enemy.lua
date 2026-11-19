@@ -1,7 +1,7 @@
 -- Enemy instances are plain tables recycled through a pool, so spawning and killing
 -- hundreds of ants per minute creates almost no garbage.
 local Content = require("src.content")
-local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
 local Sprites = require("src.gfx.sprites")
 local Elites = require("src.game.elites")
 
@@ -20,7 +20,7 @@ Enemy.DIFFICULTY = {
 function Enemy.spawn(world, def, x, y, elite)
     local e = table.remove(pool) or { st = {} }
     for k in pairs(e.st) do e.st[k] = nil end
-    local diff = Enemy.DIFFICULTY[Settings.get("difficulty")] or Enemy.DIFFICULTY.worker
+    local diff = Enemy.DIFFICULTY[Rules.get("difficulty")] or Enemy.DIFFICULTY.worker
     nextUid = nextUid + 1
     e.uid = nextUid
     e.leader, e.leaderUid = nil, nil
@@ -29,9 +29,10 @@ function Enemy.spawn(world, def, x, y, elite)
     e.mx, e.my, e.kvx, e.kvy = 0, 0, 0, 0
     e.maxHp = math.max(1, math.floor(def.hp * diff.hp * world:hpScale() + 0.5))
     e.hp = e.maxHp
-    e.damage = def.damage * diff.damage * world.modeDef.enemyDamage
+    local danger = world.danger
+    e.damage = def.damage * diff.damage * world.modeDef.enemyDamage * (danger and danger.damageMul or 1)
 
-    e.speed = def.speed * (0.9 + love.math.random() * 0.2)
+    e.speed = def.speed * (0.9 + love.math.random() * 0.2) * (danger and danger.speedMul or 1)
     if def.boss then world.boss = e end
     e.radius = def.radius
     e.mass = def.mass
@@ -59,6 +60,8 @@ function Enemy.spawn(world, def, x, y, elite)
     e.hurtTimer = 0
     e.spawnT = 0.2
     e.z, e.held, e.heldBy = 0, nil, nil
+    e.dropH = nil
+    e.tint, e.rival, e.title, e.rushed = nil, nil, nil, nil   -- colony war colours, boss bar names
     e.hidden, e.alpha = nil, nil      -- burrowed (untargetable, undrawn) / see-through (camouflage)
     e.slowT, e.slowMul = 0, 1
     e.stunT, e.corrodeT, e.corrodeMul = 0, 0, 1   -- stunned (hiss), corroded by acid (takes more damage)
@@ -66,12 +69,18 @@ function Enemy.spawn(world, def, x, y, elite)
     e.hitPad = 0     -- extra reach for the player's attacks (charging ants are easier to hit)
     e.biteCd = love.math.random() * 0.4
     e.dead = false
+    e.lure, e.lureUid, e.lureRolled, e.escaped, e.rushed = nil, nil, nil, nil, nil   -- (pooled tables keep old fields)
+    -- pacing (src/game/pacing.lua): straggler call, royal guard, heat / pressure scaling
+    e.called, e.guardOf, e.guardUid, e.guardA, e.guards, e.guardMul = nil, nil, nil, nil, nil, nil
+    e.pace, e.dpace = 1, 1
     if e.behavior.init then e.behavior.init(e, world, e.params) end
     return e
 end
 
 function Enemy.release(e)
     e.def, e.sprite, e.behavior, e.leader, e.elite, e.params = nil, nil, nil, nil, nil, nil
+    -- titles and boss state (src/game/bosses.lua) must not follow the table back out of the pool
+    e.title, e.champion, e.phases, e.enraged, e.empress = nil, nil, nil, nil, nil
     e.uid = -1
     pool[#pool + 1] = e
 end

@@ -5,6 +5,7 @@ return {
     name = "Static Antenna",
     description = "10% chance on hit to zap 3 (+1 per stack) nearby enemies.",
     rarity = "uncommon",
+    category = "elemental",
     size = { 1, 2 },
     procs = {
         {

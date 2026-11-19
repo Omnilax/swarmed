@@ -36,7 +36,12 @@ function Cosmetics.save()
 end
 
 function Cosmetics.isUnlocked(def)
-    return not def.locked or Cosmetics.data.unlocked[def.id] == true
+    if Cosmetics.data.unlocked[def.id] == true then return true end
+    -- Settings > Developer > "Unlock Everything" opens locked skins, decor and maps too
+    if require("src.game.unlocks").all() then return true end
+    -- maps bought with amber in the Burrow (src/game/amber.lua)
+    if def.palette and not require("src.game.amber").stageOpen(def.id) then return false end
+    return not def.locked
 end
 
 function Cosmetics.unlock(id)
@@ -57,7 +62,8 @@ function Cosmetics.location()
     local id = Cosmetics.data.location
     local def = id and Content.stages:get(id)
     if def and Cosmetics.isUnlocked(def) then return id end
-    return Content.stages:all()[1].id
+    local open = Cosmetics.locations()
+    return (open[1] or Content.stages:all()[1]).id
 end
 
 function Cosmetics.setLocation(id)
@@ -122,7 +128,9 @@ function Cosmetics.skinFor(charId)
     local id = Cosmetics.data.skins[charId]
     local s = id and Content.skins:get(id)
     if s and Cosmetics.isUnlocked(s) and (not s.character or s.character == charId) then return s end
-    return nil
+    -- custom bugs carry their own colours (same fields as a skin)
+    local c = Content.characters:get(charId)
+    return c and c.custom and c.colors or nil
 end
 
 function Cosmetics.setSkin(charId, skinId)

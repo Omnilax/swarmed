@@ -7,7 +7,7 @@ local SILK = { 0.6, 1, 0.9 }
 return {
     character = "jumping_spider",
     branches = {
-        { name = "Pounce", color = { 1, 0.7, 0.35 }, nodes = {
+        { name = "Pounce", blurb = "Leap onto ants and splash down", color = { 1, 0.7, 0.35 }, nodes = {
             { id = "js_leap", tier = 1, ranks = 3, name = "Strong Leap", desc = "+15% pounce damage and a bigger landing per rank.",
               attack = { damage = { mul = 0.15 }, radius = 3 } },
             { id = "js_far", tier = 2, name = "Long Jump", desc = "Pounce on ants from much further away.",
@@ -26,7 +26,7 @@ return {
             { id = "js_triple", tier = 5, name = "Ricochet", desc = "Two more bounces after every pounce: hop across the whole crowd.",
               echo = { move = "attack", delay = "dash", times = 2, mult = 0.6 } },
         } },
-        { name = "Dragline", color = { 0.75, 0.55, 1 }, nodes = {
+        { name = "Dragline", blurb = "Reel ants in on silk", color = { 0.75, 0.55, 1 }, nodes = {
             { id = "js_silk", tier = 1, ranks = 3, name = "Strong Silk", desc = "+15% yank damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "js_range", tier = 2, name = "Long Line", desc = "Yank ants from much further away.",
@@ -44,7 +44,7 @@ return {
                       range = 130, speed = 260, pierce = 2, slow = { 0.05, 2 } })
               end } } },
         } },
-        { name = "Agility", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Agility", blurb = "Hop, zip and dodge", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "js_eyes", tier = 1, ranks = 3, name = "Big Eyes", desc = "+4% crit chance and +2% dodge per rank.",
               stats = { critChance = 4, dodge = 2 } },
             { id = "js_spring", tier = 2, name = "Spring Legs", desc = "Jumps go further and higher, and the safety line holds 1 s longer.",
@@ -65,4 +65,12 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_jumper_peacock", name = "Peacock Display", desc = "Every 3rd pounce lands with a dazzling flash that stuns the ants around you.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_jumper", 3) then return end
+              ctx.player:after(0.25, function(pl, w)
+                  fx.nova(fx.ctx(w), pl.x, pl.y, 56, 6, { 0.4, 0.9, 1 }, { slow = { 0.05, 1.2 }, knockback = 40 })
+              end)
+          end } } },
 }

@@ -1,4 +1,4 @@
--- Inventory screen (E), modelled on FATE: a small grid bag (10x3, +1 row per 15 waves) where items come in shapes
+-- Inventory screen (TAB / I, pad Y; the BAG tab of the inventory window, src/states/bagtabs.lua), modelled on FATE: a small grid bag (10x3, +1 row per 15 waves) where items come in shapes
 -- (bars, L's, T's, blocks) and only fit if you can puzzle them in. There is nothing to equip:
 -- everything in the bag affects your bug and copies stack. The game is paused while it is open.
 --
@@ -6,7 +6,12 @@
 --
 -- Mouse:   left click picks an item up / puts it down (swapping with one item underneath),
 --          right click or the wheel turns the held item, right click an item to eat it.
+--          Drag an item: let go over the bag to place it, outside the case to eat it (discard).
+--          SORT (T / pad left stick click) packs the bag tidily (see Inventory:autoSort).
 -- Keys/pad: arrows move the cursor, Enter / A picks up and places, R / LB turns, F / X eats.
+-- SCRAP (the button in the header, G / pad right stick click, or drag onto it) turns the held
+-- item, or the one under the cursor, into nectar (rare or better also give back a reroll;
+-- src/game/economy.lua). Cursed items can't be eaten, only scrapped (for nothing).
 -- Opened with opts.held (an item just chosen that didn't fit): place it, or eat something to
 -- make room; closing while still holding it eats it.
 local State = require("src.core.state")
@@ -18,6 +23,9 @@ local Stats = require("src.game.stats")
 local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
 local util = require("src.core.util")
+local Settings = require("src.core.settings")
+local Categories = require("src.config.categories")
+local CatGlyph = require("src.ui.catglyph")
 
 local Inv = { transparent = true, touchControls = "inventory", noTouchScroll = true }
 Inv.__index = Inv
@@ -38,6 +46,7 @@ end
 function Inv.new(game, opts)
     local self = setmetatable({ game = game, world = game.world, t = 0 }, Inv)
     self.inv = game.world.player.inventory
+    game.world.events:emit("bag_opened")
     self.cursor = { kind = "bag", x = 0, y = 0 }
     self.held = nil         -- { item, from = { x, y, rot } | nil (new item) }
     if opts and opts.held then
@@ -70,8 +79,30 @@ function Inv:returnHeld()
     if not inv:stow(item) then self:eatItem(item) end
 end
 
--- Eat an item (gone for good, heals you).
+-- Scrap an item (gone for good, pays nectar; see Economy.scrap).
+function Inv:scrapItem(item, x, y)
+    local Economy = require("src.game.economy")
+    local n, reroll = Economy.scrap(self.world, item)
+    Audio.play("equip", { pitch = 0.6 })
+    Audio.play("pickup", { pitch = 1.3, volume = 0.7 })
+    local mx, my = love.mouse.getPosition()
+    local text = n > 0 and ("+" .. n .. " nectar") or "Scrapped"
+    if reroll then text = text .. "  +1 reroll" end
+    self.flash[#self.flash + 1] = { text = text, x = x or mx, y = y or my, t = 0, color = { 1, 0.85, 0.35 } }
+    if item == self.newItem then self.newItem = nil end
+end
+
+-- "Cursed: scrap it" when something tries to eat a cursed item.
+function Inv:refuseEat(x, y)
+    Audio.play("ui_back")
+    local mx, my = love.mouse.getPosition()
+    self.flash[#self.flash + 1] = { text = "Cursed: scrap it", x = x or mx, y = y or my, t = 0, color = { 0.8, 0.5, 1 } }
+end
+
+-- Eat an item (gone for good, heals you). A cursed item can't be eaten: when there is no other
+-- way out (closing the bag while holding it, no room) it goes to the scrapper instead.
 function Inv:eatItem(item, x, y)
+    if not Inventory.edible(item) then return self:scrapItem(item, x, y) end
     local hp = self.inv:eat(item)
     Audio.play("pickup", { pitch = 0.7 + love.math.random() * 0.2 })
     Audio.play("hit", { pitch = 0.6, volume = 0.6 })
@@ -102,12 +133,19 @@ function Inv:layout()
         side = { x = px + pad, y = top, w = sideW, h = bagH },
         bag = { x = px + pad + sideW + pad, y = top, w = bagW, h = bagH },
     }
-    -- BAG / SKILLS tabs in the header (the skill tree is src/states/skilltree.lua)
+    -- BAG / SKILLS / SHOP tabs in the header (src/states/bagtabs.lua)
     local f = Theme.font(18, "bold")
     local tx, ty = px + pad, py + math.floor(pad * 0.25)
     local th = math.min(f:getHeight() + u(6), top - ty - u(4))
-    self.L.tabs = { { id = "bag", x = tx, y = ty, w = f:getWidth("BAG") + u(20), h = th } }
-    self.L.tabs[2] = { id = "skills", x = tx + self.L.tabs[1].w + u(6), y = ty, w = f:getWidth("SKILLS") + u(20), h = th }
+    self.L.tabs = require("src.states.bagtabs").layout(self.game, tx, ty, th)
+    -- SORT button in the header, left of the cell meter
+    local sf = Theme.font(14, "bold")
+    local sw = sf:getWidth("SORT") + u(20)
+    local mw = math.floor(C * 2.2)
+    self.L.sort = { x = math.floor(px + panelW - pad - mw - u(80) - sw), y = ty, w = sw, h = th }
+    -- SCRAP bin left of SORT (drop or click a held item on it)
+    local cw = sf:getWidth("SCRAP +999") + u(20)
+    self.L.scrap = { x = self.L.sort.x - u(8) - cw, y = ty, w = cw, h = th }
     return self.L
 end
 
@@ -158,6 +196,21 @@ function Inv:primary(target, mx, my)
     end
 end
 
+-- Pack the bag tidily (not while holding something).
+function Inv:sort()
+    if self.held then Audio.play("ui_back") return false end
+    local ok = self.inv:autoSort()
+    if ok then
+        Audio.play("equip", { pitch = 1.2 })
+        self.world.events:emit("bag_sorted")
+    else
+        Audio.play("ui_back")
+        local L = self.L or self:layout()
+        self.flash[#self.flash + 1] = { text = "Can't pack it tighter", x = L.sort.x, y = L.sort.y + Theme.u(40), t = 0, color = { 1, 0.8, 0.5 } }
+    end
+    return ok
+end
+
 -- Turn the held item a quarter clockwise.
 function Inv:rotate()
     if not self.held then return end
@@ -165,9 +218,27 @@ function Inv:rotate()
     Audio.play("ui_move", { pitch = 1.2 })
 end
 
+-- Scrap the held item, or the one in the bag under the cursor.
+function Inv:scrap(target)
+    if self.held then
+        self:scrapItem(self.held.item)
+        self.held = nil
+        return true
+    end
+    if not target or target.kind ~= "bag" then return false end
+    local e = self.inv:entryAt(target.x, target.y)
+    if not e then return false end
+    local L = self.L
+    local w = Inventory.size(e.item)
+    local x, y = L and L.bag.x + (e.x + w / 2) * L.C, L and L.bag.y + e.y * L.C
+    self:scrapItem(self.inv:removeEntry(e), x, y)
+    return true
+end
+
 -- Eat the held item, or the one in the bag under the cursor.
 function Inv:eat(target)
     if self.held then
+        if not Inventory.edible(self.held.item) then self:refuseEat() return end
         self:eatItem(self.held.item)
         self.held = nil
         return
@@ -178,6 +249,7 @@ function Inv:eat(target)
         local L = self.L
         local w, h = Inventory.size(e.item)
         local x, y = L and L.bag.x + (e.x + w / 2) * L.C, L and L.bag.y + e.y * L.C
+        if not Inventory.edible(e.item) then self:refuseEat(x, y) return end
         self:eatItem(self.inv:removeEntry(e), x, y)
     end
 end
@@ -198,12 +270,12 @@ end
 
 function Inv:update(dt)
     self.t = self.t + dt
-    if Input.pressed("inventory") or Input.pressed("ui_back") or Input.pressed("pause") then
-        Input.consume("pause")
+    local Tabs = require("src.states.bagtabs")
+    if Tabs.closing() then
         self:close()
         return
     end
-    if Input.pressed("ui_tab_next") then require("src.states.skilltree").openFrom(self) return end
+    if Tabs.cycle(self, "bag") then return end
     if Input.pressed("ui_left") then self:moveCursor(-1, 0) end
     if Input.pressed("ui_right") then self:moveCursor(1, 0) end
     if Input.pressed("ui_up") then self:moveCursor(0, -1) end
@@ -211,6 +283,8 @@ function Inv:update(dt)
     if Input.pressed("ui_confirm") then self:primary(self.cursor) end
     if Input.pressed("inventory_rotate") then self:rotate() end
     if Input.pressed("inventory_alt") then self:eat(self.cursor) end
+    if Input.pressed("inventory_sort") then self:sort() end
+    if Input.pressed("inventory_scrap") then self:scrap(self.cursor) end
     for i = #self.flash, 1, -1 do
         local f = self.flash[i]
         f.t = f.t + dt
@@ -218,21 +292,54 @@ function Inv:update(dt)
     end
 end
 
-function Inv:mousepressed(x, y, b)
+function Inv:mousepressed(x, y, b, istouch)
     self:layout()
-    local sk = self.L.tabs[2]
-    if x >= sk.x and x < sk.x + sk.w and y >= sk.y and y < sk.y + sk.h then
-        require("src.states.skilltree").openFrom(self)
+    local tab = require("src.states.bagtabs").hit(self.L.tabs, x, y)
+    if tab then
+        if tab ~= "bag" then require("src.states.bagtabs").open(self, tab) end
         return
     end
+    local so = self.L.sort
+    if b == 1 and x >= so.x and x < so.x + so.w and y >= so.y and y < so.y + so.h then self:sort() return end
+    local sc = self.L.scrap
+    if b == 1 and self.held and x >= sc.x and x < sc.x + sc.w and y >= sc.y and y < sc.y + sc.h then self:scrap() return end
     local target = self:hit(x, y)
     if target and target.kind == "bag" then self.cursor = target end
+    local wasHeld = self.held
     if b == 1 then self:primary(target, x, y) elseif b == 2 then self:secondary(target) end
+    -- picked something up with the mouse: it can be dragged (let go somewhere else to drop it)
+    if b == 1 and self.held and not wasHeld and not istouch then
+        self.drag = { x = x, y = y, moved = false }
+    end
+end
+
+function Inv:mousereleased(x, y, b)
+    local d = self.drag
+    self.drag = nil
+    if b ~= 1 or not d or not d.moved or not self.held then return end
+    self:layout()
+    local sc = self.L.scrap
+    if x >= sc.x and x < sc.x + sc.w and y >= sc.y and y < sc.y + sc.h then self:scrap() return end
+    local target = self:hit(x, y)
+    if not target then
+        -- dragged out of the case: eat it (items never go on the ground); cursed ones go back
+        if not Inventory.edible(self.held.item) then self:refuseEat(x, y); self:returnHeld() return end
+        self:eatItem(self.held.item, x, y)
+        self.held = nil
+    elseif target.kind == "bag" then
+        local held = self.held
+        self:primary(target, x, y)
+        if self.held == held then self:returnHeld() end   -- didn't fit there: back where it was
+    end
 end
 
 function Inv:wheelmoved() self:rotate() end
 
-function Inv:mousemoved() self.mouseActive = true end
+function Inv:mousemoved(x, y)
+    self.mouseActive = true
+    local d = self.drag
+    if d and not d.moved and math.abs(x - d.x) + math.abs(y - d.y) > Theme.u(12) then d.moved = true end
+end
 
 ----------------------------------------------------------------------------------------------
 -- Drawing helpers
@@ -285,6 +392,21 @@ local function itemIcon(item, x, y, w, h, alpha)
     lg.draw(Sprites.atlas, icon.frames[1][1], math.floor(x + w / 2), math.floor(y + h / 2), rot * math.pi / 2, s, s, icon.ox, icon.oy)
 end
 
+local function catColor(def)
+    local cat = Categories.get(def.category)
+    cat._c = cat._c or util.hex(cat.color)
+    return cat._c
+end
+
+-- The cell (in the item's own turned frame) for its category badge: the top-left filled one.
+local function badgeCell(item)
+    local best
+    for _, c in ipairs(Inventory.cells(item)) do
+        if not best or c[2] < best[2] or (c[2] == best[2] and c[1] < best[1]) then best = c end
+    end
+    return best[1], best[2]
+end
+
 -- Fill an item's cells and trace the outline of its shape.
 local function shapeCells(item, x, y, C, fill, edge, inset)
     inset = inset or 2
@@ -323,13 +445,11 @@ local function statLines(def)
     for _, sd in ipairs(Stats.defs) do
         local v = def.stats[sd.id]
         if v then
-            local good = v > 0
-            local txt = (v > 0 and "+" or "") .. Stats.format(sd.id, v) .. " " .. sd.label
-            if sd.id == "dashCooldown" then good = v < 0; txt = (v > 0 and "+" or "") .. v .. "s " .. sd.label end
-            lines[#lines + 1] = { txt, good }
+            local good = (v > 0) ~= (sd.lowerIsBetter == true)
+            lines[#lines + 1] = { (v > 0 and "+" or "") .. Stats.format(sd.id, v) .. " " .. sd.label, good }
         end
         local m = def.statsMult[sd.id]
-        if m then lines[#lines + 1] = { (m > 0 and "+" or "") .. math.floor(m * 100 + 0.5) .. "% " .. sd.label, m > 0 } end
+        if m then lines[#lines + 1] = { (m > 0 and "+" or "") .. math.floor(m * 100 + 0.5) .. "% " .. sd.label, (m > 0) ~= (sd.lowerIsBetter == true) } end
     end
     return lines
 end
@@ -347,6 +467,7 @@ function Inv:draw()
     local useMouse = Input.lastDevice == "mouse" or Input.lastDevice == "touch" or Input.lastDevice == "keyboard" and self.mouseActive
     local focus = (useMouse and hover and hover.kind == "bag") and hover or (not useMouse and self.cursor) or nil
     local inv = self.inv
+    local hoverEntry0 = (not self.held and focus and focus.kind == "bag") and inv:entryAt(focus.x, focus.y) or nil
 
     lg.setColor(0.02, 0.015, 0.02, 0.72)
     lg.rectangle("fill", 0, 0, w, h)
@@ -355,7 +476,7 @@ function Inv:draw()
     local P = L.panel
     plate(P.x, P.y, P.w, P.h, COL.frame, true)
     -- header: name on the left, a meter of used cells on the right
-    require("src.states.skilltree").drawTabs(L.tabs, "bag", self.world.player.skills and self.world.player.skills.points)
+    require("src.states.bagtabs").draw(L.tabs, "bag", self.game)
     local used, total = inv:usedCells(), inv.cols * inv.rows
     local mw = math.floor(C * 2.2)
     local mxp = L.bag.x + L.bag.w - mw
@@ -370,6 +491,29 @@ function Inv:draw()
     lg.setFont(Theme.font(14))
     lg.setColor(COL.dim)
     lg.printf(used .. "/" .. total, mxp - u(70), myp - u(4), u(62), "right")
+    local so = L.sort
+    local soHover = mx >= so.x and mx < so.x + so.w and my >= so.y and my < so.y + so.h
+    lg.setColor(soHover and COL.frameHi or COL.frameLo)
+    lg.rectangle("fill", so.x, so.y, so.w, so.h)
+    lg.setColor(COL.label[1], COL.label[2], COL.label[3], self.held and 0.35 or (soHover and 1 or 0.7))
+    lg.rectangle("line", so.x + 0.5, so.y + 0.5, so.w - 1, so.h - 1)
+    lg.setFont(Theme.font(14, "bold"))
+    lg.printf("SORT", so.x, so.y + math.floor((so.h - lg.getFont():getHeight()) / 2), so.w, "center")
+    -- SCRAP: lights up while holding something, and says what it pays
+    local sc = L.scrap
+    local scHover = mx >= sc.x and mx < sc.x + sc.w and my >= sc.y and my < sc.y + sc.h
+    local SCRAP_COL = { 1, 0.82, 0.35 }
+    local scrapText = "SCRAP"
+    local target = self.held and self.held.item or (hoverEntry0 and hoverEntry0.item)
+    if target then
+        local n, rr = require("src.game.economy").scrapValue(self.world, target)
+        scrapText = "SCRAP +" .. n .. (rr and " +R" or "")
+    end
+    lg.setColor((self.held and scHover) and { 0.35, 0.27, 0.1 } or COL.frameLo)
+    lg.rectangle("fill", sc.x, sc.y, sc.w, sc.h)
+    lg.setColor(SCRAP_COL[1], SCRAP_COL[2], SCRAP_COL[3], self.held and (scHover and 1 or 0.85) or 0.4)
+    lg.rectangle("line", sc.x + 0.5, sc.y + 0.5, sc.w - 1, sc.h - 1)
+    lg.printf(scrapText, sc.x, sc.y + math.floor((sc.h - lg.getFont():getHeight()) / 2), sc.w, "center")
 
     -- Left: your bug in a little window, and its stats
     local S = L.side
@@ -401,13 +545,25 @@ function Inv:draw()
     local hoverEntry = (not self.held and focus and focus.kind == "bag") and inv:entryAt(focus.x, focus.y) or nil
     for _, e in ipairs(inv.bag) do
         local c = rarityColor(e.item.def)
+        local k = catColor(e.item.def)
         local x, y = B.x + e.x * C, B.y + e.y * C
         local lit = (e == hoverEntry) or (preview and preview.swap == e)
-        shapeCells(e.item, x, y, C, { c[1] * 0.3, c[2] * 0.3, c[3] * 0.3, lit and 0.95 or 0.7 },
+        -- the fill is the item's category (what it is for), the outline its rarity
+        shapeCells(e.item, x, y, C, { k[1] * 0.24, k[2] * 0.24, k[3] * 0.24, lit and 0.95 or 0.78 },
             { c[1], c[2], c[3], lit and 1 or 0.55 })
         local iw, ih = Inventory.size(e.item)
         itemIcon(e.item, x + 4, y + 4, iw * C - 8, ih * C - 8)
     end
+    if Settings.get("itemBadges") ~= false then
+        for _, e in ipairs(inv.bag) do
+            local bx, by = badgeCell(e.item)
+            local d = math.floor(C * 0.34)
+            CatGlyph.badge(e.item.def.category, B.x + (e.x + bx) * C + d / 2 + 3, B.y + (e.y + by) * C + d / 2 + 3, d, 0.9)
+        end
+    end
+    -- glowing seams: touching items that will molt (bright), half a recipe (dim), tag sets (tag colour)
+    local seams, ready = require("src.game.molting").seams(inv)
+    self:drawSeams(seams, B, C)
     if preview then
         local col = preview.ok and { 0.45, 1, 0.5, 0.3 } or { 1, 0.3, 0.3, 0.3 }
         shapeCells(self.held.item, B.x + preview.x * C, B.y + preview.y * C, C, col, { col[1], col[2], col[3], 0.9 }, 1)
@@ -431,27 +587,106 @@ function Inv:draw()
             lg.setFont(Theme.font(14))
             Theme.printShadow("No room? Eat something to make space.", P.x, P.y - u(26), COL.label, "center", P.w)
         end
+    end
+    if not (self.held and self.held.item == self.newItem) then self:drawMoltNote(ready, P) end
+    if self.held then
     elseif hoverEntry then
         local tx, ty
         local iw = Inventory.size(hoverEntry.item)
         if useMouse then tx, ty = mx + u(18), my + u(12)
         else tx, ty = B.x + (hoverEntry.x + iw) * C + u(8), B.y + hoverEntry.y * C end
         self:tooltip(hoverEntry.item, tx, ty)
+    elseif useMouse then
+        -- a stat under the mouse: what its number means
+        for _, r in ipairs(self.statRows or {}) do
+            if mx >= r.x and mx < r.x + r.w and my >= r.y and my < r.y + r.h then
+                local st = self.world.player.stats
+                Inv.statTip(r.sd, st:get(r.sd.id), st.base[r.sd.id], mx + u(16), my + u(10))
+            end
+        end
+    end
+    -- dragging an item out of the case: letting go eats it
+    if self.held and self.drag and self.drag.moved and not self:hit(mx, my) then
+        lg.setFont(Theme.font(15, "bold"))
+        local tx = math.max(u(4), math.min(mx - u(120), w - u(244)))
+        local ty = my + u(28) > h - u(30) and my - u(48) or my + u(28)
+        Theme.printShadow(Inventory.edible(self.held.item) and ("Let go to eat it (+" .. Inventory.eatValue(self.held.item) .. " HP)")
+            or "Cursed: drop it on SCRAP", tx, ty,
+            { 1, 0.6, 0.45, 0.9 + 0.1 * math.sin(self.t * 8) }, "center", u(240))
     end
     -- "+12 HP" from eaten items floats up
     lg.setFont(Theme.font(18, "bold"))
     for _, f in ipairs(self.flash) do
-        Theme.printShadow(f.text, f.x - u(30), f.y - u(20) - f.t * u(30), { 0.5, 1, 0.5, 1 - f.t })
+        local c = f.color or { 0.5, 1, 0.5 }
+        Theme.printShadow(f.text, f.x - u(30), f.y - u(20) - f.t * u(30), { c[1], c[2], c[3], 1 - f.t })
     end
     lg.setColor(1, 1, 1, 1)
+end
+
+-- Seams between touching items (src/game/molting.lua Molting.seams), in bag cell units.
+function Inv:drawSeams(seams, B, C)
+    local Molting = require("src.game.molting")
+    local pulse = 0.5 + 0.5 * math.sin(self.t * 5)
+    for _, sm in ipairs(seams) do
+        local c = sm.color
+        local a, wide
+        if sm.kind == "molt" then a, wide = 0.55 + 0.45 * pulse, 3
+        elseif sm.kind == "partial" then a, wide = 0.25 + 0.2 * pulse, 2
+        else a, wide = 0.45 + 0.15 * pulse, 2 end
+        for _, ed in ipairs(Molting.sharedEdges(sm.a, sm.b)) do
+            local x1, y1, x2, y2 = B.x + ed[1] * C, B.y + ed[2] * C, B.x + ed[3] * C, B.y + ed[4] * C
+            local m = math.floor(C * 0.15)
+            if x1 == x2 then y1, y2 = y1 + m, y2 - m else x1, x2 = x1 + m, x2 - m end
+            -- soft glow, then the bright seam
+            lg.setColor(c[1], c[2], c[3], a * 0.3)
+            lg.setLineWidth(wide * 3)
+            lg.line(x1, y1, x2, y2)
+            lg.setColor(c[1] * 0.5 + 0.5, c[2] * 0.5 + 0.5, c[3] * 0.5 + 0.5, a)
+            lg.setLineWidth(wide)
+            lg.line(x1, y1, x2, y2)
+        end
+    end
+    lg.setLineWidth(1)
+end
+
+-- A line over the case: what will molt after the next queen, and the tag sets in effect.
+function Inv:drawMoltNote(ready, P)
+    local u = Theme.u
+    local Molting = require("src.game.molting")
+    local parts = {}
+    if ready and #ready > 0 then
+        local names = {}
+        for _, m in ipairs(ready) do
+            local d = require("src.content").items:get(m.recipe.into)
+            names[#names + 1] = d and d.name or m.recipe.into
+        end
+        parts[#parts + 1] = { { 0.5, 1, 0.85 }, "Molts after the next queen: " .. table.concat(names, ", ") }
+    end
+    for _, st in ipairs(self.inv.sets or {}) do
+        local c = st.def._c or util.hex(st.def.color)
+        st.def._c = c
+        parts[#parts + 1] = { c, st.def.set.name .. (st.tier > 1 and " II" or "") .. " (" .. Molting.setText(st.def.set, st.tier) .. ")" }
+    end
+    if #parts == 0 then return end
+    local txt = {}
+    for i, pt in ipairs(parts) do
+        if i > 1 then txt[#txt + 1] = COL.dim; txt[#txt + 1] = "   ·   " end
+        txt[#txt + 1] = pt[1]; txt[#txt + 1] = pt[2]
+    end
+    local f = Theme.font(13)
+    lg.setFont(f)
+    local _, lines = f:getWrap(txt, P.w)
+    local y = P.y - u(10) - #lines * f:getHeight()
+    lg.setColor(1, 1, 1, 1)
+    lg.printf(txt, P.x, y, P.w, "center")
 end
 
 -- Key hints under the case: little key caps and a word each.
 function Inv:drawHints(x, y, w)
     local u = Theme.u
-    local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "RB", "Skills" }, { "B", "Close" } }
-        or Input.lastDevice == "touch" and { { "Tap", "Pick up / put down" }, { "TURN", "Turn held" }, { "EAT", "Eat held" } }
-        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Tab", "Skills" }, { "E", "Close" } }
+    local hints = Input.lastDevice == "gamepad" and { { "A", "Move" }, { "LB", "Turn" }, { "X", "Eat" }, { "R3", "Scrap" }, { "L3", "Sort" }, { "RB", "Next tab" }, { "B", "Close" } }
+        or Input.lastDevice == "touch" and { { "Tap", "Pick up / put down" }, { "TURN", "Turn held" }, { "EAT", "Eat held" }, { "SCRAP", "For nectar" }, { "SORT", "Tidy up" } }
+        or { { "LMB", "Move" }, { "RMB", "Turn / eat" }, { "Drag out", "Eat" }, { (Input.getKeys("inventory_scrap")[1] or "G"):upper(), "Scrap" }, { "T", "Sort" }, { "E / Q", "Tabs" }, { (Input.getKeys("inventory")[1] or "tab"):upper(), "Close" } }
     local f = Theme.font(13)
     lg.setFont(f)
     local parts, total = {}, 0
@@ -486,10 +721,32 @@ function Inv:tooltip(item, x, y)
     local fName, fSmall = Theme.font(17, "bold"), Theme.font(14)
     local lines = statLines(def)
     local descLines = {}
-    local effect = def.effect or (#def.procs > 0 and #lines == 0 and def.description)
+    local desc = def.description ~= "" and def.description or nil
+    local effect = def.effect or (#lines == 0 and desc)
     if effect then _, descLines = fSmall:getWrap(effect, tw - u(20)) end
+    -- a curse's cost, in purple
+    local curseLines = {}
+    if def.curse then _, curseLines = fSmall:getWrap("Curse: " .. def.curse, tw - u(20)) end
+    -- what each chance proc rolls with right now (luck, the snowball and copies, on the curve)
+    local chanceLines = {}
+    local stacks = math.max(1, self.inv:count(item.id))
+    for _, proc in ipairs(def.procs) do
+        local ch = proc.chance and self.inv:procChance(proc, stacks)
+        if ch then chanceLines[#chanceLines + 1] = ("Chance now: %d%%"):format(math.floor(ch * 100 + 0.5)) end
+    end
     local lh = fSmall:getHeight() + u(2)
-    local th = u(10) + fName:getHeight() + u(2) + lh + u(8) + #lines * lh + #descLines * lh + u(6) + lh + u(10)
+    local Choices = require("src.game.choices")
+    local tagCounts = Choices.bagTags(self.inv)
+    local fTag = Theme.font(13)
+    local tagH = Choices.drawTags(def, tagCounts, 0, 0, tw - u(20), fTag, u, true)
+    local moltLines = {}
+    for _, ml in ipairs(self:moltInfo(item)) do
+        local _, wl = fSmall:getWrap(ml[2], tw - u(20))
+        for _, l in ipairs(wl) do moltLines[#moltLines + 1] = { ml[1], l } end
+    end
+    local th = u(10) + fName:getHeight() + u(2) + lh + u(8) + #lines * lh + #descLines * lh + u(6) + lh * 2 + u(10)
+        + (#curseLines + #chanceLines) * lh
+        + (tagH > 0 and tagH + u(8) or 0) + (#moltLines > 0 and #moltLines * lh + u(6) or 0)
     local W, H = lg.getDimensions()
     x = math.min(x, W - tw - u(6))
     y = math.min(y, H - th - u(6))
@@ -509,8 +766,15 @@ function Inv:tooltip(item, x, y)
     cy = cy + fName:getHeight() + u(2)
     lg.setFont(fSmall)
     lg.setColor(COL.dim)
-    lg.print(Rarities[def.rarity].label .. "  ·  " .. shapeLabel(def), x + u(10), cy)
+    local chipW = CatGlyph.chip(def.category, x + u(10), cy, lh, fSmall)
+    lg.setColor(COL.dim)
+    lg.print(Rarities[def.rarity].label .. "  ·  " .. shapeLabel(def), x + u(10) + chipW + u(8), cy)
     cy = cy + lh + u(8)
+    if tagH > 0 then
+        Choices.drawTags(def, tagCounts, x + u(10), cy, tw - u(20), fTag, u)
+        cy = cy + tagH + u(8)
+        lg.setFont(fSmall)
+    end
     for _, l in ipairs(lines) do
         lg.setColor(l[2] and Theme.colors.good or Theme.colors.bad)
         lg.print(l[1], x + u(10), cy)
@@ -521,8 +785,87 @@ function Inv:tooltip(item, x, y)
         lg.print(l, x + u(10), cy)
         cy = cy + lh
     end
+    lg.setColor(0.8, 0.55, 1)
+    for _, l in ipairs(curseLines) do
+        lg.print(l, x + u(10), cy)
+        cy = cy + lh
+    end
+    lg.setColor(0.95, 0.85, 0.55)
+    for _, l in ipairs(chanceLines) do
+        lg.print(l, x + u(10), cy)
+        cy = cy + lh
+    end
+    if #moltLines > 0 then
+        cy = cy + u(6)
+        for _, l in ipairs(moltLines) do
+            lg.setColor(l[1])
+            lg.print(l[2], x + u(10), cy)
+            cy = cy + lh
+        end
+    end
     lg.setColor(COL.dim)
-    lg.print("Eat: +" .. Inventory.eatValue(item) .. " HP", x + u(10), cy + u(6))
+    local nectar, reroll = require("src.game.economy").scrapValue(self.world, item)
+    local scrap = "Scrap: +" .. nectar .. " nectar" .. (reroll and ", +1 reroll" or "")
+    lg.print(Inventory.edible(item) and ("Eat: +" .. Inventory.eatValue(item) .. " HP") or "Cursed: can't be eaten", x + u(10), cy + u(6))
+    lg.print(scrap, x + u(10), cy + u(6) + lh)
+end
+
+-- Molting lines for an item's tooltip: { { color, text }, ... }.
+function Inv:moltInfo(item)
+    local Molting = require("src.game.molting")
+    local Content = require("src.content")
+    local Records = require("src.game.records")
+    local out = {}
+    local function name(id) local d = Content.items:get(id) return d and d.name or id end
+    local r = Molting.recipeFor(item.id)
+    if r then
+        local names = {}
+        for _, id in ipairs(r.from) do names[#names + 1] = name(id) end
+        out[#out + 1] = { { 0.5, 1, 0.85 }, "Molted from " .. table.concat(names, " + ") }
+    end
+    for _, rc in ipairs(Molting.recipesWith(item.id)) do
+        local others = {}
+        local skipped = false
+        for _, id in ipairs(rc.from) do
+            if id == item.id and not skipped then skipped = true else others[#others + 1] = name(id) end
+        end
+        local known = Records.moltKnown and Records.moltKnown(rc.id)
+        out[#out + 1] = { { 0.55, 0.9, 0.8 }, "Molts touching " .. table.concat(others, " + ") .. " into " .. (known and name(rc.into) or "???") }
+    end
+    return out
+end
+
+-- A tooltip for one stat: its value, where it started, and what the number means.
+function Inv.statTip(sd, v, base, x, y)
+    local u = Theme.u
+    local tw = u(260)
+    local fName, fSmall = Theme.font(16, "bold"), Theme.font(14)
+    local info = Stats.explain(sd.id, v)
+    local _, wrapped = fSmall:getWrap(info, tw - u(20))
+    local lh = fSmall:getHeight() + u(2)
+    local th = u(10) + fName:getHeight() + u(4) + lh + (#wrapped > 0 and u(6) + #wrapped * lh or 0) + u(8)
+    local W, H = lg.getDimensions()
+    x = math.max(u(4), math.min(x, W - tw - u(6)))
+    y = math.max(u(4), math.min(y, H - th - u(6)))
+    plate(x, y, tw, th, COL.inner)
+    local cy = y + u(9)
+    lg.setFont(fName)
+    Theme.printShadow(sd.label, x + u(10), cy, COL.label)
+    lg.setFont(fSmall)
+    local diff = v - base
+    local better = (diff > 0) ~= (sd.lowerIsBetter == true)
+    lg.setColor(math.abs(diff) < 0.001 and Theme.colors.text or (better and Theme.colors.good or Theme.colors.bad))
+    lg.printf(Stats.format(sd.id, v), x, cy + u(2), tw - u(10), "right")
+    cy = cy + fName:getHeight() + u(4)
+    lg.setColor(COL.dim)
+    local delta = math.abs(diff) < 0.001 and "no change" or ((diff > 0 and "+" or "") .. Stats.format(sd.id, diff))
+    lg.print("Base " .. Stats.format(sd.id, base) .. "  ·  " .. delta, x + u(10), cy)
+    cy = cy + lh + u(6)
+    lg.setColor(Theme.colors.text)
+    for _, l in ipairs(wrapped) do
+        lg.print(l, x + u(10), cy)
+        cy = cy + lh
+    end
 end
 
 -- Your bug's stats: the ones your items changed come first and are coloured.
@@ -540,18 +883,19 @@ function Inv:drawStats(x, y, w, h)
         if math.abs(stats:get(sd.id) - stats.base[sd.id]) <= 0.001 then list[#list + 1] = sd end
     end
     local maxRows = math.max(1, math.floor(h / rowH))
+    self.statRows = {}
     for i = 1, math.min(#list, maxRows) do
         local sd = list[i]
         local v, base = stats:get(sd.id), stats.base[sd.id]
         local cy = y + (i - 1) * rowH
+        self.statRows[i] = { sd = sd, x = x, y = cy - 1, w = w, h = rowH }
         if i % 2 == 1 then
             lg.setColor(1, 1, 1, 0.025)
             lg.rectangle("fill", x, cy - 1, w, rowH)
         end
         lg.setColor(COL.dim)
         lg.print(sd.label, x + u(4), cy)
-        local better = v > base
-        if sd.id == "dashCooldown" then better = v < base end
+        local better = (v > base) ~= (sd.lowerIsBetter == true)
         lg.setColor(math.abs(v - base) < 0.001 and Theme.colors.text or (better and Theme.colors.good or Theme.colors.bad))
         lg.printf(Stats.format(sd.id, v), x, cy, w - u(4), "right")
     end
@@ -559,5 +903,6 @@ end
 
 -- Drawing helpers shared with the item choice screen.
 Inv.plate, Inv.itemIcon, Inv.shapeCells, Inv.statLines, Inv.COL, Inv.rarityColor = plate, itemIcon, shapeCells, statLines, COL, rarityColor
+Inv.catColor, Inv.badgeCell = catColor, badgeCell
 
 return Inv

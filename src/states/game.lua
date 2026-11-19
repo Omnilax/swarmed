@@ -11,23 +11,109 @@ local Game = { touchControls = "game" }
 Game.__index = Game
 
 -- params: mode ("run" | "sandbox"), character (id), stage (id), gameMode (content/modes id),
--- startItems (item ids, from the starting items screen)
+-- startItems (item ids, from the starting items screen), seed (replays a run; nil = a fresh one),
+-- daily (the daily run, src/game/daily.lua), resume (a saved run, src/game/runsave.lua),
+-- practice ({ wave, species, items, god }: src/states/practice.lua), danger (0-5, src/config/danger.lua),
+-- customWaves (a wave set for the Custom Waves mode; nil = the one picked in the wave builder)
 function Game.new(params)
     local self = setmetatable({ params = params }, Game)
     self.mode = params.mode or "run"
+    -- artifacts switched on before the run (src/game/artifacts.lua); Metamorphosis picks the bug
+    require("src.game.artifacts").prepare(params)
+    require("src.game.keepsakes").prepare(params)
+    local RunSave = require("src.game.runsave")
     self.world = World.new({ mode = self.mode, character = params.character, stage = params.stage,
-        gameMode = params.gameMode, startItems = params.startItems })
+        gameMode = params.gameMode, startItems = (not params.resume) and params.startItems or nil,
+        seed = params.seed, daily = params.daily, danger = params.danger, customWaves = params.customWaves,
+        artifacts = params.artifacts, keepsake = params.keepsake })
+    self.world.weekly = params.weekly or nil
+    if params.resume then RunSave.restore(self.world, params.resume) end
+    -- acts: the run's route of maps, and moving on after waves 5 and 10 (src/game/acts.lua)
+    if self.mode == "run" and not params.practice then
+        local Acts = require("src.game.acts")
+        Acts.attach(self.world, params.resume)
+        self.world.spawner.holdWave = function(n)
+            if not Acts.travelsBefore(self.world, n) then return false end
+            self:travel()
+            return true
+        end
+    end
+    if params.practice then
+        self.world.flags.practice = true
+        require("src.states.practice").apply(self.world, params.practice)
+    end
 
     if self.mode == "sandbox" then
         self.world.flags.god = true
         self.sandbox = require("src.debug.sandbox").new(self)
+        -- the Bug Creator's Test Arena: dummies that don't die, every hitbox shown
+        if params.arena then self.sandbox:arena() end
     end
     self.world.events:on("player_died", function()
         self.deathTimer = 1.2
     end)
-    -- real runs count toward stats and achievements (src/game/records.lua)
-    if self.mode == "run" then require("src.game.records").track(self.world, params) end
+    -- the tutorial: back to the title screen when its last lesson is done (src/game/lessons.lua)
+    self.tutorial = self.world.modeDef and self.world.modeDef.tutorial or nil
+    if self.tutorial then
+        self.world.flags.practice = true
+        self.world.events:on("tutorial_done", function()
+            local prefs = require("src.game.prefs")
+            prefs.get().tutorialDone = true
+            prefs.save()
+            self.leaveSoon = 0.5
+        end)
+    end
+    -- real runs count toward stats and achievements (src/game/records.lua); practice and the
+    -- tutorial don't
+    if self.mode == "run" and not params.practice and not self.tutorial then
+        local run = require("src.game.records").track(self.world, params)
+        if params.resume then RunSave.restoreRecord(run, params.resume) end
+        require("src.game.prefs").played(params)
+        -- a new run replaces any saved one; the run saves itself at every wave clear
+        if not params.resume then RunSave.clear() end
+        self.world.events:on("wave_cleared", function() self.saveSoon = true end)
+        self.world.events:on("player_died", function() RunSave.clear() end)
+        self.world.events:on("run_finished", function() RunSave.clear() end)
+    end
     return self
+end
+
+-- On to the next act's map: the run is carried over through a save, as if it were resumed
+-- there (src/game/acts.lua).
+function Game:travel()
+    if self.travelling then return end
+    local RunSave = require("src.game.runsave")
+    local Acts = require("src.game.acts")
+    local w = self.world
+    if not RunSave.allowed(self) then return end
+    local snap = RunSave.snapshot(self)
+    local act = Acts.actOf(w.spawner.wave + 1)
+    snap.stage, snap.act, snap.travelled = w.actRoute[act], act, true
+    self.travelling = true
+    RunSave.write(snap)
+    require("src.game.records").suspend()
+    self.suspended = true
+    require("src.core.audio").play("ui_confirm", { pitch = 0.8 })
+    State.switch(Game.new(RunSave.params(snap)))
+end
+
+-- Pause > Save & Quit: save the run and go back to the title screen.
+function Game:saveAndQuit()
+    local RunSave = require("src.game.runsave")
+    if not RunSave.save(self) then return false end
+    require("src.game.records").suspend()
+    self.suspended = true
+    State.switch(require("src.states.menu").new())
+    return true
+end
+
+-- The game is closing mid-run (love.quit): keep the run to resume next time.
+function Game:closing()
+    local RunSave = require("src.game.runsave")
+    if RunSave.save(self) then
+        require("src.game.records").suspend()
+        self.suspended = true
+    end
 end
 
 function Game:enter()
@@ -39,7 +125,11 @@ function Game:resume() self:applyCursor() end
 function Game:leave()
     love.mouse.setVisible(true)
     local Records = require("src.game.records")
-    if Records.run and Records.run.world == self.world then Records.endRun("quit") end
+    if Records.run and Records.run.world == self.world and not self.suspended then
+        Records.endRun("quit")
+        -- leaving any other way (Main Menu, Restart) gives the run up
+        if self.mode == "run" and not self.params.practice then require("src.game.runsave").clear() end
+    end
 end
 
 function Game:applyCursor()
@@ -47,8 +137,19 @@ function Game:applyCursor()
     love.mouse.setVisible(style == "system" or (self.sandbox ~= nil and self.sandbox.visible))
 end
 
+-- Same bug, same mode, same starting items (and for practice, the same setup), from wave 1.
 function Game:restart()
-    State.switch(Game.new(self.params))
+    local p = {}
+    for k, v in pairs(self.params) do p[k] = v end
+    p.resume = nil
+    if p.arena then
+        -- the Test Arena sits on top of the Bug Creator: keep that underneath
+        while State.top() and State.top() ~= self do State.pop() end
+        State.pop()
+        State.push(Game.new(p))
+        return
+    end
+    State.switch(Game.new(p))
 end
 
 function Game:update(dt)
@@ -61,19 +162,59 @@ function Game:update(dt)
         return
     end
     if Input.pressed("next_wave") then self:nextWave() end
+    if Input.pressed("frenzy") then self.world.rewards.frenzy:unleash() end
     self.world:update(dt)
+    if self.leaveSoon then
+        self.leaveSoon = self.leaveSoon - dt
+        if self.leaveSoon <= 0 then State.switch(require("src.states.menu").new()) return end
+    end
+    -- autosave a beat after each wave clear (phones and browser tabs can close at any moment)
+    if self.saveSoon then
+        self.saveSoon = nil
+        require("src.game.runsave").save(self)
+    end
+    -- a brood cell chest was cracked open: its fanfare first (src/states/broodcell.lua)
+    local chests = self.world.pendingChests
+    if chests and #chests > 0 and not self.world.player.dead then
+        local c = table.remove(chests, 1)
+        State.push(require("src.states.broodcell").new(self, c))
+        return
+    end
+    -- walked into the aphid matriarch: the cloning screen (src/states/duplicate.lua)
+    local dup = self.world.pendingDuplicate
+    if dup then
+        self.world.pendingDuplicate = nil
+        if not dup.dead and not dup.leaving and not self.world.player.dead then
+            State.push(require("src.states.duplicate").new(self, dup))
+            return
+        end
+    end
     -- final wave cleared: the run is won (keep going, or end it here); the item choice follows
     local won = self.world.pendingVictory
-    if won and self.world.time >= ((self.world.pendingChoice or {}).at or 0) then
+    if won and self.world.time >= (won.at or (self.world.pendingChoice or {}).at or 0) then
         self.world.pendingVictory = nil
         if not self.world.player.dead then
+            local p = self.world.player
+            local clip = p.def.custom and p.def.anims and p.def.anims.victory
+            if clip then p.wonPose = true require("src.gfx.anim").play(p, clip, "pose_victory", {}) end
             State.push(require("src.states.victory").new(self, won))
             return
         end
     end
-    -- wave cleared: choose an item (a beat after the last kill)
+    -- level-up cards: queued ones come at the end of the wave, right before the item choice
+    -- (a wave's rewards wait in the reward bloom until you walk into it: src/game/rewardflow.lua)
     local choice = self.world.pendingChoice
-    if choice and self.world.time >= (choice.at or 0) then
+    local RewardFlow = require("src.game.rewardflow")
+    local lu = self.world.levelups
+    if lu and #lu.queue > 0 and not self.world.player.dead then
+        local e = lu:nextToShow(RewardFlow.ready(self.world))
+        if e then
+            State.push(require("src.states.levelup").new(self, e))
+            return
+        end
+    end
+    -- wave cleared and its bloom opened: choose an item
+    if choice and RewardFlow.ready(self.world) then
         self.world.pendingChoice = nil
         if not self.world.player.dead then
             State.push(require("src.states.itemchoice").new(self, choice))
@@ -92,11 +233,15 @@ end
 
 function Game:draw()
     self.world:flushDecals()
-    Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera.zoom)
+    Screen.beginWorld({ 0.09, 0.08, 0.12, 1 }, self.world.camera:viewZoom(), true)
+    Screen.gradeWorld = self.world
     self.world:draw()
     Screen.endWorld()
+    -- the HUD, banners and floating numbers draw at the HUD Size zoom (Theme.hudZoom)
+    Theme.pushZoom(Theme.hudZoom())
     self.world:drawText({ small = Theme.font(15), big = Theme.font(22) })
     Hud.draw(self, State.top() ~= self)
+    Theme.popZoom()
     if self.sandbox then self.sandbox:draw() end
     if Settings.get("cursorStyle") == "crosshair" and not require("src.core.touch").enabled() and not (self.sandbox and self.sandbox:hovering()) and State.top() == self then
         Hud.crosshair()
@@ -118,6 +263,7 @@ function Game:touchStatus()
         specialHold = sec ~= nil and sec.type.update ~= nil,
         dash = dashCd, dashCharges = dashMax > 1 and p.dashCharges or nil,
         manualAttack = not Settings.get("autoAttack"),
+        frenzyReady = self.world.rewards.frenzy:ready(),
         sandbox = sandbox,
         -- while placing bugs every tap is a click, so the left half drops them too
         blocked = function(x, y)
@@ -127,7 +273,17 @@ function Game:touchStatus()
 end
 
 function Game:focus(f)
-    if not f and Settings.get("pauseOnFocusLost") and State.top() == self then
+    if not f and Settings.get("pauseOnFocusLost") and State.top() == self and not self.world.player.dead then
+        State.push(require("src.states.pause").new(self))
+    end
+end
+
+-- Minimised / hidden behind another app: the same as losing focus.
+function Game:visible(v) self:focus(v) end
+
+-- The controller in use was unplugged (or its battery died): pause so nobody dies holding nothing.
+function Game:joystickremoved(j, wasActive)
+    if wasActive and Input.lastDevice == "gamepad" and State.top() == self and not self.world.player.dead then
         State.push(require("src.states.pause").new(self))
     end
 end
@@ -135,7 +291,12 @@ end
 -- Next Wave (key, pad, or a tap on the wave banner): start the wave / send the rest in early.
 function Game:nextWave()
     local sp = self.world.spawner
-    if self.mode ~= "run" or self.world.player.dead or not sp then return end
+    if self.mode ~= "run" or self.world.player.dead or not sp or self.tutorial then return end
+    -- the wave's reward bloom is still waiting: it comes to you first
+    if self.world.rewardFlow and self.world.rewardFlow:pull() then
+        require("src.core.audio").play("ui_confirm", { pitch = 1.3 })
+        return
+    end
     if sp:nextWave() then require("src.core.audio").play("ui_confirm") end
 end
 
@@ -164,6 +325,13 @@ end
 
 function Game:keypressed(key)
     if self.sandbox then self.sandbox:keypressed(key) end
+    -- Zoom Keys: + / - zoom, 0 back to 1x
+    if Settings.get("zoomKeys") and not (self.sandbox and self.sandbox.visible) then
+        local cam = self.world.camera
+        if key == "=" or key == "kp+" then cam:zoomBy(1)
+        elseif key == "-" or key == "kp-" then cam:zoomBy(-1)
+        elseif key == "0" or key == "kp0" then cam:resetZoom() end
+    end
 end
 
 return Game

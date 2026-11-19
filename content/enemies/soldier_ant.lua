@@ -2,11 +2,12 @@ return {
     name = "Soldier Ant",
     description = "Armoured head, huge mandibles. Winds up, then charges.",
     lore = "Oversized head and crushing mandibles. Soldiers guard the columns and charge anything that gets close.",
-    tip = "Watch for the wind-up, then dash sideways.",
+    tip = "Watch for the wind-up, then dash sideways. Its mandibles crack your armor.",
     sprite = "soldier_ant",
     hp = 30,
     speed = 30,
     damage = 8,
+    shred = { armor = 3, time = 5, max = 12 },   -- bites crack your armor (src/config/defense.lua)
     radius = 5,
     mass = 3,
     behavior = "charge",

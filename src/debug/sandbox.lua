@@ -124,6 +124,21 @@ end
 ----------------------------------------------------------------------------------------------
 -- Tabs
 
+-- The Bug Creator's Test Arena: a ring of dummy ants (they never die), the DPS meter, every
+-- move's hitbox drawn.
+function Sandbox:arena()
+    local world = self.world
+    self.isArena = true
+    self.hpMul = 1000
+    require("src.game.hitshapes").show = true
+    local p = world.player
+    for i = 1, 6 do
+        local a = i / 6 * math.pi * 2
+        self:spawn("worker_ant", p.x + math.cos(a) * 70, p.y + math.sin(a) * 70)
+    end
+    self:setTab(1)
+end
+
 function Sandbox:setTab(i)
     self.tab = (i - 1) % #TABS + 1
     local build = ({ self.spawnTab, self.itemsTab, self.playerTab, self.wavesTab, self.worldTab })[self.tab]
@@ -197,7 +212,7 @@ function Sandbox:itemsTab()
     return {
         { type = "header", label = "Items" },
         { type = "button", label = "Item catalogue", value = function() return "C" end, onActivate = function() self:openCatalogue() end },
-        { type = "button", label = "Open bag", value = function() return "E" end, onActivate = function()
+        { type = "button", label = "Open bag", value = function() return "I" end, onActivate = function()
             State.push(require("src.states.inventory").new(self.game))
         end },
         { type = "choice", label = "Item", options = itemOptions(), get = function() return self.item end, set = function(v) self.item = v end },
@@ -235,9 +250,12 @@ function Sandbox:playerTab()
             set = function(v) self:setCharacter(v) end },
         { type = "toggle", label = "God mode", get = function() return world.flags.god end, set = function(v) world.flags.god = v end },
         { type = "button", label = "Heal", onActivate = function() world.player.hp = world.player.stats:get("maxHp") end },
-        { type = "button", label = "+5 skill points", desc = "Grants XP up to 5 more levels (spend them in the bag: E, then Tab)", onActivate = function()
+        { type = "button", label = "+5 skill points", desc = "Grants XP up to 5 more levels (spend them in the inventory: Tab, then E)", onActivate = function()
             local sk = world.player.skills
             for _ = 1, 5 do world:grantXP(sk.toNext - sk.into) end
+        end },
+        { type = "button", label = "Level-up card pick", desc = "Opens a level-up card pick now (src/game/levelups.lua)", onActivate = function()
+            require("src.game.levelups").grant(world, 1, { source = "sandbox", now = true })
         end },
         { type = "button", label = "Reset skill tree", desc = "Refunds every point spent", onActivate = function()
             local sk = world.player.skills
@@ -328,6 +346,8 @@ function Sandbox:worldTab()
         { type = "button", label = "Reset meter", onActivate = function() self:resetMeter() end },
         { type = "toggle", label = "Proc log", get = function() return self.showProcs end, set = function(v) self.showProcs = v end },
         { type = "toggle", label = "Hitboxes", get = hbGet, set = hbSet },
+        { type = "toggle", label = "Move hitboxes", get = function() return require("src.game.hitshapes").show end,
+            set = function(v) require("src.game.hitshapes").show = v end },
         { type = "toggle", label = "Spatial grid", get = grGet, set = grSet },
         { type = "toggle", label = "Perf overlay", get = ovGet, set = ovSet },
     }
@@ -420,7 +440,7 @@ function Sandbox:applyBag()
     inv.bag = {}
     inv:recount()
     for _, item in ipairs(items) do
-        if not inv:stow(item) then self.world:dropItem(item, p.x, p.y, true) end
+        if not inv:stow(item) then self.world:overflowItem(item) end
     end
 end
 
@@ -556,8 +576,8 @@ function Sandbox:draw()
     self:drawReadouts()
     if self.placing then self:drawPlacing() end
     lg.setFont(Theme.font(14))
-    local hint = self.visible and "Middle click: spawn at cursor  |  V: enemies  |  C: items  |  1-5: tabs  |  Tab: hide panel  |  F1: hotkeys"
-        or "Tab: show sandbox panel  |  V: enemies  |  C: items"
+    local hint = self.visible and "Middle click: spawn at cursor  |  V: enemies  |  C: items  |  1-5: tabs  |  F2: hide panel  |  F1: hotkeys"
+        or "F2: show sandbox panel  |  V: enemies  |  C: items"
     Theme.printShadow(hint, u(14), lg.getHeight() - u(26), Theme.colors.text)
     if not self.visible then return end
     local px, py, pw, ph = self:panelRect()
@@ -636,7 +656,7 @@ function Sandbox:wheelmoved(x, y)
 end
 
 function Sandbox:keypressed(key)
-    if key == "tab" or key == "f2" then
+    if key == "f2" then
         self.visible = not self.visible
         self.game:applyCursor()
     elseif key == "c" then

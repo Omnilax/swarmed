@@ -20,6 +20,8 @@ return {
     ambient = "#6e8080",
     ambients = { day = "#eef6e4", sunset = "#d0a07c", night = "#3e4a6a", dawn = "#b8b0b8" },
     weather = { clear = 30, fog = 18, rain = 12, drizzle = 12, fireflies = 20, pollen = 3, petals = 2, windy = 4 },
+    props = { pebble = 3, twig = 6 },
+    fauna = { wood_ant = 3, carpenter_bee = 2, termite = 2, dracula_ant = 2, bulldog_ant = 2, desert_ant = 0.2, honeypot_ant = 0.3 },
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
 }

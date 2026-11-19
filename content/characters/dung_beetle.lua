@@ -9,8 +9,11 @@ return {
     sprite = "dung_beetle",
     model = { legs = "dung_beetle_legs", body = "dung_beetle_body", height = 5, lift = 2 },
     order = 17,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "Your ball grows as you roll it and squash ants. Bigger hits harder but slows you down: kick it off with {secondary} to start a fresh one.",
     radius = 8,
-    stats = { maxHp = 75, armor = 3, moveSpeed = 92, knockback = 20 },
+    scale = 1.05,
+    stats = { maxHp = 90, armor = 4, moveSpeed = 88, knockback = 30 },
     attack = { type = "dungbash", damage = 11, cooldown = 0.55, perSize = 0.16, killGrow = 0.45, knockback = 140, sizeSlow = 1 },
     secondary = { type = "dungthrow", damage = 16, cooldown = 1.2, perSize = 0.24, speed = 340, burstSize = 9, minSize = 4, maxSize = 20, grow = 0.011, knockback = 180, slowMax = 0.45, sizeCooldown = 0.12 },
     dash = { type = "dungride", stamina = 2.2, regen = 0.9, speed = 1.5, damage = 6, knockback = 190, minBall = 1 },

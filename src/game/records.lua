@@ -24,8 +24,17 @@ local function blankProfile()
         playTime = 0, damageTaken = 0, itemsTaken = 0, itemsEaten = 0,
         characters = {},     -- character id -> { runs, wins, kills, bestWave }
         modes = {},          -- game mode id -> { runs, wins, bestWave }
+        daily = {},          -- daily run date "YYYY-MM-DD" -> best { wave, kos, won, character }
         history = {},        -- newest first, see Records.endRun
         achievements = {},   -- achievement id -> os.time() it unlocked
+        molts = {},          -- molt recipe id -> times molted (the recipe book, Records > Recipes)
+        moltCount = 0, chestsOpened = 0, duplicated = 0,
+        seen = {},           -- enemy id -> true once met (first-sighting popups, src/ui/runhud.lua)
+        swarmsSurvived = 0,  -- Final Swarms lived through (src/game/finalswarm.lua)
+        -- amber, the currency kept between runs (src/game/amber.lua)
+        amber = 0, amberEarned = 0, amberOwned = {}, amberStarted = false,
+        -- characters[id] also gets `danger` (highest danger level won, src/config/danger.lua)
+        -- and `swarmKills` (most kills in a Final Swarm) once they happen
     }
 end
 
@@ -59,6 +68,12 @@ function Records.load()
 end
 
 function Records.get() return Records.profile or Records.load() end
+
+-- Has this molt recipe ever been molted? (the recipe book shows its result once it has)
+function Records.moltKnown(id)
+    local p = Records.get()
+    return (p.molts[id] or 0) > 0
+end
 
 function Records.save()
     if not Records.profile or Records.noSave then return end
@@ -97,6 +112,8 @@ end
 -- Tracking a run
 
 -- info: { character = id, gameMode = id } (Game params). Call once, right after the world is made.
+-- A resumed run (info.resume, src/game/runsave.lua) carries on the run it was saved from, so it
+-- isn't counted as another run.
 function Records.track(world, info)
     local p = Records.get()
     if Records.run and not Records.run.ended then Records.endRun("quit") end
@@ -106,12 +123,17 @@ function Records.track(world, info)
         kills = 0, elites = 0, queens = 0, killsBy = {}, killsByFamily = {},
         wave = 0, wavesCleared = 0, flawlessWaves = 0, waveDamage = 0,
         damageTaken = 0, itemsTaken = 0, itemsEaten = 0, time = 0,
-        won = false, started = os.time(), checkT = 0,
+        won = false, started = os.time(), checkT = 0, daily = world.daily, time0 = world.time,
+        blocked = 0, dashKills = 0, danger = world.danger and world.danger.level or 0,
     }
     Records.run = run
-    p.runs = p.runs + 1
-    sub(p.characters, charId, CHAR_FIELDS).runs = p.characters[charId].runs + 1
-    sub(p.modes, run.mode, MODE_FIELDS).runs = p.modes[run.mode].runs + 1
+    sub(p.characters, charId, CHAR_FIELDS)
+    sub(p.modes, run.mode, MODE_FIELDS)
+    if not (info and info.resume) then
+        p.runs = p.runs + 1
+        p.characters[charId].runs = p.characters[charId].runs + 1
+        p.modes[run.mode].runs = p.modes[run.mode].runs + 1
+    end
 
     local ev = world.events
     ev:on("enemy_died", function(e) Records.onKill(e) end)
@@ -138,11 +160,31 @@ function Records.track(world, info)
         Records.check()
         Records.save()
     end)
+    ev:on("player_blocked", function(amount) run.blocked = run.blocked + (amount or 0) end)
+    ev:on("dash_kill", function() run.dashKills = run.dashKills + 1 end)
+    ev:on("final_swarm_over", function(info)
+        if not info.survived then return end
+        p.swarmsSurvived = (p.swarmsSurvived or 0) + 1
+        local c = p.characters[charId]
+        c.swarmKills = math.max(c.swarmKills or 0, info.kills or 0)
+        Records.check()
+        Records.save()
+    end)
     ev:on("run_won", function()
         if run.won then return end
         run.won = true
+        -- Custom Waves can be as easy as you make them: a win there counts for the mode only
+        -- (no bug wins, no danger mastery, no win achievements)
+        if world.modeDef and world.modeDef.custom then
+            p.modes[run.mode].wins = p.modes[run.mode].wins + 1
+            Records.save()
+            return
+        end
         p.wins = p.wins + 1
         p.characters[charId].wins = p.characters[charId].wins + 1
+        -- mastery: the highest danger level won with this bug
+        local c = p.characters[charId]
+        c.danger = math.max(c.danger or -1, run.danger or 0)
         p.modes[run.mode].wins = p.modes[run.mode].wins + 1
         Records.check()
         Records.save()
@@ -153,7 +195,20 @@ function Records.track(world, info)
     ev:on("item_eaten", function()
         run.itemsEaten, p.itemsEaten = run.itemsEaten + 1, p.itemsEaten + 1
     end)
+    ev:on("item_molted", function(recipe)
+        p.molts[recipe.id] = (p.molts[recipe.id] or 0) + 1
+        p.moltCount = p.moltCount + 1
+        run.molts = (run.molts or 0) + 1
+        Records.check()
+    end)
+    ev:on("chest_opened", function(kind, n)
+        p.chestsOpened = p.chestsOpened + 1
+        run.chests = (run.chests or 0) + 1
+    end)
+    ev:on("item_duplicated", function() p.duplicated = p.duplicated + 1 end)
     ev:on("player_died", function() Records.endRun("died") end)
+    -- a custom bug's own challenges (src/game/bugextras.lua)
+    if world.player.def.custom then require("src.game.bugextras").track(world, run, p.characters[charId]) end
     return run
 end
 
@@ -204,12 +259,25 @@ function Records.endRun(outcome)
     run.time = w.time
     run.outcome = outcome
     if outcome == "died" then p.deaths = p.deaths + 1 end
-    p.playTime = p.playTime + run.time
+    p.playTime = p.playTime + run.time - (run.time0 or 0)
     p.longestRun = math.max(p.longestRun, run.time)
     p.bestKOs = math.max(p.bestKOs, w.kos or run.kills)
     p.bestCombo = math.max(p.bestCombo, w.bestCombo or 0)
     local level = w.player.skills and w.player.skills.level or 0
     p.bestLevel = math.max(p.bestLevel, level)
+    -- the daily run keeps its best result per day (furthest wave, then most KOs)
+    if run.daily then
+        local b = p.daily[run.daily]
+        local kos = w.kos or run.kills
+        if not b or run.wave > b.wave or (run.wave == b.wave and kos > b.kos) then
+            p.daily[run.daily] = { wave = run.wave, kos = kos, won = run.won, character = run.character }
+        end
+        -- only the last few weeks are kept
+        local keys = {}
+        for k in pairs(p.daily) do keys[#keys + 1] = k end
+        table.sort(keys)
+        for i = 1, #keys - 30 do p.daily[keys[i]] = nil end
+    end
     -- a run that never got going (quit in the first seconds) isn't worth a history line
     if run.time >= 5 or run.kills > 0 then
         -- the most-killed species of the run, for the history line
@@ -222,10 +290,24 @@ function Records.endRun(outcome)
             wave = run.wave, cleared = run.wavesCleared, won = run.won, outcome = outcome,
             time = math.floor(run.time), kills = run.kills, elites = run.elites, queens = run.queens,
             combo = w.bestCombo or 0, level = level, damage = math.floor(run.damageTaken),
-            top = top, topN = topN, items = items,
+            top = top, topN = topN, items = items, danger = run.danger,
         })
         while #p.history > HISTORY do table.remove(p.history) end
+        -- amber for the Burrow (src/game/amber.lua): every run that got going pays something
+        require("src.game.amber").award(run)
     end
+    Records.check()
+    Records.save()
+end
+
+-- Save & Quit: the run stops being tracked but isn't over, so it gets no history line yet (it
+-- is written when the resumed run ends). Play time so far still counts.
+function Records.suspend()
+    local run, p = Records.run, Records.profile
+    if not run or run.ended then return end
+    run.ended = true
+    run.time = run.world.time
+    p.playTime = p.playTime + run.time - (run.time0 or 0)
     Records.check()
     Records.save()
 end
@@ -303,14 +385,14 @@ function Records.drawToast(t, i)
     local slide = math.max(0, math.min(1, t.t * 5, (4 - t.t) * 5))
     slide = 1 - (1 - slide) ^ 3
     local bw, bh = u(320), u(64)
-    local x, y = w - (bw + u(16)) * slide, u(124) + (i - 1) * (bh + u(8))      -- below the combo counter
+    local x, y = w - (bw + u(16)) * slide, u(140) + (i - 1) * (bh + u(8))      -- below the combo counter and enemies left
     Theme.panel(x, y, bw, bh)
     local c = Theme.colors.focus
     lg.setColor(c)
     lg.rectangle("fill", x, y + u(8), u(4), bh - u(16))
     lg.setFont(Theme.font(14))
     lg.setColor(Theme.colors.dim)
-    lg.print("Achievement", x + u(16), y + u(9))
+    lg.print(t.def.unlockKind and "Unlocked" or "Achievement", x + u(16), y + u(9))
     lg.setFont(Theme.font(20, "bold"))
     Theme.printShadow(t.def.name, x + u(16), y + u(28), c)
     lg.setColor(1, 1, 1, 1)

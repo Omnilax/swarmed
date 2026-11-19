@@ -3,6 +3,7 @@ return {
     description = "+5 Armor. After a dash you stay rolled up and untouchable for 0.3 seconds more (+0.3 per stack).",
     effect = "After a dash you stay rolled up and untouchable for 0.3 seconds more (+0.3 per stack).",
     rarity = "uncommon",
+    category = "guard",
     shape = { "XXX" },
     stats = { armor = 5 },
     procs = {

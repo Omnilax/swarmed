@@ -20,6 +20,23 @@ local function bar(x, y, w, h, t, color)
     lg.rectangle("fill", x, y, w * util.clamp(t, 0, 1), h, 3, 3)
 end
 
+-- The wave line's extras: modifiers, par time (counting down) or heat, and the early-call streak.
+function Hud.paceText(sp, sub)
+    local parts = {}
+    for _, d in ipairs(sp.mods or {}) do parts[#parts + 1] = d.name:upper() end
+    if sub and sub ~= "" then parts[#parts + 1] = sub end
+    if sp.par and sp.par < math.huge then
+        if sp.waveTime <= sp.par then
+            local left = math.ceil(sp.par - sp.waveTime)
+            parts[#parts + 1] = ("par %d:%02d"):format(math.floor(left / 60), left % 60)
+        elseif (sp.heat or 0) > 0 then
+            parts[#parts + 1] = ("HEAT +%d%%"):format(math.floor(sp.heat * ((sp.cfg.heat or {}).speed or 0.35) * 100 + 0.5))
+        end
+    end
+    if (sp.earlyStreak or 0) > 0 then parts[#parts + 1] = "early x" .. sp.earlyStreak end
+    return table.concat(parts, "  ·  ")
+end
+
 -- "WAVE 7 / 15" during a run, "FINAL WAVE" on the boss wave that ends it, plain "WAVE 23" after.
 function Hud.waveLabel(sp)
     if sp.endless then return "LEVEL " .. sp.wave end
@@ -30,6 +47,26 @@ function Hud.waveLabel(sp)
 end
 
 -- covered: a menu (pause, bag, results) is open on top, so passing banners stay hidden.
+-- The nectar shop's clock under the nectar count (src/game/economy.lua): when the stock turns
+-- over, and a pulsing "NEW STOCK" until the SHOP tab has been looked at.
+function Hud.shopClock(world, x, y, alpha)
+    local Economy = require("src.game.economy")
+    local s = world.economy
+    if not Economy.open(world) or not (s and s.shop) then return end
+    local u = Theme.u
+    local lg = love.graphics
+    local key = require("src.core.touch").enabled() and "BAG" or "{inventory}"
+    lg.setFont(Theme.font(14, "bold"))
+    if not s.shop.seen and s.shop.stock > 1 then
+        local pulse = 0.7 + 0.3 * math.sin(love.timer.getTime() * 6)
+        Theme.rich("NEW STOCK " .. key, x, y, u(120), "left", { 1, 0.8, 0.35 }, alpha * pulse)
+    else
+        local left = math.ceil(Economy.timeLeft(world))
+        lg.setColor(0.8, 0.68, 0.45, 0.85 * alpha)
+        lg.print(("shop %d:%02d"):format(math.floor(left / 60), left % 60), x, y)
+    end
+end
+
 function Hud.draw(game, covered)
     local lg = love.graphics
     local world = game.world
@@ -58,11 +95,34 @@ function Hud.draw(game, covered)
 
     -- Health
     local maxHp = p.stats:get("maxHp")
+    require("src.gfx.clarity").drawLowHealth(p, maxHp, w, h)     -- Low Health Pulse
+    require("src.gfx.camfx").drawBossCard(world, w, h, Theme.font("title"))   -- Boss Intro Camera
     local bw = u(260)
     bar(u(20), u(20), bw, u(22), p.hp / maxHp, { c.hp[1], c.hp[2], c.hp[3], alpha })
     lg.setFont(Theme.font(16))
     lg.setColor(1, 1, 1, alpha)
     lg.print(math.ceil(p.hp) .. " / " .. math.floor(maxHp), u(28), u(21))
+    -- Nectar: the run's currency (src/game/nectar.lua); the bead swells for a moment on a pickup.
+    -- Hidden until Gentle Start opens the shop (src/game/onramp.lua): nothing to spend it on yet.
+    if require("src.game.onramp").allows(world, "shop") then
+        local nx, ny = u(20) + bw + u(18), u(31)
+        local amount = math.floor(world.nectar or 0)
+        if amount ~= Hud.lastNectar then
+            if Hud.lastNectar and amount > Hud.lastNectar then Hud.nectarPop = 0.15 end
+            Hud.lastNectar = amount
+        end
+        Hud.nectarPop = math.max(0, (Hud.nectarPop or 0) - love.timer.getDelta())
+        local r = u(7) * (1 + Hud.nectarPop * 2)
+        lg.setColor(0.72, 0.42, 0.08, alpha)
+        lg.circle("fill", nx, ny, r + math.max(1, u(1.5)), 16)
+        lg.setColor(1, 0.78, 0.22, alpha)
+        lg.circle("fill", nx, ny, r, 16)
+        lg.setColor(1, 0.98, 0.85, alpha)
+        lg.circle("fill", nx - r * 0.35, ny - r * 0.35, r * 0.3, 8)
+        lg.setFont(Theme.font(20, "bold"))
+        Theme.printShadow(tostring(amount), nx + u(12), ny - u(12), { 1, 0.85, 0.4, alpha })
+        Hud.shopClock(world, nx - r, ny + u(14), alpha)
+    end
     -- Stamina: one bar for every dash, hold mode and block (src/game/stamina.lua)
     local st = p.stamina
     if st then
@@ -101,10 +161,19 @@ function Hud.draw(game, covered)
     end
     if (p.slowMul or 1) < 0.95 then
         Theme.printShadow(world.latchCount > 0 and ("GRABBED x" .. world.latchCount) or "SLOWED", sx, u(44), { 1, 0.85, 0.5, alpha })
+        sx = sx + u(90)
+    end
+    -- armor cracked by the crowd on you and by shredder bites (Player:effectiveArmor)
+    if p.effectiveArmor then
+        local lost = p.stats:get("armor") - p:effectiveArmor()
+        if lost >= 1 then
+            Theme.printShadow("ARMOR -" .. math.floor(lost + 0.5), sx, u(44), { 1, 0.65, 0.35, alpha })
+        end
     end
 
-    -- Boss health
+    -- Boss health (a named champion gets the bar when no queen is about, src/game/bosses.lua)
     local boss = world.boss
+    if not (boss and not boss.dead) then boss = world.champion end
     if boss and not boss.dead then
         local bw2 = math.min(u(520), w * 0.5)
         local bx = (w - bw2) / 2
@@ -122,34 +191,65 @@ function Hud.draw(game, covered)
         bar(xx, xy, xw, u(5), sk.into / sk.toNext, { 0.35, 0.75, 1, alpha })
         lg.setFont(Theme.font(13))
         Theme.printShadow("LV " .. sk.level, xx - u(48), xy - u(5), { 0.55, 0.85, 1, alpha })
+        -- level-up cards waiting for the end of the wave
+        local lu = world.levelups
+        local waiting = lu and #lu.queue or 0
+        local nudgeY = xy - u(22) - u(3)
+        if waiting > 0 then
+            local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 6)
+            lg.setFont(Theme.font(15, "bold"))
+            Theme.printShadow((waiting == 1 and "LEVEL UP!" or ("LEVEL UP x" .. waiting)) .. (Settings.get("levelUpWhen") == "wave" and "  ·  cards in the wave's reward bloom" or ""), 0, nudgeY, { 1, 0.88, 0.45, alpha * pulse }, "center", w)
+            nudgeY = nudgeY - u(20)
+            lg.setFont(Theme.font(13))
+        end
         if sk.points > 0 then
             local pulse = 0.75 + 0.25 * math.sin(love.timer.getTime() * 5)
-            local key = require("src.core.input").lastDevice == "gamepad" and "Y, then RB" or "E, then Tab"
+            local key = require("src.core.input").lastDevice == "gamepad" and "{inventory}, then {pad:rightshoulder}" or "{inventory}, then {key:E}"
             if require("src.core.touch").enabled() then key = "BAG" end
-            Theme.printShadow(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, xy - u(22),
-                { 0.55, 0.9, 1, alpha * (sk.flashT > 0 and 1 or pulse) }, "center", w)
+            Theme.rich(sk.points .. " SKILL POINT" .. (sk.points > 1 and "S" or "") .. "  (" .. key .. ")", 0, nudgeY, w, "center",
+                { 0.55, 0.9, 1 }, alpha * (sk.flashT > 0 and 1 or pulse))
         end
     end
 
-    -- Wave and timer
-    if world.mode == "run" then
+    -- Wave and timer (not in the tutorial: its lesson panel sits there instead)
+    if world.mode == "run" and not world.lessons then
         local sp = world.spawner
         lg.setFont(Theme.font(24))
         local sub
-        if sp.phase == "wave" then
+        local swarm = world.finalSwarm
+        if swarm and not swarm.done then
+            -- the Final Swarm (src/game/finalswarm.lua): the clock to survive, and its KOs
+            local left = math.ceil(swarm:left())
+            local pulse = 0.75 + 0.25 * math.sin(world.time * 6)
+            Theme.printShadow(("FINAL SWARM  %d:%02d"):format(math.floor(left / 60), left % 60), 0, u(16),
+                { 1, 0.45 * pulse + 0.2, 0.35, alpha }, "center", w)
+            sub = swarm.kills .. " swarm KOs  ·  survive!"
+        elseif sp.phase == "wave" then
             Theme.printShadow(Hud.waveLabel(sp), 0, u(16), { c.text[1], c.text[2], c.text[3], alpha }, "center", w)
             sub = sp.endless and ("next level in " .. math.max(1, math.ceil(sp.levelT)))
                 or (sp:remaining() .. (sp.mode.families and not require("src.core.util").contains(sp.mode.families, "ant") and " left" or " ants left"))
+            -- the enemies-left chip at the top right already counts them: don't say it twice
+            if not sp.endless and Settings.get("showEnemyCount") then sub = "" end
+            if not sp.endless then sub = Hud.paceText(sp, sub) end
         else
             Theme.printShadow(sp.wave > 0 and ("WAVE " .. sp.wave .. " CLEARED") or "GET READY", 0, u(16), { c.focus[1], c.focus[2], c.focus[3], alpha }, "center", w)
             local key = (require("src.core.input").getKeys("next_wave")[1] or "N"):upper()
             if require("src.core.touch").enabled() then key = "TAP HERE" end
             sub = sp:waiting() and ("press " .. key .. " to start the next wave")
                 or ("next wave in " .. math.max(1, math.ceil(sp.timer)) .. "  ·  " .. key .. " to start now")
+            -- the wave's rewards are waiting in the bloom: that comes first
+            if world.pendingChoice and not world.pendingChoice.opened and world.rewardFlow and world.rewardFlow:bloom() then
+                sub = "walk into the reward bloom  ·  " .. key .. " brings it to you"
+            else
+                -- the next wave is on a new map (src/game/acts.lua)
+                local move = require("src.game.acts").nextLine(world)
+                if move then sub = move .. (sp:waiting() and ("  ·  " .. key .. " to go") or ("  ·  in " .. math.max(1, math.ceil(sp.timer)))) end
+            end
         end
-        if Settings.get("showTimer") then
+        if (Settings.get("showTimer") and Settings.get("hudDetail") ~= "clean") then
             local t = math.floor(world.time)
-            sub = sub .. string.format("  ·  %d:%02d", math.floor(t / 60), t % 60)
+            local clock = string.format("%d:%02d", math.floor(t / 60), t % 60)
+            sub = (sub ~= "" and (sub .. "  ·  ") or "") .. clock
         end
         lg.setFont(Theme.font(16))
         Theme.printShadow(sub, 0, u(46), { c.dim[1], c.dim[2], c.dim[3], alpha }, "center", w)
@@ -159,38 +259,42 @@ function Hud.draw(game, covered)
             lg.setFont(Theme.font(56))
             Theme.printShadow(sp.finalThisWave and "FINAL WAVE" or (sp.endless and "LEVEL " or "WAVE ") .. sp.wave, 0, h * 0.3
 , { 1, 0.86, 0.5, k * alpha }, "center", w)
+            -- this wave's modifiers (content/wavemods) under it, each in its colour
+            local mods = sp.mods or {}
+            if #mods > 0 then
+                lg.setFont(Theme.font(26, "bold"))
+                local f = lg.getFont()
+                local parts, total = {}, 0
+                for i, d in ipairs(mods) do
+                    parts[i] = d.name:upper()
+                    total = total + f:getWidth(parts[i]) + (i > 1 and f:getWidth("  ·  ") or 0)
+                end
+                local x0 = math.floor((w - total) / 2)
+                for i, d in ipairs(mods) do
+                    if i > 1 then
+                        Theme.printShadow("  ·  ", x0, h * 0.3 + u(66), { 1, 1, 1, k * alpha * 0.6 })
+                        x0 = x0 + f:getWidth("  ·  ")
+                    end
+                    local col = d.color or { 1, 0.8, 0.4 }
+                    Theme.printShadow(parts[i], x0, h * 0.3 + u(66), { col[1], col[2], col[3], k * alpha })
+                    x0 = x0 + f:getWidth(parts[i])
+                end
+                lg.setFont(Theme.font(15))
+                local desc = {}
+                for i, d in ipairs(mods) do desc[i] = d.description end
+                Theme.printShadow(table.concat(desc, "  "), 0, h * 0.3 + u(100), { 1, 0.95, 0.85, k * alpha * 0.9 }, "center", w)
+            end
         end
-        -- A new species this wave: what it is and how to deal with it, while it walks in alone
-        local def = sp.newSpecies
-        local t0, t1 = 1.9, 11     -- after the big WAVE N has faded
-        if def and sp.phase == "wave" and sp.waveTime > t0 and sp.waveTime < t1 and not covered then
-            local t = sp.waveTime
-            local k = math.min(1, (t - t0) / 0.3, (t1 - t) / 0.8) * alpha
-            local bw2 = math.min(w - u(40), u(470))
-            lg.setFont(Theme.font(15))
-            local _, dl = lg.getFont():getWrap(def.description or "", bw2 - u(28))
-            local _, tl = lg.getFont():getWrap(def.tip or "", bw2 - u(28))
-            local bh2 = u(72) + (#dl + #tl) * u(19)
-            local bx, by = math.floor((w - bw2) / 2), math.floor(u(76) - (1 - math.min(1, (t - t0) / 0.3)) * u(10))
-            lg.setColor(0.06, 0.045, 0.04, 0.88 * k)
-            lg.rectangle("fill", bx, by, bw2, bh2, u(4))
-            lg.setColor(0.95, 0.7, 0.3, k)
-            lg.rectangle("fill", bx, by, bw2, u(3))
-            lg.setFont(Theme.font(13, "bold"))
-            lg.setColor(0.95, 0.7, 0.3, k)
-            lg.printf(sp.wave == 1 and "MEET THE COLONY" or "NEW SPECIES", bx, by + u(10), bw2, "center")
-            lg.setFont(Theme.font(24, "bold"))
-            Theme.printShadow(def.name, bx, by + u(26), { 1, 0.95, 0.85, k }, "center", bw2)
-            lg.setFont(Theme.font(15))
-            lg.setColor(c.text[1], c.text[2], c.text[3], k)
-            lg.printf(def.description or "", bx + u(14), by + u(58), bw2 - u(28), "center")
-            lg.setColor(0.6, 0.85, 0.5, k)
-            lg.printf(def.tip or "", bx + u(14), by + u(60) + #dl * u(19), bw2 - u(28), "center")
-        end
+        -- A new species this wave gets a compact card at the left edge (src/ui/runhud.lua,
+        -- queued from the world's "species_seen" event) instead of a big panel up top.
     end
 
-    -- KO counter, Warriors style
-    if Settings.get("showKoCounter") then
+    -- KO counter, Warriors style (then the enemies-left chip under it, src/ui/runhud.lua)
+    local RunHud = require("src.ui.runhud")
+    RunHud.attach(world)
+    local countY = u(16)
+    if (Settings.get("showKoCounter") and Settings.get("hudDetail") ~= "clean") then
+        countY = u(100)
         lg.setFont(Theme.font(44))
         local ko = tostring(world.kos)
         Theme.printShadow(ko, w - u(40) - lg.getFont():getWidth(ko), u(12), { c.focus[1], c.focus[2], c.focus[3], alpha })
@@ -204,9 +308,15 @@ function Hud.draw(game, covered)
         end
     end
 
+    -- the frenzy meter and streaks (src/game/rewards.lua) stack under whatever ends lowest here
+    Hud.rightY = RunHud.drawEnemyCount(world, w - u(16), countY, alpha)
+    -- during a break: what the next wave brings; and first sightings of a species
+    RunHud.drawPreview(world, covered, u(72), alpha)
+    RunHud.drawSighting(world, covered, alpha)
+
     -- KO milestone popup (every 100 KOs)
     local m = world.milestone
-    if m and not covered then
+    if m and not covered and Settings.get("hudDetail") ~= "clean" then
         local pop = m.t < 0.15 and (1.6 - m.t / 0.15 * 0.6) or 1
         local fade = math.min(1, (1.6 - m.t) / 0.4)
         lg.setFont(Theme.font(math.floor(48 * pop)))
@@ -239,8 +349,18 @@ function Hud.draw(game, covered)
         end
     end
 
+    -- rewards flying in from the bloom, and the "NEW ITEM" cards (src/game/rewardflow.lua)
+    require("src.game.rewardflow").drawHud(game, covered)
+
+    -- frenzy meter, streak buffs, mini-goal, route tunnels (src/game/rewards.lua)
+    require("src.game.rewards").drawHud(game, covered)
+
     -- arrows to queens and elites off screen, first-run hints (src/game/feedback.lua)
     require("src.game.feedback").drawHud(game, covered)
+    -- a queen's or champion's title card
+    require("src.game.bosses").drawHud(world, covered, alpha)
+    -- event banners, the boss encounter's bar, the merchant's price (src/game/director.lua)
+    require("src.game.director").drawHud(game, covered)
 
     if Settings.get("showFps") then
         lg.setFont(Theme.font(14))

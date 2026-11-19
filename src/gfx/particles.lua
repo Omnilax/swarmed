@@ -102,32 +102,44 @@ function Particles:update(dt)
     end
 end
 
-function Particles:draw()
+-- x0, y0, x1, y1 (optional): the visible projected area; particles outside it are skipped.
+function Particles:draw(x0, y0, x1, y1)
     local atlas, q = Sprites.atlas, Sprites.pixel
     local list = self.list
+    local lg = love.graphics
+    local setColor, draw, floor, toScreen = lg.setColor, lg.draw, math.floor, Iso.toScreen
+    x0, y0, x1, y1 = x0 or -math.huge, y0 or -math.huge, x1 or math.huge, y1 or math.huge
     for i = 1, self.n do
         local p = list[i]
-        local sx, sy = Iso.toScreen(p.x, p.y, p.z)
-        love.graphics.setColor(p.r, p.g, p.b, math.min(1, p.life / p.maxLife * 2))
-        love.graphics.draw(atlas, q, math.floor(sx), math.floor(sy), 0, p.size, p.size)
+        local sx, sy = toScreen(p.x, p.y, p.z)
+        if sx > x0 and sx < x1 and sy > y0 and sy < y1 then
+            local a = p.life / p.maxLife * 2
+            setColor(p.r, p.g, p.b, a < 1 and a or 1)
+            draw(atlas, q, floor(sx), floor(sy), 0, p.size, p.size)
+        end
     end
-    love.graphics.setColor(1, 1, 1, 1)
+    setColor(1, 1, 1, 1)
 end
 
 -- Additive halos for glowing particles. Call inside an additive blend section.
-function Particles:drawGlow()
+function Particles:drawGlow(x0, y0, x1, y1)
     local atlas, q = Sprites.atlas, Sprites.glow
     local list = self.list
+    local lg = love.graphics
+    local setColor, draw, toScreen = lg.setColor, lg.draw, Iso.toScreen
+    x0, y0, x1, y1 = x0 or -math.huge, y0 or -math.huge, x1 or math.huge, y1 or math.huge
     for i = 1, self.n do
         local p = list[i]
         if p.glow then
-            local sx, sy = Iso.toScreen(p.x, p.y, p.z)
-            local a = math.min(1, p.life / p.maxLife * 2) * 0.55
-            love.graphics.setColor(p.r, p.g, p.b, a)
-            love.graphics.draw(atlas, q, sx, sy, 0, 0.5 * p.size, 0.5 * p.size, 8, 8)
+            local sx, sy = toScreen(p.x, p.y, p.z)
+            if sx > x0 and sx < x1 and sy > y0 and sy < y1 then
+                local a = p.life / p.maxLife * 2
+                setColor(p.r, p.g, p.b, (a < 1 and a or 1) * 0.55)
+                draw(atlas, q, sx, sy, 0, 0.5 * p.size, 0.5 * p.size, 8, 8)
+            end
         end
     end
-    love.graphics.setColor(1, 1, 1, 1)
+    setColor(1, 1, 1, 1)
 end
 
 function Particles:clear() self.n = 0 end

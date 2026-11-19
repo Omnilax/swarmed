@@ -5,7 +5,7 @@
 # primitives (ellipsoids E, tubes T, bevelled slabs P) with real materials, so items read as
 # natural objects in the dusk light rather than flat cartoon shapes. Coordinates are in cells.
 import math, sys
-from icon_render import Icon, RES, quantize
+from icon_render import Icon, RES, quantize, render_fit
 
 ICONS = []
 
@@ -64,15 +64,16 @@ def speck(I, n, region, col, size=(0.015, 0.03), seed=2, amt=1.0):
 # Original items
 
 @icon("chitin_plate", 2, 2)
-def chitin_plate(I):            # a beetle's wing case: a long curved shield, striated and pitted
-    pts = [(0.35, 0.12), (0.75, 0.08), (1.3, 0.3), (1.75, 0.85), (1.88, 1.4), (1.7, 1.85), (1.35, 1.82), (0.85, 1.4), (0.4, 0.8), (0.22, 0.35)]
-    I.add(I.P(pts, bevel=0.45, z=0.28), "#3e2616", gloss=1.2, shin=34, mottle=0.18)
-    for k in range(5):
-        o = (k - 2) * 0.13
-        I.carve(I.T([(0.45 + o * 0.6, 0.3 - o * 0.4), (1.0 + o * 0.7, 0.85 - o * 0.6), (1.45 + o * 0.6, 1.5 - o * 0.4)], 0.018), 0.03)
-    speck(I, 90, (lambda x, y: True, (0.4, 0.3, 1.7, 1.7)), "#1e120a", seed=3, size=(0.008, 0.014), amt=0.7)
-    I.paint(I.T([(0.4, 0.25), (1.0, 0.7), (1.5, 1.3)], 0.2), "#6a4428", amt=0.35, soft=1)
-    I.add(I.T([(0.3, 0.2), (0.9, 0.9), (1.4, 1.62), (1.62, 1.82)], 0.035), "#2a180c", mode="on", gloss=1.4, shin=30)
+def chitin_plate(I):            # a beetle's armour plate: a glossy shield with a raised keel and seams
+    pts = [(0.22, 0.2), (1.0, 0.08), (1.78, 0.2), (1.82, 0.9), (1.5, 1.5), (1.0, 1.9), (0.5, 1.5), (0.18, 0.9)]
+    I.add(I.P(pts, bevel=0.5, z=0.32), "#5a3018", gloss=1.6, shin=40, mottle=0.18)
+    I.raise_(I.T([(1.0, 0.16), (1.0, 1.8)], 0.12), 0.06)          # the central keel
+    for k, y in enumerate((0.62, 1.06, 1.46)):                     # segment seams
+        w = 0.78 - k * 0.2
+        I.carve(I.T([(1.0 - w, y - 0.1), (1.0, y + 0.02), (1.0 + w, y - 0.1)], 0.022), 0.05)
+    speck(I, 60, (lambda x, y: True, (0.4, 0.3, 1.6, 1.6)), "#2a160a", seed=3, size=(0.01, 0.016), amt=0.6)
+    I.paint(I.T([(0.45, 0.3), (0.8, 0.26)], 0.12), "#c88858", amt=0.6, soft=1)
+    I.paint(I.T([(1.0, 0.25), (1.0, 1.7)], 0.05), "#9a6038", amt=0.5, soft=1)
 
 @icon("glass_mandible", 1, 2)
 def glass_mandible(I):          # a translucent, glassy curved jaw
@@ -178,14 +179,20 @@ def dragonfly_wings(I):         # two clear, net-veined wings with dark pterosti
     I.paint(I.E(1.46, 0.95, 0.08, 0.08), "#4a7a5a", amt=0.6)
 
 @icon("scarab_shell", 3, 2, ["XXX", ".X."])
-def scarab_shell(I):            # metallic green scarab elytra with a head and horn
-    I.add(I.E(1.5, 0.5, 1.38, 0.44, z=0.8), "#1e5a3a", gloss=1.6, shin=40, mottle=0.2)
-    I.carve(I.T([(1.5, 0.1), (1.5, 0.92)], 0.025), 0.06)
-    for x in (0.6, 0.95, 2.05, 2.4):
-        I.carve(I.T([(x, 0.2), (x + (x - 1.5) * 0.05, 0.8)], 0.012), 0.02)
-    I.paint(I.E(1.0, 0.36, 0.5, 0.18), "#3ea070", amt=0.5, soft=1)
-    I.add(I.E(1.5, 1.2, 0.36, 0.3), "#143e28", gloss=1.4, shin=30)
-    I.add(I.T([(1.5, 1.2), (1.5, 1.6), (1.56, 1.88)], [0.12, 0.08, 0.025]), "#0e2a1a", gloss=1.2, shin=30)
+def scarab_shell(I):            # a metallic green scarab seen from above: legs out, horned head down
+    for s in (-1, 1):                                  # six jointed legs poking out from under the shell
+        for (y, a) in ((0.32, -0.5), (0.55, 0.0), (0.78, 0.5)):
+            x0 = 1.5 + s * 1.05
+            leg(I, [(x0, y), (x0 + s * 0.3, y + a * 0.25), (x0 + s * 0.42, y + 0.1 + a * 0.3)], [0.05, 0.04, 0.025], "#14261a", gloss=0.8)
+    I.add(I.E(1.5, 0.5, 1.15, 0.44, z=0.9), "#1e6a40", gloss=1.8, shin=44, mottle=0.15)
+    I.carve(I.T([(1.5, 0.08), (1.5, 0.94)], 0.022), 0.07)
+    for x in (0.75, 1.05, 1.95, 2.25):
+        I.carve(I.T([(x, 0.18), (x + (x - 1.5) * 0.05, 0.84)], 0.01), 0.02)
+    I.paint(I.E(1.05, 0.34, 0.42, 0.16), "#7ae0a0", amt=0.55, soft=1)
+    I.paint(I.E(1.95, 0.66, 0.4, 0.14), "#3a8ac0", amt=0.45, soft=1)
+    I.add(I.E(1.5, 1.08, 0.42, 0.26, z=0.8), "#165034", gloss=1.6, shin=36)
+    I.add(I.E(1.5, 1.38, 0.24, 0.16), "#0e3622", gloss=1.4, shin=30)
+    I.add(I.T([(1.5, 1.44), (1.5, 1.7), (1.58, 1.9)], [0.1, 0.07, 0.025]), "#0c2a1a", mode="max", gloss=1.4, shin=30)
 
 @icon("hornet_stinger", 2, 2, ["X.", "XX"])
 def hornet_stinger(I):          # banded hornet abdomen tip and its curved sting
@@ -262,18 +269,19 @@ def mantis_forelimb(I):         # raptorial foreleg folded at the knee, rows of 
         I.add(I.T([(x, 2.5), (x + 0.04, 2.4)], [0.02, 0.005]), "#d0d8a0", mode="over")
 
 @icon("silk_bundle", 3, 3, [".X.", "XXX", ".X."])
-def silk_bundle(I):             # prey wrapped up tight: lumpy silk with loose strands over it
-    I.add(I.E(1.5, 1.5, 0.5, 1.36), "#bcb8ac", gloss=0.5, mottle=0.15)
-    I.add(I.E(1.5, 1.5, 1.36, 0.5), "#bcb8ac", gloss=0.5, mottle=0.15, mode="max")
-    I.add(I.E(1.5, 1.5, 0.6, 0.6), "#c4c0b4", gloss=0.5, mottle=0.15, mode="max")
-    rnd = R(21)
-    for _ in range(70):
-        a = rnd.uniform(0, pi); c = (1.5 + rnd.uniform(-0.6, 0.6), 1.5 + rnd.uniform(-0.6, 0.6))
-        l = rnd.uniform(0.6, 1.4)
-        pts = [(c[0] - math.cos(a) * l, c[1] - math.sin(a) * l), (c[0] + rnd.uniform(-0.08, 0.08), c[1] + rnd.uniform(-0.08, 0.08)), (c[0] + math.cos(a) * l, c[1] + math.sin(a) * l)]
-        I.raise_(I.T(pts, 0.016), 0.012)
-        I.paint(I.T(pts, 0.007), rnd.choice(["#f4f2ec", "#e0dcd2", "#d0ccc0"]), amt=0.7)
-    I.paint(I.E(1.5, 1.5, 0.35, 0.3), "#5a4a3a", amt=0.3, soft=1)
+def silk_bundle(I):             # a spider's silk-wrapped prey: a tight cocoon slung on anchor lines
+    for pts in ([(0.08, 1.5), (1.1, 1.45)], [(2.92, 1.5), (1.9, 1.55)], [(1.5, 0.06), (1.5, 0.4)], [(1.5, 2.94), (1.5, 2.6)]):
+        I.add(I.T(pts, 0.03), "#e8e4da", gloss=0.6, op=0.9)
+    for pts in ([(0.2, 1.3), (1.1, 1.25)], [(0.2, 1.7), (1.1, 1.75)], [(2.8, 1.3), (1.9, 1.3)], [(2.8, 1.7), (1.9, 1.72)]):
+        I.add(I.T(pts, 0.018), "#d8d4c8", gloss=0.4, op=0.85)
+    I.add(I.E(1.5, 1.5, 0.52, 1.12), "#d4d0c4", gloss=0.6, mottle=0.12)
+    for k in range(9):                                 # diagonal wraps of thread round the cocoon
+        y = 0.55 + k * 0.24
+        I.raise_(I.T([(1.0, y + 0.12), (2.0, y - 0.12)], 0.03), 0.02)
+        I.paint(I.T([(1.0, y + 0.12), (2.0, y - 0.12)], 0.012), "#fbf9f2", amt=0.8)
+        I.carve(I.T([(1.0, y + 0.24), (2.0, y)], 0.012), 0.015)
+    I.paint(I.E(1.5, 1.6, 0.3, 0.6), "#7a6450", amt=0.25, soft=1)   # the shadow of whatever is inside
+    leg(I, [(1.92, 1.9), (2.18, 2.05), (2.3, 2.35)], [0.035, 0.03, 0.02], "#3a2a1c")
 
 @icon("bombardier_gland", 2, 1)
 def bombardier_gland(I):        # twin reservoirs feeding a boiling reaction chamber
@@ -426,17 +434,19 @@ def lichen(I):                  # leafy grey-green lichen rosettes on a chip of 
         I.add(I.E(x, y, r, r * 0.8, rot=rnd.uniform(0, pi), z=0.4), rnd.choice(["#8aa080", "#9ab088", "#7a9478", "#b0a860"]), mode="on", gloss=0.1, mottle=0.2)
 
 @icon("mycelium", 1, 4)
-def mycelium(I):                # a rope of white fungal threads with small knots
-    for k in range(6):
-        pts = [(0.5 + math.sin(y * 2.4 + k) * (0.1 + 0.03 * k), y) for y in np.linspace(0.1, 3.9, 30)]
-        I.add(I.T(pts, 0.025), "#d8d0c0", mode="max", gloss=0.3, mottle=0.1, op=0.95)
+def mycelium(I):                # a rope of white fungal threads sprouting little toadstools
+    for k in range(5):
+        pts = [(0.4 + math.sin(y * 2.4 + k) * (0.08 + 0.025 * k), y) for y in np.linspace(0.3, 3.9, 30)]
+        I.add(I.T(pts, 0.03), "#e0d8c8", mode="max", gloss=0.3, mottle=0.1)
     rnd = R(3)
-    for _ in range(40):
-        y = rnd.uniform(0.2, 3.8); x = 0.5 + rnd.uniform(-0.1, 0.1)
+    for _ in range(30):
+        y = rnd.uniform(0.4, 3.8); x = 0.4 + rnd.uniform(-0.1, 0.1)
         a = rnd.uniform(0, 2 * pi)
-        I.add(I.T([(x, y), (x + math.cos(a) * 0.2, y + math.sin(a) * 0.12)], 0.008), "#e8e2d4", mode="max", gloss=0.2, op=0.8)
-    for y in (0.8, 1.9, 3.0):
-        I.add(I.E(0.5, y, 0.1, 0.08), "#c8b8a0", mode="on", gloss=0.2)
+        I.add(I.T([(x, y), (x + math.cos(a) * 0.18, y + math.sin(a) * 0.1)], 0.01), "#efe8da", mode="max", gloss=0.2, op=0.85)
+    for (x, y, s) in ((0.62, 0.32, 1.0), (0.66, 1.55, 0.8), (0.6, 2.75, 0.9)):   # toadstools: stem + cap
+        I.add(I.T([(0.42, y + 0.28 * s), (x, y)], 0.045 * s), "#e8dcc4", mode="max", gloss=0.3)
+        I.add(I.E(x, y - 0.04, 0.22 * s, 0.13 * s, rot=0.3), "#b8784a", gloss=0.9, shin=24, mode="max")
+        I.paint(I.E(x - 0.05, y - 0.08, 0.08 * s, 0.04 * s), "#e8b888", amt=0.6, soft=1)
 
 # ---------------------------------------------------------------------------------------------
 # Bug parts
@@ -482,18 +492,23 @@ def moth_wing(I):               # a dusty moth forewing and hindwing: scales, ba
         I.add(I.T([(x, y), (x + 0.05, y + 0.02)], 0.006), "#6a5a46", mode="over", op=0.7)
 
 @icon("alarm_pheromone", 1, 1)
-def alarm_pheromone(I):         # a bead of red alarm scent in a gland sac, giving off fumes
-    I.add(I.E(0.5, 0.6, 0.3, 0.28), "#8a1810", gloss=1.4, shin=40, mottle=0.1, op=0.9, emit="#2a0400")
-    I.glow(I.E(0.55, 0.66, 0.2, 0.18), "#c03018", 0.8)
-    I.add(I.T([(0.5, 0.34), (0.48, 0.22)], [0.07, 0.05]), "#5a4030", gloss=0.4)
-    for pts in ([(0.5, 0.2), (0.42, 0.1), (0.5, 0.02)], [(0.5, 0.2), (0.62, 0.12), (0.7, 0.04)]):
-        I.add(I.T(pts, 0.02), "#d06a50", op=0.5, gloss=0, emit="#401008")
+def alarm_pheromone(I):         # a glowing bead of red alarm scent, its warning pulsing outward
+    for r, o in ((0.36, 0.7), (0.46, 0.45)):
+        for s in (-1, 1):
+            pts = [(0.5 + s * r * math.cos(a), 0.55 + r * math.sin(a)) for a in np.linspace(-0.7, 0.7, 7)]
+            I.add(I.T(pts, 0.035), "#e04030", op=o, gloss=0, emit="#701008")
+    I.add(I.E(0.5, 0.58, 0.2, 0.22), "#a01c10", gloss=1.6, shin=44, mottle=0.1, emit="#3a0600")
+    I.add(I.T([(0.5, 0.38), (0.5, 0.22)], [0.09, 0.02]), "#a01c10", mode="max", gloss=1.4, shin=40)
+    I.glow(I.E(0.54, 0.62, 0.12, 0.12), "#ff5030", 0.8)
 
 @icon("strider_legs", 1, 3)
-def strider_legs(I):            # two hair-thin water strider legs, velvety and jointed
-    leg(I, [(0.3, 0.1), (0.36, 1.1), (0.26, 2.1), (0.3, 2.85)], [0.03, 0.03, 0.022, 0.015], "#3a3a40", gloss=0.6)
-    leg(I, [(0.68, 0.15), (0.62, 1.25), (0.74, 2.2), (0.7, 2.9)], [0.03, 0.03, 0.022, 0.015], "#2e2e34", gloss=0.6)
-    hairs(I, 40, (lambda x, y: True, (0.2, 0.2, 0.8, 2.8)), "#8a8a98", length=0.04, r=0.004, seed=4, mode="over")
+def strider_legs(I):            # two long water strider legs, their tips dimpling the water
+    for x, y in ((0.3, 2.82), (0.7, 2.88)):
+        I.add(I.E(x, y, 0.2, 0.08, z=0.2), "#3a6a8a", gloss=1.6, shin=40, op=0.7)
+        I.carve(I.E(x, y, 0.1, 0.04), 0.03)
+    leg(I, [(0.3, 0.1), (0.38, 1.1), (0.26, 2.1), (0.3, 2.8)], [0.05, 0.045, 0.032, 0.02], "#5a5660", gloss=0.8, joint="#706a74")
+    leg(I, [(0.68, 0.15), (0.6, 1.25), (0.74, 2.2), (0.7, 2.85)], [0.05, 0.045, 0.032, 0.02], "#4e4a54", gloss=0.8, joint="#686270")
+    hairs(I, 40, (lambda x, y: True, (0.2, 0.2, 0.8, 2.7)), "#a8a8b8", length=0.05, r=0.006, seed=4, mode="over")
 
 @icon("click_beetle_hinge", 1, 1)
 def click_beetle_hinge(I):      # a whole little click beetle, its pronotum ending in sharp rear corners
@@ -507,15 +522,15 @@ def click_beetle_hinge(I):      # a whole little click beetle, its pronotum endi
         I.add(I.T([(0.5 + s * 0.06, 0.08), (0.5 + s * 0.16, 0.02)], 0.01), "#3e2a1c", mode="over")
 
 @icon("cockroach_heart", 1, 1)
-def cockroach_heart(I):         # a dark muscular heart chamber with its aorta and slit valves
-    I.add(I.T([(0.5, 0.06), (0.52, 0.3)], [0.06, 0.08]), "#7a3036", gloss=1.0, shin=30)
-    I.add(I.T([(0.52, 0.2), (0.75, 0.12), (0.9, 0.16)], 0.045), "#6a2a30", gloss=1.0, mode="max")
-    I.add(I.E(0.48, 0.6, 0.3, 0.32, rot=-0.3), "#6a1a20", gloss=1.4, shin=36, mottle=0.15)
-    for (x, y) in ((0.36, 0.5), (0.5, 0.66), (0.62, 0.5)):
-        I.carve(I.E(x, y, 0.06, 0.015, rot=0.4), 0.03)
-    for pts in ([(0.3, 0.42), (0.42, 0.62), (0.4, 0.82)], [(0.6, 0.38), (0.56, 0.6), (0.66, 0.78)]):
-        I.paint(I.T(pts, 0.012), "#3a4a7a", amt=0.6)
-    I.paint(I.E(0.4, 0.5, 0.12, 0.08), "#a84048", amt=0.4, soft=1)
+def cockroach_heart(I):         # a dark, tough little heart that keeps beating: two lobes and an aorta
+    I.add(I.T([(0.5, 0.06), (0.52, 0.3)], [0.06, 0.08]), "#8a3a40", gloss=1.0, shin=30)
+    for s in (-1, 1):
+        I.add(I.E(0.5 + s * 0.19, 0.42, 0.24, 0.23), "#7a1a22", gloss=1.5, shin=36, mottle=0.12, mode="max")
+    I.add(I.P([(0.28, 0.5), (0.72, 0.5), (0.5, 0.88)], bevel=0.2, z=0.2), "#7a1a22", gloss=1.5, shin=36, mottle=0.12, mode="max")
+    I.carve(I.T([(0.5, 0.3), (0.5, 0.48)], 0.02), 0.03)
+    for pts in ([(0.3, 0.36), (0.4, 0.56), (0.44, 0.74)], [(0.66, 0.34), (0.6, 0.56), (0.56, 0.72)]):
+        I.paint(I.T(pts, 0.014), "#4a5a8a", amt=0.6)
+    I.paint(I.E(0.36, 0.36, 0.1, 0.07), "#d07078", amt=0.6, soft=1)
 
 @icon("rhino_horn", 2, 2, ["X.", "XX"])
 def rhino_horn(I):              # the head horn of a rhinoceros beetle, rising from its pronotum
@@ -730,17 +745,18 @@ def cactus_spine(I):            # a long pale spine from a woolly areole
 # Natural finds
 
 @icon("amber", 2, 1)
-def amber(I):                   # a polished resin nugget, deep and clear, a gnat sealed inside
-    I.add(I.E(1.0, 0.5, 0.9, 0.4, rot=0.05, z=0.8), "#6a2e04", gloss=2.0, shin=70, mottle=0.25, op=0.92)
-    I.paint(I.E(1.15, 0.62, 0.55, 0.24), "#a85a0a", amt=0.6, soft=1)
-    I.glow(I.E(1.2, 0.64, 0.45, 0.2), "#4a2000", 1)
-    I.paint(I.E(1.05, 0.5, 0.05, 0.13), "#140802")
-    I.paint(I.E(1.05, 0.38, 0.04, 0.04), "#140802")
+def amber(I):                   # a polished nugget of golden resin with a gnat sealed inside
+    I.add(I.E(1.0, 0.5, 0.88, 0.4, rot=0.05, z=0.7, flat=0.25), "#b05e08", gloss=2.2, shin=70, mottle=0.2, op=0.9)
+    I.paint(I.E(1.1, 0.6, 0.6, 0.26), "#f0a828", amt=0.6, soft=1)
+    I.glow(I.E(1.15, 0.62, 0.5, 0.22), "#7a3800", 1)
+    I.paint(I.E(1.0, 0.52, 0.06, 0.15), "#1a0a02")            # the gnat: body, head, wings, legs
+    I.paint(I.E(1.0, 0.36, 0.05, 0.05), "#1a0a02")
     for s in (-1, 1):
-        I.paint(I.E(1.05 + s * 0.13, 0.43, 0.13, 0.045, rot=s * 0.5), "#4a2a0c", amt=0.8)
-        for k in (-0.06, 0.02, 0.08):
-            I.paint(I.T([(1.05, 0.5 + k), (1.05 + s * 0.14, 0.6 + k)], 0.006), "#140802", amt=0.9)
-    speck(I, 14, in_ell(1.0, 0.5, 0.8, 0.32), "#d89a40", seed=3, size=(0.006, 0.012), amt=0.7)
+        I.paint(I.E(1.0 + s * 0.16, 0.44, 0.16, 0.06, rot=s * 0.5), "#5a3410", amt=0.9)
+        for k in (-0.06, 0.03, 0.1):
+            I.paint(I.T([(1.0, 0.52 + k), (1.0 + s * 0.16, 0.62 + k)], 0.008), "#1a0a02", amt=0.9)
+    I.paint(I.E(0.6, 0.32, 0.22, 0.06, rot=-0.2), "#fff0c0", amt=0.6, soft=1)
+    speck(I, 10, in_ell(1.0, 0.5, 0.8, 0.32), "#ffd070", seed=3, size=(0.008, 0.014), amt=0.6)
 
 @icon("quartz_crystal", 1, 2)
 def quartz_crystal(I):          # a clear hexagonal point: bright facet, shaded facet, cloudy base
@@ -834,6 +850,486 @@ def fulgurite(I):               # a branching tube of lightning-fused sand, glas
     for (x, y) in ((0.45, 0.1), (1.85, 1.45), (0.52, 2.9)):
         I.add(I.E(x, y, 0.07, 0.05), "#c8d8e0", mode="on", gloss=1.8, shin=50, op=0.85, emit="#304050")
 
+# --- Cursed items (round: nectar economy). Pale, sickly or gilded, with a violet glow.
+
+@icon("honeypot_ant", 1, 1)
+def honeypot_ant(I):            # a honeypot ant: a tiny dark head and thorax on a swollen amber belly
+    I.add(I.E(0.56, 0.6, 0.34, 0.3), "#c07812", gloss=1.7, shin=50, op=0.85, emit="#2a1400")
+    I.paint(I.E(0.6, 0.66, 0.24, 0.2), "#f0b438", amt=0.6, soft=1)
+    for k in range(3):
+        I.carve(I.T([(0.3 + k * 0.17, 0.33 + k * 0.02), (0.36 + k * 0.17, 0.88 - k * 0.02)], 0.012), 0.015)
+    I.add(I.E(0.22, 0.34, 0.1, 0.08), "#2a1a12", gloss=0.9, shin=30)
+    I.add(I.E(0.1, 0.26, 0.08, 0.07), "#24160e", gloss=0.9, shin=30)
+    for a, b in (((0.2, 0.38), (0.12, 0.56)), ((0.24, 0.38), (0.3, 0.56)), ((0.16, 0.3), (0.04, 0.44))):
+        I.add(I.T([a, b], [0.02, 0.012]), "#2a1a12", gloss=0.5)
+    I.add(I.T([(0.06, 0.22), (0.02, 0.08)], [0.012, 0.006]), "#2a1a12", gloss=0.5)
+    I.add(I.E(0.46, 0.44, 0.07, 0.04, rot=-0.5), "#fff0c0", mode="on", gloss=1, emit="#b08040")
+
+@icon("foragers_leaf", 2, 1)
+def foragers_leaf(I):           # a leaf scout ants have marked: a chewed edge and a dotted scent trail
+    pts = []
+    for t in np.linspace(0, 1, 24):
+        x = 0.1 + t * 1.8
+        w = 0.38 * math.sin(t * pi) ** 0.75
+        pts.append((x, 0.5 - w))
+    pts += [(x, 1.0 - y) for (x, y) in reversed(pts)]
+    I.add(I.P(pts, bevel=0.1, z=0.04), "#4e7a2c", gloss=0.35, mottle=0.2)
+    I.carve(I.T([(0.1, 0.5), (1.9, 0.5)], 0.02), 0.03)
+    for x in (1.2, 1.38, 1.56):
+        I.carve(I.E(x, 0.16, 0.09, 0.07), 0.06)
+        I.paint(I.E(x, 0.16, 0.1, 0.08), "#8a6a2a", amt=0.7, soft=0.5)
+    for k, x in enumerate(np.linspace(0.3, 1.65, 8)):
+        I.add(I.E(x, 0.62 + 0.06 * math.sin(k * 1.3), 0.035, 0.03), "#f0d070", mode="on", gloss=1.2, emit="#604000")
+
+@icon("hungry_tapeworm", 3, 1, ["XXX"])
+def hungry_tapeworm(I):         # a long pale segmented tapeworm, coiled, with a hooked head
+    pts = [(0.15 + t * 2.7, 0.5 + math.sin(t * 9.0) * 0.22) for t in np.linspace(0, 1, 24)]
+    rs = [0.05 + 0.08 * math.sin(min(1, t * 1.3) * pi) ** 0.5 for t in np.linspace(0, 1, 24)]
+    I.add(I.T(pts, rs), "#d8cfb0", gloss=0.9, shin=24, mottle=0.12)
+    for (x, y) in pts[1:-1]:
+        I.carve(I.E(x, y, 0.012, 0.14), 0.012)
+    I.add(I.E(pts[0][0], pts[0][1], 0.07, 0.07), "#c8b890", mode="max", gloss=1.0)
+    for a in range(6):
+        ang = a / 6 * 2 * pi
+        I.add(I.E(pts[0][0] + math.cos(ang) * 0.06, pts[0][1] + math.sin(ang) * 0.06, 0.012, 0.012), "#6a4a7a", mode="on", gloss=1.2)
+    I.paint(I.T(pts, [r * 0.35 for r in rs]), "#b090c8", amt=0.3)
+
+@icon("glass_wings", 2, 1)
+def glass_wings(I):             # two clear wings, cracked like glass, with a violet sheen
+    for cx, rot in ((0.55, -0.25), (1.45, 0.25)):
+        I.add(I.E(cx, 0.5, 0.46, 0.22, rot=rot, flat=0.6), "#c8d8e8", gloss=2.0, shin=60, op=0.45, mottle=0.15)
+        I.paint(I.E(cx, 0.48, 0.3, 0.12, rot=rot), "#c8a0f0", amt=0.35, soft=1)
+    rnd = R(4)
+    for _ in range(9):
+        x, y = rnd.uniform(0.2, 1.8), rnd.uniform(0.32, 0.68)
+        a = rnd.uniform(0, pi)
+        I.add(I.T([(x, y), (x + math.cos(a) * 0.14, y + math.sin(a) * 0.1)], 0.006), "#f4f8ff", mode="on", gloss=2.0, shin=60)
+    I.add(I.E(1.0, 0.5, 0.07, 0.12), "#3a3040", gloss=1.0, shin=30)
+
+@icon("fools_gold_scarab", 1, 1)
+def fools_gold_scarab(I):       # a brassy gilded scarab, too shiny to be real
+    I.add(I.E(0.5, 0.56, 0.34, 0.3, z=0.6), "#b8902a", gloss=2.0, shin=50, mottle=0.1)
+    I.carve(I.T([(0.5, 0.3), (0.5, 0.84)], 0.012), 0.03)
+    I.add(I.E(0.5, 0.22, 0.16, 0.1), "#8a6a18", gloss=1.8, shin=40)
+    I.paint(I.E(0.38, 0.46, 0.12, 0.08), "#fff0a0", amt=0.6, soft=1)
+    I.paint(I.E(0.62, 0.72, 0.1, 0.08), "#7a50a0", amt=0.35, soft=1)
+
+@icon("queens_pheromone", 1, 1)
+def queens_pheromone(I):        # a tiny vial of glowing violet queen scent
+    I.add(I.E(0.5, 0.6, 0.26, 0.28), "#d0c8e0", gloss=1.8, shin=60, op=0.6)
+    I.add(I.E(0.5, 0.66, 0.2, 0.18), "#9a58d8", mode="on", gloss=1.4, emit="#4a2070", op=0.9)
+    I.add(I.T([(0.5, 0.36), (0.5, 0.18)], 0.08), "#d0c8e0", gloss=1.6, op=0.7)
+    I.add(I.E(0.5, 0.14, 0.1, 0.06), "#6a4a2a", gloss=0.6)
+
+@icon("bullet_ant_venom", 1, 2)
+def bullet_ant_venom(I):        # a huge black bullet ant stinger dripping violet venom
+    I.add(I.E(0.5, 0.62, 0.32, 0.42), "#2a1810", gloss=1.2, shin=30, mottle=0.12)
+    for k in range(3):
+        I.carve(I.E(0.5, 0.42 + k * 0.2, 0.3, 0.012), 0.02)
+    I.add(I.T([(0.5, 1.0), (0.52, 1.4), (0.46, 1.72)], [0.12, 0.05, 0.01]), "#1a0e08", gloss=1.6, shin=40)
+    I.add(I.E(0.46, 1.84, 0.06, 0.08), "#b060f0", mode="on", gloss=1.6, emit="#4a1080", op=0.9)
+
+@icon("parasitoid_egg", 2, 2, ["X.", "XX"])
+def parasitoid_egg(I):          # a cluster of glossy wasp eggs in a rotting larva
+    I.add(I.T([(0.5, 0.15), (0.5, 1.3), (1.4, 1.55), (1.85, 1.5)], [0.26, 0.3, 0.26, 0.18]), "#7a6448", gloss=0.5, mottle=0.25)
+    for (x, y) in ((0.42, 0.45), (0.6, 0.8), (0.45, 1.15), (0.95, 1.4), (1.35, 1.5), (1.7, 1.46)):
+        I.add(I.E(x, y, 0.2, 0.13, rot=0.6, z=0.5), "#f4eedc", gloss=1.8, shin=40)
+        I.paint(I.E(x - 0.03, y - 0.02, 0.05, 0.04), "#c090e8", amt=0.5)
+    I.paint(I.E(1.0, 1.4, 0.6, 0.25), "#6a5070", amt=0.25, soft=1)
+
+# ---- Batch 2 (2026-11-18): 27 new items --------------------------------------------------
+
+@icon("flea_legs", 1, 2)
+def flea_legs(I):               # a flea's big folded jumping leg: thick femur, bent shin, claw
+    leg(I, [(0.62, 0.12), (0.42, 0.95), (0.7, 1.45), (0.4, 1.88)], [0.15, 0.11, 0.06, 0.03], "#7a4a24", gloss=1.2, joint="#5a3418")
+    I.paint(I.T([(0.6, 0.2), (0.45, 0.9)], 0.05), "#c08a50", amt=0.5, soft=1)
+    hairs(I, 30, (lambda x, y: True, (0.3, 0.2, 0.8, 1.8)), "#3a2410", length=0.06, r=0.008, seed=5, mode="over")
+    I.add(I.T([(0.4, 1.88), (0.3, 1.92)], 0.02), "#2a180a", gloss=0.8)
+
+@icon("springtail_tail", 1, 1)
+def springtail_tail(I):         # a plump grey-blue springtail with its forked tail cocked underneath
+    I.add(I.E(0.46, 0.44, 0.22, 0.3, rot=0.2), "#6a7a96", gloss=0.8, shin=20, mottle=0.25)
+    I.add(I.E(0.4, 0.18, 0.13, 0.11), "#58688a", gloss=0.8, mode="max")
+    for s in (-1, 1):
+        I.add(I.T([(0.4 + s * 0.06, 0.1), (0.4 + s * 0.2, -0.0 + 0.04)], 0.018), "#4a5878", gloss=0.5)
+    I.add(I.T([(0.52, 0.7), (0.68, 0.86), (0.82, 0.78)], 0.035), "#c8cce0", gloss=1.2, mode="max")
+    I.add(I.T([(0.52, 0.7), (0.62, 0.92), (0.78, 0.92)], 0.035), "#c8cce0", gloss=1.2, mode="max")
+    speck(I, 20, in_ell(0.46, 0.44, 0.2, 0.28), "#9aa8c8", seed=4, size=(0.012, 0.02), amt=0.6)
+
+@icon("snail_slime", 2, 1)
+def snail_slime(I):             # a glistening smear of slime with a little snail at its end
+    I.add(I.T([(0.12, 0.62), (0.6, 0.5), (1.1, 0.62), (1.45, 0.55)], [0.08, 0.13, 0.12, 0.1], z=0.4), "#a8c8d8", gloss=2.2, shin=60, op=0.75)
+    I.add(I.E(1.65, 0.5, 0.26, 0.24), "#b07a40", gloss=1.4, shin=30, mottle=0.2)
+    for k in range(3):
+        I.carve(I.T([(1.65 + 0.18 * math.cos(a), 0.5 + 0.18 * math.sin(a) * 0.9) for a in np.linspace(k * 2.1, k * 2.1 + 2.4, 6)], 0.012), 0.03)
+    I.add(I.T([(1.4, 0.68), (1.88, 0.7)], [0.08, 0.05]), "#8a8070", gloss=1.4, mode="max")
+    I.paint(I.T([(0.3, 0.5), (1.2, 0.5)], 0.03), "#f0faff", amt=0.7)
+
+@icon("nymph_gill", 1, 2)
+def nymph_gill(I):              # a dragonfly nymph from above: wide head, big eyes, tapering body
+    I.add(I.E(0.5, 1.15, 0.24, 0.62), "#5a6a34", gloss=0.8, mottle=0.3)
+    for k in range(5):
+        I.carve(I.T([(0.3, 0.8 + k * 0.17), (0.7, 0.8 + k * 0.17)], 0.014), 0.03)
+    I.add(I.E(0.5, 0.42, 0.3, 0.22), "#4e5e2e", gloss=0.9, mode="max")
+    for s in (-1, 1):
+        I.add(I.E(0.5 + s * 0.22, 0.34, 0.1, 0.1), "#2a3a4a", gloss=1.8, shin=50, mode="on")
+        leg(I, [(0.5 + s * 0.2, 0.7), (0.5 + s * 0.4, 0.85), (0.5 + s * 0.44, 1.1)], [0.03, 0.025, 0.015], "#3e4a24")
+    for k in (-1, 0, 1):
+        I.add(I.T([(0.5 + k * 0.05, 1.72), (0.5 + k * 0.14, 1.95)], [0.03, 0.01]), "#6a7a3a", gloss=0.6)
+    I.add(I.E(0.5, 1.98, 0.08, 0.04), "#a8d8f0", gloss=2, op=0.7, emit="#103040")
+
+@icon("thistle_down", 1, 1)
+def thistle_down(I):            # a thistle seed on its silky parachute of white hairs
+    rnd = R(9)
+    for k in range(22):
+        a = -pi / 2 + rnd.uniform(-1.3, 1.3)
+        l = rnd.uniform(0.3, 0.42)
+        I.add(I.T([(0.5, 0.62), (0.5 + math.cos(a) * l, 0.62 + math.sin(a) * l)], [0.012, 0.006]), "#f0ece0", gloss=0.4, op=0.9, mode="max")
+    I.add(I.E(0.5, 0.78, 0.07, 0.14), "#8a6a40", gloss=0.8, mottle=0.3)
+    I.add(I.T([(0.5, 0.64), (0.5, 0.7)], 0.025), "#c8b890", gloss=0.4)
+
+@icon("monarch_wing", 2, 2)
+def monarch_wing(I):            # an orange monarch wing with black veins and white-spotted border
+    fore = [(0.15, 0.2), (1.85, 0.12), (1.7, 0.6), (1.2, 1.05), (0.25, 0.95)]
+    hind = [(0.3, 0.95), (1.2, 1.0), (1.45, 1.5), (0.9, 1.88), (0.35, 1.55)]
+    for pts in (hind, fore):
+        I.add(I.P(pts, bevel=0.08, z=0.05), "#e07a18", gloss=0.6, mottle=0.15, mode="max")
+    for pts in ([(0.2, 0.25), (1.6, 0.35)], [(0.25, 0.5), (1.4, 0.75)], [(0.3, 0.8), (1.05, 1.0)], [(0.5, 0.25), (0.9, 0.95)],
+                [(0.4, 1.05), (1.25, 1.35)], [(0.45, 1.25), (0.9, 1.8)], [(0.6, 1.0), (1.3, 1.6)]):
+        I.paint(I.T(pts, 0.03), "#1a0e08")
+    for pts in (fore, hind):
+        n = len(pts)
+        for i in range(n):
+            I.paint(I.T([pts[i], pts[(i + 1) % n]], 0.08), "#1a0e08")
+    rnd = R(3)
+    for (a, b) in ((fore[1], fore[2]), (fore[2], fore[3]), (hind[2], hind[3]), (hind[3], hind[4])):
+        for t in np.linspace(0.15, 0.85, 4):
+            x, y = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+            I.paint(I.E(x, y, 0.025, 0.025), "#f4f0e8")
+    I.add(I.T([(0.12, 0.25), (0.22, 1.3)], [0.06, 0.04]), "#1a120c", gloss=0.8)
+
+@icon("spittlebug_foam", 2, 2, ["X.", "XX"])
+def spittlebug_foam(I):         # a mound of white froth on a grass stem, a green nymph peeking out
+    I.add(I.T([(0.45, 0.05), (0.5, 1.2), (1.9, 1.6)], 0.05), "#5a8a3a", gloss=0.6)
+    rnd = R(12)
+    for _ in range(70):
+        t = rnd.random()
+        if t < 0.55:
+            x, y = 0.5 + rnd.uniform(-0.3, 0.3), 0.3 + rnd.uniform(0, 1.2)
+        else:
+            x, y = 0.6 + rnd.uniform(0, 1.2), 1.5 + rnd.uniform(-0.3, 0.3)
+        r = rnd.uniform(0.05, 0.11)
+        I.add(I.E(x, y, r, r), "#eef0ea", gloss=1.6, shin=40, mode="max", op=0.9)
+    I.add(I.E(0.95, 1.42, 0.14, 0.1), "#7ab040", gloss=1.2, mode="on")
+    I.paint(I.E(1.02, 1.38, 0.03, 0.03), "#200a0a")
+
+@icon("sundew_leaf", 2, 1)
+def sundew_leaf(I):             # a sundew leaf: red tentacles each tipped with a glittering drop
+    I.add(I.T([(0.08, 0.6), (0.6, 0.55)], 0.04), "#6a8a3a", gloss=0.5)
+    I.add(I.E(1.15, 0.5, 0.62, 0.3), "#8a3a2a", gloss=0.7, mottle=0.2)
+    rnd = R(4)
+    for _ in range(26):
+        a = rnd.uniform(0, 2 * pi)
+        d = rnd.uniform(0.6, 1.0)
+        x0, y0 = 1.15 + math.cos(a) * 0.62 * d * 0.7, 0.5 + math.sin(a) * 0.3 * d * 0.7
+        x1, y1 = 1.15 + math.cos(a) * 0.62 * (d + 0.15), 0.5 + math.sin(a) * 0.3 * (d + 0.25)
+        I.add(I.T([(x0, y0), (x1, y1)], 0.012), "#c03a30", gloss=0.6, mode="on")
+        I.add(I.E(x1, y1, 0.05, 0.05), "#ffe8d8", gloss=2.4, shin=60, mode="on", op=0.9, emit="#603020")
+
+@icon("antlion_sand", 1, 1)
+def antlion_sand(I):            # a cone-shaped sand pit with an antlion's jaws at the bottom
+    I.add(I.E(0.5, 0.52, 0.44, 0.4, z=0.4), "#c8a868", gloss=0.2, mottle=0.3, mscale=0.05, grain=0.02)
+    I.carve(I.E(0.5, 0.54, 0.32, 0.28), 0.18)
+    speck(I, 60, in_ell(0.5, 0.52, 0.42, 0.38), "#8a6a38", seed=7, size=(0.008, 0.016), amt=0.7)
+    for s in (-1, 1):
+        I.add(I.T([(0.5 + s * 0.04, 0.6), (0.5 + s * 0.16, 0.46), (0.5 + s * 0.08, 0.38)], [0.03, 0.02, 0.01]), "#4a2a14", gloss=1.2, mode="on")
+    I.paint(I.E(0.5, 0.62, 0.06, 0.04), "#3a2010")
+
+@icon("bolas_thread", 1, 3)
+def bolas_thread(I):            # a silk line hanging from a twig, a sticky glistening blob at its end
+    I.add(I.T([(0.1, 0.18), (0.9, 0.12)], 0.06), "#6a4a2a", gloss=0.4, mottle=0.3)
+    I.add(I.E(0.5, 0.32, 0.13, 0.12), "#e0c890", gloss=0.6, mode="max")      # the spider
+    I.add(I.T([(0.5, 0.42), (0.52, 1.6), (0.48, 2.5)], 0.016), "#f0ecdc", gloss=1.2, op=0.9)
+    I.add(I.E(0.48, 2.62, 0.2, 0.2), "#e8d8a0", gloss=2.2, shin=60, op=0.85, emit="#302810")
+    I.paint(I.E(0.42, 2.55, 0.06, 0.05), "#fffbe8", amt=0.8)
+
+@icon("pea_pod", 2, 1)
+def pea_pod(I):                 # a split pea pod, three round green peas inside
+    I.add(I.T([(0.12, 0.5), (1.0, 0.42), (1.86, 0.5)], [0.08, 0.28, 0.08]), "#6a9a3a", gloss=0.8, mottle=0.15)
+    I.carve(I.T([(0.3, 0.45), (1.0, 0.38), (1.7, 0.45)], [0.04, 0.16, 0.04]), 0.12)
+    for x in (0.62, 1.0, 1.38):
+        I.add(I.E(x, 0.42, 0.14, 0.13), "#8ac850", gloss=1.4, shin=30, mode="on")
+    I.add(I.T([(1.86, 0.5), (1.96, 0.36)], 0.025), "#4a6a24", gloss=0.4)
+
+@icon("seed_cache", 2, 1)
+def seed_cache(I):              # a little heap of mixed seeds: sunflower, acorn, grains
+    rnd = R(6)
+    pts = [(0.35, 0.62), (0.7, 0.68), (1.05, 0.62), (1.4, 0.66), (1.65, 0.6), (0.55, 0.4), (0.9, 0.38), (1.25, 0.4), (1.05, 0.2)]
+    for i, (x, y) in enumerate(pts):
+        kind = i % 3
+        a = rnd.uniform(-1, 1)
+        if kind == 0:
+            I.add(I.E(x, y, 0.2, 0.1, rot=a), "#3a3028", gloss=1.0, mode="max")
+            I.paint(I.T([(x - math.cos(a) * 0.16, y - math.sin(a) * 0.16), (x + math.cos(a) * 0.16, y + math.sin(a) * 0.16)], 0.015), "#c8c0a8", amt=0.8)
+        elif kind == 1:
+            I.add(I.E(x, y, 0.14, 0.12), "#a87038", gloss=1.4, shin=30, mode="max")
+            I.add(I.E(x, y - 0.08, 0.15, 0.06), "#6a4a24", mode="max")
+        else:
+            I.add(I.E(x, y, 0.12, 0.08, rot=a), "#d8b860", gloss=1.0, mode="max")
+
+@icon("pollen_basket", 1, 1)
+def pollen_basket(I):           # a bumblebee hind leg with a fat yellow ball of pollen packed on it
+    leg(I, [(0.15, 0.12), (0.4, 0.45), (0.62, 0.78), (0.88, 0.9)], [0.06, 0.08, 0.05, 0.02], "#1e1a16", gloss=0.8)
+    hairs(I, 30, (lambda x, y: True, (0.1, 0.1, 0.9, 0.95)), "#6a5a40", length=0.05, r=0.006, seed=3, mode="over")
+    I.add(I.E(0.5, 0.52, 0.24, 0.22), "#f0b828", gloss=0.6, mottle=0.3, mode="on")
+    speck(I, 40, in_ell(0.5, 0.52, 0.22, 0.2), "#ffe070", seed=5, size=(0.01, 0.02), amt=0.8)
+
+@icon("ladybug_spots", 1, 1)
+def ladybug_spots(I):           # a shiny red ladybird from above, seven black spots
+    I.add(I.E(0.5, 0.56, 0.38, 0.36), "#c81e14", gloss=2.0, shin=60)
+    I.add(I.E(0.5, 0.2, 0.22, 0.12), "#1a1410", gloss=1.4, shin=40, mode="max")
+    for s in (-1, 1):
+        I.paint(I.E(0.5 + s * 0.12, 0.17, 0.05, 0.04), "#f0ece0")
+    I.carve(I.T([(0.5, 0.24), (0.5, 0.92)], 0.012), 0.04)
+    for (x, y, r) in ((0.5, 0.32, 0.07), (0.3, 0.45, 0.07), (0.7, 0.45, 0.07), (0.28, 0.7, 0.06), (0.72, 0.7, 0.06), (0.4, 0.84, 0.05), (0.6, 0.84, 0.05)):
+        I.paint(I.E(x, y, r, r), "#140c08")
+    I.paint(I.E(0.36, 0.4, 0.1, 0.05), "#ff9a80", amt=0.5, soft=1)
+
+@icon("cuckoo_wasp_shell", 1, 1)
+def cuckoo_wasp_shell(I):       # a cuckoo wasp: metallic green-blue head and red-gold abdomen
+    I.add(I.E(0.5, 0.66, 0.24, 0.26), "#b83a50", gloss=2.2, shin=60, mottle=0.2)
+    I.paint(I.E(0.46, 0.62, 0.14, 0.12), "#f0a040", amt=0.6, soft=1)
+    I.add(I.E(0.5, 0.36, 0.2, 0.13), "#1a8a7a", gloss=2.2, shin=60, mode="max")
+    I.paint(I.E(0.46, 0.33, 0.1, 0.06), "#60c0f0", amt=0.6, soft=1)
+    I.add(I.E(0.5, 0.18, 0.15, 0.09), "#1a5aa0", gloss=2.2, shin=60, mode="max")
+    for s in (-1, 1):
+        I.add(I.T([(0.5 + s * 0.06, 0.12), (0.5 + s * 0.2, 0.02)], 0.015), "#123a5a")
+    speck(I, 30, in_ell(0.5, 0.5, 0.22, 0.4), "#0a2a2a", seed=8, size=(0.006, 0.012), amt=0.5)
+
+@icon("truffle", 1, 1)
+def truffle(I):                 # a knobbly black truffle, one slice showing its marbled inside
+    I.add(I.E(0.46, 0.54, 0.34, 0.32), "#2a201a", gloss=0.4, mottle=0.3)
+    rnd = R(11)
+    for _ in range(26):
+        x, y = 0.46 + rnd.uniform(-0.28, 0.28), 0.54 + rnd.uniform(-0.26, 0.26)
+        I.add(I.E(x, y, 0.05, 0.05), "#3a2c22", mode="on", gloss=0.5)
+    I.add(I.E(0.72, 0.68, 0.16, 0.14, flat=0.6), "#8a6a50", mode="max", gloss=0.3)
+    for k in range(4):
+        I.paint(I.T([(0.62, 0.6 + k * 0.05), (0.8, 0.66 + k * 0.03)], 0.008), "#f0e0c8", amt=0.8)
+
+@icon("hercules_horn", 1, 3)
+def hercules_horn(I):           # a Hercules beetle's long black horn, toothed, with a gold-furred base
+    I.add(I.T([(0.5, 2.8), (0.52, 1.8), (0.46, 0.8), (0.55, 0.12)], [0.2, 0.14, 0.09, 0.03]), "#1a1410", gloss=1.8, shin=50, mottle=0.1)
+    for y in (1.1, 1.45, 1.8):
+        I.add(I.E(0.38, y, 0.06, 0.04), "#1a1410", gloss=1.4, mode="max")
+    I.add(I.E(0.5, 2.7, 0.32, 0.22), "#b89a50", gloss=0.6, mottle=0.3, mode="max")
+    hairs(I, 40, in_ell(0.5, 2.7, 0.3, 0.2), "#e0c070", length=0.05, r=0.008, seed=4, mode="over")
+    I.paint(I.T([(0.44, 2.3), (0.42, 1.0)], 0.03), "#6a5a50", amt=0.6, soft=1)
+
+@icon("tiger_beetle_jaw", 1, 2)
+def tiger_beetle_jaw(I):        # a tiger beetle's sickle mandible, ivory with toothed inner edge
+    I.add(I.T([(0.55, 1.85), (0.62, 1.2), (0.45, 0.6), (0.2, 0.2)], [0.15, 0.12, 0.08, 0.02]), "#e8dcc0", gloss=1.4, shin=40, mottle=0.1)
+    for (x, y) in ((0.66, 1.0), (0.6, 0.72), (0.5, 0.5)):
+        I.add(I.T([(x - 0.08, y), (x + 0.04, y + 0.02)], [0.03, 0.01]), "#d8c8a8", gloss=1.2, mode="max")
+    I.paint(I.T([(0.6, 1.8), (0.55, 1.4)], 0.1), "#3a8a6a", amt=0.8, soft=0.5)
+    I.paint(I.T([(0.25, 0.25), (0.42, 0.55)], 0.04), "#6a4a2a", amt=0.6)
+
+@icon("velvet_ant_sting", 1, 2)
+def velvet_ant_sting(I):        # a velvet ant: fuzzy scarlet and black body, stinger out the back
+    I.add(I.E(0.5, 1.12, 0.3, 0.42), "#1a1210", gloss=0.3, mottle=0.2)
+    I.paint(I.E(0.5, 1.0, 0.3, 0.26), "#e0281c", amt=1)
+    I.paint(I.E(0.5, 1.4, 0.18, 0.06), "#e0281c", amt=1)
+    hairs(I, 60, in_ell(0.5, 1.12, 0.3, 0.4), "#ff5a3a", length=0.04, r=0.008, seed=6, mode="over")
+    I.add(I.E(0.5, 0.56, 0.14, 0.1), "#1a1210", gloss=0.4, mode="max")
+    I.add(I.E(0.5, 0.3, 0.17, 0.14), "#c8241a", gloss=0.4, mode="max")
+    hairs(I, 20, in_ell(0.5, 0.3, 0.16, 0.13), "#ff6a4a", length=0.03, r=0.007, seed=7, mode="over")
+    I.add(I.T([(0.5, 1.5), (0.5, 1.9)], [0.04, 0.008]), "#2a1810", gloss=1.6, shin=40)
+
+@icon("smoldering_bark", 2, 1)
+def smoldering_bark(I):         # a curl of charred bark glowing orange in its cracks
+    I.add(I.P([(0.1, 0.3), (1.8, 0.2), (1.9, 0.7), (0.2, 0.82)], bevel=0.18, z=0.12), "#2a201a", gloss=0.3, mottle=0.3)
+    rnd = R(5)
+    for k in range(7):
+        x = 0.3 + k * 0.23
+        pts = [(x + rnd.uniform(-0.05, 0.05), 0.3), (x + rnd.uniform(-0.08, 0.08), 0.5), (x + rnd.uniform(-0.05, 0.05), 0.72)]
+        I.carve(I.T(pts, 0.025), 0.04)
+        I.paint(I.T(pts, 0.018), "#ff7a1a")
+        I.glow(I.T(pts, 0.03), "#ff5000", 0.9)
+    speck(I, 30, (lambda x, y: True, (0.2, 0.3, 1.8, 0.75)), "#5a5048", seed=3, size=(0.01, 0.02), amt=0.5)
+
+@icon("pill_bug_plates", 2, 2)
+def pill_bug_plates(I):         # a pill bug rolled into a tight ball, its plates banding round it
+    I.add(I.E(1.0, 1.0, 0.8, 0.78), "#5a5a66", gloss=1.4, shin=36, mottle=0.12)
+    for k in range(7):
+        y = 0.35 + k * 0.2
+        w = math.sqrt(max(0.0, 1 - ((y - 1.0) / 0.8) ** 2)) * 0.8
+        I.carve(I.T([(1.0 - w, y - 0.04), (1.0, y + 0.04), (1.0 + w, y - 0.04)], 0.018), 0.05)
+        I.paint(I.T([(1.0 - w * 0.8, y - 0.09), (1.0 + w * 0.6, y - 0.09)], 0.025), "#9a9aa8", amt=0.4, soft=1)
+    speck(I, 50, in_ell(1.0, 1.0, 0.7, 0.7), "#3a3a44", seed=2, size=(0.008, 0.016), amt=0.5)
+    I.paint(I.E(0.7, 0.6, 0.25, 0.15), "#c0c0d0", amt=0.35, soft=1)
+
+@icon("oak_gall", 1, 1)
+def oak_gall(I):                # a round papery oak gall on a twig, with a wasp's exit hole
+    I.add(I.T([(0.05, 0.25), (0.95, 0.15)], 0.045), "#5a4028", gloss=0.4, mottle=0.3)
+    I.add(I.E(0.5, 0.56, 0.34, 0.33), "#b88a50", gloss=0.9, shin=24, mottle=0.25)
+    speck(I, 30, in_ell(0.5, 0.56, 0.32, 0.3), "#8a5a30", seed=6, size=(0.01, 0.02), amt=0.6)
+    I.carve(I.E(0.62, 0.6, 0.05, 0.05), 0.06)
+    I.paint(I.E(0.62, 0.6, 0.04, 0.04), "#1a1008")
+    I.paint(I.E(0.4, 0.45, 0.12, 0.08), "#e8c890", amt=0.5, soft=1)
+
+@icon("aphid_herd", 2, 1)
+def aphid_herd(I):              # three plump green aphids on a stem, one dripping honeydew
+    I.add(I.T([(0.05, 0.75), (1.95, 0.7)], 0.04), "#5a7a30", gloss=0.5)
+    for i, (x, y) in enumerate(((0.4, 0.48), (1.0, 0.42), (1.58, 0.5))):
+        I.add(I.E(x, y, 0.22, 0.17, rot=0.1), "#8ac040", gloss=1.4, shin=30, mottle=0.15, mode="max")
+        I.add(I.E(x - 0.2, y - 0.02, 0.07, 0.07), "#6a9a30", gloss=1, mode="max")
+        I.paint(I.E(x - 0.22, y - 0.04, 0.02, 0.02), "#2a0a0a")
+        for s in (-1, 1):
+            I.add(I.T([(x + 0.1, y + s * 0.05), (x + 0.2, y + s * 0.1)], 0.012), "#3a5a20", mode="on")
+        I.paint(I.E(x - 0.05, y - 0.08, 0.08, 0.04), "#d0f080", amt=0.5, soft=1)
+    I.add(I.E(1.82, 0.62, 0.06, 0.08), "#f0c050", gloss=2, shin=60, op=0.85)
+
+@icon("bee_bread", 1, 1)
+def bee_bread(I):               # a comb cell packed with layers of bright pollen
+    hexp = [(0.5 + 0.4 * math.cos(a), 0.5 + 0.4 * math.sin(a)) for a in np.linspace(pi / 6, pi / 6 + 2 * pi, 7)[:-1]]
+    I.add(I.P(hexp, bevel=0.1, z=0.14), "#d0a040", gloss=1.2, shin=30)
+    inner = [(0.5 + 0.3 * math.cos(a), 0.5 + 0.3 * math.sin(a)) for a in np.linspace(pi / 6, pi / 6 + 2 * pi, 7)[:-1]]
+    I.carve(I.P(inner, bevel=0.08, z=0.05), 0.04)
+    for k, col in enumerate(("#e8b020", "#c06a20", "#f0d050", "#a8a030")):
+        I.paint(I.E(0.5, 0.5, 0.28 - k * 0.06, 0.28 - k * 0.06), col, amt=0.9)
+    speck(I, 20, in_ell(0.5, 0.5, 0.26, 0.26), "#fff0a0", seed=2, size=(0.01, 0.016), amt=0.5)
+
+@icon("cuckoo_egg", 1, 1)
+def cuckoo_egg(I):              # a speckled cuckoo egg with a faint violet glow and a crack
+    I.add(I.E(0.5, 0.54, 0.28, 0.36), "#d8d0b8", gloss=1.4, shin=36, mottle=0.1)
+    speck(I, 40, in_ell(0.5, 0.54, 0.26, 0.34), "#6a5040", seed=9, size=(0.012, 0.03), amt=0.8)
+    I.paint(I.T([(0.42, 0.3), (0.5, 0.4), (0.44, 0.48), (0.54, 0.56)], 0.012), "#2a1a30")
+    I.glow(I.E(0.5, 0.6, 0.2, 0.25), "#5a2a80", 0.5)
+    I.paint(I.E(0.42, 0.38, 0.08, 0.1), "#ffffff", amt=0.4, soft=1)
+
+@icon("zombie_fungus", 1, 2)
+def zombie_fungus(I):           # a dead ant clinging to a stalk, a fungal spike bursting from its head
+    I.add(I.T([(0.2, 1.95), (0.3, 1.0), (0.25, 0.4)], 0.05), "#6a5a3a", gloss=0.4)
+    for (x, y, rx, ry) in ((0.55, 1.5, 0.16, 0.2), (0.5, 1.2, 0.08, 0.09), (0.46, 1.02, 0.12, 0.1)):
+        I.add(I.E(x, y, rx, ry), "#3a2418", gloss=1.0, shin=24, mode="max")
+    leg(I, [(0.5, 1.25), (0.32, 1.3), (0.3, 1.1)], [0.025, 0.02, 0.015], "#2a1810")
+    leg(I, [(0.55, 1.35), (0.34, 1.55), (0.3, 1.45)], [0.025, 0.02, 0.015], "#2a1810")
+    I.add(I.T([(0.48, 0.95), (0.56, 0.5), (0.6, 0.12)], [0.05, 0.035, 0.015]), "#c8a8d0", gloss=0.6, mottle=0.2)
+    I.add(I.E(0.58, 0.55, 0.07, 0.11), "#b090c0", gloss=0.6, mode="max")
+    speck(I, 12, in_ell(0.58, 0.55, 0.07, 0.1), "#5a3a6a", seed=4, size=(0.01, 0.015), amt=0.7)
+    I.glow(I.E(0.58, 0.4, 0.12, 0.3), "#3a1a50", 0.5)
+
+@icon("driver_ant_mandible", 1, 2)
+def driver_ant_mandible(I):     # a driver ant soldier's long hooked jaw, red-brown and sharp
+    I.add(I.T([(0.6, 1.85), (0.68, 1.2), (0.55, 0.55), (0.25, 0.15)], [0.14, 0.11, 0.07, 0.015]), "#7a2a14", gloss=1.6, shin=40, mottle=0.1)
+    I.add(I.T([(0.6, 0.6), (0.42, 0.62)], [0.04, 0.01]), "#7a2a14", gloss=1.4, mode="max")
+    I.add(I.T([(0.65, 1.0), (0.5, 1.02)], [0.04, 0.01]), "#7a2a14", gloss=1.4, mode="max")
+    I.paint(I.T([(0.58, 1.7), (0.6, 1.0)], 0.04), "#c06040", amt=0.6, soft=1)
+    I.paint(I.E(0.3, 0.2, 0.06, 0.06), "#a01010", amt=0.8)
+
+# ---------------------------------------------------------------------------------------------
+# Shore items (beach finds for the crustaceans, src/game/shore.lua)
+
+@icon("spare_shell", 2, 2)
+def spare_shell(I):             # an empty whelk shell, the kind a hermit crab moves into
+    pts = [(0.62 + math.cos(t) * (0.05 + t * 0.05), 0.72 + math.sin(t) * (0.05 + t * 0.05) * 0.8) for t in np.linspace(0, 3.6 * pi, 60)]
+    I.add(I.E(0.95, 0.95, 0.72, 0.6, rot=0.6), "#d8b088", gloss=1.0, shin=30, mottle=0.12)
+    I.add(I.E(0.58, 0.6, 0.36, 0.32, rot=0.6), "#c89a70", gloss=1.0, shin=30, mode="max")
+    I.carve(I.T(pts, 0.03), 0.05)
+    for k in range(5):
+        a = 0.2 + k * 0.35
+        I.paint(I.T([(0.6 + math.cos(a) * 0.4, 0.6 + math.sin(a) * 0.35), (1.0 + math.cos(a) * 0.65, 1.0 + math.sin(a) * 0.55)], 0.04), "#8a5a34", amt=0.6, soft=1)
+    I.add(I.E(1.42, 1.42, 0.3, 0.24, rot=0.6), "#f4dcc0", gloss=1.6, shin=40, mode="max")    # the pearly mouth
+    I.carve(I.E(1.46, 1.46, 0.18, 0.13, rot=0.6), 0.16)
+    I.paint(I.E(1.46, 1.46, 0.16, 0.11, rot=0.6), "#3a2418", amt=0.8)
+    I.paint(I.E(0.7, 0.62, 0.16, 0.08, rot=0.6), "#ffffff", amt=0.35, soft=1)
+
+@icon("sand_dollar", 1, 1)
+def sand_dollar(I):             # a bleached sand dollar with its five-petal star
+    I.add(I.E(0.5, 0.5, 0.4, 0.4, z=0.4), "#ece2cc", gloss=0.5, shin=16, mottle=0.12, grain=0.006, gscale=0.02)
+    for k in range(5):
+        a = -pi / 2 + k * 2 * pi / 5
+        cx, cy = 0.5 + math.cos(a) * 0.16, 0.5 + math.sin(a) * 0.16
+        I.carve(I.E(cx, cy, 0.04, 0.13, rot=a + pi / 2), 0.03)
+        I.paint(I.E(cx, cy, 0.035, 0.12, rot=a + pi / 2), "#a89478", amt=0.7)
+    I.carve(I.E(0.5, 0.5, 0.03, 0.03), 0.03)
+    speck(I, 30, in_ell(0.5, 0.5, 0.38, 0.38), "#c8b898", seed=5, size=(0.01, 0.015), amt=0.6)
+
+@icon("sea_glass", 1, 1)
+def sea_glass(I):               # a frosted, tumbled shard of green bottle glass
+    pts = [(0.22, 0.38), (0.5, 0.18), (0.8, 0.3), (0.82, 0.66), (0.56, 0.84), (0.24, 0.7)]
+    I.add(I.P(pts, bevel=0.5, z=0.22), "#5ab89a", gloss=0.6, shin=10, mottle=0.25, op=0.85)
+    I.glow(I.E(0.52, 0.52, 0.2, 0.18), "#9af0d0", 0.4)
+    I.paint(I.E(0.4, 0.36, 0.1, 0.05, rot=-0.4), "#e8fff4", amt=0.5, soft=1)
+
+@icon("barnacle_cluster", 2, 2, ["X.", "XX"])
+def barnacle_cluster(I):        # little volcano-shaped barnacles crowded on a rock, an L of them
+    I.add(I.F(lambda X, Y: ((((X < 0.95) | (Y > 1.05)) & (X > 0.08) & (Y > 0.08) & (X < 1.92) & (Y < 1.92)), 0.04 + 0.0 * X)), "#5a5650", gloss=0.2, mottle=0.3)
+    rnd = R(21)
+    spots = [(0.5, 0.4), (0.4, 0.9), (0.7, 0.7), (0.45, 1.45), (0.95, 1.5), (1.45, 1.4), (1.5, 1.7), (0.8, 1.2), (0.3, 1.7), (1.2, 1.75)]
+    for (x, y) in spots:
+        r = rnd.uniform(0.16, 0.24)
+        I.add(I.E(x, y, r, r * 0.92, z=0.9), "#d8d2c2", gloss=0.6, shin=18, mottle=0.2, mode="max")
+        I.carve(I.E(x, y - 0.02, r * 0.38, r * 0.3), 0.14)
+        I.paint(I.E(x, y - 0.02, r * 0.34, r * 0.26), "#2a2420", amt=0.9)
+        for k in range(6):
+            a = k / 6 * 2 * pi
+            I.carve(I.T([(x + math.cos(a) * r * 0.45, y + math.sin(a) * r * 0.4), (x + math.cos(a) * r * 0.95, y + math.sin(a) * r * 0.88)], 0.008), 0.02)
+
+@icon("kelp_frond", 1, 2)
+def kelp_frond(I):              # a flat, ruffled blade of brown kelp on a thin stipe with a gas bladder
+    L, R_ = [], []
+    for t in np.linspace(0, 1, 28):
+        y = 0.1 + t * 1.42
+        cx = 0.5 + math.sin(t * 5) * 0.06
+        w = (0.1 + 0.26 * math.sin(min(1, t * 1.3) * pi * 0.9)) * (1 + 0.18 * math.sin(t * 40))
+        L.append((cx - w, y)); R_.append((cx + w, y))
+    I.add(I.P(L + list(reversed(R_)), bevel=0.25, z=0.05), "#5a5a1c", gloss=1.2, shin=26, mottle=0.25, op=0.95)
+    for t in np.linspace(0.05, 0.95, 10):
+        y = 0.1 + t * 1.42
+        I.carve(I.T([(0.5 - 0.2, y + 0.08), (0.5, y), (0.5 + 0.2, y + 0.08)], 0.008), 0.02)
+    I.paint(I.T([(0.5, 0.15), (0.5 + math.sin(5) * 0.06, 1.5)], 0.02), "#b0a050", amt=0.6, soft=1)
+    I.add(I.T([(0.5, 1.5), (0.52, 1.95)], 0.035), "#5a4a1a", gloss=0.6, mode="max")
+    I.add(I.E(0.5, 1.55, 0.11, 0.11), "#8a7a30", gloss=1.8, shin=40, mode="max")
+    I.paint(I.E(0.46, 1.51, 0.04, 0.03), "#ffffff", amt=0.4, soft=1)
+
+@icon("conch_shell", 2, 2)
+def conch_shell(I):             # a pink-lipped queen conch with its knobbed spire
+    I.add(I.E(0.85, 0.85, 0.62, 0.5, rot=0.75), "#e2c098", gloss=0.8, shin=24, mottle=0.15)
+    I.add(I.T([(0.6, 0.6), (0.25, 0.25)], [0.26, 0.05]), "#d0a878", gloss=0.8, shin=24, mode="max")   # spire
+    for k in range(6):
+        t = k / 6
+        x, y = 0.3 + t * 0.6, 0.3 + t * 0.6
+        I.add(I.E(x + 0.18 - t * 0.1, y - 0.12 + t * 0.06, 0.07, 0.07), "#e8cca4", gloss=0.8, mode="max")
+    I.add(I.E(1.3, 1.3, 0.62, 0.4, rot=-0.75, z=0.5), "#f4a8a0", gloss=1.8, shin=40, mode="max")   # the flared pink lip
+    I.carve(I.E(1.25, 1.25, 0.4, 0.2, rot=-0.75), 0.14)
+    I.paint(I.E(1.25, 1.25, 0.38, 0.18, rot=-0.75), "#b85a5a", amt=0.7, soft=1)
+    for k in range(5):
+        I.paint(I.T([(0.5 + k * 0.12, 1.1 - k * 0.04), (0.8 + k * 0.12, 0.6 - k * 0.04)], 0.03), "#9a6a44", amt=0.5, soft=1)
+
+@icon("starfish", 3, 3, [".X.", "XXX", "X.X"])
+def starfish(I):                # a knobbly orange sea star, one arm a little short (growing back)
+    for k in range(5):
+        a = -pi / 2 + k * 2 * pi / 5
+        L = 1.2 if k != 3 else 0.95
+        tip = (1.5 + math.cos(a) * L, 1.42 + math.sin(a) * L)
+        I.add(I.T([(1.5, 1.42), tip], [0.32, 0.08]), "#e0743a", gloss=0.8, shin=20, mottle=0.2, mode="max")
+        for j in range(1, 5):
+            t = j / 5
+            I.add(I.E(1.5 + math.cos(a) * L * t, 1.42 + math.sin(a) * L * t, 0.055 * (1.2 - t), 0.055 * (1.2 - t)), "#f4b070", gloss=1.0, mode="max")
+    I.add(I.E(1.5, 1.42, 0.34, 0.34), "#d8682e", gloss=0.8, shin=20, mode="max")
+    I.add(I.E(1.5, 1.42, 0.07, 0.07), "#f4c080", gloss=1.0, mode="max")
+    speck(I, 50, in_ell(1.5, 1.42, 1.1, 1.1), "#a8401a", seed=7, size=(0.012, 0.02), amt=0.5)
+
+@icon("pearl", 1, 1)
+def pearl(I):                   # a lustrous pearl sitting in half an oyster shell
+    I.add(I.E(0.5, 0.62, 0.42, 0.26, z=0.5), "#7a7a80", gloss=0.4, mottle=0.3)
+    I.add(I.E(0.5, 0.6, 0.34, 0.2, z=0.3), "#e8e4f0", gloss=1.6, shin=40, mottle=0.1, mode="max")
+    I.add(I.E(0.5, 0.48, 0.2, 0.2), "#f4ecf4", gloss=2.2, shin=60, mottle=0.04, mode="max")
+    I.glow(I.E(0.5, 0.48, 0.24, 0.24), "#ffe8f8", 0.4)
+    I.paint(I.E(0.44, 0.41, 0.06, 0.05), "#ffffff", amt=0.7, soft=1)
+    I.paint(I.E(0.56, 0.56, 0.08, 0.04), "#d0b8e0", amt=0.4, soft=1)
+
 
 def build(only=None):
     out = ["-- Inventory icons (generated by tools/make_item_icons.py; edit the generator, not this file).",
@@ -842,9 +1338,7 @@ def build(only=None):
     previews = []
     for iid, cols, rows, shape, seed, fn in ICONS:
         if only and iid not in only: continue
-        I = Icon(cols, rows, shape, seed)
-        fn(I)
-        grid, pal = quantize(I.render())
+        grid, pal = quantize(render_fit(cols, rows, shape, seed, fn))
         previews.append((iid, grid, pal))
         out.append("    {")
         out.append(f'        id = "icon_{iid}",')

@@ -3,6 +3,7 @@ return {
     description = "+8% Damage. Every hit poisons the ant for 2 damage a second (+2 per stack) for 2 seconds.",
     effect = "Every hit poisons the ant for 2 damage a second (+2 per stack) for 2 seconds.",
     rarity = "uncommon",
+    category = "elemental",
     size = { 1, 2 },
     stats = { damage = 8 },
     procs = {

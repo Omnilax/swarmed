@@ -31,9 +31,12 @@ function State.switch(state)
     return State.push(state)
 end
 
+-- Only methods are called: a state may keep plain data under a callback's name (menus keep the
+-- highlighted row in `focus`), and that must not turn a window focus change into a crash.
 function State.call(name, ...)
     local top = State.top()
-    if top and top[name] then return top[name](top, ...) end
+    local fn = top and top[name]
+    if type(fn) == "function" then return fn(top, ...) end
 end
 
 function State.update(dt)

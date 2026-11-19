@@ -9,7 +9,7 @@ local FLASH = { 1, 1, 0.8 }
 return {
     character = "pistol_shrimp",
     branches = {
-        { name = "Water Jet", color = WATER, nodes = {
+        { name = "Water Jet", blurb = "Rapid water pellets", color = WATER, nodes = {
             { id = "ps_jet", tier = 1, ranks = 3, name = "Pressure", desc = "+15% water jet damage per rank.",
               attack = { damage = { mul = 0.15 } } },
             { id = "ps_pop", tier = 2, name = "Bubbly", desc = "Every 3rd pellet pops (was every 6th).",
@@ -25,7 +25,7 @@ return {
                   fx.chain(ctx, ctx.target, 3, 50, ctx.params and ctx.params.damage * 2 or 6, WATER)
               end } } },
         } },
-        { name = "Snap Shot", color = FLASH, nodes = {
+        { name = "Snap Shot", blurb = "One sniper snap through a line", color = FLASH, nodes = {
             { id = "ps_snap", tier = 1, ranks = 3, name = "Bigger Claw", desc = "+15% snap shot damage per rank.",
               secondary = { damage = { mul = 0.15 } } },
             { id = "ps_scd", tier = 2, name = "Hair Trigger", desc = "Snap shot recharges 25% faster.",
@@ -43,7 +43,7 @@ return {
                   fx.nova(ctx, p.x + ctx.ax * range, p.y + ctx.ay * range, 50, 4, FLASH, { stun = 1.5 })
               end } } },
         } },
-        { name = "Cloak", color = { 0.7, 0.8, 0.95 }, nodes = {
+        { name = "Cloak", blurb = "Vanish and strike from nowhere", color = { 0.7, 0.8, 0.95 }, nodes = {
             { id = "ps_quick", tier = 1, ranks = 3, name = "Darting", desc = "+5% speed and +4% dodge per rank.",
               statsMult = { moveSpeed = 0.05 }, stats = { dodge = 4 } },
             { id = "ps_long", tier = 2, name = "Lingering Cloak", desc = "The cloak lasts 1 s longer.",
@@ -63,4 +63,10 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_pistol_sonic", name = "Sonic Snap", desc = "Every snap shot's shockwave also blasts the ants around you away.",
+          procs = { { trigger = "onSpecial", effect = function(ctx)
+              local p = ctx.player
+              fx.nova(ctx, p.x, p.y, 50, 15, { 0.85, 0.95, 1 }, { knockback = 240 })
+          end } } },
 }

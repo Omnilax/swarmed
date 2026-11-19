@@ -5,6 +5,9 @@ local AI = require("src.game.ai")
 
 local RESIN = { 0.95, 0.65, 0.2 }
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { grav = 150, stain = true }
+
 return {
     name = "Resin smear",
     init = function(e) e.st.cd, e.st.ph = love.math.random(), love.math.random() * 6.28 end,
@@ -23,7 +26,7 @@ return {
             st.cd = params.cooldown or 1.3
             AI.sting(e, world, 1)
             p:gum(params.gum or 0.8, params.gumTime or 3.5)
-            world.particles:burst(p.x, p.y, 4, { RESIN }, 30, 25, { grav = 150, stain = true })
+            world.particles:burst(p.x, p.y, 4, { RESIN }, 30, 25, PFX_1)
             if p.gumMul < 0.6 and not world.flags.resinHint then
                 world.flags.resinHint = true
                 world:floatText(p.x, p.y, "Jaws gummed up with resin!", { 1, 0.75, 0.3 }, false)

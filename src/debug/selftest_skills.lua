@@ -60,6 +60,7 @@ return function(wait, shot)
     local world = game.world
     local pl = world.player
     world.spawner.enabled = false
+    world.levelups.disabled = true      -- the classic way: levels give skill points (--levelups tests cards)
 
     -- XP: one per kill, levels give points, the curve climbs
     local sk = pl.skills
@@ -67,6 +68,8 @@ return function(wait, shot)
     assert(sk.level == 0 and sk.points == 0, "fresh bug should start at level 0")
     local e = world:spawnEnemy("worker_ant", pl.x + 30, pl.y)
     require("src.game.combat").damage(world, e, 9999, { noCrit = true })
+    -- (the XP comes as a nectar bead that drifts in once it is inside Pickup Range)
+    for _ = 1, 60 do world:update(1 / 60) end
     assert(sk.xp == 1, "a kill should give 1 XP (got " .. sk.xp .. ")")
     world:grantXP(Skills.xpFor(1) - 1)
     assert(sk.level == 1 and sk.points == 1, "first level should give a skill point")
@@ -76,18 +79,22 @@ return function(wait, shot)
     assert(sk:buy(n1.id), "could not buy a tier 1 node")
     assert(pl.attack.params.damage > hpBefore, "buying Heavy Horn did not raise sweep damage")
     assert(Content.characters:get("rhino_beetle").attack.damage == hpBefore, "skill mods leaked into the character def")
-    -- a run can't buy the whole tree by wave ~20
-    local earned, xp = 0, 0
-    for w = 1, 20 do xp = xp + 3 * 18 * w * (1 + (w - 1) * 0.15) end
-    local lv = 0
+    -- a run can't finish the whole tree by wave ~20 on level points alone: every level gives one
+    -- point (~20k XP by wave 20), skips add more, and the tree still asks for more than the levels
+    local lv, xp = 0, 20000
     while xp >= Skills.xpFor(lv + 1) do xp = xp - Skills.xpFor(lv + 1); lv = lv + 1 end
-    earned = lv
     for _, t in ipairs(Content.skilltrees:all()) do
-        local cost = 0
-        for _, n in pairs(t.nodes) do cost = cost + n.cost * n.ranks end
-        assert(cost > earned, t.id .. " tree is cheap enough to finish in one run")
+        assert(#t.branches == 4 and t.branches[4].kin, t.id .. " tree should have its kin branch")
+        assert(t.signature and t.nodes[t.signature.id] and t.signature.signature, t.id .. " tree needs a signature node")
+        local cost = 0           -- the cheapest full tree: per tier, the fork side that costs least
+        for _, br in ipairs(t.branches) do
+            local byTier = {}
+            for _, n in ipairs(br.nodes) do byTier[n.tier] = math.min(byTier[n.tier] or math.huge, n.ranks * n.cost) end
+            for _, c in pairs(byTier) do cost = cost + c end
+        end
+        assert(cost > lv, t.id .. " tree (" .. cost .. " points) can be finished in one run (" .. lv .. " levels)")
     end
-    print(("[selftest] skills: ~%d points by wave 20, trees cost %d+"):format(earned, 30))
+    print(("[selftest] skills: level %d by wave 20 (every pick skipped = %d points)"):format(lv, lv))
 
     -- the tree screen, via the bag's tab
     world:grantXP(400)

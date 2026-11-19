@@ -1,16 +1,17 @@
 -- Skill tree screen: the SKILLS tab of the bag (Tab / RB / the tab at the top switches). Shows
--- the bug's tree (content/skilltrees) as three branches; spend skill points earned from XP.
--- The game is paused while it is open.
+-- the bug's tree (content/skilltrees) as its three own branches plus the kin branch of its
+-- lineage (content/skillbranches) topped by its signature node. Points come from skipping
+-- level-up cards. The game is paused while it is open.
 --
 -- Mouse/touch: click a node to learn it.  Keys/pad: arrows move, Enter / A learns, Tab / RB goes
--- back to the bag, E / B closes.
+-- back to the bag, I / B closes.
 local State = require("src.core.state")
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
 local Theme = require("src.ui.theme")
 local Skills = require("src.game.skills")
 
-local Tree = { transparent = true, touchControls = "inventory", noTouchScroll = true }
+local Tree = { transparent = true, touchControls = "menu", noTouchScroll = true }
 Tree.__index = Tree
 
 local lg = love.graphics
@@ -34,19 +35,11 @@ end
 
 function Tree:enter() love.mouse.setVisible(true) end
 
--- The bag and this screen are two tabs of one window: swap without unpausing.
-function Tree.openFrom(inv)
-    if inv.held then Audio.play("ui_back") return end
-    State.pop()
-    State.push(Tree.new(inv.game))
-    Audio.play("ui_move")
-end
+-- The bag, this screen and the shop are tabs of one window (src/states/bagtabs.lua): swap
+-- without unpausing.
+function Tree.openFrom(inv) return require("src.states.bagtabs").open(inv, "skills") end
 
-function Tree:toBag()
-    State.pop()
-    State.push(require("src.states.inventory").new(self.game))
-    Audio.play("ui_move")
-end
+function Tree:toBag() return require("src.states.bagtabs").open(self, "bag") end
 
 ----------------------------------------------------------------------------------------------
 -- Layout
@@ -63,12 +56,17 @@ function Tree:layout()
     local area = { x = px + pad, y = py + headH, w = pw - pad * 2, h = ph - headH - infoH - pad }
     local L = { panel = { x = px, y = py, w = pw, h = ph }, pad = pad, area = area,
         info = { x = px + pad, y = py + ph - infoH - pad * 0.5, w = pw - pad * 2, h = infoH }, nodes = {} }
-    if not self.tree then self.L = L return L end
+    if not self.tree then
+        -- no tree (shouldn't happen: custom bugs get a preset one), but the tabs still work
+        L.tabs = require("src.states.bagtabs").layout(self.game, px + pad, py + math.floor(u(10)), Theme.font(18, "bold"):getHeight() + u(6))
+        self.L = L
+        return L
+    end
     local branches = self.tree.branches
     local colW = area.w / #branches
     local maxTier = 1
     for _, n in pairs(self.tree.nodes) do maxTier = math.max(maxTier, n.tier) end
-    local titleH = math.floor(u(26))
+    local titleH = math.floor(u(50))
     local rowH = (area.h - titleH) / maxTier
     local nodeH = math.floor(math.min(rowH * 0.72, u(58)))
     local nodeW = math.floor(math.min(colW * 0.42, u(150)))
@@ -76,7 +74,7 @@ function Tree:layout()
         local cx = area.x + colW * (bi - 0.5)
         L["branch" .. bi] = { x = area.x + colW * (bi - 1), w = colW, cx = cx }
         for _, n in ipairs(br.nodes) do
-            local x = cx + n.col * colW * 0.25 - nodeW / 2
+            local x = cx + n.col * colW * 0.27 - nodeW / 2
             local y = area.y + titleH + (n.tier - 1) * rowH + (rowH - nodeH) / 2
             L.nodes[n.id] = { x = math.floor(x), y = math.floor(y), w = nodeW, h = nodeH }
         end
@@ -84,11 +82,7 @@ function Tree:layout()
     L.titleH = titleH
     -- the tabs in the header
     local f = Theme.font(18, "bold")
-    L.tabs = {
-        { id = "bag", x = px + pad, y = py + math.floor(u(10)), w = f:getWidth("BAG") + u(20), h = f:getHeight() + u(6) },
-    }
-    local t1 = L.tabs[1]
-    L.tabs[2] = { id = "skills", x = t1.x + t1.w + u(6), y = t1.y, w = f:getWidth("SKILLS") + u(20), h = t1.h }
+    L.tabs = require("src.states.bagtabs").layout(self.game, px + pad, py + math.floor(u(10)), f:getHeight() + u(6))
     self.L = L
     return L
 end
@@ -146,12 +140,12 @@ end
 
 function Tree:update(dt)
     self.t = self.t + dt
-    if Input.pressed("inventory") or Input.pressed("ui_back") or Input.pressed("pause") then
-        Input.consume("pause")
+    local Tabs = require("src.states.bagtabs")
+    if Tabs.closing() then
         State.pop()
         return
     end
-    if Input.pressed("ui_tab_next") or Input.pressed("ui_tab_prev") then self:toBag() return end
+    if Tabs.cycle(self, "skills") then return end
     if Input.pressed("ui_left") then self:moveCursor(-1, 0) end
     if Input.pressed("ui_right") then self:moveCursor(1, 0) end
     if Input.pressed("ui_up") then self:moveCursor(0, -1) end
@@ -166,11 +160,10 @@ end
 
 function Tree:mousepressed(x, y, b)
     self:layout()
-    for _, tab in ipairs(self.L.tabs) do
-        if inside(tab, x, y) then
-            if tab.id == "bag" then self:toBag() end
-            return
-        end
+    local tab = require("src.states.bagtabs").hit(self.L.tabs, x, y)
+    if tab then
+        if tab ~= "skills" then require("src.states.bagtabs").open(self, tab) end
+        return
     end
     local n = self:nodeAt(x, y)
     if n then
@@ -185,35 +178,12 @@ function Tree:mousemoved() self.mouseActive = true end
 -- Drawing
 
 local STATUS_TEXT = {
-    available = "Click to learn", poor = "Not enough skill points", locked = "Learn a node above it first",
+    available = "Click to learn", poor = "Not enough skill points: skip a level-up card to earn one", locked = "Learn a node above it first",
     excluded = "Locked: you took the other side of this fork", maxed = "Learned",
 }
 
--- The BAG / SKILLS tabs (shared with the bag screen).
-function Tree.drawTabs(tabs, active, points)
-    local Inv = require("src.states.inventory")
-    local COL = Inv.COL
-    local u = Theme.u
-    lg.setFont(Theme.font(18, "bold"))
-    for _, tab in ipairs(tabs) do
-        local on = tab.id == active
-        lg.setColor(on and COL.frameHi or COL.frameLo)
-        lg.rectangle("fill", tab.x, tab.y, tab.w, tab.h)
-        lg.setColor(on and COL.inner or COL.frame)
-        lg.rectangle("fill", tab.x + 2, tab.y + 2, tab.w - 4, tab.h - 2)
-        Theme.printShadow(tab.id == "bag" and "BAG" or "SKILLS", tab.x, tab.y + u(3), on and COL.label or COL.dim, "center", tab.w)
-        if tab.id == "skills" and points and points > 0 then
-            local r = u(8)
-            local bx, by = tab.x + tab.w - u(2), tab.y + u(2)
-            lg.setColor(0.35, 0.8, 1, 0.9 + 0.1 * math.sin(love.timer.getTime() * 6))
-            lg.circle("fill", bx, by, r)
-            lg.setFont(Theme.font(12, "bold"))
-            lg.setColor(0.05, 0.1, 0.15)
-            lg.printf(tostring(points), bx - r, by - u(7), r * 2, "center")
-            lg.setFont(Theme.font(18, "bold"))
-        end
-    end
-end
+-- The window's tabs (kept for older callers; src/states/bagtabs.lua draws them).
+function Tree.drawTabs(tabs, active) require("src.states.bagtabs").draw(tabs, active) end
 
 function Tree:draw()
     local w, h = lg.getDimensions()
@@ -231,11 +201,12 @@ function Tree:draw()
     lg.rectangle("fill", 0, 0, w, h)
     local P = L.panel
     plate(P.x, P.y, P.w, P.h, COL.frame, true)
-    Tree.drawTabs(L.tabs, "skills", sk.points)
+    require("src.states.bagtabs").draw(L.tabs, "skills", self.game)
 
     -- header: level, points, XP to the next point
     lg.setFont(Theme.font(16))
-    local hx = L.tabs[2].x + L.tabs[2].w + u(24)
+    local lastTab = L.tabs[#L.tabs]
+    local hx = lastTab.x + lastTab.w + u(24)
     Theme.printShadow("LEVEL " .. sk.level, hx, L.tabs[1].y + u(2), COL.label)
     local ptsCol = sk.points > 0 and { 0.45, 0.9, 1 } or COL.dim
     Theme.printShadow(sk.points .. (sk.points == 1 and " point" or " points") .. " to spend", hx + u(90), L.tabs[1].y + u(2), ptsCol)
@@ -268,8 +239,30 @@ function Tree:draw()
             lg.setColor(COL.frameLo)
             lg.rectangle("fill", math.floor(B.x), A.y + u(4), 2, A.h - u(8))
         end
+        if br.kin then
+            -- the kin branch: a faint wash so it reads as the shared lineage column
+            lg.setColor(c[1], c[2], c[3], 0.05)
+            lg.rectangle("fill", math.floor(B.x) + 2, A.y, B.w - 2, A.h)
+        end
         lg.setFont(Theme.font(16, "bold"))
-        Theme.printShadow(br.name:upper(), B.x, A.y + u(6), c, "center", B.w)
+        local spent = sk:spentIn(bi)
+        local title = br.name:upper()
+        Theme.printShadow(title, B.x, A.y + u(5), c, "center", B.w)
+        if spent > 0 then
+            local tf = lg.getFont()
+            local tw = tf:getWidth(title)
+            lg.setFont(Theme.font(13, "bold"))
+            Theme.printShadow(tostring(spent), math.floor(B.x + B.w / 2 + tw / 2 + u(6)), A.y + u(7), { 1, 0.85, 0.4 })
+        end
+        if br.blurb and br.blurb ~= "" then
+            local bf = Theme.font(13)
+            lg.setFont(bf)
+            local _, lines = bf:getWrap(br.blurb, B.w - u(12))
+            lg.setColor(COL.dim)
+            for li = 1, math.min(2, #lines) do
+                lg.printf(lines[li], B.x + u(6), A.y + u(24) + (li - 1) * math.floor(bf:getHeight() * 0.92), B.w - u(12), "center")
+            end
+        end
         -- links to the nodes each one needs
         for _, n in ipairs(br.nodes) do
             local r = L.nodes[n.id]
@@ -316,18 +309,27 @@ function Tree:draw()
         lg.printf(n.desc, I.x + u(12), I.y + u(32), I.w - u(24))
         local stc = st == "available" and Theme.colors.good or (st == "maxed" and { 0.45, 0.9, 1 } or Theme.colors.bad)
         local txt = STATUS_TEXT[st]
-        if st == "available" and not useMouse then txt = "Press " .. (Input.lastDevice == "gamepad" and "A" or "Enter") .. " to learn" end
+        if st == "available" and not useMouse then txt = "Press " .. (Input.lastDevice == "gamepad" and "{pad:a}" or "{key:Enter}") .. " to learn" end
         if st == "excluded" then
             for _, x in ipairs(n.excludes) do
                 if sk:rank(x) > 0 then txt = "Locked: you took " .. self.tree.nodes[x].name end
             end
+        elseif st == "locked" then
+            local names = {}
+            for _, q in ipairs(n.requires) do names[#names + 1] = self.tree.nodes[q].name end
+            txt = "Needs " .. table.concat(names, " or ") .. " first"
+        elseif st == "available" and #n.excludes > 0 then
+            local names = {}
+            for _, x in ipairs(n.excludes) do names[#names + 1] = self.tree.nodes[x].name end
+            txt = txt .. "  ·  fork: closes " .. table.concat(names, ", ")
         end
+        if n.signature and st ~= "maxed" then txt = "SIGNATURE  ·  " .. txt end
         lg.setColor(stc)
-        lg.print(txt, I.x + u(12), I.y + I.h - u(22))
+        Theme.rich(txt, I.x + u(12), I.y + I.h - u(22), I.w - u(24), "left", stc)
     else
         lg.setFont(Theme.font(14))
         lg.setColor(COL.dim)
-        lg.printf("Every ant you kill is 1 XP. Each level is a skill point. You can't learn everything in one run, and forks are either/or: choose a path.",
+        lg.printf("Skip a level-up card to bank a skill point. Three branches are your bug's own, the fourth is its kin, topped by its signature. You can't learn everything in one run, and forks are either/or: choose a path.",
             I.x + u(12), I.y + u(16), I.w - u(24))
     end
 
@@ -360,6 +362,13 @@ function Tree:drawNode(n, r, c, focused)
     lg.setLineWidth(owned and 2 or 1)
     lg.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 3)
     lg.setLineWidth(1)
+    if n.signature then
+        -- signature: a gold double frame and a little crest on top
+        lg.setColor(1, 0.85, 0.4, owned and 1 or 0.7)
+        lg.rectangle("line", r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3, 4)
+        local cx = r.x + r.w / 2
+        lg.polygon("fill", cx, r.y - u(7), cx + u(6), r.y - 1, cx, r.y + u(5), cx - u(6), r.y - 1)
+    end
     if focused then
         lg.setColor(Theme.colors.focus)
         lg.rectangle("line", r.x - 3.5, r.y - 3.5, r.w + 7, r.h + 7, 5)

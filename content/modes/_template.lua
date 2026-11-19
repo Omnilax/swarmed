@@ -2,10 +2,12 @@
 -- how many, how hard, and when the run ends. Everything is optional except name; leave a
 -- field out to get the standard game (content/modes/colony.lua has no overrides at all).
 return {
+    -- icon = "worker_ant",   -- an enemy sprite to show for the mode in mode select
     name = "My Mode",
     tagline = "One short line for the mode list.",
     description = "A sentence or two shown on the mode select screen.",
     order = 50,                 -- position in the mode list
+    group = "challenge",        -- heading it is listed under: "classic", "challenge" or "free"
 
     finalWave = 15,             -- the run is won after this wave (you may keep going); false = no end
 
@@ -20,6 +22,9 @@ return {
     enemies = nil,
     exclude = nil,
     queensAnyWave = false,      -- queens ignore their own minWave (for short species lists)
+    queensAnyBrood = false,     -- queens come even before their brood species has been met (Royal Court)
+    introOnBoss = false,        -- boss waves still bring in a new species
+    introCount = 1,             -- new species per wave (the first gets the banner, the rest join the mix)
     bossPool = nil,             -- enemy ids to use as boss-wave bosses when no queen fits
 
     enemyHp = 1,                -- multiplies every enemy's health
@@ -35,7 +40,24 @@ return {
     -- every rewardEvery levels (0 = never).
     endless = nil,              -- e.g. { levelTime = 40, packGap = 2.4, minGap = 0.5, packSize = 0.6, rewardEvery = 3 }
 
+    -- Scripted waves: every wave spelled out, in order (after the last, the script starts over,
+    -- tougher). Same format the in-game Custom Waves builder saves (src/game/customwaves.lua), so
+    -- Copy Set there gives you text to paste here. See content/modes/gauntlet.lua. Set
+    -- finalWave to #waves, and spawn = { earlyBoost = false } to keep the counts exact.
+    waves = nil,                -- e.g. { { groups = { { "worker_ant", 40 } } },
+                                --        { groups = { { "fire_ant", 20 } }, queen = "queen_fire",
+                                --          mods = { "armored" }, events = { "lawnmower" }, encounter = "sparrow" } }
+
+    -- Mid-wave events / encounters (src/game/director.lua DEFAULTS): eventsFrom, eventAt,
+    -- encounterEvery, eventBonus (extra events every wave). events = false / encounters = false
+    -- switch them off. Wave modifiers: spawn = { modifiers = { from, chance, doubleFrom, double, anyWave } }.
+    director = nil,
+
     -- Before the run, pick starting items from the whole catalogue with a point budget
     -- (cost per rarity, see src/states/loadout.lua).
     chooseItems = nil,          -- e.g. { budget = 12 }
+
+    -- Run rules (src/game/rules.lua): game-changing switches that are never global settings.
+    -- e.g. { difficulty = "soldier", eliteFrequency = 2, mapGambles = "often", routeGates = false }
+    rules = nil,
 }

@@ -1,6 +1,7 @@
 -- Snatch (mantis): its raptorial forelegs shoot out and snap shut on up to `grabs` ants in front.
 -- Hold right click to munch on them (each bite hurts them and heals you); let go to fling the
--- survivors out in a fan where you point. A quick tap snatches and flings at once.
+-- survivors out in a fan where you point. A quick tap snatches and flings at once. Pebbles and
+-- twigs in reach get snatched too, and flung like the ants.
 -- params: damage (fling impact), cooldown, reach (52), grabs (3), bite (damage per bite, 6),
 --         heal (hp per bite, 2), munch (max hold, 1.6 s), distance (fling, 110)
 local Combat = require("src.game.combat")
@@ -14,7 +15,7 @@ return {
     fire = function(player, world, ax, ay, params)
         local reach = (params.reach or 52) * (1 + player.stats:get("area") / 200)
         local ang = math.atan2(ay, ax)
-        local cands = Combat.collect(world, player.x, player.y, reach, function(e, dx, dy)
+        local cands = Grab.collect(world, player.x, player.y, reach, function(e, dx, dy)
             return not e.held and not e.def.boss and math.abs(util.angleDiff(ang, math.atan2(dy, dx))) < 0.55
         end)
         table.sort(cands, function(a, b)
@@ -52,8 +53,10 @@ return {
                 c.biteT = 0.3
                 local h = alive[love.math.random(#alive)]
                 Combat.damage(world, h.e, params.bite or 6, { knockback = 0, noCrit = true, dot = true })
-                player:heal(params.heal or 2)
-                world.particles:burst(h.e.x, h.e.y, 4, { { 0.55, 0.75, 0.3 }, { 0.3, 0.25, 0.2 } }, 40, 30)
+                if not h.e.isProp then     -- gnawing a pebble feeds nobody
+                    player:heal(params.heal or 2)
+                    world.particles:burst(h.e.x, h.e.y, 4, { { 0.55, 0.75, 0.3 }, { 0.3, 0.25, 0.2 } }, 40, 30)
+                end
                 Audio.play("hit", { pitch = 0.9 + love.math.random() * 0.3, volume = 0.5 })
             end
             return

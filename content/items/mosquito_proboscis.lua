@@ -3,6 +3,7 @@ return {
     description = "+3% Life Steal. Critical hits drink 1 HP (+1 per stack).",
     effect = "Critical hits drink 1 HP (+1 per stack).",
     rarity = "uncommon",
+    category = "mend",
     size = { 1, 2 },
     stats = { lifesteal = 3 },
     procs = {

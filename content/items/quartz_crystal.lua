@@ -6,6 +6,7 @@ return {
     description = "+8% Crit Chance. Critical hits arc to 2 more ants (+1 per stack) for half the damage.",
     effect = "Critical hits arc to 2 more ants (+1 per stack) for half the damage.",
     rarity = "rare",
+    category = "elemental",
     size = { 1, 2 },
     stats = { critChance = 8 },
     procs = {

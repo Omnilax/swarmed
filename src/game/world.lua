@@ -15,14 +15,43 @@ local Camera = require("src.game.camera")
 local Player = require("src.game.player")
 local Enemy = require("src.game.enemy")
 local Spawner = require("src.game.spawner")
+local Entries = require("src.game.entries")
 local Inventory = require("src.game.inventory")
 local Hazards = require("src.game.hazards")
 local Elites = require("src.game.elites")
 local Combat = require("src.game.combat")
 local Grab = require("src.game.grab")
 local Daylight = require("src.game.daylight")
+local Lighting = require("src.gfx.lighting")
+local Shading = require("src.gfx.shading")
+local Clarity = require("src.gfx.clarity")
+local CamFx = require("src.gfx.camfx")
+local Ambience = require("src.gfx.ambience")
 local Weather = require("src.game.weather")
 local Cosmetics = require("src.game.cosmetics")
+local RunStats = require("src.game.runstats")
+local Director = require("src.game.director")
+local Nectar = require("src.game.nectar")
+
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.95, 0.7 }
+local PFX_2 = { glow = true, grav = 60 }
+local PFX_3 = { 1, 1, 1 }
+local PFX_4 = { glow = true, grav = 120 }
+local PFX_5 = { 0.55, 0.42, 0.3 }
+local PFX_6 = { 0.4, 0.3, 0.22 }
+local PFX_7 = { grav = 300 }
+local PFX_8 = { 0.75, 0.95, 0.35 }
+local PFX_9 = { glow = true, grav = -15 }
+local PFX_10 = { 0.6, 1, 0.3 }
+local PFX_11 = { glow = true, grav = -10 }
+local PFX_LIST_1 = { PFX_1 }
+local PFX_LIST_2 = { PFX_5, PFX_6 }
+
+-- death spray: options for droplets that do / don't leave a stain, and a scratch colour
+local STAIN, NO_STAIN = { stain = true, grav = 380 }, { stain = false, grav = 380 }
+local DROP = { 0, 0, 0 }
+local function setRGB(t, r, g, b) t[1], t[2], t[3] = r, g, b return t end
 
 local World = {}
 World.__index = World
@@ -30,25 +59,38 @@ World.__index = World
 World.ENEMY_CAP = 2000
 
 -- opts: stage (id), character (id), mode ("run" | "sandbox"), gameMode (content/modes id,
--- default "colony"), startItems (item ids given at the start: the endless mode's loadout)
+-- default "colony"), customWaves (a wave set, src/game/customwaves.lua; Custom Waves mode), startItems (item ids given at the start: the endless mode's loadout)
 function World.new(opts)
     local self = setmetatable({}, World)
     self.mode = opts.mode or "run"
+    -- the run's seed: the daily run passes a fixed one, so its waves are the same for everyone
+    self.seed = opts.seed or (os.time() * 1000 + love.math.random(0, 999))
+    self.daily = opts.daily
+    love.math.setRandomSeed(self.seed)
     self.modeDef = Content.modes:get(opts.gameMode or "colony") or Content.modes:all()[1]
+    -- Custom Waves: the set picked in the wave builder (or the one a saved run carried)
+    if self.modeDef.custom then
+        self.modeDef = require("src.game.customwaves").modeDef(self.modeDef, opts.customWaves)
+        self.customWaves = self.modeDef.set
+    end
     self.gameMode = self.modeDef.id
+    -- run rules (src/game/rules.lua): the main game always plays with the defaults; only a mode
+    -- (a Custom Waves set's rules, a mode file's `rules`) changes them, never Settings
+    require("src.game.rules").begin(self.modeDef.rules)
+    -- danger level of this run (src/config/danger.lua): every level adds one rule
+    self.danger = require("src.game.unlocks").dangerRules(opts.danger or 0)
     -- no stage given: the location picked in Cosmetics
     self.stage = Content.stages:require(opts.stage or Cosmetics.location())
     self.size = self.stage.size
     self.events = Events.new()
     self.time, self.timeScale = 0, 1
     self.enemies, self.enemyCount = {}, 0
-    self.hash = SpatialHash.new(24)
+    self.hash = SpatialHash.new(16)
     self.particles = Particles.new(2500)
     self.ground = Ground.new(self.stage)
     Cosmetics.paintDecor(self.ground, self.stage)
     self.fx, self.texts, self.pendingSplats = {}, {}, {}
     self.corpses = {}
-    self.pickups = {}       -- items lying on the ground
     self.thrown = {}        -- ants flying through the air (src/game/grab.lua)
     self.hazards = Hazards.new(self)
     self.deferred = {}      -- death effects run next frame (so chain reactions can't recurse)
@@ -59,16 +101,25 @@ function World.new(opts)
     self.boss = nil
     -- kills of the last frame ({x, y, id}), so behaviours can react (scatter, rally...)
     self.recentDeaths, self.deathsNow = { n = 0 }, { n = 0 }
-    self.bagFullT = 0
     self.hitstop, self.killsThisFrame, self.hitstopCd, self.decalFadeT = 0, 0, 0, 0
     self.floorBudget = 40   -- bodies that may still leave pools and remains (refills over time)
     self.bonusPicks = 0     -- extra cards in the next item choice (queens slain)
     self.xp = 0             -- XP earned this run (see World:grantXP)
+    -- nectar: the run's currency (src/game/nectar.lua has the API); beads and ground pickups
+    self.nectar, self.nectarEarned, self.nectarSpent = 0, 0, 0
+    self.freezeT = 0        -- frost pickup: every enemy frozen while > 0
+    self.beads = Nectar.new(self)
+    -- a cleared wave sweeps every bead left on the floor to the player
+    self.events:on("wave_cleared", function() self.beads:magnet() end)
     self.milestone = nil
     self.drawList = {}
     self.flags = { god = false, freezeAI = false }
     self.kos, self.combo, self.bestCombo, self.comboTimer = 0, 0, 0, 0
+    -- damage by source, kills by species, hits taken (src/game/runstats.lua)
+    self.runStats = RunStats.new(self)
 
+    -- level-up card picks (src/game/levelups.lua); made before the player, whose skills ask it
+    self.levelups = require("src.game.levelups").new(self)
     local charId = opts.character or Content.characters:all()[1].id
     self.player = Player.new(self, Content.characters:require(charId), self.size / 2, self.size / 2)
     self.spawner = Spawner.new(self, self.stage)
@@ -78,6 +129,34 @@ function World.new(opts)
     local sx, sy = Iso.toScreen(self.player.x, self.player.y)
     self.camera = Camera.new(sx, sy)
     self.weather = Weather.new(self)
+    self.events:on("wave_cleared", function() CamFx.onWaveCleared(self) end)
+    -- frenzy meter, streak buffs, mini-goals, treasure ant, route gates (src/game/rewards.lua)
+    self.rewards = require("src.game.rewards").new(self)
+    -- molting after a queen wave, brood cell chests opening by themselves when the wave ends
+    self.molts = 0
+    self.events:on("wave_cleared", function() self:onWaveClearedMolting() end)
+    self.route = nil        -- the route gate taken into this wave (content/routes), if any
+    -- mid-wave events, boss encounters, stage mechanics, weather effects, props (world.env, world.props)
+    self.director = Director.new(self)
+    -- Gentle Start: systems held back over a new player's first runs, with a "NEW" card each
+    require("src.game.onramp").attach(self)
+    -- artifacts (content/artifacts): run rules switched on before the run
+    require("src.game.artifacts").apply(self, opts.artifacts)
+    -- parasites: the Green Mushroom that cures them sprouts at wave starts (src/game/parasites.lua)
+    require("src.game.parasites").attach(self)
+    -- a keepsake (src/config/keepsakes.lua): one small trade carried into the run
+    require("src.game.keepsakes").apply(self, opts.keepsake)
+    -- queens with phases, the Empress, named champions (src/game/bosses.lua)
+    require("src.game.bosses").attach(self)
+    -- Playtest Log (Settings > Developer): a CSV line per wave in the save folder
+    require("src.game.playlog").attach(self)
+    -- the guided tutorial (content/modes/tutorial.lua): lessons instead of waves
+    require("src.game.lessons").attach(self)
+    -- wave rewards as moments in the arena: the reward bloom, rewards flying in, gain cards
+    self.rewardFlow = require("src.game.rewardflow").new(self)
+    -- kill-dash refunds and chained dashes (src/game/dashtech.lua), the bug's own rule (src/game/bugrules.lua)
+    require("src.game.dashtech").attach(self)
+    require("src.game.bugrules").attach(self)
     -- skin: recoloured in drawing (Cosmetics.shader), or a whole other model
     local skin = Cosmetics.skinFor(charId)
     self.player.skin = skin
@@ -99,7 +178,11 @@ end
 
 function World:hpScale()
     local m = self.modeDef
-    return m.enemyHp * (1 + (self.spawner and math.max(0, self.spawner.wave - 1) * (m.hpPerWave or 0.12) or 0))
+    local sp = self.spawner
+    return m.enemyHp * (1 + (sp and math.max(0, sp.wave - 1) * (m.hpPerWave or 0.12) or 0))
+        * (sp and require("src.game.pacing").hpMul(sp) or 1)
+        * (self.route and self.route.hpMul or 1)
+        * (self.danger and self.danger.hpMul or 1)
 
 end
 
@@ -115,6 +198,15 @@ function World:spawnEnemy(def, x, y, elite)
     local e = Enemy.spawn(self, def, util.clamp(x, def.radius, S - def.radius), util.clamp(y, def.radius, S - def.radius), elite)
     self.enemyCount = self.enemyCount + 1
     self.enemies[self.enemyCount] = e
+    if self.spawner then require("src.game.pacing").onSpawn(self.spawner, e) end
+    -- the first of a species this run (the HUD's first-sighting popup listens)
+    local rs = self.runStats
+    if rs and not rs.seen[def.id] then
+        rs.seen[def.id] = true
+        self.events:emit("species_seen", def, e)
+    end
+    if elite then self.events:emit("elite_spawned", e) end
+    CamFx.onSpawn(self, e)
     return e
 end
 
@@ -134,7 +226,10 @@ function World:killEnemy(e)
     local def = e.def
     self.kos = self.kos + 1
     self.killsThisFrame = self.killsThisFrame + 1
-    self:grantXP(def.xp or 1, e.x, e.y)     -- skill tree XP: 1 per kill (enemy `xp` field)
+    if e.elite or def.boss or def.encounter then Lighting.pop(self, e.x, e.y, def.boss or def.encounter) end
+    -- nectar beads worth the enemy's `xp` (plus a gilded elite's bonusXP): skill XP and
+    -- nectar once collected; maybe a ground pickup (src/game/nectar.lua)
+    if not e.noBeads then self.beads:onKill(e) end
     if self.kos % 100 == 0 then
         self.milestone = { text = self.kos .. " KO!", t = 0 }
         Audio.play("ui_confirm", { pitch = 0.8 })
@@ -182,7 +277,8 @@ function World:killEnemy(e)
         local s = 50 + love.math.random() * 140
         local j = (love.math.random() - 0.5) * 0.1
         self.particles:spawn(e.x, e.y, 3, math.cos(a) * s, math.sin(a) * s, 30 + love.math.random() * 70,
-            1.2, { blood[1] + j, blood[2] + j, blood[3] + j }, 1, { stain = mark and love.math.random() < 0.5, grav = 380 })
+            -- (spawn copies the colour, so one scratch table does for every droplet)
+            1.2, setRGB(DROP, blood[1] + j, blood[2] + j, blood[3] + j), 1, (mark and love.math.random() < 0.5) and STAIN or NO_STAIN)
     end
     -- Body bits: legs and fragments that tumble and stay on the ground.
     for _ = 1, Particles.count(2 + e.radius * 0.6) do
@@ -190,9 +286,9 @@ function World:killEnemy(e)
         local s = 30 + love.math.random() * 90
         local c = gibs[love.math.random(#gibs)]
         self.particles:spawn(e.x, e.y, 4, math.cos(a) * s, math.sin(a) * s, 60 + love.math.random() * 80,
-            1.2, c, love.math.random() < 0.4 and 2 or 1, { stain = mark, grav = 380 })
+            1.2, c, love.math.random() < 0.4 and 2 or 1, mark and STAIN or NO_STAIN)
     end
-    self.particles:burst(e.x, e.y, 2, { { 1, 0.95, 0.7 } }, 40, 30, { glow = true, grav = 60 })
+    self.particles:burst(e.x, e.y, 2, PFX_LIST_1, 40, 30, PFX_2)
 
     -- The body gets knocked away spinning, Warriors style, then stays on the floor as remains.
     if #self.corpses >= 150 then
@@ -204,15 +300,16 @@ function World:killEnemy(e)
             sprite = e.sprite, x = e.x, y = e.y, z = 2, angle = e.angle, scale = e.scale,
             vx = nx * speed, vy = ny * speed, vz = 60 + love.math.random() * 50,
             spin = (love.math.random() - 0.5) * 30, t = 0, life = 0.6, shadow = e.shadow, mark = mark,
+            style = Ambience.styleOf(e.def),
         }
     end
-    Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008 })
+    local ksx, ksy = Iso.toScreen(e.x, e.y)
+    Audio.play("kill", { pitch = 1 + math.min(self.combo, 80) * 0.008, sx = ksx, sy = ksy })
     local elite = e.elite
     if elite then
         local c = Elites.color(elite)
-        self.particles:burst(e.x, e.y, 10, { c, { 1, 1, 1 } }, 90, 70, { glow = true, grav = 120 })
-        -- gilded elites: a burst of bonus XP
-        if elite.bonusXP then self:grantXP(elite.bonusXP, e.x, e.y) end
+        self.particles:burst(e.x, e.y, 10, { c, PFX_3 }, 90, 70, PFX_4)
+        -- gilded elites: a big bead of bonus XP (added in Nectar:onKill)
         if elite.onDeath then
             local x, y = e.x, e.y
             self.deferred[#self.deferred + 1] = function() elite.onDeath(self, x, y, e) end
@@ -222,13 +319,21 @@ function World:killEnemy(e)
         local x, y, info = e.x, e.y, { selfDestruct = e.st.exploded }
         self.deferred[#self.deferred + 1] = function() def.onDeath(self, x, y, def, info) end
     end
+    if def.boss then
+        -- a queen: whatever touches in the bag molts once this wave is cleared, and she leaves a
+        -- brood cell chest behind (src/game/molting.lua, content/props/brood_cell.lua)
+        self.queenThisWave = true
+        local x, y = e.x, e.y
+        self.deferred[#self.deferred + 1] = function() self:dropChest(x, y, "queen") end
+    end
     if self.boss == e then
         self.boss = nil
         -- a slain queen adds one more card to the item choice after the wave
         self.bonusPicks = math.min(2, self.bonusPicks + 1)
+        require("src.game.choices").onQueen(self)   -- and some item choice rerolls back
         self:floatText(e.x, e.y - 20, "+1 ITEM CHOICE", { 1, 0.9, 0.4 }, true)
         self.milestone = { text = def.name:upper() .. " SLAIN", t = 0 }
-        self.hitstop = 0.12
+        self.hitstop = math.max(self.hitstop, self.rewards.cfg.feel.queenStop)
         self.camera:shake(0.6)
         Audio.play("boom", { pitch = 0.6 })
         if decals then
@@ -240,11 +345,50 @@ function World:killEnemy(e)
     end
 end
 
+-- A brood cell chest at (x, y): kind "queen" or "treasure" (odds in src/config/molting.lua).
+-- Walk into it to open it; one still shut when the wave ends opens by itself.
+function World:dropChest(x, y, kind)
+    if not self.props then return nil end
+    local o = self.props:spawn("brood_cell", x, y, { kind = kind or "queen" })
+    self.events:emit("chest_dropped", o)
+    return o
+end
+
+-- Queue a chest's fanfare (src/states/broodcell.lua, opened by Game:update before the item choice).
+function World:openChest(kind, x, y)
+    self.pendingChests = self.pendingChests or {}
+    local list = self.pendingChests
+    list[#list + 1] = { kind = kind or "queen", x = x, y = y }
+end
+
+function World:onWaveClearedMolting()
+    if self.queenThisWave then
+        self.queenThisWave = nil
+        require("src.game.molting").afterQueenWave(self)
+    end
+    -- chests nobody opened pop open now
+    if self.props then
+        for _, o in ipairs(self.props:find("brood_cell")) do o.def.open(self, o) end
+    end
+end
+
+-- An enemy leaves the arena without being killed (a courier gets home, a treasure ant burrows
+-- away): no KO, no XP, no death effects.
+function World:escapeEnemy(e, text)
+    if e.dead then return end
+    e.dead, e.escaped = true, true
+    if self.boss == e then self.boss = nil end
+    self.particles:burst(e.x, e.y, 10, PFX_LIST_2, 60, 50, PFX_7)
+    if text then self:floatText(e.x, e.y, text, { 1, 0.6, 0.4 }, true) end
+    self.events:emit("enemy_escaped", e)
+end
+
 function World:clearEnemies()
     self.boss = nil
     self.hash:clear()
     self.shieldCount = 0
     self.hazards:clear()
+    if self.spawner then require("src.game.entries").clear(self.spawner) end
     self.thrown = {}
     for i = 1, self.enemyCount do
         Enemy.release(self.enemies[i])
@@ -281,58 +425,35 @@ function World:nearestEnemy(x, y, maxR)
 end
 
 ----------------------------------------------------------------------------------------------
--- Loot on the ground
+-- Items
 
 -- A random item instance, weighted by rarity (src/config/rarities.lua) and the current wave.
 function World:rollItem()
     local Rarities = require("src.config.rarities")
     local wave = self.spawner and math.max(1, self.spawner.wave) or 1
+    local inPool = require("src.game.unlocks").inPool
+    local function fits(d) return Rarities[d.rarity].minWave <= wave and not Rarities[d.rarity].cursed and not d.molted end
+    -- only items that are unlocked and in the player's pool (same rule as the item choice)
     local def = Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end,
-        function(d) return Rarities[d.rarity].minWave <= wave end) or Content.items:all()[1]
+        function(d) return fits(d) and inPool(d.id) end)
+        or Content.items:pickWeighted(function(d) return Rarities[d.rarity].weight end, fits)
+        or Content.items:all()[1]
     return Inventory.newItem(def.id)
 end
 
--- Items pop out with a little hop. byPlayer: wait until the player steps away before
--- picking it back up (so dropping from the inventory doesn't instantly re-grab it).
-function World:dropItem(item, x, y, byPlayer)
-    local a = love.math.random() * math.pi * 2
-    self.pickups[#self.pickups + 1] = { item = item, x = x, y = y, z = 4, vz = 90,
-        vx = math.cos(a) * 30, vy = math.sin(a) * 30, t = 0, waitLeave = byPlayer }
+-- Items never lie on the ground. Whatever does not fit in the bag is eaten on the spot
+-- (it heals, like eating it from the inventory).
+function World:overflowItem(item)
+    local p = self.player
+    local hp = p.inventory:eat(item)
+    self:floatText(p.x, p.y, "Bag full: ate " .. item.def.name .. (hp > 0 and (" +" .. hp .. " HP") or ""), { 1, 0.6, 0.4 }, false)
 end
 
--- Give items to the player (into the bag); whatever does not fit lands on the floor.
+-- Give items to the player (into the bag). Returns how many did not fit (and were eaten).
 function World:giveItem(id, n)
-    local p = self.player
-    for _, item in ipairs(p.inventory:add(id, n)) do self:dropItem(item, p.x, p.y, true) end
-end
-
-function World:updatePickups(dt)
-    local p = self.player
-    local reach = 10 + p.stats:get("pickupRange") * 0.25
-    if self.bagFullT > 0 then self.bagFullT = self.bagFullT - dt end
-    for i = #self.pickups, 1, -1 do
-        local k = self.pickups[i]
-        k.t = k.t + dt
-        k.vz = k.vz - 300 * dt
-        k.z = k.z + k.vz * dt
-        if k.z <= 0 then k.z, k.vz, k.vx, k.vy = 0, 0, 0, 0 end
-        k.x = util.clamp(k.x + k.vx * dt, 4, self.size - 4)
-        k.y = util.clamp(k.y + k.vy * dt, 4, self.size - 4)
-        local dx, dy = p.x - k.x, p.y - k.y
-        local d2 = dx * dx + dy * dy
-        if k.waitLeave and d2 > (reach + 14) ^ 2 then k.waitLeave = nil end
-        if not p.dead and not k.waitLeave and k.t > 0.5 and d2 < reach * reach then
-            if p.inventory:give(k.item) then
-                table.remove(self.pickups, i)
-                Audio.play("pickup")
-                local col = util.hex(require("src.config.rarities")[k.item.def.rarity].color)
-                self:floatText(k.x, k.y, k.item.def.name, col, false)
-            elseif self.bagFullT <= 0 then
-                self.bagFullT = 2
-                self:floatText(p.x, p.y, "Bag full! (E)", { 1, 0.5, 0.4 }, false)
-            end
-        end
-    end
+    local left = self.player.inventory:add(id, n)
+    for _, item in ipairs(left) do self:overflowItem(item) end
+    return #left
 end
 
 ----------------------------------------------------------------------------------------------
@@ -346,28 +467,92 @@ function World:addFx(fx)
     self.fx[#self.fx + 1] = fx
 end
 
-function World:damageNumber(x, y, value, crit)
+-- e (optional): the enemy hit. With "Combine Damage Numbers" on, quick hits on the same enemy
+-- add up into one number that keeps counting instead of a spray of small ones.
+function World:damageNumber(x, y, value, crit, e, col)
     local mode = Settings.get("damageNumbers")
     if mode == "off" or (mode == "crits" and not crit) then return end
-    self:floatText(x, y, tostring(value), crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }, crit)
+    if e and Settings.get("combineDamageNumbers") then
+        local t = e._dmgText
+        if t and not t.gone and t.t < 0.45 and t.owner == e then
+            t.value = t.value + value
+            t.text = tostring(t.value)
+            t.t, t.z, t.vz = 0, math.max(t.z, 10), 30
+            t.x, t.y = e.x, e.y
+            if crit and not t.big then t.big, t.color, t.life = true, col or { 1, 0.85, 0.2 }, 0.9 end
+            return
+        end
+        t = self:floatText(x, y, tostring(value), col or (crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }), crit)
+        t.value, t.owner, t.life = value, e, t.life + 0.2
+        e._dmgText = t
+        return
+    end
+    self:floatText(x, y, tostring(value), col or (crit and { 1, 0.85, 0.2 } or { 1, 1, 1 }), crit)
 end
 
--- XP for the skill tree: every kill and bonus sources (gilded elites) go through here. Only
--- bonus amounts (more than 1) float a number, so ordinary kills don't spam the swarm.
-function World:grantXP(amount, x, y)
+-- XP for the skill tree: collected nectar beads (kills) and bonus sources (goals, treasure)
+-- go through here. Only bonus amounts (more than 1) float a number, and `quiet` (bead pickups)
+-- floats none, so sweeping up a trail doesn't spam the screen.
+function World:grantXP(amount, x, y, quiet)
     if not amount or amount <= 0 then return end
+    if self.xpMul then amount = amount * self.xpMul end
     self.xp = (self.xp or 0) + amount
     if self.player and self.player.skills then self.player.skills:gainXP(amount) end
     self.events:emit("xp_gained", amount, x, y)
-    if amount > 1 and x then self:floatText(x, y, "+" .. amount .. " XP", { 0.55, 0.9, 1 }, true) end
+    if amount > 1 and x and not quiet then self:floatText(x, y, "+" .. amount .. " XP", { 0.55, 0.9, 1 }, true) end
+end
+
+----------------------------------------------------------------------------------------------
+-- Nectar (the run's currency; see src/game/nectar.lua for the whole API)
+
+function World:addNectar(amount, x, y)
+    if not amount or amount <= 0 then return end
+    -- a keepsake can change what you earn (src/game/keepsakes.lua)
+    if self.nectarMul then amount = math.max(1, math.floor(amount * self.nectarMul + 0.5)) end
+    self.nectar = self.nectar + amount
+    self.nectarEarned = self.nectarEarned + amount
+    self.events:emit("nectar_changed", self.nectar, amount)
+    if x and amount > 1 then self:floatText(x, y, "+" .. amount .. " nectar", { 1, 0.8, 0.3 }, true) end
+end
+
+function World:canAffordNectar(amount) return self.nectar >= (amount or 0) end
+
+-- Pay `amount`. Returns false (and changes nothing) when the balance is short.
+function World:spendNectar(amount)
+    amount = amount or 0
+    if amount < 0 or self.nectar < amount then return false end
+    if amount == 0 then return true end
+    self.nectar = self.nectar - amount
+    self.nectarSpent = self.nectarSpent + amount
+    self.events:emit("nectar_changed", self.nectar, -amount)
+    return true
+end
+
+function World:dropNectar(x, y, value) return self.beads:drop(x, y, value) end
+function World:magnetNectar() self.beads:magnet() end
+function World:dropPickup(id, x, y) return self.beads:dropPickup(id, x, y) end
+
+-- Every enemy freezes stiff for `t` seconds (no moving, no biting).
+function World:freezeEnemies(t)
+    local was = self.freezeT > 0
+    self.freezeT = math.max(self.freezeT, t or 2)
+    self.frostAt = self.time        -- Frost Dew won't drop again for a while (content/pickups/freeze.lua)
+    if not was then
+        local p = self.player
+        self:addFx({ kind = "ring", x = p.x, y = p.y, r = 160, life = 0.5, color = { 0.6, 0.9, 1 } })
+        Audio.play("zap", { pitch = 0.6 })
+        self.events:emit("enemies_frozen", self.freezeT)
+    end
 end
 
 function World:floatText(x, y, text, color, big)
-    if #self.texts > 50 then table.remove(self.texts, 1) end
-    self.texts[#self.texts + 1] = {
+    if #self.texts > 50 then table.remove(self.texts, 1).gone = true end
+    local t = {
         x = x + (love.math.random() - 0.5) * 8, y = y, z = 14, vz = 40,
         text = text, color = color, big = big, t = 0, life = big and 0.9 or 0.6,
     }
+    self.texts[#self.texts + 1] = t
+    return t
 end
 
 -- Context table handed to proc effects. See content/items/_template.lua.
@@ -377,10 +562,19 @@ function World:procContext(target, damage, crit, depth)
 end
 
 ----------------------------------------------------------------------------------------------
+-- A short freeze for a heavy hit (big punches, molts, encounters). Respects the Hit Stop
+-- setting and is scaled down by rewards feel.stopScale so freezes stay rare and brief.
+function World:hitStop(t)
+    if not Settings.get("hitstop") then return end
+    self.hitstop = math.max(self.hitstop or 0, t * (self.rewards.cfg.feel.stopScale or 1))
+end
+
 -- Update
 
 function World:update(dt)
     dt = dt * self.timeScale * (Settings.get("gameSpeed") / 100)
+    dt = dt * require("src.ui.inspect").timeScale(self)      -- Hold To Inspect
+    dt = dt * self.rewards:timeScale(dt)       -- slow motion on big moments
     if self.queryPool then self.queryPool.n = 0 end
 
     -- Hitstop: freeze the action for a few frames after a big multi-kill.
@@ -390,6 +584,19 @@ function World:update(dt)
         return
     end
     self.time = self.time + dt
+    Lighting.update(self, dt)
+    if self.highlightDue then
+        self.highlightDue = self.highlightDue - dt
+        if self.highlightDue <= 0 then
+            self.highlightDue = nil
+            local ok = pcall(love.filesystem.createDirectory, "highlights")
+            local name = string.format("highlights/run%s_wave%d_%dkills.png", os.date("%Y%m%d_%H%M%S"), self.spawner and self.spawner.wave or 0, self.bestBurst or 0)
+            if ok then love.graphics.captureScreenshot(name) end
+            self.lastHighlight = name
+        end
+    end
+    Shading.update(self, dt)
+    Ambience.update(self, dt)
     self.killsThisFrame = 0
     -- last frame's kills become visible to behaviours; start a fresh list
     self.recentDeaths, self.deathsNow = self.deathsNow, self.recentDeaths
@@ -410,8 +617,15 @@ function World:update(dt)
     self.player:update(dt)
     self.spawner:update(dt)
     self:updateEnemies(dt)
+    if self.freezeT > 0 then self.freezeT = math.max(0, self.freezeT - dt) end
+    self.beads:update(dt)
     Grab.update(self, dt)
     self.hazards:update(dt)
+    self.director:update(dt)
+    require("src.game.bosses").update(self, dt)
+    self.rewardFlow:update(dt)
+    require("src.game.economy").update(self, dt)     -- the shop restocks every minute or so
+    if self.finalSwarm then self.finalSwarm:update(dt) end     -- the optional last stand (src/game/finalswarm.lua)
     self:pushPlayerOutOfSolids()
 
     -- Remove the dead, keeping the array packed.
@@ -438,17 +652,23 @@ function World:update(dt)
         self.particles.landed = {}
     end
     self:updateCorpses(dt)
-    self:updatePickups(dt)
     if self.milestone then
         self.milestone.t = self.milestone.t + dt
         if self.milestone.t > 1.6 then self.milestone = nil end
     end
     -- Cooldown so constant mass kills give a punchy beat now and then instead of a stutter.
     if self.hitstopCd > 0 then self.hitstopCd = self.hitstopCd - dt end
-    if self.killsThisFrame >= 5 and Settings.get("hitstop") and self.hitstopCd <= 0 then
-        self.hitstop = math.min(0.07, 0.025 + self.killsThisFrame * 0.003)
-        self.hitstopCd = 0.6
+    local feel = self.rewards.cfg.feel
+    if self.killsThisFrame >= feel.stopKills and Settings.get("hitstop") and self.hitstopCd <= 0 then
+        self.hitstop = math.min(feel.stopMax, feel.stopMin + self.killsThisFrame * feel.stopPerKill)
+        self.hitstopCd = feel.stopCooldown
         self.camera:shake(math.min(0.4, self.killsThisFrame * 0.02))
+        -- Highlight Shots: the run's biggest multi-kill so far is saved as a picture
+        if Settings.get("highlightShots") and not self.flags.demo and self.mode == "run"
+            and self.killsThisFrame >= 15 and self.killsThisFrame > (self.bestBurst or 0) then
+            self.bestBurst = self.killsThisFrame
+            self.highlightDue = 0.12      -- a beat later, when the bodies are flying
+        end
     end
     for j = #self.fx, 1, -1 do
         local fx = self.fx[j]
@@ -460,7 +680,7 @@ function World:update(dt)
         t.t = t.t + dt
         t.z = t.z + t.vz * dt
         t.vz = t.vz * (1 - util.damp(6, dt))
-        if t.t >= t.life then table.remove(self.texts, j) end
+        if t.t >= t.life then table.remove(self.texts, j).gone = true end
     end
 
     self.decalFadeT = self.decalFadeT + dt
@@ -470,9 +690,12 @@ function World:update(dt)
         if self.comboTimer <= 0 then self.combo = 0 end
     end
 
+    self.rewards:update(dt)
+
     local p = self.player
     local px, py = Iso.toScreen(p.x, p.y)
     local ax, ay = Iso.toScreen(p.aimX, p.aimY)
+    CamFx.update(self, dt)                      -- auto-zoom, framing, size zoom (src/gfx/camfx.lua)
     self.camera:follow(px, py - 4, ax, ay)
     self.camera:update(dt)
 end
@@ -559,11 +782,27 @@ function World:updateEnemies(dt)
             end })
     end
     local S = self.size
-    local freeze = self.flags.freezeAI
+    local iced = self.freezeT > 0       -- the frost pickup: frozen solid, no bites
+    local freeze = self.flags.freezeAI or iced
     local kDamp = 1 - util.damp(8, dt)
     local attackers, shields = 0, 0
+    local env = self.env
+    local envK, envField = env.enemySpeed, env.field
+    -- a curse in the bag (Queen's Pheromone) speeds every ant up
+    local curseK = self.player and self.player.inventory and self.player.inventory:sum("enemySpeed") or 0
+    if curseK ~= 0 then envK = envK * math.max(0.2, 1 + curseK) end
+    local driftX, driftY = env.driftX, env.driftY
+    if freeze then envK, driftX, driftY, envField = 1, 0, 0, nil end
     local sqrt = math.sqrt
     local atan2 = math.atan2
+    local floor = math.floor
+    local cells, cellS = hash.cells, hash.size     -- (SpatialHash keys cells as cx * 65536 + cy)
+    -- the visible area (projected), with a margin, for the off-screen shortcut below
+    local vw, vh = Screen.viewW or 960, Screen.viewH or 540
+    local ox, oy = self.camera:origin(vw, vh)
+    local vx0, vy0, vx1, vy1 = ox - 80, oy - 80, ox + vw + 80, oy + vh + 80
+    self.frameNo = (self.frameNo or 0) + 1
+    local frameNo = self.frameNo
     for i = 1, self.enemyCount do
         local e = enemies[i]
         if not e.dead then
@@ -578,21 +817,34 @@ function World:updateEnemies(dt)
             else -- (no goto: the web build runs plain Lua 5.1)
             if freeze then
                 e.mx, e.my = 0, 0
+            elseif e.dropH then
+                -- coming down from the sky (Entries "drop"): falls into the fight, then flies on
+                e.dropH = e.dropH - dt * (40 + e.dropH * 3)
+                if e.dropH <= 0 then e.dropH = nil end
+                e.mx, e.my = 0, 0
             elseif e.stunT > 0 then
                 -- stunned (hissing roach): stands reeling, can't move or bite
                 e.stunT = e.stunT - dt
                 e.mx, e.my = 0, 0
+            elseif e.lure and not unseen then
+                -- going for something else (a critter a mini-goal has you guard)
+                self.player = e.lure
+                e.behavior.update(e, self, dt, e.params)
+                self.player = p
             elseif unseen then
                 self.player = decoyFor(self, e, p, decoy)
+                self.actingEnemy = e
                 e.behavior.update(e, self, dt, e.params)
                 self.player = p
             else
+                self.actingEnemy = e     -- hazards it makes remember who (death recap)
                 e.behavior.update(e, self, dt, e.params)
             end
+            self.actingEnemy = nil
             if e.corrodeT > 0 then
                 e.corrodeT = e.corrodeT - dt
                 if love.math.random() < dt * 5 then
-                    self.particles:spawn(e.x, e.y, 4, 0, 0, 16, 0.4, { 0.75, 0.95, 0.35 }, 1, { glow = true, grav = -15 })
+                    self.particles:spawn(e.x, e.y, 4, 0, 0, 16, 0.4, PFX_8, 1, PFX_9)
                 end
             end
             if e.poisonT > 0 then
@@ -601,8 +853,8 @@ function World:updateEnemies(dt)
                 e.poisonTick = e.poisonTick + dt
                 if e.poisonTick >= 0.5 then
                     e.poisonTick = e.poisonTick - 0.5
-                    Combat.damage(self, e, e.poisonDps * 0.5, { noCrit = true, dot = true, procDepth = Combat.MAX_PROC_DEPTH })
-                    self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, { 0.6, 1, 0.3 }, 1, { glow = true, grav = -10 })
+                    Combat.damage(self, e, e.poisonDps * 0.5, { noCrit = true, dot = true, procDepth = Combat.MAX_PROC_DEPTH, source = e.poisonSrc or "Poison" })
+                    self.particles:spawn(e.x, e.y, 6, 0, 0, 20, 0.4, PFX_10, 1, PFX_11)
                 end
                 if e.poisonT <= 0 then e.poisonDps = 0 end
             end
@@ -619,23 +871,51 @@ function World:updateEnemies(dt)
             local r0 = e.radius
             local space = def.personalSpace or 1
             local flock = def.flock or 0
-            local list, cnt = hash:query(e.x, e.y, flock > 0 and r0 * 4 or r0 * 2)
-            if e.hidden then cnt = 0 end    -- burrowed: passes under the crowd
-            for j = 1, cnt do
-                local o = list[j]
-                if o ~= e and not o.hidden then
-                    local dx, dy = e.x - o.x, e.y - o.y
-                    local r = (r0 + o.radius) * space
-                    local d2 = dx * dx + dy * dy
-                    if d2 < r * r and d2 > 0.0001 and checks < 6 then
-                        local d = sqrt(d2)
-                        local push = (r - d) / d * (o.mass / (e.mass + o.mass))
-                        sx, sy = sx + dx * push, sy + dy * push
-                        checks = checks + 1
+            -- The grid cells are walked directly (no copied result list), and the walk stops
+            -- as soon as both caps (6 pushes, 8 flock mates) are reached: in a dense crowd a
+            -- query covers dozens of ants and most of them would be skipped anyway.
+            -- Off screen, the crowd only sorts itself out every other frame (alternating halves
+            -- of the horde): nobody sees it, and it halves the cost of the far side of a big wave.
+            local ex, ey = e.x, e.y
+            local psx, psy = ex - ey, (ex + ey) * 0.5
+            local lazy = (psx < vx0 or psx > vx1 or psy < vy0 or psy > vy1) and (e.uid + frameNo) % 2 == 0
+            if not e.hidden and not lazy then    -- burrowed: passes under the crowd
+                local em = e.mass
+                local qr = flock > 0 and r0 * 4 or r0 * 2
+                local x0, x1 = floor((ex - qr) / cellS), floor((ex + qr) / cellS)
+                local y0, y1 = floor((ey - qr) / cellS), floor((ey + qr) / cellS)
+                local needFlock = flock > 0
+                local cx = x0
+                while cx <= x1 do
+                    local cy = y0
+                    while cy <= y1 do
+                        local cell = cells[cx * 65536 + cy]
+                        if cell then
+                            for j = 1, cell.n do
+                                local o = cell[j]
+                                if o ~= e and not o.hidden then
+                                    if checks < 6 then
+                                        local dx, dy = ex - o.x, ey - o.y
+                                        local r = (r0 + o.radius) * space
+                                        local d2 = dx * dx + dy * dy
+                                        if d2 < r * r and d2 > 0.0001 then
+                                            local d = sqrt(d2)
+                                            local push = (r - d) / d * (o.mass / (em + o.mass))
+                                            sx, sy = sx + dx * push, sy + dy * push
+                                            checks = checks + 1
+                                        end
+                                    end
+                                    if needFlock and o.def == def and an < 8 then
+                                        ax, ay, an = ax + o.mx, ay + o.my, an + 1
+                                    end
+                                    if checks >= 6 and (not needFlock or an >= 8) then break end
+                                end
+                            end
+                            if checks >= 6 and (not needFlock or an >= 8) then cy = y1 cx = x1 end
+                        end
+                        cy = cy + 1
                     end
-                    if flock > 0 and o.def == def and an < 8 then
-                        ax, ay, an = ax + o.mx, ay + o.my, an + 1
-                    end
+                    cx = cx + 1
                 end
             end
             if an > 0 and not freeze then
@@ -648,8 +928,13 @@ function World:updateEnemies(dt)
                 end
             end
 
-            e.x = util.clamp(e.x + (e.mx + e.kvx) * dt + sx * 0.6, r0, S - r0)
-            e.y = util.clamp(e.y + (e.my + e.kvy) * dt + sy * 0.6, r0, S - r0)
+            -- the arena's pull on it (src/game/director.lua): weather, water, sun and shade
+            local k = envK
+            if envField then k = k * envField(ex, ey, e) end
+            local wk = def._windK
+            if not wk then wk = 1 / math.sqrt(math.max(0.2, def.mass)) def._windK = wk end
+            e.x = util.clamp(e.x + (e.mx * k + e.kvx + driftX * wk) * dt + sx * 0.6, r0, S - r0)
+            e.y = util.clamp(e.y + (e.my * k + e.kvy + driftY * wk) * dt + sy * 0.6, r0, S - r0)
             e.kvx, e.kvy = e.kvx * kDamp, e.kvy * kDamp
 
             -- Turn to face the direction of travel on screen.
@@ -675,13 +960,15 @@ function World:updateEnemies(dt)
             -- size of the crowd on you (and armour reduces every single bite).
             local dx, dy = p.x - e.x, p.y - e.y
             local rr = p.radius + r0 + 1
-            if dx * dx + dy * dy < rr * rr and e.damage > 0 and e.z < 3 and (p.z < 4 or p.airborne) and not e.hidden and e.stunT <= 0 and not unseen then
+            if dx * dx + dy * dy < rr * rr and e.damage > 0 and e.z < 3 and not e.dropH and (p.z < 4 or p.airborne) and not e.hidden and e.stunT <= 0 and not unseen and not iced then
                 attackers = attackers + 1
                 if e.biteCd <= 0 then
                     e.biteCd = (def.biteRate or 0.9) * (0.85 + love.math.random() * 0.3)
                     p:hurt(e.damage, e)
                     local venom = def.venom or (e.elite and e.elite.venom)
                     if venom then p:poison(venom.dps * e.damage / math.max(0.1, def.damage), venom.time) end
+                    local shred = def.shred or (e.elite and e.elite.shred)    -- cracks your armor (src/config/defense.lua)
+                    if shred then p:shred(shred.armor or 2, shred.time, shred.max) end
                     e.squash = 0.1
                 end
             end
@@ -761,6 +1048,7 @@ local function sortByDepth(list, n)
 end
 
 function World:draw()
+    Lighting.nq = 0
     local vw, vh = Screen.viewW, Screen.viewH
     local ox, oy = self.camera:origin(vw, vh)
     local atlas = Sprites.atlas
@@ -768,8 +1056,18 @@ function World:draw()
     lg.push()
     lg.translate(-ox, -oy)
 
+    local gsh = Clarity.groundShader()           -- Background Dim / Actors Pop
+    if gsh then lg.setShader(gsh) end
     self.ground:draw()
+    if gsh then lg.setShader() end
+    Shading.drawWet(self, ox, oy, vw, vh)           -- Wet Ground after rain
+    Ambience.drawGround(self)                       -- Horde Tracks
+    Ambience.drawDecor(self)                        -- Night Glow Decor
     self.hazards:drawGround()
+    Entries.drawGround(self.spawner, self.time)     -- burrow mounds, landing shadows, nest holes
+    self.rewards:drawGround()                       -- route tunnels, guarded critters
+    require("src.game.pacing").drawGuard(self, self.time)   -- a guarded queen's gold ring
+    self.director:drawGround()                      -- puddles, pits, lane warnings, shadows overhead
 
     -- View culling bounds in projected space.
     local cx0, cy0, cx1, cy1 = ox - 40, oy - 40, ox + vw + 40, oy + vh + 60
@@ -795,14 +1093,28 @@ function World:draw()
     for i = n + 1, #list do list[i] = nil end
     sortByDepth(list, n)
 
+    -- nectar beads and ground pickups (one sprite batch)
+    self.beads:draw(cx0, cy0, cx1, cy1)
+
     -- Swarm underlay: soft dark blobs that merge dense crowds into one flowing mass.
     local glowQ = Sprites.glow
+    local iced = self.freezeT > 0
     for i = 1, n do
         local o = list[i]
         local sw = o.def and not o.hidden and o.def.swarmShade
         if sw then
             lg.setColor(0.08, 0.04, 0.03, sw)
             lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.6, o.radius * 0.4, 8, 8)
+        end
+        if o.rival == "red" and not o.hidden then
+            -- a rival colony's ant (colony war): a red mark under it
+            lg.setColor(1, 0.25, 0.15, 0.45)
+            lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.45 + 1, o.radius * 0.25 + 0.5, 8, 8)
+        end
+        if iced and o ~= p and not o.hidden then
+            -- frozen by the frost pickup: an icy patch under every enemy
+            lg.setColor(0.55, 0.85, 1, 0.55)
+            lg.draw(atlas, glowQ, o._sx, o._sy + 1, 0, o.radius * 0.5 + 1, o.radius * 0.3 + 0.5, 8, 8)
         end
         if o.elite and not o.hidden then
             -- a coloured aura on the ground marks elites even in a dense swarm
@@ -812,6 +1124,8 @@ function World:draw()
         end
     end
 
+    -- Sun Shadows and Contact Shadows (src/gfx/shading.lua)
+    Shading.drawGround(self, list, n)
     -- Shadows first (all one texture -> batched).
     lg.setColor(1, 1, 1, 1)
     for i = 1, n do
@@ -825,6 +1139,10 @@ function World:draw()
         lg.setColor(1, 1, 1, 1)
     end
 
+    Clarity.drawCompass(self)                       -- Danger Compass
+    -- Pebbles, twigs, cocoons, allies, the merchant (src/game/props.lua)
+    self.director:drawProps()
+
     -- Things behaviours put in the world (silk strands, feeding threads): always drawn.
     for i = 1, n do
         local o = list[i]
@@ -835,6 +1153,7 @@ function World:draw()
     if p.dashDef and p.dashDef.draw then p.dashDef.draw(p, self, p.dashParams) end
     if p.secondary and p.secondary.type.draw then p.secondary.type.draw(p, self, p.secondary.params) end
     if p.attack and p.attack.type.draw then p.attack.type.draw(p, self, p.attack.params) end
+    if p.def.custom then require("src.game.scriptmoves").draw(p, self) end
     -- stunned ants (hissing roach) see stars
     for i = 1, n do
         local o = list[i]
@@ -850,30 +1169,28 @@ function World:draw()
 
     -- Enemy telegraphs (charges, lunges...)
     if Settings.get("telegraphs") then
+        -- High-Contrast Warnings: thicker lines with a dark outline drawn first (src/ui/palette.lua)
+        local hc = Settings.get("telegraphContrast")
+        if hc then
+            World.edgeShader = World.edgeShader or lg.newShader([[
+                vec4 effect(vec4 c, Image t, vec2 tc, vec2 sc) { return vec4(0.0, 0.0, 0.0, Texel(t, tc).a * c.a); }
+            ]])
+            lg.setLineWidth(3)
+            lg.setShader(World.edgeShader)
+            for i = 1, n do
+                local o = list[i]
+                if o.behavior and o.behavior.draw then o.behavior.draw(o, self) end
+            end
+            lg.setShader()
+            lg.setLineWidth(1.5)
+        end
         for i = 1, n do
             local o = list[i]
             if o.behavior and o.behavior.draw then o.behavior.draw(o, self) end
         end
+        if hc then lg.setLineWidth(1) end
         lg.setColor(1, 1, 1, 1)
     end
-
-    -- Items on the ground: shadow, a soft rarity-coloured beam and the bobbing icon.
-    local Rarities = require("src.config.rarities")
-    for _, k in ipairs(self.pickups) do
-        local sx, sy = Iso.toScreen(k.x, k.y)
-        local r = Rarities[k.item.def.rarity]
-        r._c = r._c or util.hex(r.color)
-        local icon = Sprites.get(k.item.def.icon)
-        local s = math.min(1, 14 / math.max(icon.w, icon.h)) * 0.9
-        local bob = k.z + 3 + math.sin(k.t * 3) * 1.5
-        lg.setColor(0, 0, 0, 0.35)
-        lg.draw(atlas, glowQ, sx, sy + 1, 0, 0.7, 0.35, 8, 8)
-        lg.setColor(r._c[1], r._c[2], r._c[3], 0.25 + 0.1 * math.sin(k.t * 4))
-        lg.draw(atlas, Sprites.pixel, sx - 1, sy - 22, 0, 3, 22)
-        lg.setColor(1, 1, 1, 1)
-        Sprites.draw(icon, 1, sx, sy - bob, 0, false, s)
-    end
-    lg.setColor(1, 1, 1, 1)
 
     -- Knocked-away bodies (darkened, spinning, fading).
     for _, c in ipairs(self.corpses) do
@@ -882,12 +1199,19 @@ function World:draw()
             local k = math.min(1, c.t / (c.life * 0.6))
             local v = 0.8 - k * 0.38
             lg.setColor(v, v * 0.92, v * 0.88, 1)
-            Sprites.draw(c.sprite, 1, sx, sy, c.angle, false, c.scale)
+            local ca, csx, csy = Ambience.corpseStyle(c)         -- Death Styles
+            Sprites.draw(c.sprite, 1, sx, sy, ca, false, csx, csy)
         end
     end
     lg.setColor(1, 1, 1, 1)
 
     local flashOk = Settings.get("hitFlash") and not Settings.get("reduceFlashing")
+    Clarity.drawOutlines(self, list, n)             -- Threat Outlines
+    Shading.drawRims(self, list, n)                 -- Rim Light (enemies, one batch)
+    local hordeDepth = Settings.get("hordeDepth")
+    local squash = Settings.get("squashStretch")
+    local sheens, nSheen = self.sheens, 0
+    if not sheens then sheens = {} self.sheens = sheens end
     for i = 1, n do
         local o = list[i]
         local flash = flashOk and o.flash > 0
@@ -982,7 +1306,11 @@ function World:draw()
             local facing = o.reversed and o.wangle + math.pi or o.wangle
             Anim.applyTo(pose, Anim.sample(o), facing, sxs, sys)    -- attack clips (src/gfx/anim.lua)
             if o.lungeT > 0.09 then sxs, sys = sxs * 1.06, sys * 0.94 end
-            Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z, facing, flash, sxs, sys, a, pose)
+            if o == p and not p.alpha then Shading.drawPlayerRim(self, o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, sxs, sys, pose) end
+            Sprites.drawModel(o.model, math.floor(o.anim) + 1, o._sx, o._sy - o.z - (o.dropH or 0), facing, flash, sxs, sys, a, pose)
+        elseif o ~= p and o.def.drawBody then
+            -- big creatures drawn by their own code (def.drawBody)
+            if not o.hidden then o.def.drawBody(o, self, o._sx, o._sy, sxs, sys, flash) end
         elseif not o.hidden then
             local el = o.elite
             local alpha = o.alpha or 1
@@ -990,20 +1318,47 @@ function World:draw()
                 -- elites: tinted towards their colour, plus a pulsing additive sheen
                 local c = Elites.color(el)
                 lg.setColor(0.5 + c[1] * 0.5, 0.5 + c[2] * 0.5, 0.5 + c[3] * 0.5, alpha)
+            elseif o.tint then
+                lg.setColor(o.tint[1], o.tint[2], o.tint[3], alpha)     -- a rival colony (colony war)
             elseif alpha < 1 then
                 lg.setColor(1, 1, 1, alpha)
             end
-            local fy = o._sy - (o.z or 0)
+            -- Horde Depth: the back of a big pack a little darker than the front
+            local dk = hordeDepth and not el and Clarity.depthShade(math.sqrt((o.x - p.x) ^ 2 + (o.y - p.y) ^ 2))
+            if dk then
+                local r, g, b, a2 = lg.getColor()
+                lg.setColor(r * dk, g * dk, b * dk, a2)
+                o._dk = true
+            end
+            local fy = o._sy - (o.z or 0) - (o.dropH or 0)
+            if squash and (o.flash or 0) > 0 then sxs, sys = sxs * 1.14, sys * 0.86 end     -- Squash & Stretch
             Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, flash, sxs, sys)
             if el then
-                local c = Elites.color(el)
-                lg.setBlendMode("add")
-                lg.setColor(c[1], c[2], c[3], el.glow * (0.75 + 0.25 * math.sin(self.time * 6 + o.uid)) * alpha)
-                Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, fy, o.angle, false, sxs, sys)
-                lg.setBlendMode("alpha")
+                -- the sheen is drawn after the crowd in one additive batch (switching blend modes
+                -- per elite split the sprite batch twice for every elite on screen)
+                nSheen = nSheen + 1
+                local sh = sheens[nSheen]
+                if not sh then sh = {} sheens[nSheen] = sh end
+                sh.o, sh.y, sh.sx, sh.sy, sh.a = o, fy, sxs, sys, alpha
             end
         end
         if skinShader then lg.setShader() end
+        -- plain ants leave the colour white; skip the reset for them (it adds up in a horde)
+        if o == p or o.model or o.elite or o.tint or (o.alpha or 1) < 1 or o.def.drawBody or o._dk then lg.setColor(1, 1, 1, 1) o._dk = nil end
+    end
+
+    if nSheen > 0 then
+        lg.setBlendMode("add")
+        for i = 1, nSheen do
+            local sh = sheens[i]
+            local o = sh.o
+            local el = o.elite
+            local c = Elites.color(el)
+            lg.setColor(c[1], c[2], c[3], el.glow * (0.75 + 0.25 * math.sin(self.time * 6 + o.uid)) * sh.a)
+            Sprites.draw(o.sprite, math.floor(o.anim) + 1, o._sx, sh.y, o.angle, false, sh.sx, sh.sy)
+            sh.o = nil
+        end
+        lg.setBlendMode("alpha")
         lg.setColor(1, 1, 1, 1)
     end
 
@@ -1013,7 +1368,13 @@ function World:draw()
         local q = Sprites.pixel
         for i = 1, n do
             local e = list[i]
-            if e ~= p and not e.hidden and e.hp < e.maxHp and (hb == "always" or e.hurtTimer > 0) then
+            local show = false
+            if e ~= p and not e.hidden then
+                if hb == "always" then show = true
+                elseif hb == "elites" then show = (e.elite ~= nil or e.def.boss) and e.hp < e.maxHp
+                else show = e.hp < e.maxHp and e.hurtTimer > 0 end
+            end
+            if show then
                 local w = math.max(8, e.sprite.w - 4)
                 local x = math.floor(e._sx - w / 2)
                 local y = math.floor(e._sy - e.sprite.h * 0.5 * e.scale - 5)
@@ -1026,11 +1387,21 @@ function World:draw()
         lg.setColor(1, 1, 1, 1)
     end
 
-    self.particles:draw()
+    self.particles:draw(cx0, cy0, cx1, cy1)
     self.hazards:drawAir()
+    self.director:drawAir()
     self.weather:draw(ox, oy, vw, vh)
     self:drawLighting(ox, oy, list, n)
+    Shading.drawRays(self, ox, oy, vw, vh)          -- Sun Rays at golden hour and dawn
+    Ambience.drawLeaves(self, ox, oy, vw, vh)       -- Falling Leaves
+    CamFx.drawForeground(self, ox, oy, vw, vh)      -- Foreground Grass
     self.weather:drawGlow(ox, oy, vw, vh)
+    if self.freezeT > 0 then
+        -- frost pickup: a cold blue wash over the arena while the swarm is frozen
+        lg.setColor(0.55, 0.85, 1, 0.12 * math.min(1, self.freezeT * 2))
+        lg.rectangle("fill", ox, oy, vw, vh)
+        lg.setColor(1, 1, 1, 1)
+    end
     if (p.blindT or 0) > 0 and not Settings.get("lighting") then
         lg.setColor(0, 0, 0, 0.75 * math.min(1, p.blindT / 0.6))
         lg.rectangle("fill", ox, oy, vw, vh)
@@ -1038,10 +1409,17 @@ function World:draw()
     end
 
     -- Additive glow pass: attack swooshes, sparks, explosions.
+    -- (Glare Guard / Own Effects Opacity: drawn on their own layer and soft-capped, src/gfx/lighting.lua)
+    local fxLayer = Lighting.fxLayer(self)
+    if fxLayer then Lighting.beginFx() end
     lg.setBlendMode("add")
     self:drawFx()
-    self.particles:drawGlow()
+    if self.player.def.custom then require("src.game.bugtraits").drawGlow(self.player, self) end
+    self.particles:drawGlow(cx0, cy0, cx1, cy1)
     lg.setBlendMode("alpha")
+    if fxLayer then Lighting.endFx() end
+    if Settings.get("shotsOnTop") then self.hazards:drawAir(true) end     -- Enemy Shots On Top
+    Clarity.drawSilhouette(self)                    -- See-Through Silhouettes
     if Settings.get("showHitboxes") then self:drawHitboxes(list, n) end
     if Settings.get("showSpatialGrid") then self:drawGrid() end
     lg.pop()
@@ -1067,15 +1445,29 @@ function World:drawLighting(ox, oy, list, n)
         ar, ag, ab = ar * k, ag * k, ab * k
     end
     local L = Sprites.light
+    -- Bold lights: the map holds half the light so it can reach 2x (src/gfx/lighting.lua)
+    local lm, am = Lighting.lightMul((ar + ag + ab) / 3), Lighting.ambientMul()
     -- light(x, y, radius, r, g, b, a): an ellipse squashed 2:1 to sit on the iso ground.
     local function light(x, y, r, cr, cg, cb, ca)
-        lg.setColor(cr, cg, cb, ca)
+        lg.setColor(cr, cg, cb, math.min(1, ca * lm))
         lg.draw(L, x, y, 0, r / 64, r / 128, 64, 64)
     end
 
     lg.push("all")
     lg.setCanvas(Screen.light)
-    lg.clear(ar, ag, ab, 1)
+    lg.clear(ar * am, ag * am, ab * am, 1)
+    lg.setBlendMode("add")
+    -- the light map is smaller than the scene (Screen.LIGHT_DIV): same projected coordinates, scaled down
+    local div = Screen.LIGHT_DIV
+    lg.origin()
+    lg.scale(1 / div)
+    lg.translate(-ox, -oy)
+    -- Cloud Shadows: soft dark shapes taken out of the light (src/gfx/shading.lua)
+    lg.setBlendMode("subtract")
+    Shading.clouds(self, function(x, y, r, k)
+        lg.setColor(1, 1, 1, k * am)
+        lg.draw(L, x, y, 0, r / 64, r / 128, 64, 64)
+    end, ox, oy, Screen.viewW, Screen.viewH)
     lg.setBlendMode("add")
     local p = self.player
     if not p.dead then
@@ -1087,6 +1479,7 @@ function World:drawLighting(ox, oy, list, n)
             if not sl._c then sl._c = util.hex(sl.color) end
             light(px, py, sl.radius or 60, sl._c[1], sl._c[2], sl._c[3], sl.intensity or 0.5)
         end
+        if p.def.custom then require("src.game.bugtraits").light(p, self, light, px, py) end
     end
     for i = 1, n do
         local e = list[i]
@@ -1101,16 +1494,11 @@ function World:drawLighting(ox, oy, list, n)
         end
     end
     self.hazards:lights(light)
+    Lighting.extras(self, light, list, n)
+    Ambience.lights(self, light)
     for _, l in ipairs(self.ground.decorLights or {}) do
         local tw = l.twinkle and (0.75 + 0.25 * math.sin(self.time * l.twinkle + l.x)) or 1
         light(l.x, l.y, l.radius, l.color[1], l.color[2], l.color[3], (l.intensity or 0.5) * tw)
-    end
-    for _, k in ipairs(self.pickups) do
-        local c = require("src.config.rarities")[k.item.def.rarity]._c
-        if c then
-            local x, y = Iso.toScreen(k.x, k.y)
-            light(x, y, 36, c[1], c[2], c[3], 0.5)
-        end
     end
     for _, fx in ipairs(self.fx) do
         local c = fx.color or { 1, 1, 1 }
@@ -1125,19 +1513,28 @@ function World:drawLighting(ox, oy, list, n)
     end
     local plist = self.particles.list
     local lit = 0
+    -- (only on-screen sparks spend the 120-light budget)
+    local vx0, vy0, vx1, vy1 = ox - 20, oy - 20, ox + Screen.viewW + 20, oy + Screen.viewH + 20
     for i = 1, self.particles.n do
         local pt = plist[i]
-        if pt.glow and lit < 120 then
-            lit = lit + 1
+        if pt.glow then
             local x, y = Iso.toScreen(pt.x, pt.y, pt.z)
-            light(x, y, 18, pt.r, pt.g, pt.b, 0.3 * pt.life / pt.maxLife)
+            if x > vx0 and x < vx1 and y > vy0 and y < vy1 then
+                lit = lit + 1
+                light(x, y, 18, pt.r, pt.g, pt.b, 0.3 * pt.life / pt.maxLife)
+                if lit >= 120 then break end
+            end
         end
     end
-    lg.setCanvas(Screen.canvas)
-    lg.setBlendMode("multiply", "premultiplied")
-    lg.origin()
-    lg.setColor(1, 1, 1, 1)
-    lg.draw(Screen.light, 0, 0)
+    if Lighting.bold() then
+        Lighting.composite(div)
+    else
+        lg.setCanvas(Screen.canvas)
+        lg.setBlendMode("multiply", "premultiplied")
+        lg.origin()
+        lg.setColor(1, 1, 1, 1)
+        lg.draw(Screen.light, Screen.lightQuad, 0, 0, 0, div, div)
+    end
     lg.pop()
 end
 
@@ -1299,7 +1696,7 @@ function World:drawText(fonts)
     for _, t in ipairs(self.texts) do
         local wx, wy = self:toWindow(t.x, t.y, t.z)
         local f = t.big and fonts.big or fonts.small
-        local a = 1 - math.max(0, (t.t / t.life - 0.6) / 0.4)
+        local a = (1 - math.max(0, (t.t / t.life - 0.6) / 0.4)) * Clarity.textFade(self, wx, wy)
         lg.setFont(f)
         local w = f:getWidth(t.text)
         lg.setColor(0, 0, 0, 0.8 * a)
@@ -1308,6 +1705,7 @@ function World:drawText(fonts)
         lg.print(t.text, math.floor(wx - w / 2), math.floor(wy))
     end
     lg.setColor(1, 1, 1, 1)
+    require("src.ui.inspect").draw(self, fonts)
 end
 
 return World

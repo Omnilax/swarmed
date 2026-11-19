@@ -103,24 +103,43 @@ return function(wait, shot)
     run(1.5)
     assert(alive() < n0 or world.enemies[1].hp < world.enemies[1].maxHp, "the thrown ball hit nothing")
 
-    -- dragonfly: walks a bit slower on the ground; holding Shift flies, and in the air ground ants
+    -- dragonfly: can't walk on the ground at all; holding Shift flies, and in the air ground ants
     -- can't hurt it, fliers can; letting go lands it
     local Input = require("src.core.input")
     sec = use("dragonfly")
     world.flags.freezeAI = false
     run(0.1)
-    assert(pl.moveMul and pl.moveMul >= 0.7, "a landed dragonfly should walk")
+    assert(pl.moveMul == 0, "a landed dragonfly should not walk")
+    local gx = pl.x
+    Input.virtualDown.move_right = true
+    run(0.5)
+    Input.virtualDown.move_right = nil
+    assert(math.abs(pl.x - gx) < 1, "a landed dragonfly walked")
     Input.virtualDown.dash = true
     run(0.3)
     assert(pl.airborne and pl.z > 6, "dragonfly did not take off")
+    gx = pl.x
+    Input.virtualDown.move_right = true
+    run(0.3)
+    Input.virtualDown.move_right = nil
+    assert(pl.x > gx + 20, "a flying dragonfly should steer")
     hp = pl.hp
     pl:hurt(10, world:spawnEnemy("worker_ant", pl.x + 5, pl.y))
     pl:hurt(10, "acid")
     assert(pl.hp == hp, "a ground ant hurt the flying dragonfly")
-    pl:hurt(5, world:spawnEnemy("honey_bee", pl.x + 40, pl.y))
+    -- (a few tries: the dragonfly's dodge chance can make any single bite miss)
+    local bee = world:spawnEnemy("honey_bee", pl.x + 40, pl.y)
+    for _ = 1, 20 do
+        if pl.hp < hp then break end
+        pl.iframes = 0
+        pl:hurt(5, bee)
+    end
     assert(pl.hp < hp, "a bee should still reach the flying dragonfly")
     for _ = 1, 60 do if pl.airborne then run(0.1) end end
     assert(not pl.airborne, "flight should run out")
+    -- still holding Shift: it rests a moment, then takes off again by itself
+    for _ = 1, 30 do if not pl.airborne then run(0.1) end end
+    assert(pl.airborne, "a resting dragonfly should take off again while Shift is held")
     Input.virtualDown.dash = nil
     run(2)
     assert(pl.stamina.cur > 1, "flight did not recharge on the ground")

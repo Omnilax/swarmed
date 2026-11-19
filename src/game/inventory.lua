@@ -36,6 +36,28 @@ end
 -- Copies of an item id in the bag (used as "stacks" by procs and stats).
 function Inventory:count(id) return self.counts[id] or 0 end
 
+-- A number field summed over every item in the bag, copies counted (true counts as 1):
+-- the curses' `cardsDelta`, `enemySpeed`, `noEatHeal`... Cached until the bag changes.
+function Inventory:sum(field)
+    local cache = self.sums
+    if not cache then cache = {}; self.sums = cache end
+    local v = cache[field]
+    if v then return v end
+    v = 0
+    for _, id in ipairs(self.order) do
+        local f = Content.items.byId[id] and Content.items.byId[id][field]
+        if f then v = v + (f == true and 1 or f) * (self.counts[id] or 0) end
+    end
+    cache[field] = v
+    return v
+end
+
+-- Whether an item can be eaten (cursed ones can't: only the scrapper takes them).
+function Inventory.edible(item)
+    local r = require("src.config.rarities")[item.def.rarity]
+    return not (r and r.cursed)
+end
+
 -- Shapes. An item's cells come from its def (`shape` rows like { "XX", "X." }, or a plain
 -- `size` rectangle; see src/content.lua). rot = 0..3 quarter turns clockwise.
 local function turned(def, rot)
@@ -143,6 +165,100 @@ function Inventory:stow(item)
     return false
 end
 
+-- Tidy the bag: big items first, then rarest, copies of one item side by side, each packed
+-- into the top-left-most spot (trying every turn). Tries a few orders; if none fits everything
+-- (the old layout was tighter), nothing moves. Returns true if the bag was sorted.
+local function rarityOrder(def)
+    local r = require("src.config.rarities")[def.rarity]
+    return r and r.order or 0
+end
+
+local Categories = require("src.config.categories")
+
+local function byName(a, b)
+    if a.id ~= b.id then return a.id < b.id end
+    return a.uid < b.uid
+end
+
+-- The first sort tried, picked by the Bag Sort Order setting; the size sorts below are the
+-- fallbacks when the bag is too full for it.
+local FIRST = {
+    category = function(a, b)   -- by category (src/config/categories.lua), then rarest, biggest
+        local ka, kb = Categories.rank(a.def.category), Categories.rank(b.def.category)
+        if ka ~= kb then return ka < kb end
+        local ra, rb = rarityOrder(a.def), rarityOrder(b.def)
+        if ra ~= rb then return ra > rb end
+        local ca, cb = #a.def.cells, #b.def.cells
+        if ca ~= cb then return ca > cb end
+        return byName(a, b)
+    end,
+    rarity = function(a, b)     -- rarest first, then by category
+        local ra, rb = rarityOrder(a.def), rarityOrder(b.def)
+        if ra ~= rb then return ra > rb end
+        local ka, kb = Categories.rank(a.def.category), Categories.rank(b.def.category)
+        if ka ~= kb then return ka < kb end
+        return byName(a, b)
+    end,
+}
+
+local SORTS = {
+    function(a, b)   -- most cells, rarest, by name
+        local ca, cb = #a.def.cells, #b.def.cells
+        if ca ~= cb then return ca > cb end
+        local ra, rb = rarityOrder(a.def), rarityOrder(b.def)
+        if ra ~= rb then return ra > rb end
+        if a.id ~= b.id then return a.id < b.id end
+        return a.uid < b.uid
+    end,
+    function(a, b)   -- biggest bounding box first (packs awkward shapes better)
+        local wa, ha = Inventory.size(a)
+        local wb, hb = Inventory.size(b)
+        if wa * ha ~= wb * hb then return wa * ha > wb * hb end
+        if math.max(wa, ha) ~= math.max(wb, hb) then return math.max(wa, ha) > math.max(wb, hb) end
+        if a.id ~= b.id then return a.id < b.id end
+        return a.uid < b.uid
+    end,
+}
+
+-- mode: "category" | "rarity" | "size" (default: the Bag Sort Order setting).
+function Inventory:autoSort(mode)
+    local old = {}
+    for i, e in ipairs(self.bag) do old[i] = { e = e, rot = e.item.rot } end
+    local order = {}
+    local mode = mode or require("src.core.settings").get("bagSort")
+    if FIRST[mode] then order[1] = FIRST[mode] end
+    for _, f in ipairs(SORTS) do order[#order + 1] = f end
+    for _, cmp in ipairs(order) do
+        local items = {}
+        for i, o in ipairs(old) do items[i] = o.e.item end
+        table.sort(items, cmp)
+        -- place without recount (that would drop proc bonuses of items not yet placed back)
+        self.bag, self.grid = {}, {}
+        local ok = true
+        for _, item in ipairs(items) do
+            local best, bx, by, bk
+            for k = 0, 3 do
+                item.rot = k
+                local x, y = self:findSpace(item)
+                if x and (not best or y * self.cols + x < best) then best, bx, by, bk = y * self.cols + x, x, y, k end
+            end
+            if not best then ok = false break end
+            item.rot = bk
+            local e = { item = item, x = bx, y = by }
+            self.bag[#self.bag + 1] = e
+            for _, c in ipairs(Inventory.cells(item)) do self.grid[(by + c[2]) * self.cols + bx + c[1]] = e end
+        end
+        if ok then
+            self:recount()
+            return true
+        end
+    end
+    self.bag = {}
+    for i, o in ipairs(old) do o.e.item.rot = o.rot; self.bag[i] = o.e end
+    self:rebuildGrid()
+    return false
+end
+
 -- HP from eating an item: its rarity's `eat`, plus a quarter more for every extra cell it fills.
 function Inventory.eatValue(item)
     local r = require("src.config.rarities")[item.def.rarity]
@@ -155,6 +271,8 @@ function Inventory:eat(item)
     local ctx = { world = p.world, player = p, item = item, hp = Inventory.eatValue(item), procDepth = 0 }
     self:trigger("onEat", ctx)
     p.world.events:emit("item_eaten", item)
+    -- a curse (Hungry Tapeworm) can take the meal: ctx.noHeal, or `noEatHeal` on any item in the bag
+    if ctx.noHeal or self:sum("noEatHeal") > 0 then ctx.hp = 0 end
     local hp = math.floor(ctx.hp + 0.5)
     p:heal(hp)
     return hp
@@ -180,6 +298,7 @@ end
 -- Rebuild the grid, stack counts and the stat modifiers they give.
 function Inventory:recount()
     self:rebuildGrid()
+    self.sums = nil
     local stats = self.player.stats
     local old = self.order
     for _, id in ipairs(old) do stats:removeSource("item:" .. id) end
@@ -189,19 +308,33 @@ function Inventory:recount()
         if not self.counts[id] then self.order[#self.order + 1] = id end
         self.counts[id] = (self.counts[id] or 0) + 1
     end
+    -- parasites live in the bug, not the bag (src/game/parasites.lua), but count all the same
+    for _, item in ipairs(self.parasites or {}) do
+        if not self.counts[item.id] then self.order[#self.order + 1] = item.id end
+        self.counts[item.id] = 1
+    end
     for _, id in ipairs(self.order) do
         local def, n = Content.items:require(id), self.counts[id]
-        for stat, v in pairs(def.stats) do stats:addModifier("item:" .. id, stat, v * n, 0) end
-        for stat, v in pairs(def.statsMult) do stats:addModifier("item:" .. id, stat, 0, v * n) end
+        -- kin stats too when the bug is one of the item's kin (src/game/shore.lua)
+        local add, mult = require("src.game.shore").statsFor(def, self.player)
+        for stat, v in pairs(add) do stats:addModifier("item:" .. id, stat, v * n, 0) end
+        for stat, v in pairs(mult) do stats:addModifier("item:" .. id, stat, 0, v * n) end
     end
     -- bonuses an item's procs keep up (source "fx:<id>") go when the last copy leaves the bag
     for _, id in ipairs(old) do
         if not self.counts[id] then stats:removeSource("fx:" .. id) end
     end
+    -- tag set bonuses: 3+ touching items sharing a tag (src/game/molting.lua, src/config/tags.lua)
+    for _, s in ipairs(self.sets or {}) do stats:removeSource("set:" .. s.tag) end
+    self.sets = require("src.game.molting").sets(self)
+    for _, s in ipairs(self.sets) do
+        for stat, v in pairs(s.def.set.stats or {}) do stats:addModifier("set:" .. s.tag, stat, v * s.tier, 0) end
+        for stat, v in pairs(s.def.set.statsMult or {}) do stats:addModifier("set:" .. s.tag, stat, 0, v * s.tier) end
+    end
 end
 
 ----------------------------------------------------------------------------------------------
--- Convenience used by pickups, the sandbox and the console
+-- Convenience used by the sandbox and the console
 
 -- Gives n copies. Returns the items that did not fit (so they can be dropped on the ground).
 function Inventory:add(id, n)
@@ -214,6 +347,7 @@ function Inventory:add(id, n)
 end
 
 function Inventory:give(item)
+    if item.def.parasite then return require("src.game.parasites").infest(self, item) end
     if not self:stow(item) then return false end
     if item.def.onAdd then item.def.onAdd(self.player, self:count(item.id)) end
     return true
@@ -229,6 +363,11 @@ end
 
 function Inventory:clear()
     self.bag = {}
+    for _, it in ipairs(self.parasites or {}) do
+        self.player.stats:removeSource("parasite_fed:" .. it.id)
+        self.player.stats:removeSource("fx:" .. it.id)
+    end
+    self.parasites, self.player.steer = nil, nil
     self:recount()
 end
 
@@ -236,22 +375,80 @@ end
 function Inventory:transferTo(other)
     other.rows = math.max(other.rows, self.rows)
     for _, e in ipairs(self.bag) do other.bag[#other.bag + 1] = e end
+    other.parasites = self.parasites
     other:recount()
+    if other.parasites then require("src.game.parasites").refresh(other) end
 end
 
--- proc.chance may be a number or function(stacks) -> chance (0..1). Luck scales it.
--- proc.effect(ctx, stacks) does the work.
+-- Hyperbolic chance stacking: luck, the proc snowball and extra copies never push a chance to
+-- 100%. A chance c "rolled m times" is 1 - (1 - c)^m: with m = 1 it is exactly c, for small
+-- chances it is about c * m, and each extra bit of m adds a little less than the one before.
+-- m = luck multiplier * (1 + chanceStack * (copies - 1)); proc.chanceStack (default 0) is for
+-- procs whose effect doesn't grow with copies, so extra copies make them fire more often.
+function Inventory.stackChance(c, mul)
+    if c >= 1 then return 1 end
+    if c <= 0 or mul <= 0 then return 0 end
+    return 1 - (1 - c) ^ mul
+end
+
+-- The luck multiplier procs roll with right now (Luck stat times the proc snowball).
+function Inventory:luckMul()
+    local rw = self.player.world and self.player.world.rewards
+    return math.max(0, 1 + self.player.stats:get("luck") / 100) * (rw and rw:procMul() or 1)
+end
+
+-- The chance (0..1) a proc fires with right now, or nil for "always".
+function Inventory:procChance(proc, stacks, luck)
+    local chance = proc.chance
+    if type(chance) == "function" then chance = chance(stacks) end
+    if chance == nil then return nil end
+    local mul = (luck or self:luckMul()) * (1 + (proc.chanceStack or 0) * math.max(0, (stacks or 1) - 1))
+    return Inventory.stackChance(chance, mul)
+end
+
+-- proc.chance may be a number or function(stacks) -> chance (0..1). Luck scales it (see
+-- Inventory.stackChance). proc.effect(ctx, stacks) does the work.
+-- Payback procs (anything that fires when you are hurt or block a bite) hit at most a few ants
+-- each (src/config/defense.lua retaliate.maxTargets, applied in Combat.area).
+local RETALIATE = { onHurt = true, onBlock = true }
+
 function Inventory:trigger(name, ctx)
-    local luck = 1 + self.player.stats:get("luck") / 100
+    local w0 = ctx and ctx.world
+    if RETALIATE[name] and w0 and not w0.retaliateCap then
+        w0.retaliateCap = require("src.config.defense").retaliate.maxTargets
+        local ok, err = pcall(self.triggerAll, self, name, ctx)
+        w0.retaliateCap = nil
+        if not ok then error(err, 0) end
+        return
+    end
+    return self:triggerAll(name, ctx)
+end
+
+function Inventory:triggerAll(name, ctx)
+    -- luck, and the proc snowball: chances grow with every wave (src/config/rewards.lua procs)
+    local luck = self:luckMul()
+    -- the bug's own rule (src/config/bugrules.lua) sees every trigger and can bend procs
+    local BugRules = require("src.game.bugrules")
+    BugRules.trigger(self.player, name, ctx)
+    -- a custom bug's own event code (hooks = { onHit = function(me, ev) ... }, src/game/scriptmoves.lua)
+    if self.player.def.custom and name ~= "onTick" then require("src.game.scriptmoves").event(self.player, name, ctx) end
+    local ruled = BugRules.of(self.player) ~= nil
     for _, id in ipairs(self.order) do
         local def = Content.items.byId[id]
         local stacks = self.counts[id]
         for _, proc in ipairs(def.procs) do
             if proc.trigger == name then
-                local chance = proc.chance
-                if type(chance) == "function" then chance = chance(stacks) end
-                if chance == nil or love.math.random() < chance * luck then
-                    proc.effect(ctx, stacks)
+                local cmul, reps = 1, 1
+                if ruled then cmul, reps = BugRules.proc(self.player, def, name, ctx) end
+                -- a bug rule's chance multiplier rolls on the same hyperbolic curve as luck
+                local chance = proc.chance and self:procChance(proc, stacks, luck * cmul)
+                if chance == nil or love.math.random() < chance then
+                    -- the damage it does counts for this item in the run summary
+                    local w = ctx.world
+                    local prev = w and w.dmgSrc
+                    if w then w.dmgSrc = def.name end
+                    for _ = 1, reps do proc.effect(ctx, stacks) end
+                    if w then w.dmgSrc = prev end
                     -- the sandbox's proc log listens here (every-frame ticks are left out)
                     if self.onProc and name ~= "onTick" then self.onProc(def, name) end
                 end
@@ -261,6 +458,9 @@ function Inventory:trigger(name, ctx)
     -- the bug's skill tree answers the same triggers (src/game/skills.lua)
     local skills = self.player.skills
     if skills then skills:trigger(name, ctx) end
+    -- and the perk / growth level-up cards taken this run (src/game/levelups.lua)
+    local lu = self.player.world and self.player.world.levelups
+    if lu and (lu.perkOrder[1] or lu.growth[1]) then lu:trigger(name, ctx) end
 end
 
 return Inventory

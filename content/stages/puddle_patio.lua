@@ -1,0 +1,30 @@
+-- A patio after rain. The puddle in the dip grows every wave and rises during it
+-- (content/mechanics/rising_puddle.lua).
+return {
+    name = "Puddled Patio",
+    description = "A sunken patio after the rain. The puddle rises with every wave: wading is slow, and small ants drown.",
+    order = 4,
+    size = 760,
+    seed = 41,
+    patioInset = 0.14,
+    jointSpacing = 112,
+    cracks = 40,
+    leaves = 70,
+    edgeGrass = 22,
+    cliffDepth = 24,
+    palette = {
+        concrete = "#9c9a92", concreteDark = "#5e5c56", concreteLight = "#b8b6ac", joint = "#4a4c4a", crack = "#3a3c3a",
+        grass1 = "#1c361c", grass2 = "#284e26", grass3 = "#386630", grass4 = "#4e843c", flower = "#c8d8f0",
+        blade1 = "#3a7430", blade2 = "#52923e", blade3 = "#2a5a26", bladeTip = "#98c870",
+        soil1 = "#33261c", soil2 = "#423022", soil3 = "#281c14", pebble = "#706e6a",
+        leafA = "#6a4426", leafB = "#8a5a2a", leafVein = "#3e2816",
+    },
+    ambient = "#727c8c",
+    weather = { clear = 20, drizzle = 20, rain = 18, storm = 6, fog = 10, windy = 6 },
+    mechanic = { type = "rising_puddle", x = 0.62, y = 0.38, base = 45, perWave = 9, rise = 45, riseTime = 40, max = 175 },
+    props = { pebble = 6, twig = 3 },
+    events = { flood = 14, dew_drops = 12 },
+    fauna = { flying_ant = 2.5, crazy_ant = 2, pharaoh_ant = 2, mud_dauber = 2, desert_ant = 0.2, honeypot_ant = 0.3 },
+    spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
+        maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
+}

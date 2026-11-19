@@ -6,6 +6,11 @@ local AI = require("src.game.ai")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.5, 1, 0.5 }
+local PFX_2 = { glow = true, grav = 0 }
+local PFX_LIST_1 = { PFX_1 }
+
 local function valid(o, uid) return o and o.uid == uid and not o.dead end
 
 return {
@@ -55,7 +60,7 @@ return {
                 pt.hp, pt.st.mode, pt.st.cried = pt.maxHp, "fight", false
                 pt.z = 0
                 world:floatText(pt.x, pt.y, "+", { 0.5, 1, 0.5 }, false)
-                world.particles:burst(pt.x, pt.y, 6, { { 0.5, 1, 0.5 } }, 40, 40, { glow = true, grav = 0 })
+                world.particles:burst(pt.x, pt.y, 6, PFX_LIST_1, 40, 40, PFX_2)
                 Audio.play("pickup", { pitch = 0.7 })
                 st.mode = "fight"
             end

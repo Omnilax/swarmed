@@ -32,7 +32,7 @@ local function punch(player, world, params, f)
         end
         world:addFx({ kind = "streak", x = player.x, y = player.y, x2 = player.x + ax * far, y2 = player.y + ay * far, w = 6, life = 0.25, color = { 0.8, 0.95, 1 } })
         world:floatText(player.x + ax * reach, player.y + ay * reach, "SMASH!", { 1, 0.6, 0.4 }, true)
-        world.hitstop = math.max(world.hitstop or 0, 0.06)
+        world:hitStop(0.06)
     end
     world:addFx({ kind = "stab", x = player.x, y = player.y, x2 = player.x + ax * reach, y2 = player.y + ay * reach, w = 4 + f * 3, life = 0.14, color = { 1, 0.5, 0.4 } })
     world:addFx({ kind = "ring", x = player.x + ax * reach * 0.7, y = player.y + ay * reach * 0.7, r = reach * 0.6, life = 0.22, color = { 0.8, 0.95, 1 } })

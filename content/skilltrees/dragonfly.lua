@@ -7,7 +7,7 @@ local SKY = { 0.5, 0.85, 1 }
 return {
     character = "dragonfly",
     branches = {
-        { name = "Strikes", color = { 0.5, 0.85, 1 }, nodes = {
+        { name = "Strikes", blurb = "Diving strikes from the air", color = { 0.5, 0.85, 1 }, nodes = {
             { id = "df_spines", tier = 1, ranks = 3, name = "Spiny Legs", desc = "+12% strike damage per rank.",
               attack = { damage = { mul = 0.12 } } },
             { id = "df_basket", tier = 2, name = "Long Dive", desc = "Diving lunges go 30% further.",
@@ -25,7 +25,7 @@ return {
                   fx.nova(ctx, p.x + ctx.ax * 26, p.y + ctx.ay * 26, 26, ctx.params.damage, SKY, { knockback = 140 })
               end } } },
         } },
-        { name = "Flight", color = { 0.75, 0.95, 1 }, nodes = {
+        { name = "Flight", blurb = "Stay up longer, fly faster", color = { 0.75, 0.95, 1 }, nodes = {
             { id = "df_long", tier = 1, ranks = 3, name = "Endurance", desc = "+1 s of flight per rank.",
               dash = { stamina = 1 } },
             { id = "df_rest", tier = 2, name = "Quick Rest", desc = "Flight recharges 50% faster on the ground.",
@@ -50,7 +50,7 @@ return {
                   fx.shards(ctx, p.x, p.y, 2, 5, SKY, { angle = a, spread = math.pi, speed = 200, range = 50, pierce = 2 })
               end } } },
         } },
-        { name = "Compound Eyes", color = { 0.4, 0.8, 0.5 }, nodes = {
+        { name = "Compound Eyes", blurb = "Eyes that see every ant", color = { 0.4, 0.8, 0.5 }, nodes = {
             { id = "df_eyes", tier = 1, ranks = 3, name = "Compound Eyes", desc = "+4% crit chance and +4% dodge per rank.",
               stats = { critChance = 4, dodge = 4 } },
             { id = "df_body", tier = 2, name = "Sturdy Thorax", desc = "+15 max HP.",
@@ -68,4 +68,12 @@ return {
               end } } },
         } },
     },
+    -- the top of the kin branch (content/skillbranches): this bug's own trick
+    signature = { id = "sig_dragon_apex", name = "Apex Hawker", desc = "Every 5th diving strike drops a downdraft that blasts the ants below.",
+          procs = { { trigger = "onAttack", effect = function(ctx, rank, sk)
+              if not fx.every(sk, "sig_dragon", 5) then return end
+              ctx.player:after(0.2, function(pl, w)
+                  fx.explode(fx.ctx(w), pl.x, pl.y, 52, 24, { 0.5, 0.85, 1 })
+              end)
+          end } } },
 }

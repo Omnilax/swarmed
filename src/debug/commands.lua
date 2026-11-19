@@ -57,6 +57,22 @@ add { name = "killall", help = "Kill all enemies (counts KOs, triggers procs)", 
     for i = 1, w.enemyCount do w:killEnemy(w.enemies[i]) end
 end }
 
+add { name = "nectar", usage = "[n]", help = "Show the nectar balance, or add n nectar", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local w = game.world
+    local n = tonumber(args[1])
+    if n and n > 0 then w:addNectar(math.floor(n)) end
+    out(("Nectar %d (earned %d, spent %d, %d on the ground)"):format(w.nectar, w.nectarEarned, w.nectarSpent, w.beads:pending()))
+end }
+
+add { name = "pickup", usage = "<id>", help = "Drop a ground pickup next to you (magnet, freeze, frenzy)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.pickups:get(args[1] or "")
+    if not def then out("Unknown pickup. " .. table.concat(Content.pickups:ids(), ", ")) return end
+    local p = game.world.player
+    if game.world:dropPickup(def.id, p.x + 40, p.y) then out("Dropped " .. def.name) else out("Too many pickups on the ground") end
+end }
+
 add { name = "god", help = "Toggle invulnerability", run = function(args, game, out)
     if not needGame(game, out) then return end
     game.world.flags.god = not game.world.flags.god
@@ -141,6 +157,54 @@ add { name = "weather", usage = "[id]", help = "Show the weather, or switch to a
     if not def then out("Now: " .. w:name() .. ". Options: " .. table.concat(Content.weather:ids(), ", ")) return end
     w:set(def)
     out("Weather: " .. def.name)
+end }
+
+add { name = "event", usage = "[id]", help = "Start a mid-wave event now (honeydew_rain, boot_stomp, flood, lawnmower...)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.events:get(args[1] or "")
+    if not def then out("Events: " .. table.concat(Content.events:ids(), ", ")) return end
+    game.world.director:start(def)
+    out("Event: " .. def.name)
+end }
+
+add { name = "encounter", usage = "[id]", help = "Bring in a boss encounter now (anteater, antlion, sparrow; off sends a hazard away)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    if args[1] == "off" then
+        game.world.director:endHazard(false)
+        out("Hazard gone")
+        return
+    end
+    local def = Content.bosses:get(args[1] or "")
+    if not def then out("Encounters: " .. table.concat(Content.bosses:ids(), ", ") .. ", off") return end
+    game.world.director:startBoss(def)
+    out("Encounter: " .. def.name)
+end }
+
+add { name = "gamble", usage = "[id]", help = "Put a map gamble next to you (dewdrop_shrine, challenge_bell, gamble_flower)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local w = game.world
+    local def = Content.props:get(args[1] or "")
+    if not def or not def.gamble then
+        local ids = {}
+        for _, k in ipairs(w.gambles:kinds()) do ids[#ids + 1] = k.id end
+        out("Gambles: " .. table.concat(ids, ", "))
+        return
+    end
+    local x, y = require("src.game.envfx").pointNear(w, w.player.x, w.player.y, 70)
+    w.gambles:place(def.id, x, y)
+    out("Placed " .. def.name)
+end }
+
+add { name = "prop", usage = "<id> [n]", help = "Drop props near you (pebble, twig, acorn, cocoon, merchant)", run = function(args, game, out)
+    if not needGame(game, out) then return end
+    local def = Content.props:get(args[1] or "")
+    if not def then out("Props: " .. table.concat(Content.props:ids(), ", ")) return end
+    local w, p = game.world, game.world.player
+    for _ = 1, tonumber(args[2]) or 1 do
+        local x, y = require("src.game.envfx").pointNear(w, p.x, p.y, 60)
+        w.props:spawn(def.id, x, y)
+    end
+    out("Placed " .. def.name)
 end }
 
 return commands

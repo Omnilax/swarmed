@@ -1,0 +1,30 @@
+-- A meadow in bloom: bees, wasps and hornets more than anything, and ants that farm the
+-- flowers (fauna, src/game/spawner.lua).
+return {
+    name = "Wildflower Meadow",
+    description = "A flat stone in a sea of clover and poppies. Everything that flies comes here to feed, and it doesn't like visitors.",
+    order = 10,
+    size = 760,
+    seed = 55,
+    patioInset = 0.2,
+    jointSpacing = 150,
+    cracks = 20,
+    leaves = 40,
+    edgeGrass = 34,
+    cliffDepth = 22,
+    palette = {
+        concrete = "#a8a294", concreteDark = "#787264", concreteLight = "#c4bead", joint = "#605a4e", crack = "#504a40",
+        grass1 = "#244a1e", grass2 = "#326428", grass3 = "#448034", grass4 = "#5e9a42", flower = "#f070b0",
+        blade1 = "#4a8a36", blade2 = "#62a444", blade3 = "#367028", bladeTip = "#c0e070",
+        soil1 = "#3a2a1c", soil2 = "#4a3624", soil3 = "#2c2014", pebble = "#8a8478",
+        leafA = "#6a5a2a", leafB = "#8a7a34", leafVein = "#3e3418",
+    },
+    ambient = "#808a90",
+    ambients = { day = "#fffaea", sunset = "#f0a880", night = "#404c78", dawn = "#e4c0c0" },
+    weather = { clear = 40, pollen = 20, petals = 16, windy = 8, drizzle = 6, rain = 4, fireflies = 6 },
+    props = { pebble = 5, twig = 3 },
+    events = { honeydew_rain = 3, flood = 0 },
+    fauna = { bee = 4, wasp = 2.5, hornet = 2, green_ant = 2, weaver_ant = 2, honeypot_ant = 1.5, termite = 0.4, other = 0.6 },
+    spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
+        maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
+}

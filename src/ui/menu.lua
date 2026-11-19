@@ -7,7 +7,10 @@
 --   { type = "choice", label, get, set, options = { {value, label}, ... } }
 --   { type = "keybind", label, action, slot }
 --   { type = "header", label }   -- not selectable
--- Any item may have: desc (help text), disabled, value (function returning display text).
+--   any row: icon = function(cx, cy, size, focused) draws a picture before the label (Menu.sprite)
+-- Any item may have: desc (help text), disabled, value (function returning display text),
+-- progress (function returning 0..1 or nil: a thin bar along the bottom of the row),
+-- star (draws a favourite star before the label).
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
@@ -91,6 +94,9 @@ function Menu:activate(it)
     if it.disabled then return end
     if it.type == "button" then
         Audio.play("ui_confirm")
+        it.onActivate()
+    elseif (it.type == "toggle" or it.type == "choice") and it.onActivate then
+        Audio.play("ui_confirm")         -- a choice that also opens something (Left / Right still pick)
         it.onActivate()
     elseif it.type == "toggle" or it.type == "choice" then
         self:adjust(it, 1)
@@ -184,6 +190,8 @@ function Menu:mousepressed(mx, my, button)
     if it.type == "slider" and button == 1 then
         self.dragging = it
         self:dragTo(it, mx)
+    elseif (it.type == "choice" or it.type == "toggle") and it.onActivate and button == 1 then
+        self:activate(it)
     elseif it.type == "choice" or it.type == "toggle" then
         self:adjust(it, button == 2 and -1 or 1)
     elseif button == 1 then
@@ -210,6 +218,23 @@ function Menu:valueText(it)
     end
 end
 
+-- A five-pointed star centred on x, y (favourite marks).
+function Menu.star(x, y, r, color)
+    local pts = {}
+    for i = 0, 9 do
+        local a = -math.pi / 2 + i * math.pi / 5
+        local rr = (i % 2 == 0) and r or r * 0.45
+        pts[#pts + 1] = x + math.cos(a) * rr
+        pts[#pts + 1] = y + math.sin(a) * rr
+    end
+    love.graphics.setColor(color)
+    -- a star isn't convex: draw it as triangles from the centre
+    for i = 1, 10 do
+        local j = i % 10 + 1
+        love.graphics.polygon("fill", x, y, pts[i * 2 - 1], pts[i * 2], pts[j * 2 - 1], pts[j * 2])
+    end
+end
+
 function Menu:draw()
     local lg = love.graphics
     local c = Theme.colors
@@ -220,6 +245,9 @@ function Menu:draw()
     lg.setFont(font)
     lg.setScissor(x, y, w, h)
     local pad = Theme.u(14)
+    -- when some rows have icons, every row keeps the room so the labels line up
+    local anyIcon = false
+    for _, it in ipairs(self.items) do if it.icon then anyIcon = true break end end
     for i, it in ipairs(self.items) do
         local ry = y + (i - 1) * rh - self.scroll
         if ry + rh >= y and ry <= y + h then
@@ -252,7 +280,21 @@ function Menu:draw()
                 if center then
                     lg.printf(it.label, x, ty, w, "center")
                 else
-                    lg.print(it.label, x + pad + ((focused and self.opts.plain) and Theme.u(6) or 0), ty)
+                    local lx = x + pad + ((focused and self.opts.plain) and Theme.u(6) or 0)
+                    if it.icon or anyIcon then
+                        -- a small picture before the label (a bug, an item...): it.icon(cx, cy, size, focused)
+                        local isz = math.floor(rh * 0.78)
+                        if it.icon then it.icon(lx + isz / 2, ry + rh / 2, isz, focused) end
+                        lx = lx + isz + Theme.u(10)
+                        lg.setColor(tc)
+                    end
+                    if it.star then
+                        -- favourites: a small amber star before the name
+                        Menu.star(lx + Theme.u(6), ry + rh / 2, Theme.u(6), c.focus)
+                        lx = lx + Theme.u(18)
+                        lg.setColor(tc)
+                    end
+                    lg.print(it.label, lx, ty)
                     local v = self:valueText(it)
                     if it.type == "slider" then
                         local bx, by, bw, bh = self:sliderBar(x, ry, w, rh)
@@ -262,6 +304,15 @@ function Menu:draw()
                         lg.setColor(focused and c.focus or c.accent)
                         lg.rectangle("fill", bx, by, bw * t, bh, 3, 3)
                         lg.circle("fill", bx + bw * t, by + bh / 2, Theme.u(6))
+                    end
+                    local pr = it.progress and it.progress()
+                    if pr then
+                        local bx, bw = x + pad, w - pad * 2
+                        local by = ry + rh - math.max(3, Theme.u(5))
+                        lg.setColor(1, 1, 1, 0.08)
+                        lg.rectangle("fill", bx, by, bw, math.max(2, Theme.u(3)))
+                        lg.setColor(focused and c.focus or c.accent)
+                        lg.rectangle("fill", bx, by, bw * math.max(0, math.min(1, pr)), math.max(2, Theme.u(3)))
                     end
                     if v then
                         lg.setColor(focused and c.focus or c.text)
@@ -283,6 +334,34 @@ function Menu:draw()
         lg.rectangle("fill", x + w + Theme.u(6), by, 3, bh, 2, 2)
     end
     lg.setColor(1, 1, 1, 1)
+end
+
+-- An icon function for a row: sprite `id` (an enemy, bug or item sprite) on a round chitin
+-- badge, so thin dark bugs still read at a glance; amber-ringed when the row is focused.
+-- turn: tip it 45 degrees (bugs drawn side-on fill the badge better that way).
+function Menu.sprite(id, turn)
+    return function(cx, cy, size, focused)
+        local Sprites = require("src.gfx.sprites")
+        local s = id and Sprites.byId and Sprites.byId[id]
+        local lg = love.graphics
+        local c = Theme.colors
+        local r = size / 2
+        lg.setColor(0.36, 0.28, 0.2, 1)
+        lg.circle("fill", cx, cy, r, 24)
+        lg.setColor(0.52, 0.41, 0.29, 1)
+        lg.circle("fill", cx, cy - r * 0.08, r * 0.86, 24)
+        if focused then
+            lg.setColor(c.focus)
+            lg.setLineWidth(2)
+            lg.circle("line", cx, cy, r, 24)
+            lg.setLineWidth(1)
+        end
+        if not s or not Sprites.atlas then return end
+        -- the longest side fills most of the badge
+        local k = (size * 0.86) / math.max(s.w, s.h)
+        lg.setColor(1, 1, 1, 1)
+        lg.draw(s.image or Sprites.atlas, s.frames[1][1], math.floor(cx), math.floor(cy), turn and -math.pi / 4 or 0, k, k, s.ox, s.oy)
+    end
 end
 
 return Menu

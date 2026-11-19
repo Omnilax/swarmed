@@ -11,6 +11,15 @@ local Stats = require("src.game.stats")
 local Inventory = require("src.game.inventory")
 local Skills = require("src.game.skills")
 local Stamina = require("src.game.stamina")
+local RunStats = require("src.game.runstats")
+local DefenseCfg = require("src.config.defense")
+
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.8, 0.85, 0.9 }
+local PFX_2 = { grav = 120 }
+local PFX_3 = { 0.6, 0.85, 1 }
+local PFX_4 = { glow = true, grav = 0 }
+local PFX_LIST_1 = { PFX_1 }
 
 local Player = {}
 Player.__index = Player
@@ -19,7 +28,9 @@ local DASH_TIME, DASH_SPEED = 0.16, 420
 Player.DASH_SPEED = DASH_SPEED
 
 -- Queue something for later (attacks with several beats).
-function Player:after(t, fn) self.delayed[#self.delayed + 1] = { t = t, fn = fn, move = self.curMove } end
+function Player:after(t, fn)
+    self.delayed[#self.delayed + 1] = { t = t, fn = fn, move = self.curMove, src = self.world.dmgSrc }
+end
 
 -- Move fast along (dx, dy) for `dist` units, like a dash (afterimages included). Only the
 -- start of a dash is untouchable (DASH_GUARD of it); the tail end can be bitten, so dashing
@@ -47,7 +58,7 @@ function Player:releaseShove(params)
     end
     self.iframes = math.max(self.iframes, 0.15)
     world:addFx({ kind = "ring", x = self.x, y = self.y, r = r, life = 0.22, color = { 0.85, 0.92, 1 } })
-    world.particles:burst(self.x, self.y, 8, { { 0.8, 0.85, 0.9 } }, 110, 10, { grav = 120 })
+    world.particles:burst(self.x, self.y, 8, PFX_LIST_1, 110, 10, PFX_2)
     Audio.play("dash", { pitch = 0.7, volume = 0.6 })
 end
 
@@ -64,6 +75,7 @@ function Player:setCharacter(def)
     self.def = def
     self.radius = def.radius
     self.stats = Stats.new(def.stats)
+    self.stats.owner = self        -- lets stat previews add an item's kin stats (src/game/shore.lua)
     self.inventory = Inventory.new(self)
     if oldInv then
         oldInv:transferTo(self.inventory)
@@ -82,11 +94,13 @@ function Player:setCharacter(def)
     -- skill tree: rebuilds the params above from the def plus bought nodes (XP kept on a swap)
     self.skills = Skills.new(self, self.skills and self.skills.xp)
     self.skills:apply()
+    -- stat cards from level-ups survive a swap too
+    if self.world and self.world.levelups and self.world.player == self then self.world.levelups:applyStats() end
     self.dashCharges = self.dashParams.charges or 1
     Stamina.state(self)
     self.blocking, self.blockFxT, self.dashHop, self.z, self.dashHit, self.grapple = false, 0, 0, 0, nil, nil
     self.sprite = Sprites.get(def.sprite)
-    self.shadow = Sprites.shadowFor(self.sprite.w * 0.9)
+    self.shadow = Sprites.shadowFor(self.sprite.w * 0.9 * (def.scale or 1))
     self.angle, self.anim, self.wangle = 0, 0, 0
     self.model = def.model
     -- chain bodies (centipede): each segment's world position, trailing behind the head
@@ -113,9 +127,18 @@ function Player:setCharacter(def)
     -- batch 1 move state: dragonfly flight, dung ball, stink shield; ward(player, amount, source)
     -- returning true makes Player:hurt ignore a hit
     self.airborne, self.flight, self.dung, self.stinkShieldT, self.ward = nil, nil, nil, nil, nil
+    -- custom bug script state (src/game/scriptmoves.lua)
+    self._me, self._cx, self.scriptHelpers, self.scriptHeld, self.scriptPending = nil, nil, nil, nil, nil
+    self.scriptBlock, self.scriptWardOn, self.scriptSpeed, self.scriptSpeedT, self.scriptStarted = nil, nil, nil, nil, nil
+    self.traits, self.traitShell, self.traitWardOn, self.traitSpeed, self.slideVX, self.slideVY = nil, nil, nil, nil, nil, nil
+    -- round 3: hitboxes, forms, molt, pets, statuses, poses (src/game/hitshapes.lua, src/game/bugextras.lua)
+    self.hitboxes, self.scriptStopAt, self.scriptCd, self.formIndex, self.molted = nil, nil, nil, nil, nil
+    self.pets, self.petsOut, self.statusTargets, self.killsRun, self.ultUses, self.idleClipT, self.wonPose = nil, nil, nil, nil, nil, nil, nil
+    self.onDashCount = nil
     self.slowT, self.slowAmt = 0, 1                 -- timed slow (pebble daze)
     self.venomT, self.venomDps, self.venomTick = 0, 0, 0   -- poison from venomous bites
     self.stunT, self.blindT, self.gumT, self.gumMul = 0, 0, 0, 1   -- paralysed, blinded, attacks gummed up (bees, wasps)
+    self.shredArmor, self.shredT = 0, 0    -- armor cracked by shredder bites (Player:shred)
     self.stepFrame, self._anims = 0, nil
     self.delayed = {}       -- attack follow-ups: { t = seconds, fn = function(player, world) }
     self.hurtFxT, self.dmgAccum, self.dmgShowT = 0, 0, 0
@@ -125,8 +148,22 @@ function Player:setCharacter(def)
     if self.hp then self.hp = math.min(self.hp, self.stats:get("maxHp")) end
 end
 
+-- The cooldown a move gets after it fires: its own, unless its code set one just now (me.cooldown).
+function Player:takeCooldown(cd)
+    local o = self.scriptCd
+    if o then self.scriptCd = nil return o end
+    return cd
+end
+
 -- A swish for every attack: slow, heavy moves sound lower; quick jabs are higher and softer.
-function Player.swingSound(params, special)
+function Player.swingSound(params, special, player)
+    if player and player.def.custom then
+        local base = player.def.baseDef or player.def
+        if base.soundPack and base.soundPack[special and "special" or "attack"] then
+            require("src.game.bugextras").sfx(player, special and "special" or "attack")
+            return
+        end
+    end
     local cd = params.cooldown or 0.5
     if special then
         Audio.play("special", { pitch = 0.9 + love.math.random() * 0.2 })
@@ -142,12 +179,13 @@ function Player:releaseAttack(ax, ay, extra)
     if atk.timer > 0 then return false end
     local params = self.skills:before("attack", atk.params)
     atk.type.fire(self, self.world, ax, ay, params, extra)
+    if self.world.director then self.world.director:playerAttacked(ax, ay, params) end
     self.skills:after("attack", ax, ay, nil, nil, params)
     Anim.move(self, "attack", atk.params)
-    Player.swingSound(atk.params, false)
+    Player.swingSound(atk.params, false, self)
     self.lungeT = 0.18
     self.wangle = math.atan2(ay, ax)
-    atk.timer = atk.params.cooldown
+    atk.timer = self:takeCooldown(atk.params.cooldown)
     return true
 end
 
@@ -158,10 +196,11 @@ function Player:releaseSecondary(ax, ay, px, py, extra)
     if not sec or sec.timer > 0 then return false end
     local params = self.skills:before("secondary", sec.params)
     sec.type.fire(self, self.world, ax, ay, params, px, py, extra)
+    if self.world.director then self.world.director:playerAttacked(ax, ay, params) end
     self.skills:after("secondary", ax, ay, px, py, params)
     Anim.move(self, "secondary", sec.params)
-    Player.swingSound(sec.params, true)
-    sec.timer = sec.params.cooldown
+    Player.swingSound(sec.params, true, self)
+    sec.timer = self:takeCooldown(sec.params.cooldown)
     self.lungeT = 0.18
     self.wangle = math.atan2(ay, ax)
     return true
@@ -190,8 +229,20 @@ function Player:update(dt)
     local world = self.world
     if self.dead then return end
     local demo = world.flags.demo     -- title-screen attract mode: wander and fight on its own
+    -- scripted buttons (character select's move preview, src/ui/movepreview.lua): { pressed = {}, down = {} }
+    local pilot = world.pilot
+    local function pressed(id)
+        if pilot then return pilot.pressed[id] == true end
+        return not demo and Input.pressed(id)
+    end
+    local function held(id)
+        if pilot then return pilot.down[id] == true end
+        return not demo and Input.down(id)
+    end
     local mx, my
-    if demo then
+    if pilot and pilot.mx then
+        mx, my = pilot.mx, pilot.my
+    elseif demo then
         local t = world.time * 0.35
         mx, my = math.cos(t) * 0.5, math.sin(t * 2) * 0.35
     else
@@ -202,11 +253,14 @@ function Player:update(dt)
     if stunned then
         mx, my = 0, 0
         -- struggle: mashing dash or attack wears the paralysis off faster
-        if not demo and (Input.pressed("dash") or Input.pressed("attack")) then self.stunT = self.stunT - 0.2 end
+        if pressed("dash") or pressed("attack") then self.stunT = self.stunT - 0.2 end
     end
     local mag = util.len(mx, my)
     local wx, wy = Iso.screenDirToWorld(mx, my)
+    -- a parasite can take the wheel (Cordyceps, Horsehair Worm; src/game/parasites.lua)
+    if self.steer and not stunned then wx, wy, mag = self.steer(self, wx, wy, mag, dt) end
     self.moving = mag > 0.1
+    self.moveDirX, self.moveDirY = self.moving and wx or 0, self.moving and wy or 0   -- where the stick / keys point (world)
 
     -- Dash: each bug's own kind (content/dashes), all paid for from one stamina pool
     -- (src/game/stamina.lua), which refills faster with Dash Cooldown items.
@@ -214,19 +268,23 @@ function Player:update(dt)
     Stamina.update(self, dt)
     if dd.hold then
         local wasBlocking = self.blocking
-        local held = not demo and Input.down("dash")
-        if dd.blocked then held = Stamina.guard(self, dt, dp, held) end
-        dd.update(self, world, dt, dp, held)
+        local hold = held("dash")
+        if dd.blocked then hold = Stamina.guard(self, dt, dp, hold) end
+        local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
+        dd.update(self, world, dt, dp, hold)
+        RunStats.leave(world, prevSrc)
         if wasBlocking and not self.blocking and dd.blocked then self:releaseShove(dp) end
         if (self.blocking or self.holdMode) and not (self._anims and self._anims.dash) then Anim.move(self, "dash", dp) end
-    elseif not demo and not stunned and Input.pressed("dash") and self.dashT <= 0.04 and not self.grapple
+    elseif not stunned and pressed("dash") and self.dashT <= 0.04 and not self.grapple
         and ((dd.free and dd.free(self)) or Stamina.hasCharge(self)) then
         if not (dd.free and dd.free(self)) then Stamina.spendCharge(self) end
         local dx, dy = self.aimX, self.aimY
         if self.moving then dx, dy = wx, wy end
         local px, py = self:pointer()
         self.dashHop, self.dashHit, self.dashT0 = 0, nil, nil
+        local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
         dd.start(self, world, dx, dy, dp, px, py)
+        RunStats.leave(world, prevSrc)
         -- jumps (a hop of any height) and flights stay untouchable for nearly the whole move;
         -- a dash def or a character's dash params can set their own share with iframes = 0..1
         local guard = dp.iframes or dd.iframes
@@ -234,11 +292,15 @@ function Player:update(dt)
         if guard and self.dashT > 0 then self.iframes = math.max(self.iframes, self.dashT * guard + 0.05) end
         Anim.move(self, "dash", dp)
         self.dashT0 = self.dashT
-        Audio.play("dash")
+        require("src.game.dashtech").onStart(self)      -- chained dashes go faster (src/game/dashtech.lua)
+        if self.def.custom then require("src.game.bugextras").sfx(self, "dash", "dash") else Audio.play("dash") end
         self.inventory:trigger("onDash", { world = world, player = self, procDepth = 0 })
     end
+    require("src.game.dashtech").update(self)
+    local prevSrc = RunStats.push(world, RunStats.moveName(self, "dash"))
     if (self.dashT > 0 or self.grapple) and dd.update and not dd.hold then dd.update(self, world, dt, dp) end
     if dd.tick then dd.tick(self, world, dt, dp) end      -- dashes with lasting effects (stink shield)
+    RunStats.leave(world, prevSrc)
     -- hops: height follows an arc over the dash
     if self.dashT > 0 and self.dashHop > 0 and self.dashT0 then
         self.z = math.sin((1 - self.dashT / self.dashT0) * math.pi) * self.dashHop
@@ -253,10 +315,16 @@ function Player:update(dt)
     if self.dashT > 0 then
         self.dashT = self.dashT - dt
         vx, vy = self.dashX * DASH_SPEED, self.dashY * DASH_SPEED
-        world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, { 0.6, 0.85, 1 }, 1, { glow = true, grav = 0 })
+        world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, PFX_3, 1, PFX_4)
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
-            * (self.moveMul or 1) * (self.runMul or 1)
+            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1) * (self.traitSpeed or 1)
+        -- the arena (src/game/director.lua): weather, water, sun and shade
+        local env = world.env
+        if env and not self.def.immune then
+            speed = speed * env.playerSpeed
+            if env.field then speed = speed * env.field(self.x, self.y, "player") end
+        end
         local mvx, mvy = wx * mag, wy * mag
         -- sideways walkers (crab): quick to the side of where they face, slow forward and back
         local sw = self.def.sideways
@@ -266,13 +334,27 @@ function Player:update(dt)
             mvx = self.aimX * f * (sw.forward or 0.6) + sx * (sw.side or 1.15)
             mvy = self.aimY * f * (sw.forward or 0.6) + sy * (sw.side or 1.15)
         end
+        -- custom bugs can slide (movement.slide 0..0.95): steering eases in like on ice
+        local slide = self.def.movement and self.def.movement.slide
+        if slide then
+            local k = 1 - math.exp(-dt * (1 - slide) * 25)
+            self.slideVX = (self.slideVX or 0) + (mvx * speed - (self.slideVX or 0)) * k
+            self.slideVY = (self.slideVY or 0) + (mvy * speed - (self.slideVY or 0)) * k
+            mvx, mvy, speed = self.slideVX, self.slideVY, 1
+        end
         vx, vy = mvx * speed + self.kvx + self.momX, mvy * speed + self.kvy + self.momY
     end
     if self.ropeVX then vx, vy = self.ropeVX, self.ropeVY end    -- swinging on a grapple line
+    local env = world.env
+    if env and (self.z or 0) < 6 then
+        local wk = 1 / (self.def.scale or 1) ^ 1.5      -- big bugs lean into the wind
+        vx, vy = vx + env.driftX * wk, vy + env.driftY * wk
+    end
     self.vx, self.vy = vx, vy      -- for enemies that lead their shots
     local S, r = world.size, self.radius
-    self.x = util.clamp(self.x + vx * dt, r, S - r)
-    self.y = util.clamp(self.y + vy * dt, r, S - r)
+    local inset = env and env.inset or 0       -- a shrinking lawn keeps the player further in
+    self.x = util.clamp(self.x + vx * dt, r + inset, S - r - inset)
+    self.y = util.clamp(self.y + vy * dt, r + inset, S - r - inset)
 
     -- Aim
     local range = self:attackRange()
@@ -283,7 +365,11 @@ function Player:update(dt)
         self.aimX, self.aimY = Iso.screenDirToWorld(sx, sy)
     else
         local mode = demo and "nearest" or Settings.get("aimMode")
-        if mode == "mouse" and Input.lastDevice == "touch" then mode = "nearest" end
+        -- touch has no pointer: aim at the nearest ant, or (manual attack, as in the Full Control
+        -- preset) the way you walk, so nothing aims for you
+        if mode == "mouse" and Input.lastDevice == "touch" then
+            mode = Settings.get("autoAttack") and "nearest" or "move"
+        end
         if mode == "nearest" then
             target = world:nearestEnemy(self.x, self.y, range * 1.6)
             if target then
@@ -311,19 +397,22 @@ function Player:update(dt)
         -- specials with a held part (drawing a web wall, munching a snatched ant) or a carry
         if sec.type.update then
             local px, py = self:pointer()
-            sec.type.update(self, world, dt, sec.params, not demo and Input.down("secondary"), px, py)
+            local prevSrc = RunStats.push(world, RunStats.moveName(self, "secondary"))
+            sec.type.update(self, world, dt, sec.params, held("secondary"), px, py)
+            RunStats.leave(world, prevSrc)
         end
-        if not demo and not stunned and not self.blocking and sec.timer <= 0 and not sec.type.manual and Input.pressed("secondary") then
+        if not stunned and not self.blocking and sec.timer <= 0 and not sec.type.manual and pressed("secondary") then
             local px, py = self:pointer()
             local ax, ay, l = util.normalize(px - self.x, py - self.y)
             if l < 1 then ax, ay = self.aimX, self.aimY end
             self.aimX, self.aimY = ax, ay
             local params = self.skills:before("secondary", sec.params)
             sec.type.fire(self, world, ax, ay, params, px, py)
+            if world.director then world.director:playerAttacked(ax, ay, params) end
             self.skills:after("secondary", ax, ay, px, py, params)
             Anim.move(self, "secondary", sec.params)
-            Player.swingSound(sec.params, true)
-            sec.timer = sec.params.cooldown
+            Player.swingSound(sec.params, true, self)
+            sec.timer = self:takeCooldown(sec.params.cooldown)
             self.lungeT = 0.18
             self.wangle = math.atan2(ay, ax)
         end
@@ -337,7 +426,9 @@ function Player:update(dt)
     if atk.type.update then
         local free = not self.blocking and not stunned
         local auto = (Settings.get("autoAttack") or demo) and (target ~= nil or world:nearestEnemy(self.x, self.y, range * 1.2) ~= nil)
+        local prevSrc = RunStats.push(world, RunStats.moveName(self, "attack"))
         atk.type.update(self, world, dt, atk.params, free and not demo and Input.down("attack"), free and auto)
+        RunStats.leave(world, prevSrc)
     end
     if atk.timer <= 0 and (not self.blocking or dd.attackWhileBlocking) and not stunned and not atk.type.manual then
         local want
@@ -349,12 +440,13 @@ function Player:update(dt)
         if want then
             local params = self.skills:before("attack", atk.params)
             atk.type.fire(self, world, self.aimX, self.aimY, params)
+            if world.director then world.director:playerAttacked(self.aimX, self.aimY, params) end
             self.skills:after("attack", self.aimX, self.aimY, nil, nil, params)
             Anim.move(self, "attack", atk.params)
-            Player.swingSound(atk.params, false)
+            Player.swingSound(atk.params, false, self)
             self.lungeT = 0.18
             self.wangle = math.atan2(self.aimY, self.aimX)  -- snap to face the strike
-            atk.timer = atk.params.cooldown
+            atk.timer = self:takeCooldown(atk.params.cooldown)
         else
             atk.timer = 0
         end
@@ -367,10 +459,14 @@ function Player:update(dt)
         if d.t <= 0 then
             table.remove(self.delayed, i)
             self.curMove = d.move
+            local prevSrc = RunStats.push(world, d.src)
             d.fn(self, world)
+            RunStats.leave(world, prevSrc)
             self.curMove = nil
         end
     end
+    -- a custom bug's every-frame code, helpers and held ant (src/game/scriptmoves.lua)
+    if self.def.custom then require("src.game.scriptmoves").tick(self, world, dt) end
 
     -- Regen and timers
     local maxHp = self.stats:get("maxHp")
@@ -402,6 +498,10 @@ function Player:update(dt)
     if self.gumT > 0 then
         self.gumT = self.gumT - dt
         if self.gumT <= 0 then self.gumMul = 1 end
+    end
+    if self.shredArmor > 0 then
+        if self.shredT > 0 then self.shredT = self.shredT - dt
+        else self.shredArmor = math.max(0, self.shredArmor - DefenseCfg.shred.fade * dt) end
     end
     -- Venom: damage over time in half-second ticks (a dash's i-frames skip a tick).
     if self.venomT > 0 then
@@ -489,6 +589,8 @@ function Player:poison(dps, time)
     if self.def.immune then return end     -- hissing roach: shrugs off every debuff
     self.venomDps = math.max(self.venomDps, dps)
     self.venomT = math.max(self.venomT, time)
+    local w = self.world
+    self.venomBy = RunStats.enemyName(w.actingEnemy) or w.hitBy or self.venomBy
 end
 
 -- Slow to `mul` x speed for `time` seconds (pebble daze).
@@ -522,6 +624,30 @@ local function armorMultiplier(armor)
     return (15 - armor) / 15
 end
 
+-- Shredder bites (def.shred, src/config/defense.lua): crack `amount` armor for `time` s,
+-- stacking up to `max`. Each bite refreshes the timer.
+function Player:shred(amount, time, max)
+    if self.def.immune then return end     -- hissing roach: shrugs off every debuff
+    local before = self.shredArmor
+    self.shredArmor = math.min(math.max(before, max or 12), before + amount)
+    self.shredT = math.max(self.shredT, time or 4)
+    if math.floor(self.shredArmor / 4) > math.floor(before / 4) then
+        self.world:floatText(self.x, self.y - 10, "armor cracked", { 1, 0.7, 0.4 })
+    end
+end
+
+-- Armor that counts against the next bite: the stat, minus shredder bites, minus the crowd on
+-- you (every biting ant cracks a little, up to most of your positive armor).
+function Player:effectiveArmor()
+    local armor = self.stats:get("armor") - (self.shredArmor or 0)
+    local n = self.world and self.world.attackers or 0
+    if armor > 0 and n > 1 then
+        local c = DefenseCfg.crowd
+        armor = armor - math.min(armor * c.maxFrac, (n - 1) * c.perAnt)
+    end
+    return armor
+end
+
 -- Where the player is pointing in the world: the mouse, or ahead along the aim on a pad.
 function Player:pointer()
     local dev = Input.lastDevice
@@ -533,7 +659,9 @@ function Player:hurt(amount, source)
     local world = self.world
     if self.dead or self.iframes > 0 or world.flags.god then return end
     if self.ward and self.ward(self, amount, source) then return end
+    if world.rewards and world.rewards.frenzy:shielded() then return end     -- mid frenzy move
     if self.blocking then
+        world.events:emit("player_blocked", amount)
         self.dashDef.blocked(self, world, source, self.dashParams)
         Stamina.blockHit(self, self.dashParams)
         self.inventory:trigger("onBlock", { world = world, player = self, damage = amount, source = source, procDepth = 0 })
@@ -547,7 +675,9 @@ function Player:hurt(amount, source)
     end
     -- No invulnerability after a hit: every bite lands, so a bigger crowd hurts more.
     -- Only dashing (and dodge) avoid damage. Feedback is throttled so swarms don't spam it.
-    local dmg = math.max(0.5, amount * armorMultiplier(self.stats:get("armor")) * (self.guardMul or 1))
+    local dmg = math.max(0.5, amount * armorMultiplier(self:effectiveArmor()) * (self.guardMul or 1)
+        * (type(source) == "table" and source.cWeak or 1)
+        * require("src.game.itemfx").guardMul(self))
     self.hp = self.hp - dmg
     if self.dmgAccum == 0 then self.dmgShowT = 0.3 end
     self.dmgAccum = self.dmgAccum + dmg
@@ -555,23 +685,34 @@ function Player:hurt(amount, source)
         self.hurtFxT = 0.18
         self.flash = 0.12
         self.recoilT = 0.2
-        world.camera:shake(math.min(0.5, 0.15 + dmg * 0.03))
-        Audio.play("hurt")
+        local sx = type(source) == "table" and source.x
+        world.camera:shake(math.min(0.5, 0.15 + dmg * 0.03), sx and (self.x - sx) - (self.y - source.y), sx and ((self.x - sx) + (self.y - source.y)) * 0.5)
+        if self.def.custom then require("src.game.bugextras").sfx(self, "hurt", "hurt") else Audio.play("hurt") end
         Input.vibrate(math.min(1, 0.3 + dmg * 0.05), 0.12)
     end
     local ctx = { world = world, player = self, damage = dmg, source = source, procDepth = 0 }
     world.events:emit("player_hurt", ctx)
     self.inventory:trigger("onHurt", ctx)
+    -- a perk card (Molt Reserve) can cheat death once
+    if self.hp <= 0 and world.levelups and world.levelups:saveFromDeath(self) then return end
     if self.hp <= 0 then
         self.hp = 0
         self.dead = true
+        if self.def.custom then
+            local Extras = require("src.game.bugextras")
+            Extras.sfx(self, "death")
+            local clip = self.def.anims and self.def.anims.death
+            if clip then Anim.play(self, clip, "pose_death", {}) end
+        end
         world.events:emit("player_died", ctx)
     end
 end
 
--- Shove the player (trap-jaw snaps, explosions).
+-- Shove the player (trap-jaw snaps, explosions). Big bugs are heavier and get pushed less,
+-- tiny ones get flung further (def.scale 1.45 takes ~57% of the shove, 0.8 takes ~140%).
 function Player:knock(dx, dy, force)
     local l = math.sqrt(dx * dx + dy * dy) + 0.0001
+    force = force / (self.def.scale or 1) ^ 1.5
     self.kvx, self.kvy = self.kvx + dx / l * force, self.kvy + dy / l * force
 end
 

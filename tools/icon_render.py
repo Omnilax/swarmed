@@ -37,14 +37,18 @@ class Field:
 
 
 class Icon:
-    def __init__(self, cols, rows, shape=None, seed=1):
+    def __init__(self, cols, rows, shape=None, seed=1, zoom=1.0, center=None):
         self.cols, self.rows, self.seed = cols, rows, seed
         self.shape = shape or ["X" * cols] * rows
         k = RES * SS
         self.k = k
+        self.zoom = zoom
         H, W = rows * k, cols * k
         yy, xx = np.mgrid[0:H, 0:W]
-        self.X, self.Y = (xx + 0.5) / k, (yy + 0.5) / k
+        # zoom > 1 looks closer at `center` (in drawing cells), so a small drawing fills its cells
+        cx, cy = center or (cols / 2, rows / 2)
+        self.X = cx + ((xx + 0.5) / k - cols / 2) / zoom
+        self.Y = cy + ((yy + 0.5) / k - rows / 2) / zoom
         self.h = np.zeros((H, W))
         self.cov = np.zeros((H, W), bool)
         self.alb = np.zeros((H, W, 3))
@@ -66,8 +70,10 @@ class Icon:
         fx, fy = self.X / scale, self.Y / scale
         x0, y0 = np.floor(fx).astype(int), np.floor(fy).astype(int)
         tx, ty = smooth(fx - x0), smooth(fy - y0)
-        a, b = grid[y0, x0], grid[y0, x0 + 1]
-        c, d = grid[y0 + 1, x0], grid[y0 + 1, x0 + 1]
+        # wrap, so a zoomed view that reaches past the drawing's cells still finds noise
+        x0w, x1w, y0w, y1w = x0 % gw, (x0 + 1) % gw, y0 % gh, (y0 + 1) % gh
+        a, b = grid[y0w, x0w], grid[y0w, x1w]
+        c, d = grid[y1w, x0w], grid[y1w, x1w]
         n = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty
         self._noise[key] = n
         return n
@@ -187,7 +193,7 @@ class Icon:
 
     # ---- lighting -----------------------------------------------------------------------
     def render(self):
-        k = self.k
+        k = self.k * self.zoom          # pixels per drawing cell (heights are in drawing cells)
         h = np.where(self.cov, self.h, 0.0)
         gy, gx = np.gradient(h)
         sx, sy = np.clip(gx * k, -4, 4), np.clip(gy * k, -4, 4)
@@ -247,15 +253,23 @@ class Icon:
             xs, xd = (slice(max(dx, 0), cols + min(dx, 0)), slice(max(-dx, 0), cols + min(-dx, 0)))
             sh[yd, xd] = allowed[ys, xs]
             inner &= sh
+        self.clipped = int((alpha & ~inner).sum())
         alpha &= inner
         # tinted rim: empty pixels next to the item take a dark version of its colour
         rim = np.zeros_like(alpha)
         rimcol = np.zeros(col.shape)
-        for dy, dx, k in ((0, 1, 0.42), (1, 0, 0.42), (0, -1, 0.26), (-1, 0, 0.26)):
+        # The side facing the low sun (top and left) gets a thin lit edge instead, so dark items
+        # (fangs, beans, legs) still stand out against the dark bag.
+        for dy, dx, k in ((-1, 0, 0.26), (0, -1, 0.26), (0, 1, 0.42), (1, 0, 0.42)):
             nb = np.roll(np.roll(alpha, dy, 0), dx, 1)
             nc = np.roll(np.roll(col, dy, 0), dx, 1)
             new = nb & ~alpha & ~rim & allowed
-            rimcol[new] = nc[new] * k + np.array([0.02, 0.015, 0.03])
+            if dy < 0 or dx < 0:
+                lum = (nc * np.array([0.3, 0.55, 0.15])).sum(-1, keepdims=True)
+                lit = nc * 0.55 + np.array([0.26, 0.22, 0.16]) + np.clip(0.3 - lum, 0, 0.3) * 0.5
+                rimcol[new] = np.clip(lit, 0, 1)[new]
+            else:
+                rimcol[new] = nc[new] * k + np.array([0.02, 0.015, 0.03])
             rim |= new
         # drop shadow down-right of the item
         body = alpha | rim
@@ -264,6 +278,33 @@ class Icon:
             shadow |= np.roll(np.roll(body, dy, 0), dx, 1)
         shadow &= ~body & allowed
         return dict(col=col, alpha=alpha, op=op, rim=rim, rimcol=rimcol, shadow=shadow)
+
+
+def render_fit(cols, rows, shape, seed, fn, zmax=2.4, margin=0.06):
+    """Render fn into an icon, zoomed so the drawing fills its cells.
+
+    Many drawings sit small in the middle of their cells, which made them hard to read in the bag.
+    A first pass finds the drawing's bounds; the second looks closer (up to zmax) so it fills the
+    item's cells less `margin` cells on each side, backing off if that would cut anything off."""
+    I = Icon(cols, rows, shape, seed)
+    fn(I)
+    if not I.cov.any(): return I.render()
+    ys, xs = np.nonzero(I.cov)
+    k = I.k
+    x0, x1, y0, y1 = xs.min() / k, (xs.max() + 1) / k, ys.min() / k, (ys.max() + 1) / k
+    # the drawing's bounds grow by about 3 px for the rim and drop shadow
+    pad = 3 / RES
+    zoom = min(zmax, (cols - 2 * margin - pad) / max(x1 - x0, 1e-3), (rows - 2 * margin - pad) / max(y1 - y0, 1e-3))
+    if zoom <= 1.04: return I.render()
+    centre = ((x0 + x1) / 2 + pad / 4, (y0 + y1) / 2 + pad / 4)
+    base_px = None
+    while zoom > 1.04:
+        J = Icon(cols, rows, shape, seed, zoom=zoom, center=centre)
+        fn(J)
+        img = J.render()
+        if J.clipped <= max(4, img['alpha'].sum() * 0.01): return img
+        zoom = 1 + (zoom - 1) * 0.75
+    return I.render()
 
 
 def quantize(img, maxc=46):

@@ -1,7 +1,8 @@
 -- Snip in Two (crab): the big claw seizes the nearest ant in reach, lifts it and snips it
 -- clean in half. It dies on the spot and the two halves go spinning off to either side,
 -- bowling through the crowd and spattering everything they hit. Queens and bosses are too
--- big to cut: they get a brutal crushing pinch instead.
+-- big to cut: they get a brutal crushing pinch instead. A pebble or twig is seized and flicked
+-- out ahead.
 -- params: damage (halves' impact), cooldown, reach (46), lift (s held before the snip, 0.18),
 --         halves (how far they fly, 110), bossDamage (40), targets (ants snipped one after another, 1),
 --         halfBurst (halves burst where they land, damage, 0), color
@@ -43,7 +44,7 @@ return {
         local reach = (params.reach or 46) * (1 + player.stats:get("area") / 200)
         local ang = math.atan2(ay, ax)
         local best, bestD
-        for _, e in ipairs(Combat.collect(world, player.x, player.y, reach, function(e, dx, dy)
+        for _, e in ipairs(Grab.collect(world, player.x, player.y, reach, function(e, dx, dy)
             return not e.held and math.abs(util.angleDiff(ang, math.atan2(dy, dx))) < 0.8 end)) do
             local d = (e.x - player.x) ^ 2 + (e.y - player.y) ^ 2
             if not bestD or d < bestD then best, bestD = e, d end
@@ -71,6 +72,14 @@ return {
         if k >= 1 then
             local e = c.h.e
             player.carry = nil
+            if e.isProp then
+                -- a pebble or twig is too tough to cut: the claw flicks it out ahead instead
+                local speed = 400
+                Grab.fling(world, c.h, fx * speed, fy * speed, (params.halves or 110) / speed,
+                    { damage = params.damage, landDamage = params.damage * 0.6, radius = 22, height = 10, spin = 16 })
+                world.camera:shake(0.05)
+                return
+            end
             snip(player, world, e, params)
             -- more snips: seize the next ant in reach
             if c.left > 0 then

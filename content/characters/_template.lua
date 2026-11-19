@@ -1,4 +1,5 @@
--- TEMPLATE. Copy to content/characters/my_bug.lua to add a playable arthropod.
+-- TEMPLATE. Copy to content/characters/my_bug.lua to add a built-in playable arthropod.
+-- (Players make their own bugs in the game instead: see _custom_blueprint.lua and docs/CUSTOM_BUGS.md.)
 return {
     name = "My Bug",
     description = "",
@@ -6,7 +7,12 @@ return {
     -- Optional 3D look in game: isometric legs + body parts (sprites with iso = true), body
     -- stacked `height` px thick and raised `lift` px. tools/make_bug_sprites.py makes these.
     model = { legs = "rhino_beetle_legs", body = "rhino_beetle_body", height = 5, lift = 2 },
-    order = 99,                     -- position in character select
+    order = 99,                     -- position in character select (within its family)
+    playstyle = "brawler",          -- tank | brawler | speedster | ranged | control (src/config/playstyles.lua)
+    -- family = "beetle",          -- bug select tab/section; by default the first family whose tag it has (src/config/bugfamilies.lua)
+    -- Shown once, the first time the bug is played. {dash} / {secondary} / {attack} become the
+    -- key, mouse button or controller button the player uses.
+    tip = "",
     radius = 6,
     -- Overrides of base stats (see src/config/stats.lua for every stat and its default).
     stats = { maxHp = 50, moveSpeed = 100 },

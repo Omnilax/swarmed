@@ -6,7 +6,7 @@
 --   choice: options = { {value=..., label=...}, ... }
 --   window = true  -> changing it re-applies the window mode
 local S = {
-    categories = { "Video", "Audio", "Gameplay", "Interface", "Accessibility", "Controls", "Developer" },
+    categories = { "Video", "Lighting", "Camera", "Audio", "Gameplay", "Interface", "Accessibility", "Controls", "Developer" },
 }
 
 local function add(t) S[#S + 1] = t end
@@ -73,45 +73,64 @@ add { key = "scrollZoom", category = "Video", label = "Scroll Wheel Zoom", type 
     desc = "Zoom the camera in and out with the mouse wheel (or a two-finger pinch on a touch screen)." }
 add { key = "weather", category = "Video", label = "Weather", type = "choice", default = "random",
     options = { { value = "random", label = "Random" }, { value = "off", label = "Always Clear" } },
-    desc = "Rain, fog, wind and other passing weather. Only changes how the arena looks." }
+    desc = "Rain, fog, wind and other passing weather. Some spells also change the fight (wind, rain, heat)." }
+
 
 -- Audio ---------------------------------------------------------------------------------
 add { key = "masterVolume", category = "Audio", label = "Master Volume", type = "slider", default = 80, min = 0, max = 100, step = 5, format = percent }
 add { key = "musicVolume", category = "Audio", label = "Music Volume", type = "slider", default = 70, min = 0, max = 100, step = 5, format = percent }
 add { key = "sfxVolume", category = "Audio", label = "Effects Volume", type = "slider", default = 80, min = 0, max = 100, step = 5, format = percent }
 add { key = "uiVolume", category = "Audio", label = "Menu Volume", type = "slider", default = 70, min = 0, max = 100, step = 5, format = percent }
+add { key = "ambientVolume", category = "Audio", label = "Ambient Sounds", type = "slider", default = 60, min = 0, max = 100, step = 10, format = percent,
+    desc = "Birds by day and crickets at night on leafy maps, dry wind in the desert, drips after rain. They hush while the fight is loud. 0% turns them off." }
+add { key = "musicFollowsDay", category = "Audio", label = "Music Follows Day", type = "toggle", default = true,
+    desc = "After dark the drums soften and the pad swells. Off keeps the daytime mix all run." }
+add { key = "positionalSound", category = "Audio", label = "Positional Sound", type = "toggle", default = true,
+    desc = "Kills and hits pan left and right by where they are on screen and get quieter further away." }
+add { key = "musicalStingers", category = "Audio", label = "Musical Stingers", type = "toggle", default = false,
+    desc = "Wave clears and kill streaks play short notes in the music's key instead of the usual sounds." }
 add { key = "muteUnfocused", category = "Audio", label = "Mute When Unfocused", type = "toggle", default = true,
     desc = "Silence the game while its window is in the background." }
 
 -- Gameplay ------------------------------------------------------------------------------
-add { key = "difficulty", category = "Gameplay", label = "Difficulty", type = "choice", default = "worker",
-    options = {
-        { value = "larva", label = "Larva" }, { value = "worker", label = "Worker" },
-        { value = "soldier", label = "Soldier" }, { value = "queen", label = "Queen" },
-    },
-    desc = "Scales enemy health and damage. Larva is relaxed, Queen is brutal." }
 add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "choice", default = "auto",
     options = { { value = "auto", label = "After 3 s" }, { value = "instant", label = "Right Away" }, { value = "manual", label = "When I Press" } },
     desc = "When the next wave starts after you pick an item. The Next Wave key (N) always starts it at once, and during a wave sends the rest of its ants in early." }
-add { key = "eliteFrequency", category = "Gameplay", label = "Elite Ants", type = "choice", default = 1,
-    options = { { value = 0, label = "Off" }, { value = 0.5, label = "Rare" }, { value = 1, label = "Normal" }, { value = 2, label = "Lots" } },
-    desc = "How often tougher elite ants (Aggressive, Gilded, Armored...) show up. They start appearing from wave 2." }
+add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type = "choice", default = "bloom",
+    options = { { value = "bloom", label = "Walk to the Bloom" }, { value = "instant", label = "Open at Once" } },
+    desc = "Walk to the Bloom: a cleared wave's rewards (level-up cards, then the item) sprout as a glowing bloom next to you; walk into it to open it (Next Wave brings it to you, and it rolls to you by itself after a few seconds). Open at Once: the reward screens pop up right after the wave." }
+add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "instant",
+    options = { { value = "instant", label = "Right Away" }, { value = "wave", label = "At Wave End" } },
+    desc = "Right Away: the moment you level up, the cards open (after a short fanfare) and you pick your reward on the spot; the wave's reward bloom then holds only the item. At Wave End: level-ups wait in the reward bloom and come just before the item choice." }
 add { key = "autoAttack", category = "Gameplay", label = "Auto Attack", type = "toggle", default = true,
     desc = "Attack automatically. When off, hold the Attack button." }
 add { key = "aimMode", category = "Gameplay", label = "Aim Mode", type = "choice", default = "nearest",
     options = { { value = "nearest", label = "Nearest Enemy" }, { value = "mouse", label = "Mouse" }, { value = "move", label = "Move Direction" } },
     desc = "Where attacks are pointed. A controller's right stick always overrides this." }
 add { key = "enemyHealthBars", category = "Gameplay", label = "Enemy Health Bars", type = "choice", default = "damaged",
-    options = { { value = "off", label = "Off" }, { value = "damaged", label = "When Damaged" }, { value = "always", label = "Always" } } }
+    options = { { value = "off", label = "Off" }, { value = "elites", label = "Elites & Queens" }, { value = "damaged", label = "When Damaged" }, { value = "always", label = "Always" } },
+    desc = "Health bars over enemies. Elites & Queens shows them only on the tough ones; Always also shows full bars." }
 add { key = "hitstop", category = "Gameplay", label = "Hit Stop", type = "toggle", default = true,
     desc = "Freeze the action for a split second when you wipe out a crowd. Pure crunch." }
+add { key = "slowMotion", category = "Gameplay", label = "Slow Motion", type = "toggle", default = true,
+    desc = "A moment of slow motion on huge multi-kills, a queen falling and the frenzy move." }
+add { key = "frenzyAuto", category = "Gameplay", label = "Auto Frenzy", type = "toggle", default = false,
+    desc = "Unleash the frenzy move by itself as soon as the meter is full (and ants are around). Otherwise press Q." }
+add { key = "autoCollect", category = "Gameplay", label = "Auto Collect Nectar", type = "toggle", default = false,
+    desc = "Nectar beads and pickups fly to you wherever they drop, without walking near them. Off: they drift in once inside your Pickup Range (and everything is swept up at the end of a wave)." }
 add { key = "damageNumbers", category = "Gameplay", label = "Damage Numbers", type = "choice", default = "crits",
-    options = { { value = "off", label = "Off" }, { value = "crits", label = "Crits Only" }, { value = "all", label = "All" } } }
+    options = { { value = "off", label = "Off" }, { value = "crits", label = "Crits Only" }, { value = "all", label = "All" } },
+    desc = "Numbers that pop off enemies when you hit them." }
+add { key = "combineDamageNumbers", category = "Gameplay", label = "Combine Damage Numbers", type = "toggle", default = false,
+    desc = "Quick hits on the same enemy add up into one number that keeps counting, instead of a spray of small ones." }
 add { key = "showKoCounter", category = "Gameplay", label = "KO Counter", type = "toggle", default = true,
     desc = "Show the running KO count and combo." }
+add { key = "gentleStart", category = "Gameplay", label = "Gentle Start", type = "toggle", default = true,
+    desc = "New players meet the game a piece at a time: elites, the shop, events, gambles, routes and big visitors join over the first runs, each with a short card. Off: everything from the first wave." }
 add { key = "tutorialHints", category = "Gameplay", label = "Tutorial Hints", type = "toggle", default = true,
     desc = "Short tips the first time something comes up in a run. Turning it back on shows them all again." }
-add { key = "pauseOnFocusLost", category = "Gameplay", label = "Pause When Unfocused", type = "toggle", default = true }
+add { key = "pauseOnFocusLost", category = "Gameplay", label = "Pause When Unfocused", type = "toggle", default = true,
+    desc = "Pause when the window loses focus, the app goes to the background, or the controller in use is unplugged." }
 add { key = "telegraphs", category = "Gameplay", label = "Attack Warnings", type = "toggle", default = true,
     desc = "Show a warning before enemies charge or lunge." }
 
@@ -120,13 +139,151 @@ add { key = "uiFont", category = "Interface", label = "Font", type = "choice", d
     options = { { value = "pixel", label = "Pixel" }, { value = "smooth", label = "Smooth" } },
     desc = "Pixel matches the game's art. Smooth is easier to read at small sizes." }
 add { key = "uiScale", category = "Interface", label = "Interface Scale", type = "slider", default = 100, min = 75, max = 150, step = 5, format = percent }
+add { key = "hudScale", category = "Interface", label = "HUD Size", type = "slider", default = 75, min = 50, max = 125, step = 5, format = percent,
+    desc = "Size of everything drawn over the fight: health, wave line, KO count, banners, species cards, tips and damage numbers. Smaller leaves more of the screen for the game." }
 add { key = "hudOpacity", category = "Interface", label = "HUD Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent }
+add { key = "itemBadges", category = "Interface", label = "Item Category Badges", type = "toggle", default = true,
+    desc = "A little symbol in the corner of every item in the bag saying what it is for: Attack, Elemental, Guard, Mend, Move, Control, Fortune or Cursed." }
+add { key = "bagSort", category = "Interface", label = "Bag Sort Order", type = "choice", default = "category",
+    options = { { value = "category", label = "By Category" }, { value = "rarity", label = "By Rarity" }, { value = "size", label = "By Size" } },
+    desc = "How SORT lines up your bag. By Category keeps Attack items together, then Elemental, Guard, Mend and so on. If they can't all fit that way, it packs by size." }
+add { key = "catalogueGroup", category = "Interface", label = "Item Catalogue Groups", type = "choice", default = "category",
+    options = { { value = "category", label = "By Category" }, { value = "rarity", label = "By Rarity" } },
+    desc = "How the Item Catalogue lists items. G switches it there too." }
+add { key = "hudDetail", category = "Interface", label = "HUD Detail", type = "choice", default = "full",
+    options = { { value = "full", label = "Full" }, { value = "clean", label = "Clean" } },
+    desc = "Clean keeps health, stamina, XP and what the wave needs from you, and hides the run timer, KO counter, KO milestones and next-wave preview. The switches below still apply in Full." }
 add { key = "showTimer", category = "Interface", label = "Show Run Timer", type = "toggle", default = true }
+add { key = "showEnemyCount", category = "Interface", label = "Enemies Left", type = "toggle", default = true,
+    desc = "A counter under the KO count with how many enemies are still to beat this wave, and a bar of how much of it is done." }
+add { key = "nextWavePreview", category = "Interface", label = "Next Wave Preview", type = "toggle", default = true,
+    desc = "During the break, show what the next wave brings: a queen, a new species, wave modifiers." }
+add { key = "speciesPopups", category = "Interface", label = "First Sighting Popups", type = "choice", default = "new",
+    options = { { value = "new", label = "First Time Ever" }, { value = "run", label = "Every Run" }, { value = "off", label = "Off" } },
+    desc = "A card with a species' name and what it does the first time it shows up (a species a wave introduces always gets its card, unless this is Off)." }
 add { key = "offscreenMarkers", category = "Interface", label = "Off-screen Markers", type = "toggle", default = true,
     desc = "Arrows at the screen edge pointing at queens and elites you cannot see." }
+add { key = "livePreview", category = "Interface", label = "Live Preview", type = "toggle", default = true,
+    desc = "A little live arena beside the Video, Lighting and Camera settings, so you see each change as you make it (when the window is wide enough)." }
+add { key = "holdInspect", category = "Interface", label = "Hold To Inspect", type = "toggle", default = true,
+    desc = "Hold Inspect (V or Left Alt) to slow the run and see the name, health and kind of the enemies near your pointer." }
+add { key = "highlightShots", category = "Interface", label = "Highlight Shots", type = "toggle", default = false,
+    desc = "Saves a picture of each run's biggest multi-kill into the highlights folder of the save folder." }
 add { key = "showFps", category = "Interface", label = "Show FPS", type = "toggle", default = false }
+add { key = "discordStatus", category = "Interface", label = "Discord Status", type = "toggle", default = true,
+    desc = "Shows what you're playing on your Discord profile (bug, wave and mode) while the Discord app is open. PC only." }
 add { key = "cursorStyle", category = "Interface", label = "Cursor", type = "choice", default = "crosshair",
     options = { { value = "crosshair", label = "Crosshair" }, { value = "system", label = "System" }, { value = "hidden", label = "Hidden In Game" } } }
+
+-- Lighting (src/gfx/lighting.lua) -------------------------------------------------------
+add { key = "lightStyle", group = "Lights", category = "Lighting", label = "Light Style", type = "choice", default = "bold",
+    options = { { value = "bold", label = "Bold" }, { value = "soft", label = "Soft" } },
+    desc = "Bold: lights glow past daylight and bright spots roll off softly instead of turning white. Soft: the gentler original look, where lights only lift the shade." }
+add { key = "lightStrength", group = "Lights", category = "Lighting", label = "Light Strength", type = "slider", default = 100, min = 50, max = 150, step = 10, format = percent,
+    desc = "How strong lights are with the Bold light style." }
+add { key = "glareGuard", group = "Lights", category = "Lighting", label = "Glare Guard", type = "toggle", default = true,
+    desc = "Caps how bright sparks, swooshes, fireflies and lightning can get, so glare never hides your bug or the ants." }
+add { key = "glareAmount", group = "Lights", category = "Lighting", label = "Glare Amount", type = "slider", default = 80, min = 20, max = 100, step = 10, format = percent,
+    desc = "How bright sparks, swooshes, fireflies, pollen and lightning flashes glow on top of the scene. Lower it if glare hides the fight; it works with Glare Guard on or off." }
+add { key = "ownEffects", group = "Lights", category = "Lighting", label = "Own Effects Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent,
+    desc = "Fade your own attack glows and sparks so you can see the ants inside them." }
+add { key = "richDay", group = "Lights", category = "Lighting", label = "Rich Day Palette", type = "toggle", default = true,
+    desc = "The day cycle passes through a golden hour, a blue hour and cool moonlight instead of plain day, sunset and night." }
+add { key = "warningLights", group = "Lights", category = "Lighting", label = "Warning Lights", type = "toggle", default = true,
+    desc = "Attack warnings light up the ground red as they charge, so they read in the dark." }
+add { key = "hazardGlow", group = "Lights", category = "Lighting", label = "Hazard Glow", type = "toggle", default = true,
+    desc = "Puddles and pools on the ground give off a soft light in their colour." }
+add { key = "threatLights", group = "Lights", category = "Lighting", label = "Threat Lights", type = "toggle", default = true,
+    desc = "Queens, bosses and elites carry their own light, so the dangerous ones stand out at night." }
+add { key = "nightLantern", group = "Lights", category = "Lighting", label = "Night Lantern", type = "toggle", default = true,
+    desc = "At dusk and night a soft pool of light falls where you are aiming." }
+add { key = "killLights", group = "Lights", category = "Lighting", label = "Kill Light Pops", type = "toggle", default = false,
+    desc = "Elites, queens and bosses light up the area for a moment when they die." }
+
+add { key = "sunShadows", group = "Shadows & Sky", category = "Lighting", label = "Sun Shadows", type = "toggle", default = true,
+    desc = "Bugs and props cast a soft shadow away from the sun: short at noon, long at sunrise and sunset, and away from your light at night." }
+add { key = "contactShadows", group = "Shadows & Sky", category = "Lighting", label = "Contact Shadows", type = "toggle", default = true,
+    desc = "A dark spot right under each bug and prop so it sits on the ground." }
+add { key = "rimLight", group = "Shadows & Sky", category = "Lighting", label = "Rim Light", type = "toggle", default = true,
+    desc = "A thin bright edge on the side of each bug facing the light, so bugs stand out from the ground." }
+add { key = "cloudShadows", group = "Shadows & Sky", category = "Lighting", label = "Cloud Shadows", type = "choice", default = "weather",
+    options = { { value = "off", label = "Off" }, { value = "weather", label = "Cloudy Weather" }, { value = "always", label = "Always" } },
+    desc = "Big soft cloud shadows drift across the arena by day." }
+add { key = "sunRays", group = "Shadows & Sky", category = "Lighting", label = "Sun Rays", type = "toggle", default = false,
+    desc = "Faint shafts of light at golden hour and dawn." }
+add { key = "wetGround", group = "Shadows & Sky", category = "Lighting", label = "Wet Ground", type = "toggle", default = true,
+    desc = "Rain darkens the ground and leaves puddles that shine, drying slowly afterwards." }
+
+-- Visibility (src/gfx/clarity.lua): also in the Lighting tab
+add { key = "actorsPop", group = "Seeing The Fight", category = "Lighting", label = "Actors Pop", type = "toggle", default = true,
+    desc = "The ground is drawn a touch greyer so bugs stand out against it." }
+add { key = "backgroundDim", group = "Seeing The Fight", category = "Lighting", label = "Background Dim", type = "slider", default = 0, min = 0, max = 50, step = 5, format = percent,
+    desc = "Darken and grey the ground and its decor on busy maps, so only the fight is bright." }
+add { key = "silhouettes", group = "Seeing The Fight", category = "Lighting", label = "See-Through Silhouettes", type = "toggle", default = true,
+    desc = "When your bug is buried in a crowd, behind a big beast or inside your own effects, its outline shows through on top." }
+add { key = "threatOutlines", group = "Seeing The Fight", category = "Lighting", label = "Threat Outlines", type = "choice", default = "off",
+    options = { { value = "off", label = "Off" }, { value = "elites", label = "Elites" }, { value = "all", label = "Elites & Queens" } },
+    desc = "A thin gold outline on elites (and red on queens), so the dangerous ones are easy to pick out." }
+add { key = "shotsOnTop", group = "Seeing The Fight", category = "Lighting", label = "Enemy Shots On Top", type = "toggle", default = true,
+    desc = "Enemy projectiles are drawn over your own effects so a spit or a stone is never lost in your flurry." }
+add { key = "hordeDepth", group = "Seeing The Fight", category = "Lighting", label = "Horde Depth", type = "toggle", default = false,
+    desc = "Ants further from you are drawn slightly darker, so the front line you'll touch next stands out." }
+add { key = "clearSpace", category = "Interface", label = "Clear Space Around You", type = "toggle", default = true,
+    desc = "Damage numbers fade right around your bug so they never cover it." }
+add { key = "lowHealthPulse", category = "Interface", label = "Low Health Pulse", type = "toggle", default = true,
+    desc = "A soft red edge that beats like a heart below 25% health." }
+add { key = "dangerCompass", category = "Interface", label = "Danger Compass", type = "toggle", default = false,
+    desc = "Little wedges on the ground around your bug point at the nearest boss, elite or incoming shot." }
+
+-- Art and atmosphere (src/gfx/ambience.lua): in the Lighting tab
+add { key = "windGusts", group = "Atmosphere", category = "Lighting", label = "Wind Gusts", type = "toggle", default = true,
+    desc = "One shared wind with slow gusts: falling leaves, foreground grass and weather all lean the same way." }
+add { key = "hordeTracks", group = "Atmosphere", category = "Lighting", label = "Horde Tracks", type = "toggle", default = false,
+    desc = "Ants leave faint tracks on the ground that fade after a few seconds." }
+add { key = "squashStretch", group = "Atmosphere", category = "Lighting", label = "Squash & Stretch", type = "toggle", default = true,
+    desc = "Ants squash for a moment when they are hit." }
+add { key = "deathStyles", group = "Atmosphere", category = "Lighting", label = "Death Styles", type = "toggle", default = true,
+    desc = "Bodies fall by family: ants curl up, termites flip over, bees and wasps spiral down." }
+add { key = "colourGrade", group = "Atmosphere", category = "Lighting", label = "Colour Grade", type = "choice", default = "off",
+    options = { { value = "off", label = "Off" }, { value = "map", label = "Per Map" }, { value = "act", label = "Per Act" } },
+    desc = "A gentle colour grade: each map its own mood, or lush green for act 1, dry gold for act 2 and dusky violet for act 3." }
+add { key = "heatHaze", group = "Atmosphere", category = "Lighting", label = "Heat Haze", type = "toggle", default = true,
+    desc = "A soft shimmer on desert maps at midday and in heatwaves. Off with Reduce Flashing." }
+add { key = "fallingLeaves", group = "Atmosphere", category = "Lighting", label = "Falling Leaves", type = "toggle", default = true,
+    desc = "A few leaves drift through the view (dust motes in the desert)." }
+add { key = "glowDecor", group = "Atmosphere", category = "Lighting", label = "Night Glow Decor", type = "toggle", default = true,
+    desc = "Glowing mushrooms come out at night on the leafy maps and light the ground around them." }
+
+-- Camera (src/game/camera.lua, src/gfx/camfx.lua) ----------------------------------------
+add { key = "zoomKeys", group = "Zoom", category = "Camera", label = "Zoom Keys", type = "toggle", default = true,
+    desc = "+ and - zoom in and out, 0 goes back to 1x." }
+add { key = "smoothZoom", group = "Zoom", category = "Camera", label = "Smooth Zoom", type = "toggle", default = false,
+    desc = "Zooming glides slowly instead of snapping quickly." }
+add { key = "autoZoom", group = "Zoom", category = "Camera", label = "Smart Auto-Zoom", type = "choice", default = "off",
+    options = { { value = "off", label = "Off" }, { value = "subtle", label = "Subtle" }, { value = "full", label = "Full" } },
+    desc = "Pulls the camera out when a big horde or a boss is around you and eases back in when it's calm. Your own zoom stays the starting point." }
+add { key = "hordeFraming", group = "Framing & Feel", category = "Camera", label = "Horde Framing", type = "toggle", default = false,
+    desc = "The view leans a little towards the side the ants are coming from." }
+add { key = "zoomBySize", group = "Framing & Feel", category = "Camera", label = "Zoom By Bug Size", type = "toggle", default = false,
+    desc = "Big bugs see a little further, tiny ones a little closer, so every bug feels the same size on screen." }
+add { key = "cameraHeight", group = "Framing & Feel", category = "Camera", label = "Camera Height", type = "choice", default = "normal",
+    options = { { value = "low", label = "Low" }, { value = "normal", label = "Normal" }, { value = "high", label = "High" } },
+    desc = "Low squashes the ground for a lower, more grazing angle and shows more of the arena; High stretches it for a steeper look from above." }
+add { key = "bossIntro", group = "Framing & Feel", category = "Camera", label = "Boss Intro Camera", type = "toggle", default = false,
+    desc = "When a queen or a beast arrives the camera glances at it for a moment, with letterbox bars and its name." }
+add { key = "waveClearZoom", group = "Framing & Feel", category = "Camera", label = "Wave Clear Zoom", type = "toggle", default = false,
+    desc = "A quick push-in when the last ant of a wave falls." }
+add { key = "shakeStyle", group = "Framing & Feel", category = "Camera", label = "Shake Style", type = "choice", default = "random",
+    options = { { value = "random", label = "Random" }, { value = "directional", label = "Directional" } },
+    desc = "Directional: when you're hit the screen jolts along the hit and settles faster." }
+add { key = "cameraPunch", group = "Framing & Feel", category = "Camera", label = "Camera Punch", type = "slider", default = 100, min = 0, max = 150, step = 10, format = percent,
+    desc = "The quick zoom kick on big kills and moves, apart from Screen Shake." }
+add { key = "foregroundGrass", group = "Framing & Feel", category = "Camera", label = "Foreground Grass", type = "toggle", default = false,
+    desc = "Dark grass blades along the bottom of the screen drift faster than the ground, for depth. They fade when you walk behind them." }
+add { key = "photoMode", group = "Photos", category = "Camera", label = "Photo Mode", type = "toggle", default = true,
+    desc = "Adds Photo Mode to the pause menu: move the camera freely, zoom, change time of day and weather, then save a screenshot." }
+add { key = "screenshotKey", group = "Photos", category = "Camera", label = "Screenshot Key", type = "toggle", default = true,
+    desc = "F12 saves a screenshot into the game's save folder." }
 
 -- Accessibility -------------------------------------------------------------------------
 add { key = "reduceFlashing", category = "Accessibility", label = "Reduce Flashing", type = "toggle", default = false,
@@ -137,6 +294,10 @@ add { key = "colorblindMode", category = "Accessibility", label = "Colour Filter
         { value = "deuteranopia", label = "Deuteranopia" }, { value = "tritanopia", label = "Tritanopia" },
     },
     desc = "Shifts game colours to be easier to tell apart." }
+add { key = "safePalette", category = "Accessibility", label = "Colourblind-Safe Colours", type = "toggle", default = false,
+    desc = "Elites and hazards use a palette that stays distinct with any colour vision (Okabe-Ito): harmful ground is orange, slowing ground blue, healing ground yellow." }
+add { key = "telegraphContrast", category = "Accessibility", label = "High-Contrast Warnings", type = "toggle", default = false,
+    desc = "Mounds, nest holes, drop shadows, landing rings and attack warnings get a dark outline and bright, thicker rings so they stand out on any ground." }
 add { key = "playerOutline", category = "Accessibility", label = "Highlight Player", type = "toggle", default = false,
     desc = "Draw a ring under your bug so you never lose it in a swarm." }
 add { key = "gameSpeed", category = "Accessibility", label = "Game Speed", type = "slider", default = 100, min = 50, max = 150, step = 5, format = percent,
@@ -148,7 +309,11 @@ add { key = "vibration", category = "Controls", label = "Controller Vibration", 
 add { key = "touchControls", category = "Controls", label = "Touch Controls", type = "choice", default = "auto",
     options = { { value = "auto", label = "Auto" }, { value = "on", label = "Always" }, { value = "off", label = "Off" } },
     desc = "On-screen stick and buttons. Auto shows them once you touch the screen. Always also lets the mouse press them, for testing on a PC." }
-add { key = "touchSize", category = "Controls", label = "Touch Button Size", type = "slider", default = 100, min = 70, max = 150, step = 10, format = percent }
+add { key = "touchLayout", category = "Controls", label = "Touch Layout", type = "choice", default = "right",
+    options = { { value = "right", label = "Right Handed" }, { value = "left", label = "Left Handed" } },
+    desc = "Right Handed: move with the left thumb, buttons on the right. Left Handed swaps the sides." }
+add { key = "touchSize", category = "Controls", label = "Touch Button Size", type = "slider", default = 100, min = 60, max = 160, step = 10, format = percent,
+    desc = "How big the on-screen stick and buttons are." }
 add { key = "touchOpacity", category = "Controls", label = "Touch Button Opacity", type = "slider", default = 70, min = 20, max = 100, step = 10, format = percent }
 add { key = "touchStick", category = "Controls", label = "Touch Stick", type = "choice", default = "floating",
     options = { { value = "floating", label = "Floating" }, { value = "fixed", label = "Fixed" } },
@@ -161,6 +326,10 @@ add { key = "touchAimSpecial", category = "Controls", label = "Touch Special Aim
 -- Developer -----------------------------------------------------------------------------
 add { key = "devMode", category = "Developer", label = "Developer Mode", type = "toggle", default = true,
     desc = "Enables the sandbox, console (`), overlay (F3) and debug hotkeys (F1 lists them)." }
+add { key = "unlockAll", category = "Developer", label = "Unlock Everything", type = "toggle", default = false,
+    desc = "Open every bug, item, danger level and locked skin now, without meeting their goals. Turn it off to go back to earning them; goals still count in Records. Meant for testing, so it lives here with the other developer tools." }
+add { key = "playtestLog", category = "Developer", label = "Playtest Log", type = "toggle", default = false,
+    desc = "Write one line per wave (time, damage taken, KOs, level, items, nectar) to playtest_log.csv in the save folder, for comparing test runs." }
 add { key = "showHitboxes", category = "Developer", label = "Show Hitboxes", type = "toggle", default = false }
 add { key = "showSpatialGrid", category = "Developer", label = "Show Spatial Grid", type = "toggle", default = false }
 add { key = "showOverlay", category = "Developer", label = "Performance Overlay", type = "toggle", default = false }

@@ -15,10 +15,19 @@ Input.actions = {
     { id = "attack", label = "Attack (manual)", keys = { "j" }, mouse = { 1 }, pad = { "rightshoulder", "x" }, rebind = true },
     { id = "secondary", label = "Special Attack", keys = { "k" }, mouse = { 2 }, pad = { "b" }, rebind = true },
     { id = "pause", label = "Pause", keys = { "escape", "p" }, pad = { "start" }, rebind = true },
-    { id = "inventory", label = "Inventory", keys = { "e", "i" }, pad = { "y" }, rebind = true },
-    { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "n" }, pad = { "back" }, rebind = true },
+    { id = "inventory", label = "Inventory / Shop", keys = { "tab", "i" }, pad = { "y" }, rebind = true },
+    { id = "frenzy", label = "Unleash Frenzy", keys = { "q", "c" }, pad = { "rightstick", "leftstick" }, rebind = true },
+    { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "e", "n" }, pad = { "back" }, rebind = true },
     { id = "inventory_alt", label = "Drop Item (inventory)", keys = { "f" }, pad = { "x" }, rebind = true },
     { id = "inventory_rotate", label = "Turn Item (inventory)", keys = { "r" }, pad = { "leftshoulder" }, rebind = true },
+    { id = "inventory_sort", label = "Sort Bag (inventory)", keys = { "t" }, pad = { "leftstick" }, rebind = true },
+    { id = "inventory_scrap", label = "Scrap Item (inventory)", keys = { "g" }, pad = { "rightstick" }, rebind = true },
+    { id = "choice_reroll", label = "Reroll (item choice)", keys = { "r" }, pad = { "x" }, rebind = true },
+    { id = "choice_lock", label = "Lock Card (item choice)", keys = { "l" }, pad = { "rightshoulder" }, rebind = true },
+    { id = "choice_ban", label = "Ban Card (item choice)", keys = { "x", "delete" }, pad = { "y" }, rebind = true },
+    { id = "quick_restart", label = "Quick Restart (pause / defeat)", keys = { "r" }, pad = { "y" }, rebind = true },
+    { id = "inspect", label = "Inspect (hold)", keys = { "v", "lalt" }, rebind = true },
+    { id = "ui_favourite", label = "Favourite Bug (bug select)", keys = { "f" }, pad = { "x" }, rebind = true },
 
     { id = "ui_up", keys = { "up", "w" }, pad = { "dpup" }, repeats = true },
     { id = "ui_down", keys = { "down", "s" }, pad = { "dpdown" }, repeats = true },
@@ -28,6 +37,11 @@ Input.actions = {
     { id = "ui_back", keys = { "escape", "backspace" }, pad = { "b", "back" } },
     { id = "ui_tab_next", keys = { "e", "tab", "pagedown" }, pad = { "rightshoulder" }, repeats = true },
     { id = "ui_tab_prev", keys = { "q", "pageup" }, pad = { "leftshoulder" }, repeats = true },
+    -- bug select: danger level down / up, cycle the sort and the playstyle filter
+    { id = "ui_danger_down", keys = { "z", "-", "[" }, pad = {} },
+    { id = "ui_danger_up", keys = { "x", "=", "]" }, pad = { "y" } },
+    { id = "ui_sort", keys = { "t" }, pad = { "leftstick" } },
+    { id = "ui_style", keys = { "g" }, pad = { "rightstick" } },
 }
 
 local byId = {}
@@ -200,6 +214,27 @@ function Input.vibrate(strength, duration)
         j:setVibration(strength, strength, duration)
     end
 end
+
+-- What to press for an action on the device in use right now, for prompts and key caps:
+-- { pad = "a" } (a controller button, drawn as an icon by Theme), { mouse = 1 }, or { key = "SPACE" }.
+-- Touch has no keys: those prompts name the on-screen button instead (see Tutorial.key).
+local PAD_FALLBACK = { ui_confirm = "a", ui_back = "b" }
+function Input.glyph(id)
+    local a = byId[id]
+    if not a then return { key = tostring(id):upper() } end
+    if Input.lastDevice == "gamepad" then
+        local b = (a.pad and a.pad[1]) or PAD_FALLBACK[id]
+        if b then return { pad = b } end
+    end
+    if a.mouse and id ~= "attack" and Input.lastDevice ~= "gamepad" then return { mouse = a.mouse[1] } end
+    local k = Input.getKeys(id)[1]
+    return { key = k and Input.keyName(k) or "?" }
+end
+
+local KEY_NAMES = { ["return"] = "ENTER", escape = "ESC", lshift = "SHIFT", rshift = "SHIFT", space = "SPACE",
+    backspace = "BKSP", lctrl = "CTRL", rctrl = "CTRL", lalt = "ALT", ralt = "ALT", pagedown = "PG DN", pageup = "PG UP",
+    kpenter = "ENTER", up = "UP", down = "DOWN", left = "LEFT", right = "RIGHT", tab = "TAB" }
+function Input.keyName(k) return KEY_NAMES[k] or k:upper() end
 
 function Input.endFrame()
     for k in pairs(pressed) do pressed[k] = nil end

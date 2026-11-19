@@ -7,6 +7,7 @@ local Content = require("src.content")
 local util = require("src.core.util")
 local util_indexOf = util.indexOf
 local Inventory = require("src.game.inventory")
+local Rules = require("src.game.rules")
 local Input = require("src.core.input")
 
 local Selftest = {}
@@ -15,6 +16,12 @@ local co, waitT = nil, 0
 local function wait(t)
     waitT = t
     coroutine.yield()
+end
+
+-- wait (real time) until cond() holds, up to cap seconds: slow-mo and hitstop stretch game time
+local function waitUntil(cond, cap)
+    local t = 0
+    while not cond() and t < (cap or 6) do wait(0.1) t = t + 0.1 end
 end
 
 local function shot(name)
@@ -79,15 +86,16 @@ local function inventoryScene(game, world)
     assert(math.abs(world.player.hp - math.min(world.player.stats:get("maxHp"), 10 + gain)) < 0.01, "eating did not heal")
     assert(Inventory.eatValue(Inventory.newItem("royal_jelly")) > Inventory.eatValue(Inventory.newItem("honeydew")), "rarer/bigger should heal more")
     world.player.hp = world.player.stats:get("maxHp")
-    -- a full bag: what doesn't fit lands on the ground
-    local left = inv:add("royal_jelly", 12)
-    assert(#left > 0 and inv:usedCells() <= 30, "bag should fill up")
-    for _, l in ipairs(left) do world:dropItem(l, world.player.x, world.player.y, true) end
+    -- a full bag: what doesn't fit is eaten (items never lie on the ground)
+    world.player.hp = 1
+    assert(world:giveItem("royal_jelly", 12) > 0 and inv:usedCells() <= 30, "bag should fill up")
+    assert(world.player.hp > 1 and world.pickups == nil, "overflow should be eaten, not dropped")
+    world.player.hp = world.player.stats:get("maxHp")
     -- a nice mix of shapes for the screenshot, with the cursor on the scarab shell
     inv:clear()
     for _, id in ipairs({ "silk_bundle", "scarab_shell", "dragonfly_wings", "mantis_forelimb", "royal_jelly", "termite_mandible",
                           "hornet_stinger", "four_leaf_clover", "honeydew", "ember_gland" }) do
-        for _, l in ipairs(inv:add(id)) do world:dropItem(l, world.player.x, world.player.y, true) end
+        world:giveItem(id)
     end
     print("[selftest] inventory OK (" .. #inv.bag .. " items, " .. inv:usedCells() .. "/30 cells)")
     local lastDev = Input.lastDevice
@@ -213,6 +221,9 @@ local function itemsScene()
         if world.enemyCount < 20 then world:spawnRing("worker_ant", 30, pl.x, pl.y, 60) end
     end
     local meal = Inventory.newItem("honeydew")
+    -- the Hungry Tapeworm curse stops meals healing at all: take it out for the gut flora check
+    inv.counts.hungry_tapeworm, inv.sums = nil, nil
+    for i = #inv.order, 1, -1 do if inv.order[i] == "hungry_tapeworm" then table.remove(inv.order, i) end end
     pl.hp = 1
     local healed = inv:eat(meal)
     assert(healed > Inventory.eatValue(meal), "gut flora should make meals heal more")
@@ -512,7 +523,7 @@ local function termiteScene()
     king = q.st.king
     q.hp = 1
     Combat.damage(world, q, 5, { noCrit = true })
-    for _ = 1, 10 do world:update(1 / 30) end     -- (a queen's death freezes the action briefly)
+    for _ = 1, 40 do world:update(1 / 30) end     -- (a queen's death freezes the action, then slow motion)
     assert(king.st.widowed, "king did not notice the queen dying")
     world:clearEnemies()
     world.hazards:clear()
@@ -666,17 +677,58 @@ end
 local function script(flags)
     if flags["--termites"] then termiteScene() love.event.quit() return end
     if flags["--finalwave"] then require("src.debug.selftest_finalwave")(wait, shot) love.event.quit() return end
+    if flags["--entries"] then require("src.debug.selftest_entries")(wait, shot) love.event.quit() return end
+    if flags["--tutorial"] then require("src.debug.selftest_tutorial")(wait, shot) love.event.quit() return end
+    if flags["--amber"] then require("src.debug.selftest_amber")(wait, shot) love.event.quit() return end
+    if flags["--artifacts"] then require("src.debug.selftest_artifacts")(wait, shot) love.event.quit() return end
+    if flags["--shore"] then require("src.debug.selftest_shore")(wait, shot) love.event.quit() return end
+    if flags["--maps"] then require("src.debug.selftest_maps")(wait, shot) love.event.quit() return end
+    if flags["--gentle"] then require("src.debug.selftest_gentle")(wait, shot) love.event.quit() return end
+    if flags["--parasites"] then require("src.debug.selftest_parasites")(wait, shot) love.event.quit() return end
+    if flags["--gambles"] then require("src.debug.selftest_gambles")(wait, shot) love.event.quit() return end
+    if flags["--hazards"] then require("src.debug.selftest_hazards")(wait, shot) love.event.quit() return end
+    if flags["--tanky"] then require("src.debug.selftest_tanky")(wait, shot) love.event.quit() return end
+    if flags["--happenings"] then require("src.debug.selftest_happenings")(wait, shot) love.event.quit() return end
+    if flags["--props"] then require("src.debug.selftest_props")(wait, shot) love.event.quit() return end
     if flags["--stability"] then require("src.debug.selftest_stability")(wait, shot) love.event.quit() return end
+    if flags["--rewards"] then require("src.debug.selftest_rewards")(wait, shot) love.event.quit() return end
+    if flags["--economy"] then require("src.debug.selftest_economy")(wait, shot) love.event.quit() return end
+    if flags["--choiceqol"] then require("src.debug.selftest_choiceqol")(wait, shot) love.event.quit() return end
+    if flags["--molts"] then require("src.debug.selftest_molts")(wait, shot) love.event.quit() return end
+    if flags["--nectar"] then require("src.debug.selftest_nectar")(wait, shot) love.event.quit() return end
+    if flags["--combat"] then require("src.debug.selftest_combat")(wait, shot) love.event.quit() return end
+    if flags["--skipwave"] then require("src.debug.selftest_skipwave")(wait, shot) love.event.quit() return end
+    if flags["--docshots"] then require("src.debug.selftest_docshots")(wait, shot) love.event.quit() return end
+    if flags["--arttour"] then require("src.debug.selftest_arttour")(wait, shot) love.event.quit() return end
+    if flags["--itemorg"] then require("src.debug.selftest_itemorg")(wait, shot) love.event.quit() return end
+    if flags["--charselect"] then require("src.debug.selftest_charselect")(wait, shot) love.event.quit() return end
     if flags["--uitour"] then require("src.debug.selftest_ui")(wait, shot) love.event.quit() return end
+    if flags["--creator"] then require("src.debug.selftest_creator")(wait, shot) love.event.quit() return end
+    if flags["--acts"] then require("src.debug.selftest_acts")(wait, shot) love.event.quit() return end
+    if flags["--bosses"] then require("src.debug.selftest_bosses")(wait, shot) love.event.quit() return end
+    if flags["--keepsakes"] then require("src.debug.selftest_keepsakes")(wait, shot) love.event.quit() return end
+    if flags["--runcode"] then require("src.debug.selftest_runcode")(wait, shot) love.event.quit() return end
+    if flags["--flow"] then require("src.debug.selftest_flow")(wait, shot) love.event.quit() return end
+    if flags["--visuals"] then require("src.debug.selftest_visuals")(wait, shot) love.event.quit() return end
+    if flags["--wiki"] then require("src.debug.selftest_wiki")(wait, shot) love.event.quit() return end
+    if flags["--creator2"] then require("src.debug.selftest_creator2")(wait, shot) love.event.quit() return end
+    if flags["--discord"] then require("src.debug.selftest_discord")(wait, shot) love.event.quit() return end
+    if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
+    if flags["--levelups"] then require("src.debug.selftest_levelups")(wait, shot) love.event.quit() return end
     if flags["--skills"] then require("src.debug.selftest_skills")(wait, shot) love.event.quit() return end
     if flags["--cosmetics"] then require("src.debug.selftest_cosmetics")(wait, shot) love.event.quit() return end
+    if flags["--qol"] then require("src.debug.selftest_qol")(wait, shot) love.event.quit() return end
+    if flags["--customwaves"] then require("src.debug.selftest_customwaves")(wait, shot) love.event.quit() return end
     if flags["--modes"] then require("src.debug.selftest_modes")(wait, shot) love.event.quit() return end
+    if flags["--mastery"] then require("src.debug.selftest_mastery")(wait, shot) love.event.quit() return end
     if flags["--records"] then require("src.debug.selftest_records")(wait, shot) love.event.quit() return end
+    if flags["--runinfo"] then require("src.debug.selftest_runinfo")(wait, shot) love.event.quit() return end
     if flags["--polish"] then require("src.debug.selftest_polish")(wait, shot) love.event.quit() return end
+    if flags["--pacing"] then require("src.debug.selftest_pacing")(wait, shot) love.event.quit() return end
     if flags["--hymenoptera"] then hymenopteraScene() love.event.quit() return end
     if flags["--animtest"] then require("src.debug.selftest_anims")(wait, shot) love.event.quit() return end
     if flags["--specials"] then specialsScene() love.event.quit() return end
@@ -758,11 +810,26 @@ local function script(flags)
     wait(0.3)
     assert(sp.phase == "wave" and game.world.enemyCount > 0, "wave ended with enemies still alive")
     game.world:clearEnemies()
-    wait(0.5)
+    waitUntil(function() return sp.phase == "break" end)
     assert(sp.phase == "break", "wave did not end after clearing it")
     shot("wave_break")
-    -- the item choice pops up a moment later; take the first card
+    -- the wave's rewards sprout as a bloom next to the bug; walking into it opens them
     wait(1.2)
+    local bloom = game.world.rewardFlow:bloom()
+    assert(bloom, "no reward bloom after the wave")
+    assert(State.top() == game or State.top().lu, "reward screens opened before the bloom was touched")
+    shot("reward_bloom")
+    game.world.player.x, game.world.player.y = bloom.x, bloom.y
+    wait(1.0)
+    -- level-up cards earned in the wave come first, right before the item choice
+    for _ = 1, 20 do
+        local top = State.top()
+        if not top.lu then break end
+        top.t = 10
+        top:activate(1); top:activate(1)
+        wait(0.05)
+    end
+    assert(#game.world.levelups.queue == 0, "level-up picks left over")
     local choice = State.top()
     assert(choice.items and #choice.items >= 3, "no item choice after the wave")
     local ids = {}
@@ -786,7 +853,12 @@ local function script(flags)
     game.world:clearEnemies()
     game.world.spawner.streams = {}
     game.world.spawner:startWave(5)
-    wait(3)
+    waitUntil(function()
+        -- a level-up pick can open mid-wave and pause the game: take a card and carry on
+        local top = State.top()
+        if top ~= game and top.lu then top.t = 10; top:activate(1); top:activate(1) end
+        return game.world.boss ~= nil
+    end, 10)
     assert(game.world.boss and game.world.boss.def.boss, "no queen on the boss wave")
     print("[selftest] boss wave OK: " .. game.world.boss.def.name)
     shot("boss_wave")
@@ -828,12 +900,17 @@ local function script(flags)
         for i = 1, n do world:spawnEnemy("worker_ant", pl.x + math.cos(i) * 4, pl.y + math.sin(i) * 4) end
         world.flags.freezeAI = true
         local lost = 0
+        -- (weather can slow the fight down, and a big moment freezes it: keep both out of the count)
+        local weather = Rules.test.weatherEffects
+        Rules.set("weatherEffects", false)
         for _ = 1, 120 do
             local full = pl.stats:get("maxHp")
             pl.hp = full           -- keep it alive and measure what each frame takes
+            world.hitstop = 0
             world:update(1 / 60)
             lost = lost + math.max(0, full - pl.hp)
         end
+        Rules.set("weatherEffects", weather)
         world.flags.freezeAI = false
         world.flags.god = true
         pl.attack.timer = 0
@@ -842,7 +919,9 @@ local function script(flags)
     end
     local one, ten = biteTest(1), biteTest(10)
     print(("[selftest] bites over 2s: 1 ant %.1f dmg, 10 ants %.1f dmg"):format(one, ten))
-    assert(ten > one * 5, "damage does not scale with the number of attackers")
+    -- (frozen ants get pushed apart and not all ten reach the bug, and bite timers are random:
+    -- ten land 3x to 6x one in practice)
+    assert(ten > one * 2.5, "damage does not scale with the number of attackers")
 
     -- Every species and a queen, side by side, fighting for a few seconds.
     world:clearEnemies()
@@ -952,12 +1031,17 @@ local function script(flags)
     world.flags.god = true
     for _, cdef in ipairs(Content.characters:all()) do
         world.player:setCharacter(cdef)
+        -- (let the last bug's moves wind down first: a held mode or a block left over from it
+        -- can hold back the first attack until the crowd is already hugging the new bug)
+        wait(0.5)
         world.player.attack.timer = 0
-        world:spawnRing("worker_ant", 40, world.player.x, world.player.y, 30)
+        -- (a ring a little out, so the ants walk in through ranged puffs such as stink clouds,
+        -- which land about 50 out and would miss a crowd already hugging the bug)
+        world:spawnRing("worker_ant", 40, world.player.x, world.player.y, 50)
         world:spawnRing("green_ant", 4, world.player.x, world.player.y, 90)
         local before = world.kos
         -- slow killers (stink clouds, a small dung ball) need longer on a slow test machine
-        for _ = 1, 20 do
+        for _ = 1, 40 do
             wait(0.2)
             if world.kos > before then break end
         end
@@ -1087,8 +1171,11 @@ local function script(flags)
     termiteScene()
     hymenopteraScene()
     require("src.debug.selftest_skills")(wait, shot)
+    require("src.debug.selftest_levelups")(wait, shot)
     require("src.debug.selftest_records")(wait, shot)
+    require("src.debug.selftest_mastery")(wait, shot)
     require("src.debug.selftest_polish")(wait, shot)
+    require("src.debug.selftest_pacing")(wait, shot)
     require("src.debug.selftest_anims")(wait, shot)
     print("[selftest] save dir: " .. love.filesystem.getSaveDirectory())
     print("[selftest] OK")
@@ -1096,6 +1183,9 @@ local function script(flags)
 end
 
 function Selftest.start(flags)
+    -- most tests step through waves without clicking cards: level-ups wait for the wave's end
+    -- (tests of the Right Away flow set "levelUpWhen" themselves)
+    require("src.core.settings").set("levelUpWhen", "wave")
     co = coroutine.create(function() script(flags) end)
 end
 

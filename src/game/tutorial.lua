@@ -12,24 +12,9 @@ local util = require("src.core.util")
 
 local Tutorial = { seen = {}, FILE = "tutorial.lua" }
 
-local PAD = { a = "A", b = "B", x = "X", y = "Y", rightshoulder = "RB", leftshoulder = "LB", start = "START" }
-
--- What to press for an action, on whatever the player is using right now.
-function Tutorial.key(id)
-    local Touch = require("src.core.touch")
-    if Touch.enabled() then
-        return ({ dash = "the DASH button", secondary = "the SPECIAL button", inventory = "the BAG button" })[id] or id
-    end
-    for _, a in ipairs(Input.actions) do
-        if a.id == id then
-            if Input.lastDevice == "gamepad" and a.pad then return PAD[a.pad[1]] or a.pad[1]:upper() end
-            if a.mouse and id ~= "attack" then return a.mouse[1] == 1 and "LEFT CLICK" or "RIGHT CLICK" end
-            local k = Input.getKeys(id)[1]
-            return k and k:upper() or "?"
-        end
-    end
-    return "?"
-end
+-- What to press for an action: a {token} that Theme.rich draws as the key cap, mouse button,
+-- controller button icon or touch button for whatever the player is using right now.
+function Tutorial.key(id) return "{" .. id .. "}" end
 
 local K = Tutorial.key
 
@@ -37,8 +22,9 @@ Tutorial.hints = {
     { id = "move",
         when = function(w) return w.time > 0.8 end,
         text = function()
-            if require("src.core.touch").enabled() then return "Drag on the left side of the screen to move" end
-            return Input.lastDevice == "gamepad" and "Move with the left stick" or "Move with WASD or the arrow keys"
+            local Touch = require("src.core.touch")
+            if Touch.enabled() then return "Drag on the " .. (Touch.lefty() and "right" or "left") .. " side of the screen to move" end
+            return Input.lastDevice == "gamepad" and "Move with {pad:leftstick}" or "Move with {key:W}{key:A}{key:S}{key:D} or the arrow keys"
         end,
         done = function(w, T) return (T.walked or 0) > 260 end },
     { id = "attack",
@@ -71,13 +57,21 @@ Tutorial.hints = {
         text = function()
             if require("src.core.touch").enabled() then return "Skill point! Open the BAG, then the SKILLS tab" end
             return "Skill point! Open the bag (" .. K("inventory") .. ") and switch to the SKILLS tab ("
-                .. (Input.lastDevice == "gamepad" and "RB" or "Tab") .. ")"
+                .. (Input.lastDevice == "gamepad" and "{pad:rightshoulder}" or "{key:Tab}") .. ")"
         end,
         done = function(w) local sk = w.player.skills return sk and sk.spent > 0 end },
     { id = "queen",
         when = function(w) return w.boss ~= nil and not w.boss.dead end,
         text = function() return "A queen! Slay her for an extra item to choose from" end },
 }
+
+-- A card shown as soon as the current one is gone (Gentle Start's "NEW" cards,
+-- src/game/onramp.lua). tag is the word before the title ("TIP" by default).
+Tutorial.queue = {}
+function Tutorial.notify(title, text, tag)
+    if Tutorial.off then return end
+    Tutorial.queue[#Tutorial.queue + 1] = { title = title, text = text, tag = tag }
+end
 
 function Tutorial.load()
     Tutorial.seen = {}
@@ -90,7 +84,10 @@ function Tutorial.load()
     end
     Settings.onChange(function(key)
         if key == "tutorialHints" and Settings.get(key) then
-            Tutorial.seen = {}
+            -- hints show again; systems already met (Gentle Start, "sys:" keys) stay met
+            local keep = {}
+            for k, v in pairs(Tutorial.seen) do if type(k) == "string" and k:sub(1, 4) == "sys:" then keep[k] = v end end
+            Tutorial.seen = keep
             Tutorial.save()
         end
     end)
@@ -105,6 +102,7 @@ end
 function Tutorial.attach(world)
     Tutorial.run = { world = world, T = { px = world.player.x, py = world.player.y } }
     Tutorial.current = nil
+    Tutorial.queue = {}
     local T = Tutorial.run.T
     local p = world.player
     -- no dash/special events exist, so watch the timers
@@ -114,7 +112,8 @@ end
 function Tutorial.update(world, dt)
     local run = Tutorial.run
     if not run or run.world ~= world then return end
-    if Tutorial.off or not Settings.get("tutorialHints") or world.mode ~= "run" or world.flags.demo then
+    if Tutorial.off or not Settings.get("tutorialHints") or world.mode ~= "run" or world.flags.demo
+        or (world.modeDef and world.modeDef.tutorial) then
         Tutorial.current = nil
         return
     end
@@ -134,13 +133,32 @@ function Tutorial.update(world, dt)
     if cur then
         cur.t = cur.t + dt
         local h = cur.hint
-        if cur.t > 9 or (h.done and cur.t > 1.2 and h.done(world, T)) then cur.out = cur.out or cur.t end
+        if cur.t > (cur.life or 9) or (h.done and cur.t > 1.2 and h.done(world, T)) then cur.out = cur.out or cur.t end
         if cur.out and cur.t > cur.out + 0.4 then Tutorial.current = nil end
         return
     end
     if p.dead then return end
     T.gap = (T.gap or 0) - dt
     if T.gap > 0 then return end
+    local q = table.remove(Tutorial.queue, 1)
+    if q then
+        Tutorial.current = { text = q.text, title = q.title, tag = q.tag, t = 0, life = 10, hint = {} }
+        Audio.play("hint")
+        T.gap = 1.5
+        return
+    end
+    -- the first time a bug is played: its own tip (content/characters `tip`), after the very
+    -- first "move" hint so a brand new player learns to walk first
+    local def = p.def
+    local tipId = "bug:" .. def.id
+    if def.tip and def.tip ~= "" and not Tutorial.seen[tipId] and Tutorial.seen.move and world.time > 1.5 then
+        Tutorial.seen[tipId] = true
+        Tutorial.save()
+        Tutorial.current = { text = def.tip, title = def.name, t = 0, life = 12, hint = {} }
+        Audio.play("hint")
+        T.gap = 2
+        return
+    end
     for _, h in ipairs(Tutorial.hints) do
         if not Tutorial.seen[h.id] and h.when(world, T) then
             Tutorial.seen[h.id] = true
@@ -165,18 +183,27 @@ function Tutorial.draw(world, covered)
     local k = math.min(1, cur.t / 0.25)
     if cur.out then k = math.max(0, 1 - (cur.t - cur.out) / 0.4) end
     lg.setFont(Theme.font("body"))
-    local tw = math.min(lg.getFont():getWidth(cur.text), w - u(80))
-    local _, lines = lg.getFont():getWrap(cur.text, tw)
-    local bw, bh = tw + u(36), #lines * lg.getFont():getHeight() + u(26)
+    -- buttons named in the text are drawn as key caps / controller icons (Theme.rich)
+    local tw, n = Theme.richSize(cur.text, math.min(w - u(80), u(640)))
+    local lh = lg.getFont():getHeight()
+    local head = cur.title and Theme.font("label", "bold") or nil
+    local headH = head and head:getHeight() + u(4) or 0
+    local bw, bh = math.max(tw, head and head:getWidth((cur.tag or "TIP") .. "  ·  " .. cur.title:upper()) or 0) + u(36), n * lh + u(26) + headH
     local bx = math.floor((w - bw) / 2)
     local by = math.floor(h * 0.7 + (1 - k) * u(12))
+    if by + bh > h - u(10) then by = math.floor(h - u(10) - bh) end
     lg.setColor(0.06, 0.045, 0.04, 0.85 * k)
     lg.rectangle("fill", bx, by, bw, bh, u(4))
     local c = Theme.colors
     lg.setColor(c.focus[1], c.focus[2], c.focus[3], k)
     lg.rectangle("fill", bx, by, u(3), bh)
-    lg.setColor(c.text[1], c.text[2], c.text[3], k)
-    lg.printf(cur.text, bx + u(18), by + u(13), tw, "center")
+    if head then
+        lg.setFont(head)
+        lg.setColor(c.focus[1], c.focus[2], c.focus[3], k)
+        lg.printf((cur.tag or "TIP") .. "  ·  " .. cur.title:upper(), bx, by + u(10), bw, "center")
+        lg.setFont(Theme.font("body"))
+    end
+    Theme.rich(cur.text, bx + u(18), by + u(13) + headH, bw - u(36), "center", c.text, k)
     lg.setColor(1, 1, 1, 1)
 end
 

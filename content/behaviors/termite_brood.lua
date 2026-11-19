@@ -7,6 +7,10 @@ local AI = require("src.game.ai")
 local Content = require("src.content")
 local util = require("src.core.util")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.95, 0.92, 0.82 }
+local PFX_LIST_1 = { PFX_1 }
+
 return {
     name = "Egg layer",
     init = function(e) e.st.cd, e.st.clutches = 2 + love.math.random() * 2, {} end,
@@ -36,7 +40,7 @@ return {
                 if o then
                     st.clutches[#st.clutches + 1] = { e = o, uid = o.uid }
                     e.squash = 0.25
-                    world.particles:burst(o.x, o.y, 5, { { 0.95, 0.92, 0.82 } }, 30, 20)
+                    world.particles:burst(o.x, o.y, 5, PFX_LIST_1, 30, 20)
                 end
             end
         end

@@ -7,6 +7,11 @@ local AI = require("src.game.ai")
 local Iso = require("src.core.iso")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.95, 0.92, 0.8 }
+local PFX_2 = { grav = 200 }
+local PFX_LIST_1 = { PFX_1 }
+
 local function eggsUpdate(world, z, dt)
     local p = world.player
     z.x, z.y = p.x, p.y
@@ -17,7 +22,7 @@ local function eggsUpdate(world, z, dt)
             world:spawnEnemy(z.larva, p.x + math.cos(a) * 8, p.y + math.sin(a) * 8)
         end
         world:floatText(p.x, p.y, "HATCHED", { 0.95, 0.9, 0.75 }, false)
-        world.particles:burst(p.x, p.y, 8, { { 0.95, 0.92, 0.8 } }, 50, 40, { grav = 200 })
+        world.particles:burst(p.x, p.y, 8, PFX_LIST_1, 50, 40, PFX_2)
         Audio.play("kill", { pitch = 0.6 })
         z.t = z.maxLife
     end

@@ -10,8 +10,11 @@ return {
     sprite = "pistol_shrimp",
     model = { legs = "pistol_shrimp_legs", body = "pistol_shrimp_body", height = 3, lift = 2, stride = 1.3 },
     order = 25,
-    radius = 7,
-    stats = { maxHp = 44, moveSpeed = 112, critChance = 12, critDamage = 180 },
+    playstyle = "ranged",          -- src/config/playstyles.lua
+    tip = "Hold {secondary} to aim, let go to fire a sniper jet through a whole line. Shots from the cloak ({dash}) hit twice as hard.",
+    radius = 5,
+    scale = 0.8,
+    stats = { maxHp = 34, moveSpeed = 118, critChance = 15, critDamage = 200 },
     attack = { type = "waterjet", damage = 4, cooldown = 0.2, range = 135, spread = 0.1, popEvery = 6, popRadius = 14, color = { 0.6, 0.85, 1 } },
     secondary = { type = "snapshot", damage = 50, cooldown = 2, aim = 0.5, range = 300, width = 5, radius = 28, cloakMult = 2 },
     dash = { type = "cloak", time = 2.2, speed = 1.3, distance = 40 },

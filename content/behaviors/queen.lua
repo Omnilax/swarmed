@@ -8,6 +8,10 @@ local AI = require("src.game.ai")
 local Content = require("src.content")
 local Audio = require("src.core.audio")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.9, 0.85, 0.7 }
+local PFX_LIST_1 = { PFX_1 }
+
 return {
     name = "Queen",
     init = function(e) e.st.cd, e.st.guardCd = 2, 0 end,
@@ -40,7 +44,7 @@ return {
             world.spawner:spawnGroup(brood, n, e.x, e.y, { noElites = true })
             e.squash = 0.2
             Audio.play("dash", { pitch = 0.5 })
-            world.particles:burst(e.x, e.y, 8, { { 0.9, 0.85, 0.7 } }, 60, 40)
+            world.particles:burst(e.x, e.y, 8, PFX_LIST_1, 60, 40)
         end
     end,
 }

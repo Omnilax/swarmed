@@ -20,7 +20,7 @@ return function(wait, shot)
     ms.menu:focused().onActivate()                  -- -> character select for endless
     wait(0.2)
     local cs = State.top()
-    cs.menu.items[1].onActivate()                   -- -> starting items
+    cs:pick(cs.list[1].def)                          -- the first bug -> starting items
     local lo = State.top()
     assert(lo.budget and lo.picked, "endless did not open the starting items screen")
     for _, id in ipairs({ "honeydew", "chitin_plate", "royal_jelly" }) do lo:add(Content.items:get(id)) end
@@ -35,7 +35,7 @@ return function(wait, shot)
     wait(0.3)
     assert(g.world
  and g.world.gameMode == "endless", "loadout did not start an endless run")
-    local have = #g.world.pickups
+    local have = 0
     for id in pairs(ids) do have = have + g.world.player.inventory:count(id) end
 
     assert(have >= picked, ("starting items missing: %d of %d"):format(have, picked))
@@ -50,7 +50,11 @@ return function(wait, shot)
             local e = spawn(w, def, x, y, elite)
             if e then
                 local d = e.def
-                seen.families[d.family] = true
+                -- (reward critters, the treasure ant and a mini-goal's courier, src/game/rewards.lua,
+                -- visit every mode, like the boss encounter predators)
+                local critter = false
+                for _, t in ipairs(d.tags or {}) do if t == "treasure" or t == "goal" then critter = true end end
+                if not critter then seen.families[d.family] = true end
                 seen.ids[d.id] = true
                 if d.boss then seen.bosses = seen.bosses + 1 end
                 if not d.boss and d.spawn.weight > 0 then
@@ -95,7 +99,7 @@ return function(wait, shot)
     local reachWave = function(n) return function(w) return w.spawner.wave >= n and w.spawner.phase == "break" end end
 
     for _, m in ipairs(Content.modes:all()) do
-        if not m.endless then
+        if not m.endless and not m.tutorial then
             local seen = play(m.id, 600, reachWave(6))
             assert(seen.wave >= 6, m.id .. ": stuck at wave " .. seen.wave)
             assert(seen.spawned > 0, m.id .. ": nothing spawned")

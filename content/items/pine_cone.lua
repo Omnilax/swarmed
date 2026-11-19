@@ -1,8 +1,14 @@
 -- A lobbed cone that bursts where it lands, throwing its scales in every direction.
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.5, 0.32, 0.16 }
+local PFX_2 = { 0.7, 0.5, 0.3 }
+local PFX_LIST_1 = { PFX_1, PFX_2 }
+
 return {
     name = "Pine Cone",
     description = "Hits have a 6% chance to lob a pine cone that bursts into 6 scales, each hitting for 8 damage (+8 per stack).",
     rarity = "rare",
+    category = "elemental",
     size = { 2, 2 },
     procs = {
         {
@@ -19,7 +25,7 @@ return {
                             world.hazards:friendlyShot({ x = s.x, y = s.y, z = 4, vx = math.cos(a) * 160, vy = math.sin(a) * 160,
                                 r = 2, damage = 8 * stacks, pierce = 1, life = 0.4, knockback = 60, color = { 0.75, 0.5, 0.25 }, procDepth = 1 })
                         end
-                        world.particles:burst(s.x, s.y, 8, { { 0.5, 0.32, 0.16 }, { 0.7, 0.5, 0.3 } }, 80, 50)
+                        world.particles:burst(s.x, s.y, 8, PFX_LIST_1, 80, 50)
                     end })
             end,
         },

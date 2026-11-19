@@ -1,7 +1,7 @@
 -- Seize (dragonfly): hold right click to snatch the nearest ant in the spiny leg basket and
 -- carry it for as long as you keep holding. Let go and it's dropped like a bomb from a bomber:
 -- it falls on the crowd below and explodes (from the air it keeps some of your speed and blows
--- up bigger). Queens and bosses are too big.
+-- up bigger). Queens and bosses are too big. Pebbles and acorns make good bombs too.
 -- params: cooldown (after a drop), reach (grab range, 34), bomb (blast damage when dropped
 --         from the air, 22), radius (blast, 30), groundMult (blast x when dropped on the
 --         ground, 0.6), squeeze (damage per second to the held ant, 0), color
@@ -24,7 +24,7 @@ return {
         if held and not c and player.secondary.timer <= 0 and player.stunT <= 0 then
             local reach = (params.reach or 34) * (1 + player.stats:get("area") / 100) + (player.airborne and 8 or 0)
             local best, bd
-            for _, e in ipairs(Combat.collect(world, player.x, player.y, reach)) do
+            for _, e in ipairs(Grab.collect(world, player.x, player.y, reach)) do
                 local d = (e.x - player.x) ^ 2 + (e.y - player.y) ^ 2
                 if not e.held and not e.def.boss and not e.def.queen and (not bd or d < bd) then best, bd = e, d end
             end

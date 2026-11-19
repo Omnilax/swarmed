@@ -20,6 +20,7 @@ local Touch = require("src.core.touch")
 local Records = require("src.game.records")
 local Music = require("src.core.music")
 local Feedback = require("src.game.feedback")
+local Presence = require("src.game.presence")
 
 local selftest
 
@@ -40,13 +41,34 @@ function love.load(args)
     Records.regrant()     -- re-apply cosmetic rewards of achievements already earned
     -- test runs must not touch the player's save
     Records.noSave = flags["--selftest"] or flags["--profile"] or false
+    -- the player's own bugs from the Bug Creator (tests and the bot never see them)
+    local CustomBugs = require("src.game.custombugs")
+    if Records.noSave or flags["--balance"] then
+        CustomBugs.dir, CustomBugs.noSave = "selftest_custom_bugs", true
+    end
     require("src.game.tutorial").load()
+    require("src.game.prefs").noSave = Records.noSave or flags["--balance"] or false
+    require("src.game.runsave").noSave = Records.noSave or flags["--balance"] or false
+    -- tests and the balance bot see every bug and item (src/game/unlocks.lua); --locked keeps the locks
+    require("src.game.unlocks").free = (Records.noSave or flags["--balance"] or false) and not flags["--locked"]
     -- tests and the balance bot run without hints (the polish selftest turns them on itself)
     require("src.game.tutorial").noSave = Records.noSave
     require("src.game.tutorial").off = Records.noSave or flags["--balance"] or false
+    -- Gentle Start (src/game/onramp.lua) holds nothing back in tests or for the balance bot
+    require("src.game.onramp").off = Records.noSave or flags["--balance"] or false
+    -- tests and the balance bot drive one world: no moving to a new map between acts
+    require("src.game.acts").off = Records.noSave or flags["--balance"] or false
     Music.init()
+    Presence.init(flags)  -- Discord status (src/game/presence.lua)
     Sprites.build(Content.sprites)
+    -- custom bugs load after the atlas: their own art is built as small images of its own
+    if not (Records.noSave or flags["--balance"]) then
+        local okC, errC = pcall(CustomBugs.loadAll)
+        if not okC then print("[custombugs] " .. tostring(errC)) end
+    end
 
+    -- the Design Bible PDFs read the game through this dump (tools/wiki/README.md)
+    if flags["--docdump"] then require("src.debug.docdump")() love.event.quit() return end
     Settings.onChange(function(key)
         local s = Settings.byKey[key]
         if s and s.window then Screen.applyVideoSettings() end
@@ -68,7 +90,8 @@ function love.load(args)
         State.switch(require("src.debug.roster").new({ shot = flags["--shot"], t = 0.3 }))
         return
     end
-    if flags["--profile"] then require("src.debug.profile").start() return end
+    if flags["--makeicon"] then State.switch(require("src.debug.iconmaker").new()) return end
+    if flags["--profile"] then require("src.debug.profile").start(flags) return end
     if flags["--balance"] then require("src.debug.balance").start() return end
     if flags["--selftest"] then
         selftest = require("src.debug.selftest")
@@ -84,6 +107,7 @@ function love.update(dt)
     Feedback.update(dt)
     Music.update(dt)
     Records.update(dt)
+    Presence.update(dt)
     Input.endFrame()
     Touch.endFrame()
 end
@@ -91,6 +115,17 @@ end
 function love.draw()
     State.draw()
     Records.drawToasts()
+    local st = _G.SwarmedToast
+    if st then
+        st.t = st.t - love.timer.getDelta()
+        if st.t <= 0 then _G.SwarmedToast = nil else
+            local Theme = require("src.ui.theme")
+            love.graphics.setFont(Theme.font("body"))
+            love.graphics.setColor(1, 0.9, 0.6, math.min(1, st.t))
+            love.graphics.printf(st.text, 0, Theme.u(70), love.graphics.getWidth(), "center")
+            love.graphics.setColor(1, 1, 1, 1)
+        end
+    end
     Touch.draw()
     Dev.draw()
     if selftest then selftest.draw() end
@@ -98,12 +133,39 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
     Touch.otherInput()
+    -- a text editor on top (Bug Creator script editor) gets every key itself
+    local top = State.top()
+    if top and top.wantsText then
+        Input.lastDevice = "keyboard"
+        State.call("keypressed", key, scancode, isrepeat)
+        return
+    end
+    -- Screenshot Key: F12 saves a PNG of the window into the save folder (Photo Mode has its own)
+    if key == "f12" and not isrepeat and require("src.core.settings").get("screenshotKey")
+        and not (top and top.photo) then
+        local name = require("src.states.photomode").screenshot()
+        print("[screenshot] " .. name)
+        _G.SwarmedToast = { text = "Screenshot saved", t = 2 }
+    end
     if not Input.isCapturing() and Dev.keypressed(key) then return end
     Input.keypressed(key, isrepeat)
     State.call("keypressed", key, scancode, isrepeat)
 end
 
-function love.textinput(t) Dev.textinput(t) end
+function love.textinput(t)
+    if Dev.textinput(t) then return end
+    State.call("textinput", t)
+end
+
+-- A file dropped on the window (desktop): the Bug Creator imports .lua bug scripts.
+function love.filedropped(file)
+    local top = State.top()
+    if top and type(top.filedropped) == "function" then
+        top:filedropped(file)
+    elseif top and getmetatable(top) == require("src.states.menu") then
+        State.push(require("src.states.creator").new()):filedropped(file)
+    end
+end
 
 -- Mouse events made up from touches are dropped: src/core/touch.lua turns touches into
 -- stick and button input, taps into clicks and drags into scrolling.
@@ -132,7 +194,11 @@ function love.wheelmoved(x, y) State.call("wheelmoved", x, y) end
 
 function love.gamepadpressed(j, b) Input.gamepadpressed(j, b) end
 function love.joystickadded(j) Input.joystickadded(j) end
-function love.joystickremoved(j) Input.joystickremoved(j) end
+function love.joystickremoved(j)
+    local wasActive = Input.joystick == j
+    Input.joystickremoved(j)
+    State.call("joystickremoved", j, wasActive)
+end
 
 function love.resize() Screen.updateScale() end
 
@@ -142,9 +208,15 @@ function love.focus(f)
     State.call("focus", f)
 end
 
+function love.visible(v) State.call("visible", v) end
+
 function love.quit()
     Settings.save()
+    -- closing mid-run keeps the run to resume (src/game/runsave.lua)
+    local game = State.find(require("src.states.game"))
+    if game and game.closing then game:closing() end
     Records.quit()
+    Presence.quit()
 end
 
 -- Default LÖVE loop plus an optional frame cap (used when VSync is off).

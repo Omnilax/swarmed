@@ -3,10 +3,18 @@
 local Audio = require("src.core.audio")
 local util = require("src.core.util")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 1, 0.8, 0.3 }
+local PFX_2 = { 1, 0.45, 0.15 }
+local PFX_3 = { 0.4, 0.3, 0.3 }
+local PFX_LIST_1 = { PFX_1, PFX_2, PFX_3 }
+
 local Combat = {}
 
--- Procs may trigger other procs, but only this deep (stops infinite chains).
-Combat.MAX_PROC_DEPTH = 2
+-- Procs may trigger other procs, but only this deep (stops infinite chains). The live limit
+-- grows from 2 to 3 in late waves (World.rewards:procDepth, src/config/rewards.lua procs);
+-- MAX_PROC_DEPTH is the hard cap, also passed as procDepth by hits that must never proc.
+Combat.MAX_PROC_DEPTH = 3
 
 -- opts: coefficient, knockback, kbx, kby (direction), procDepth, noCrit, color, source,
 --       corrode = { mul, time } (takes mul x damage from every hit), stun (seconds frozen),
@@ -15,6 +23,11 @@ Combat.MAX_PROC_DEPTH = 2
 -- Hidden enemies (e.hidden: burrowed underground) can't be hit at all.
 function Combat.damage(world, e, base, opts)
     if e.dead or e.hidden then return 0 end
+    -- a grabbed prop (pebble, twig) being squeezed / stung / slammed: it only chips
+    if e.isProp then
+        if world.props then world.props:struck(e, math.min(1.5, (base or 10) / 15), opts and opts.kbx, opts and opts.kby) end
+        return 0
+    end
     opts = opts or {}
     local p = world.player
     local stats = p.stats
@@ -38,10 +51,21 @@ function Combat.damage(world, e, base, opts)
     if e.elite and e.elite.armor then dmg = dmg * (1 - e.elite.armor) end
     -- acid (vinegaroon) eats the shell: corroded ants take more from every hit
     if e.corrodeT > 0 then dmg = dmg * e.corrodeMul end
+    -- poisoned ants take more from everything with `poisonAmp` items (Velvet Ant Sting)
+    if e.poisonT and e.poisonT > 0 and p.inventory then
+        local amp = p.inventory:sum("poisonAmp")
+        if amp > 0 then dmg = dmg * (1 + amp) end
+    end
+    -- a queen behind her royal guard (src/game/pacing.lua) shrugs off most of every hit
+    if e.guards and e.guards > 0 then dmg = dmg * (e.guardMul or 0.3) end
     -- onHit(e, world, opts, dmg) returns a damage multiplier (dmg is the hit before it)
     if e.behavior.onHit and not opts.dot then dmg = dmg * (e.behavior.onHit(e, world, opts, dmg) or 1) end
     dmg = math.max(1, util.round(dmg))
 
+    -- run summary: damage by source (src/game/runstats.lua), counting only what the ant had left
+    local RunStats = require("src.game.runstats")
+    local label = RunStats.label(world, opts)
+    if world.runStats then world.runStats:dealtHit(math.min(dmg, math.max(0, e.hp)), label) end
     e.hp = e.hp - dmg
     e.flash = 0.09
     e.squash = 0.12
@@ -54,30 +78,42 @@ function Combat.damage(world, e, base, opts)
     if opts.poison then
         e.poisonT = math.max(e.poisonT, opts.poison[2])
         e.poisonDps = math.max(e.poisonDps, opts.poison[1])
+        e.poisonSrc = label         -- its venom ticks count for whoever applied it
     end
     if opts.corrode then
         if e.corrodeT <= 0 then e.corrodeMul = 1 end
         e.corrodeMul = math.max(e.corrodeMul, opts.corrode[1])
         e.corrodeT = math.max(e.corrodeT, opts.corrode[2])
     end
-    if opts.stun and e.hp > 0 and not e.def.boss then e.stunT = math.max(e.stunT, opts.stun) end
+    if opts.stun and e.hp > 0 and not e.def.boss and not e.def.noStun then e.stunT = math.max(e.stunT, opts.stun) end
     if opts.slow then
         e.slowT = math.max(e.slowT, opts.slow[2])
         e.slowMul = math.min(e.slowT > opts.slow[2] and e.slowMul or 1, opts.slow[1])
     end
-    world:damageNumber(e.x, e.y, dmg, crit)
-    world.particles:sparks(e.x, e.y, crit and 6 or 2, crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }, opts.kbx or 0, opts.kby or 0)
-    Audio.play("hit")
+    if opts.cstatus then require("src.game.bugextras").applyStatus(world, e, opts.cstatus) end
+    -- a custom bug's own hit look (Bug Creator: hitFx, or a hit's number / sparks)
+    local look = opts.look or p.def.hitLook
+    if look then
+        world:damageNumber(e.x, e.y, dmg, crit, e, crit and look.crit or look.number)
+        local n = look.sparkCount or 2
+        if n > 0 then world.particles:sparks(e.x, e.y, crit and n + 4 or n, look.sparkColor or (crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }), opts.kbx or 0, opts.kby or 0) end
+        if look.sound then Audio.play(look.sound, { pitch = 0.9 + love.math.random() * 0.2 }) else Audio.play("hit") end
+    else
+        world:damageNumber(e.x, e.y, dmg, crit, e)
+        world.particles:sparks(e.x, e.y, crit and 6 or 2, crit and { 1, 0.85, 0.3 } or { 1, 0.95, 0.8 }, opts.kbx or 0, opts.kby or 0)
+        Audio.play("hit")
+    end
 
     local depth = opts.procDepth or 0
+    local cap = world.rewards and world.rewards:procDepth() or 2
     local ctx = world:procContext(e, dmg, crit, depth)
     if stats:get("lifesteal") > 0 and love.math.random() * 100 < stats:get("lifesteal") then p:heal(1) end
     world.events:emit("enemy_hit", ctx)
-    if depth < Combat.MAX_PROC_DEPTH then p.inventory:trigger("onHit", ctx) end
+    if depth < cap then p.inventory:trigger("onHit", ctx) end
     if e.hp <= 0 then
         world:killEnemy(e)
         world.events:emit("enemy_killed", ctx)
-        if depth < Combat.MAX_PROC_DEPTH then p.inventory:trigger("onKill", ctx) end
+        if depth < cap then p.inventory:trigger("onKill", ctx) end
     end
     return dmg
 end
@@ -157,9 +193,19 @@ function Combat.collectLine(world, x1, y1, x2, y2, width)
 end
 
 -- Hit every enemy within `radius` of (x, y). Returns the number hit.
+-- opts.maxTargets (or world.retaliateCap, set while hurt / block procs run: src/config/defense.lua)
+-- caps it to the nearest N.
 function Combat.area(world, x, y, radius, base, opts)
     local hits = 0
-    for _, e in ipairs(Combat.collect(world, x, y, radius)) do
+    local list = Combat.collect(world, x, y, radius)
+    local cap = (opts and opts.maxTargets) or world.retaliateCap
+    if cap and #list > cap then
+        table.sort(list, function(a, b)
+            return (a.x - x) ^ 2 + (a.y - y) ^ 2 < (b.x - x) ^ 2 + (b.y - y) ^ 2
+        end)
+        for i = #list, cap + 1, -1 do list[i] = nil end
+    end
+    for _, e in ipairs(list) do
         local nx, ny = util.normalize(e.x - x, e.y - y)
         local o = { kbx = nx, kby = ny }
         for k, v in pairs(opts or {}) do o[k] = v end
@@ -172,11 +218,13 @@ end
 -- Explosion: area damage plus a visible blast ring, sound and shake.
 function Combat.explode(world, x, y, radius, base, opts)
     world:addFx({ kind = "ring", x = x, y = y, r = radius, life = 0.25, color = (opts and opts.color) or { 1, 0.6, 0.2 } })
-    world.particles:burst(x, y, 10, { { 1, 0.8, 0.3 }, { 1, 0.45, 0.15 }, { 0.4, 0.3, 0.3 } }, 120, 90)
+    world.particles:burst(x, y, 10, PFX_LIST_1, 120, 90)
     world.camera:shake(0.15)
     Audio.play("boom")
     local o = { knockback = 120 }
     for k, v in pairs(opts or {}) do o[k] = v end
+    -- blasts scatter the pebbles and twigs lying about
+    if world.props then world.props:blast(x, y, radius, 180 + math.min(200, (base or 10) * 4)) end
     return Combat.area(world, x, y, radius, base, o)
 end
 

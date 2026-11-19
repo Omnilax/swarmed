@@ -6,6 +6,7 @@ return {
     name = "Alarm Pheromone",
     description = "Kills have a 10% chance to release alarm scent: ants nearby panic, freezing for 1 second (+0.4 per stack) and scattering away.",
     rarity = "rare",
+    category = "control",
     size = { 1, 1 },
     procs = {
         {

@@ -1,5 +1,6 @@
--- Item catalogue: every item in content/items as a wall of icons, sorted by rarity and filterable
--- by rarity, kind (tags and proc triggers) and name, with the full details of the one in focus.
+-- Item catalogue: every item in content/items as a wall of icons, grouped by category (what it
+-- is for: src/config/categories.lua) or by rarity (G switches), and filterable by rarity, kind
+-- (tags and proc triggers) and name, with the full details of the one in focus.
 -- Built from the content registry, so new items show up here the moment their file exists.
 --
 -- From the main menu it is read only. Opened from the sandbox (button or C) it sits over the
@@ -7,7 +8,7 @@
 --   click picks an item, click it again (or Enter / A / Give) puts one in your bag,
 --   Shift gives 5, right click / Delete / X takes one back out.
 -- Keys: arrows move, Q / E or Tab (LB / RB) switch rarity tab, K cycles the kind filter,
--- / starts typing a name, Esc / B closes.
+-- G (pad X in read-only) switches grouping, / starts typing a name, Esc / B closes.
 local State = require("src.core.state")
 local Input = require("src.core.input")
 local Audio = require("src.core.audio")
@@ -18,6 +19,8 @@ local Rarities = require("src.config.rarities")
 local Inventory = require("src.game.inventory")
 local InvState = require("src.states.inventory")
 local util = require("src.core.util")
+local Categories = require("src.config.categories")
+local CatGlyph = require("src.ui.catglyph")
 
 local Cat = {}
 Cat.__index = Cat
@@ -81,6 +84,7 @@ function Cat.new(opts)
         end
     end
     self.kind = 1
+    self.group = Settings.get("catalogueGroup") == "rarity" and "rarity" or "category"
     self:refilter()
     return self
 end
@@ -103,7 +107,12 @@ function Cat:refilter()
         if ok and q ~= "" then ok = def.name:lower():find(q, 1, true) or def.id:find(q, 1, true) end
         if ok then list[#list + 1] = def end
     end
+    local byCat = self.group == "category"
     table.sort(list, function(a, b)
+        if byCat then
+            local ka, kb = Categories.rank(a.category), Categories.rank(b.category)
+            if ka ~= kb then return ka < kb end
+        end
         local ra, rb = Rarities[a.rarity].order, Rarities[b.rarity].order
         if ra ~= rb then return ra < rb end
         return a.name < b.name
@@ -114,7 +123,22 @@ function Cat:refilter()
 end
 
 ----------------------------------------------------------------------------------------------
--- Layout: tabs on top, the icon wall on the left (a section per rarity), details on the right.
+-- Layout: tabs on top, the icon wall on the left (a section per category or rarity), details on
+-- the right.
+
+-- The section an item is listed under.
+function Cat:sectionOf(def)
+    return self.group == "category" and def.category or def.rarity
+end
+
+function Cat:setGroup(g)
+    self.group = g
+    Settings.set("catalogueGroup", g)
+    self.scroll = 0
+    self:refilter()
+    self:ensureVisible()
+    Audio.play("ui_move")
+end
 
 function Cat:layout()
     local w, h = lg.getDimensions()
@@ -132,13 +156,14 @@ function Cat:layout()
     L.cols = math.max(1, math.floor((L.grid.w + L.gap) / (L.T + L.gap)))
     -- tiles and section headers, in scroll space
     L.tiles, L.heads = {}, {}
-    local y, col, rar = 0, 0, nil
+    local y, col, sec = 0, 0, nil
     local headH = math.floor(u(30))
     for i, def in ipairs(self.list) do
-        if def.rarity ~= rar then
+        local key = self:sectionOf(def)
+        if key ~= sec then
             if col > 0 then y = y + L.T + L.gap end
-            rar, col = def.rarity, 0
-            L.heads[#L.heads + 1] = { y = y, rarity = rar }
+            sec, col = key, 0
+            L.heads[#L.heads + 1] = { y = y, key = key }
             y = y + headH
         end
         L.tiles[i] = { x = col * (L.T + L.gap), y = y }
@@ -204,12 +229,10 @@ end
 function Cat:give(def, n)
     if not self.game or not def then return end
     local world = self.game.world
-    local before = #world.pickups
-    world:giveItem(def.id, n)
-    local dropped = #world.pickups - before
+    local eaten = world:giveItem(def.id, n)
     Audio.play("equip")
-    if dropped > 0 then
-        self:toast(("Bag full: %d %s on the floor"):format(dropped, def.name), Theme.colors.bad)
+    if eaten > 0 then
+        self:toast(("Bag full: ate %d %s"):format(eaten, def.name), Theme.colors.bad)
     else
         self:toast(("+%d %s"):format(n, def.name), InvState.rarityColor(def))
     end
@@ -297,6 +320,8 @@ function Cat:keypressed(key)
     end
     if key == "/" or (key == "f" and love.keyboard.isDown("lctrl", "rctrl")) then
         self.search = true
+    elseif key == "g" then
+        self:setGroup(self.group == "category" and "rarity" or "category")
     elseif key == "k" then
         self:setKind(self.kind + (love.keyboard.isDown("lshift", "rshift") and -1 or 1))
     elseif key == "delete" then
@@ -309,6 +334,10 @@ function Cat:mousemoved() end
 function Cat:mousepressed(x, y, b)
     for i, r in ipairs(self.tabRects or {}) do
         if x >= r.x and x < r.x + r.w and y >= r.y and y < r.y + r.h then return self:setTab(i) end
+    end
+    local gr = self.groupRect
+    if gr and x >= gr.x and x < gr.x + gr.w and y >= gr.y and y < gr.y + gr.h then
+        return self:setGroup(self.group == "category" and "rarity" or "category")
     end
     local k = self.kindRect
     if k and x >= k.x and x < k.x + k.w and y >= k.y and y < k.y + k.h then
@@ -384,6 +413,10 @@ function Cat:drawTile(def, x, y, T, focused)
     lg.rectangle("line", x + 0.5, y + 0.5, T - 1, T - 1)
     lg.setLineWidth(1)
     InvState.itemIcon({ def = def }, x + 5, y + 5, T - 10, T - 10)
+    if self.group ~= "category" then
+        local d = math.floor(T * 0.3)
+        CatGlyph.badge(def.category, x + d / 2 + 3, y + d / 2 + 3, d, 0.9)
+    end
     local have = self.inv and self.inv:count(def.id) or 0
     if have > 0 then
         lg.setFont(Theme.font(13, "bold"))
@@ -430,7 +463,14 @@ function Cat:drawDetails(def, D)
     local meta = Rarities[def.rarity].label .. "  ·  " .. cells .. (cells == 1 and " cell" or " cells")
         .. "  ·  eat +" .. Inventory.eatValue(item) .. " HP"
     lg.printf(meta, D.x, y, D.w, "center")
-    y = y + u(26)
+    y = y + u(24)
+    do  -- what it is for
+        local f = Theme.font(14)
+        local ch = f:getHeight() + u(4)
+        local cw = CatGlyph.chip(def.category, 0, 0, ch, f, 1, true)
+        CatGlyph.chip(def.category, math.floor(D.x + (D.w - cw) / 2), y, ch, f)
+        y = y + ch + u(12)
+    end
 
     local function para(text, color, font)
         lg.setFont(font or Theme.font(15))
@@ -521,6 +561,8 @@ function Cat:draw()
         tx = tx + r.w + u(6)
     end
     tx = tx + u(14)
+    self.groupRect = chip(tx, ty, self.group == "category" and "By category" or "By rarity", true, Theme.colors.focus)
+    tx = tx + self.groupRect.w + u(6)
     self.kindRect = chip(tx, ty, "< " .. self.kinds[self.kind].label .. " >", self.kind > 1, Theme.colors.accent)
     tx = tx + self.kindRect.w + u(14)
     local searchText = (self.query ~= "" or self.search) and (self.query .. (self.search and math.floor(self.t * 2) % 2 == 0 and "_" or "")) or "/ search"
@@ -533,12 +575,27 @@ function Cat:draw()
     for _, hd in ipairs(L.heads) do
         local y = G.y + hd.y - self.scroll
         if y > G.y - u(40) and y < G.y + G.h then
-            local c = InvState.rarityColor({ rarity = hd.rarity })
+            local n = 0
+            for _, d in ipairs(self.list) do if self:sectionOf(d) == hd.key then n = n + 1 end end
+            local c, label, blurb, hx = nil, nil, nil, G.x
+            if self.group == "category" then
+                local cat = Categories.get(hd.key)
+                c, label, blurb = util.hex(cat.color), cat.label, cat.blurb
+                CatGlyph.draw(hd.key, G.x + u(8), y + u(13), u(7))
+                hx = G.x + u(22)
+            else
+                c, label = InvState.rarityColor({ rarity = hd.key }), Rarities[hd.key].label
+            end
             lg.setFont(Theme.font(15, "bold"))
             lg.setColor(c)
-            local n = 0
-            for _, d in ipairs(self.list) do if d.rarity == hd.rarity then n = n + 1 end end
-            lg.print(Rarities[hd.rarity].label:upper() .. "  " .. n, G.x, y + u(4))
+            local head = label:upper() .. "  " .. n
+            lg.print(head, hx, y + u(4))
+            if blurb then
+                local hw = lg.getFont():getWidth(head)
+                lg.setFont(Theme.font(14))
+                lg.setColor(COL.dim)
+                lg.print(blurb, hx + hw + u(14), y + u(5))
+            end
             lg.setColor(c[1], c[2], c[3], 0.25)
             lg.rectangle("fill", G.x, y + u(24), G.w, 1)
         end
@@ -574,8 +631,8 @@ function Cat:draw()
         hints = self.game and { { "LB/RB", "Rarity" }, { "A", "Give" }, { "X", "Take" }, { "B", "Back" } }
             or { { "D-pad", "Browse" }, { "LB/RB", "Rarity" }, { "B", "Back" } }
     else
-        hints = self.game and { { "Click", "Give" }, { "Shift", "Give 5" }, { "RMB", "Take" }, { "Q/E", "Rarity" }, { "K", "Kind" }, { "/", "Search" }, { "Esc", "Back" } }
-            or { { "Q/E", "Rarity" }, { "K", "Kind" }, { "/", "Search" }, { "Esc", "Back" } }
+        hints = self.game and { { "Click", "Give" }, { "Shift", "Give 5" }, { "RMB", "Take" }, { "Q/E", "Rarity" }, { "K", "Kind" }, { "G", "Group" }, { "/", "Search" }, { "Esc", "Back" } }
+            or { { "Q/E", "Rarity" }, { "G", "Group" }, { "K", "Kind" }, { "/", "Search" }, { "Esc", "Back" } }
     end
     Theme.hints(hints, w / 2, h - u(32))
 

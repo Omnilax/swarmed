@@ -1,5 +1,6 @@
 -- Weather: random passing spells of rain, fog, wind, pollen and so on, defined in
--- content/weather (see _template.lua). Purely visual for now; nothing in combat reads it.
+-- content/weather (see _template.lua). A spell's `effects` (wind pushing, rain slowing, a
+-- heatwave speeding things up) are applied by src/game/director.lua.
 --
 -- A spell lasts `duration` seconds, fading in and out over a few seconds, then a new one is
 -- picked by weight. A stage can change the odds with `weather = { rain = 0, dust = 30 }`.
@@ -85,7 +86,7 @@ function Weather:update(dt)
     for _, p in ipairs(self.parts) do
         p.t = p.t + dt
         local sway = p.sway and math.sin(self.world.time * p.sway + p.seed) * 12 or 0
-        p.x = p.x + (p.vx + wind[1] + sway) * dt
+        p.x = p.x + (p.vx + wind[1] + sway + (self.world.windGust or 0) * 25) * dt
         p.y = p.y + (p.vy + wind[2]) * dt
         if p.spin then p.a = p.a + p.spin * dt end
     end
@@ -222,6 +223,7 @@ end
 -- (fireflies) and the thunder flash.
 function Weather:drawGlow(ox, oy, vw, vh)
     local k = self:strength()
+    local glare = require("src.gfx.lighting").glareMul()
     if k <= 0 then return end
     local spec = self.def.particles
     local lg = love.graphics
@@ -233,7 +235,7 @@ function Weather:drawGlow(ox, oy, vw, vh)
         for _, p in ipairs(self.parts) do
             local x = ox + (p.x - ox) % vw
             local y = oy + (p.y - oy) % vh
-            local a = 0.35 * k * (spec.flicker and (0.5 + 0.5 * math.sin(self.world.time * spec.flicker + p.seed)) or 1)
+            local a = 0.35 * k * glare * (spec.flicker and (0.5 + 0.5 * math.sin(self.world.time * spec.flicker + p.seed)) or 1)
             lg.setColor(p.c[1], p.c[2], p.c[3], a)
             lg.draw(Sprites.light, x, y, 0, spec.glow / 64, spec.glow / 64, 64, 64)
         end
@@ -241,7 +243,7 @@ function Weather:drawGlow(ox, oy, vw, vh)
     end
     if self.flash > 0 then
         lg.setBlendMode("add")
-        lg.setColor(0.75, 0.8, 1, 0.22 * self.flash * k)
+        lg.setColor(0.75, 0.8, 1, 0.22 * self.flash * k * glare * glare)
         lg.rectangle("fill", ox, oy, vw, vh)
         lg.setBlendMode("alpha")
     end

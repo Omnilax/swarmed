@@ -14,8 +14,11 @@ return {
     sprite = "mantis_shrimp",
     model = { legs = "mantis_shrimp_legs", body = "mantis_shrimp_body", height = 3, lift = 2, stride = 1.4 },
     order = 24,
+    playstyle = "brawler",          -- src/config/playstyles.lua
+    tip = "Every punch leaves a bubble that bursts a beat later. Hold {dash} to wind up a giant punch that launches you forward.",
     radius = 7,
-    stats = { maxHp = 55, armor = 2, moveSpeed = 108, knockback = 20 },
+    scale = 0.95,
+    stats = { maxHp = 55, armor = 3, moveSpeed = 110, damage = 15, knockback = 30 },
     attack = { type = "clubpunch", damage = 13, cooldown = 0.32, reach = 36, bubble = 0.5, radius = 28, knockback = 260, color = { 1, 0.45, 0.4 } },
     secondary = { type = "flurry", damage = 5, cooldown = 3, punches = 10, time = 0.7, reach = 28, finisher = 3, color = { 1, 0.5, 0.4 } },
     dash = { type = "recoilpunch", damage = 24, reach = 36, distance = 90, charge = 0.8, maxMult = 3, launchMult = 1.2 },

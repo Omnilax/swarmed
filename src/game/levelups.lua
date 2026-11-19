@@ -1,0 +1,453 @@
+-- Level-up cards. Every level (XP from World:grantXP -> Skills:gainXP) opens a pick of 3 cards
+-- right away, mid-wave (setting "levelUpWhen" = "wave" saves them for the wave's reward bloom):
+-- global stat cards (content/levelcards) that roll a rarity (common x1 .. legendary x2, Luck tilts
+-- the odds). The skill tree is never on the cards: every level gives one skill point to spend in
+-- the bag's SKILLS tab, and SKIPPING the pick banks one more, so each level is a boost or extra tree.
+-- Run rule "levelUps" = "points" (a Custom Waves set) brings back the old way: levels give skill points to spend.
+--
+-- Card families (a card file's `family`, content/levelcards/_template.lua):
+--   stat     small stat boosts (the default)
+--   pact     a big boost with a cost: `cost` stats are not scaled by the rarity roll
+--   growth   `growth` stats are added again at the start of every wave, for the rest of the run
+--   perk     a lasting effect: `procs` on the same triggers as items (onHit, onKill, onHurt,
+--            onDash, onDodge, onBlock, onWaveStart, onTick...). Taking it again ranks it up
+--            (up to maxRank); its power is the sum of the rarity rolls it was taken with.
+--   instant  something happens right away (`apply`), nothing lasting
+-- Numbers: src/config/levelups.lua (a mode can override them with `levelUps = {...}`).
+--
+-- Other systems can hand out picks too (brood cell chests, shrines...):
+--     require("src.game.levelups").grant(world, n, { source = "chest", minRarity = "rare", now = true })
+-- queues n picks. source: shown on the cards screen; minRarity: floor for every stat card's
+-- rarity; now: show at the next free moment, even mid-wave (default: like level-ups, per setting).
+local Settings = require("src.core.settings")
+local Rules = require("src.game.rules")
+local Audio = require("src.core.audio")
+
+local LevelUps = {}
+LevelUps.__index = LevelUps
+
+local EMPTY = {}
+
+-- The config for a world: src/config/levelups.lua with the mode's `levelUps` overrides on top.
+function LevelUps.config(modeDef)
+    local base = require("src.config.levelups")
+    local over = modeDef and modeDef.levelUps
+    if not over then return base end
+    local out = {}
+    for k, v in pairs(base) do out[k] = v end
+    for k, v in pairs(over) do out[k] = v end
+    return out
+end
+
+-- XP to go from level L-1 to L (used by Skills.xpFor).
+function LevelUps.xpFor(level, cfg)
+    local x = (cfg or require("src.config.levelups")).xp
+    return math.floor(x.base + x.scale * math.max(0, level - 1) ^ x.pow)
+end
+
+function LevelUps.new(world)
+    local self = setmetatable({ world = world, cfg = LevelUps.config(world.modeDef), queue = {}, mods = {},
+        picks = 0, fanfareAt = -1,
+        perks = {}, perkOrder = {}, perkState = {},   -- perks[id] = { power, rank }, taken order
+        growth = {} }, LevelUps)                      -- growth cards: { id, stats, statsMult }
+    return self
+end
+
+-- Do levels give cards in this world? (Real runs only, unless something grants picks.)
+function LevelUps:enabled()
+    local w = self.world
+    return not self.disabled and w.mode == "run" and not w.flags.demo and Rules.get("levelUps") ~= "points"
+end
+
+function LevelUps:pending() return #self.queue end
+
+----------------------------------------------------------------------------------------------
+-- Queueing picks
+
+-- A level was reached (Skills:gainXP, not silent).
+function LevelUps:onLevel(level)
+    local w = self.world
+    local instant = Settings.get("levelUpWhen") == "instant"
+    self.queue[#self.queue + 1] = { source = "level", level = level, now = instant or nil,
+        at = instant and (w.time + self.cfg.instantDelay) or nil }
+    w.events:emit("levelup_queued", level)
+end
+
+-- Queue n picks from anything else (chests, shrines...). Returns how many were queued.
+-- Works both ways: LevelUps.grant(world, n, opts) and world.levelups:grant(n, opts).
+function LevelUps.grant(world, n, opts)
+    if getmetatable(world) == LevelUps then return LevelUps.grantSelf(world, n, opts) end
+    if not world or not world.levelups then return 0 end
+    return LevelUps.grantSelf(world.levelups, n, opts)
+end
+function LevelUps.grantSelf(self, n, opts)
+    opts = opts or EMPTY
+    n = math.max(0, math.floor(n or 1))
+    local sk = self.world.player and self.world.player.skills
+    for _ = 1, n do
+        self.queue[#self.queue + 1] = { source = opts.source or "bonus", minRarity = opts.minRarity, now = opts.now or (Settings.get("levelUpWhen") ~= "wave") or nil,
+            level = sk and sk.level or 0 }
+    end
+    if n > 0 then self.world.events:emit("levelup_queued", nil, opts.source) end
+    return n
+end
+
+-- The next pick to show now, or nil. choiceReady: the wave's item choice is due this frame.
+-- Level-ups wait for the end of the wave (or a break between waves); `now` picks don't.
+function LevelUps:nextToShow(choiceReady)
+    local e = self.queue[1]
+    if not e then return nil end
+    local w = self.world
+    if e.at and w.time < e.at then return nil end
+    if e.now or choiceReady then return e end
+    local sp = w.spawner
+    if w.pendingChoice then return nil end            -- the item choice is a beat away: wait for it
+    if not sp or not sp.enabled or sp.phase ~= "wave" then return e end
+    return nil
+end
+
+-- Drop the first queued pick (it was taken).
+function LevelUps:pop(e)
+    for i, q in ipairs(self.queue) do
+        if q == e then table.remove(self.queue, i) return end
+    end
+    table.remove(self.queue, 1)
+end
+
+----------------------------------------------------------------------------------------------
+-- Fanfare: chime, half a second of slow motion and a ring of light
+
+function LevelUps:fanfare(p, text)
+    local w = self.world
+    if w.flags.demo then return end
+    if w.time - self.fanfareAt < 0.25 then return end     -- several levels at once: one fanfare
+    self.fanfareAt = w.time
+    local f = self.cfg.fanfare
+    Audio.play("level_up")
+    if w.rewards then w.rewards:slowmo(f.slow, f.slowTime) end
+    w:addFx({ kind = "ring", x = p.x, y = p.y, r = f.ring, life = 0.55, color = f.color })
+    w:addFx({ kind = "ring", x = p.x, y = p.y, r = f.ring * 0.55, life = 0.4, color = { 1, 1, 1 } })
+    w:floatText(p.x, p.y - 10, text or "LEVEL UP!", f.color, true)
+    w.events:emit("level_up", p.skills and p.skills.level)
+end
+
+----------------------------------------------------------------------------------------------
+-- Dealing cards
+
+-- Roll a rarity for a stat card (Luck tilts it; minRarity is a floor).
+function LevelUps:rollRarity(minRarity)
+    local p = self.world.player
+    local luck = math.max(-50, p and p.stats:get("luck") or 0)
+    local list = self.cfg.rarities
+    local floor = 1
+    if minRarity then
+        for i, r in ipairs(list) do if r.id == minRarity then floor = i end end
+    end
+    local total, ws = 0, {}
+    for i, r in ipairs(list) do
+        local wgt = i >= floor and r.weight * (1 + luck / 100) ^ (i - 1) or 0
+        ws[i] = wgt
+        total = total + wgt
+    end
+    local x = love.math.random() * total
+    for i, r in ipairs(list) do
+        x = x - ws[i]
+        if x <= 0 then return r end
+    end
+    return list[#list]
+end
+
+-- Round a rolled number so cards read well (+8%, +1.3 armor, +0.4 HP/s).
+local function tidy(v)
+    if math.abs(v) >= 5 then return math.floor(v + 0.5) end
+    return math.floor(v * 10 + 0.5) / 10
+end
+local function tidyMult(v) return math.floor(v * 100 + 0.5) / 100 end
+
+-- "+12% Speed, +1 Armor" for a stat card without its own text.
+function LevelUps.describe(c)
+    local Stats = require("src.game.stats")
+    local parts = {}
+    for _, d in ipairs(Stats.defs) do
+        local a, m = c.stats[d.id], c.statsMult[d.id]
+        if a then parts[#parts + 1] = (a >= 0 and "+" or "") .. Stats.format(d.id, a) .. " " .. d.label end
+        if m then parts[#parts + 1] = (m >= 0 and "+" or "") .. math.floor(m * 100 + 0.5) .. "% " .. d.label end
+    end
+    return table.concat(parts, ", ")
+end
+
+-- A stat card with its numbers scaled by its rarity.
+function LevelUps:statCard(def, rarity)
+    local c = { kind = "stat", def = def, id = def.id, name = def.name, rarity = rarity.id, mult = rarity.mult,
+        stats = {}, statsMult = {} }
+    for k, v in pairs(def.stats or EMPTY) do c.stats[k] = tidy(v * rarity.mult) end
+    for k, v in pairs(def.statsMult or EMPTY) do c.statsMult[k] = tidyMult(v * rarity.mult) end
+    c.family = def.family or "stat"
+    -- a pact's cost is the same whatever the roll
+    if def.cost then
+        for k, v in pairs(def.cost.stats or EMPTY) do c.stats[k] = (c.stats[k] or 0) + v end
+        for k, v in pairs(def.cost.statsMult or EMPTY) do c.statsMult[k] = (c.statsMult[k] or 0) + v end
+    end
+    if def.growth then
+        c.growth = { stats = {}, statsMult = {} }
+        for k, v in pairs(def.growth.stats or EMPTY) do c.growth.stats[k] = tidy(v * rarity.mult) end
+        for k, v in pairs(def.growth.statsMult or EMPTY) do c.growth.statsMult[k] = tidyMult(v * rarity.mult) end
+    end
+    if c.family == "perk" then
+        -- perk text shows the power you would have after taking it
+        local have = self.perks[def.id]
+        c.rank = (have and have.rank or 0) + 1
+        c.power = (have and have.power or 0) + rarity.mult
+        c.description = def.text and def.text(c.power) or def.description or ""
+    elseif c.growth then
+        c.description = def.text and def.text(rarity.mult) or def.description
+            or (LevelUps.describe(c.growth) .. " at the start of every wave")
+    else
+        c.description = def.scaledText and def.scaledText(rarity.mult) or def.text and def.text(rarity.mult)
+            or def.description or LevelUps.describe(c)
+    end
+    return c
+end
+
+-- Deal the cards for one pick: { card, ... } (stat cards only; skipping is the skill point).
+function LevelUps:deal(entry, count)
+    entry = entry or EMPTY
+    local Content = require("src.content")
+    local p = self.world.player
+    local level = entry.level or (p.skills and p.skills.level) or 1
+    count = count or self.cfg.cards
+    local cards, usedIds = {}, {}
+    local function pickStat()
+        local total, opts = 0, {}
+        for _, d in ipairs(Content.levelcards:all()) do
+            if not usedIds[d.id] and (d.minLevel or 1) <= level and not self:maxed(d)
+                and (not d.available or d.available(p, self.world)) then
+                opts[#opts + 1] = d
+                total = total + d.weight
+            end
+        end
+        if #opts == 0 then return nil end
+        local x = love.math.random() * total
+        for _, d in ipairs(opts) do
+            x = x - d.weight
+            if x <= 0 then return d end
+        end
+        return opts[#opts]
+    end
+    for _ = 1, count do
+        local d = pickStat()
+        if not d then break end
+        local card = self:statCard(d, self:rollRarity(entry.minRarity))
+        usedIds[card.id] = true
+        cards[#cards + 1] = card
+    end
+    return cards
+end
+
+-- A perk taken as many times as it can be.
+function LevelUps:maxed(def)
+    if def.family ~= "perk" then return false end
+    local have = self.perks[def.id]
+    return have ~= nil and have.rank >= (def.maxRank or 3)
+end
+
+-- The card a skip takes: one extra skill point (LevelUp screen's skip button, the balance bot).
+function LevelUps.skipCard() return { kind = "point", id = "skill_point", name = "Skill point" } end
+
+----------------------------------------------------------------------------------------------
+-- Taking a card
+
+-- Rebuild the "levelup" stat modifiers from every stat card taken this run.
+function LevelUps:applyStats()
+    local p = self.world.player
+    if not p then return end
+    p.stats:removeSource("levelup")
+    local ids = {}
+    for id in pairs(self.mods) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local m = self.mods[id]
+        p.stats:addModifier("levelup", id, m.add or 0, m.mult or 0)
+    end
+    if p.hp then p.hp = math.min(p.hp, p.stats:get("maxHp")) end
+end
+
+function LevelUps:take(card)
+    local p = self.world.player
+    self.picks = self.picks + 1
+    if card.kind == "point" then
+        p.skills.points = p.skills.points + 1
+        p.skills.skipped = (p.skills.skipped or 0) + 1
+    else
+        local hpBefore = p.stats:get("maxHp")
+        for k, v in pairs(card.stats) do
+            self.mods[k] = self.mods[k] or {}
+            self.mods[k].add = (self.mods[k].add or 0) + v
+        end
+        for k, v in pairs(card.statsMult) do
+            self.mods[k] = self.mods[k] or {}
+            self.mods[k].mult = (self.mods[k].mult or 0) + v
+        end
+        self:applyStats()
+        -- more Max HP comes filled in
+        local gain = p.stats:get("maxHp") - hpBefore
+        if gain > 0 then p.hp = p.hp + gain end
+        if card.family == "perk" then
+            local have = self.perks[card.id]
+            if not have then
+                have = { power = 0, rank = 0 }
+                self.perks[card.id] = have
+                self.perkOrder[#self.perkOrder + 1] = card.id
+            end
+            if have.rank < (card.def and card.def.maxRank or 3) then
+                have.power, have.rank = have.power + (card.mult or 1), have.rank + 1
+            end
+        end
+        if card.growth then
+            self.growth[#self.growth + 1] = { id = card.id, stats = card.growth.stats, statsMult = card.growth.statsMult }
+        end
+        if card.def and card.def.apply then card.def.apply(p, card.mult or 1, self.world) end
+    end
+    self.world.events:emit("levelup_taken", card)
+end
+
+-- Take a random card for each queued pick (the balance bot, tests); skipChance: how often it
+-- skips for a skill point instead (default cfg.botSkip).
+function LevelUps:autoPickAll(skipChance)
+    local n = 0
+    skipChance = skipChance or self.cfg.botSkip or 0
+    while #self.queue > 0 and n < 200 do
+        local e = self.queue[1]
+        local cards = self:deal(e)
+        table.remove(self.queue, 1)
+        if #cards == 0 or love.math.random() < skipChance then self:take(LevelUps.skipCard())
+        else self:take(cards[love.math.random(#cards)]) end
+        n = n + 1
+    end
+    return n
+end
+
+----------------------------------------------------------------------------------------------
+-- Perks and growth cards at work (Inventory:trigger forwards every trigger here)
+
+-- How strong a perk is on this run (sum of its rarity rolls), or nil if it wasn't taken.
+function LevelUps:perkPower(id)
+    local have = self.perks[id]
+    return have and have.power or nil
+end
+
+-- A scratch table for one perk (cooldowns, counters). Not saved.
+function LevelUps:stateOf(id)
+    local s = self.perkState[id]
+    if not s then s = {}; self.perkState[id] = s end
+    return s
+end
+
+function LevelUps:trigger(name, ctx)
+    if name == "onWaveStart" and self.growth[1] then self:grow() end
+    if not self.perkOrder[1] then return end
+    local Content = require("src.content")
+    local w = self.world
+    for _, id in ipairs(self.perkOrder) do
+        local def = Content.levelcards.byId[id]
+        local have = self.perks[id]
+        if def and def.procs then
+            for _, pr in ipairs(def.procs) do
+                if pr.trigger == name then
+                    local st = self:stateOf(id)
+                    if not pr.cooldown or (st.cd or -1) <= w.time then
+                        local chance = pr.chance
+                        if type(chance) == "function" then chance = chance(have.power) end
+                        if chance == nil or love.math.random() < chance then
+                            if pr.cooldown then st.cd = w.time + pr.cooldown end
+                            local prev = w.dmgSrc
+                            w.dmgSrc = def.name             -- its damage counts for the card in the run summary
+                            pr.effect(ctx, have.power, st, self)
+                            w.dmgSrc = prev
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- A new wave: every growth card adds its stats again.
+function LevelUps:grow()
+    for _, g in ipairs(self.growth) do
+        for k, v in pairs(g.stats) do
+            self.mods[k] = self.mods[k] or {}
+            self.mods[k].add = (self.mods[k].add or 0) + v
+        end
+        for k, v in pairs(g.statsMult) do
+            self.mods[k] = self.mods[k] or {}
+            self.mods[k].mult = (self.mods[k].mult or 0) + v
+        end
+    end
+    local p = self.world.player
+    local hpBefore = p and p.stats:get("maxHp")
+    self:applyStats()
+    if p then
+        local gain = p.stats:get("maxHp") - hpBefore
+        if gain > 0 then p.hp = p.hp + gain end
+        self.world:floatText(p.x, p.y - 16, "growing", { 0.55, 1, 0.55 })
+    end
+end
+
+-- Player:hurt asks this when a hit would kill: a perk with `saveFromDeath` can step in once.
+function LevelUps:saveFromDeath(p)
+    if not self.perkOrder[1] then return false end
+    local Content = require("src.content")
+    for _, id in ipairs(self.perkOrder) do
+        local def = Content.levelcards.byId[id]
+        if def and def.saveFromDeath and not (self.used and self.used[id]) then
+            self.used = self.used or {}
+            self.used[id] = true
+            def.saveFromDeath(p, self.perks[id].power, self.world)
+            return true
+        end
+    end
+    return false
+end
+
+----------------------------------------------------------------------------------------------
+-- Saves (src/game/runsave.lua)
+
+function LevelUps:snapshot()
+    local q = {}
+    for i, e in ipairs(self.queue) do q[i] = { source = e.source, level = e.level, minRarity = e.minRarity, now = e.now } end
+    local mods = {}
+    for k, m in pairs(self.mods) do mods[k] = { add = m.add, mult = m.mult } end
+    local perks = {}
+    for i, id in ipairs(self.perkOrder) do perks[i] = { id = id, power = self.perks[id].power, rank = self.perks[id].rank } end
+    local growth = {}
+    for i, g in ipairs(self.growth) do growth[i] = { id = g.id, stats = g.stats, statsMult = g.statsMult } end
+    local used = {}
+    for id in pairs(self.used or EMPTY) do used[#used + 1] = id end
+    return { queue = q, mods = mods, picks = self.picks, perks = perks, growth = growth, used = used }
+end
+
+function LevelUps:restore(snap)
+    if not snap then return end
+    self.queue, self.mods, self.picks = {}, {}, snap.picks or 0
+    for i, e in ipairs(snap.queue or EMPTY) do self.queue[i] = { source = e.source, level = e.level, minRarity = e.minRarity, now = e.now } end
+    local Stats = require("src.game.stats")
+    for k, m in pairs(snap.mods or EMPTY) do
+        if Stats.byId[k] then self.mods[k] = { add = m.add, mult = m.mult } end
+    end
+    local Content = require("src.content")
+    self.perks, self.perkOrder, self.perkState, self.growth, self.used = {}, {}, {}, {}, nil
+    for _, pk in ipairs(snap.perks or EMPTY) do
+        if Content.levelcards.byId[pk.id] and not self.perks[pk.id] then
+            self.perks[pk.id] = { power = pk.power or 1, rank = pk.rank or 1 }
+            self.perkOrder[#self.perkOrder + 1] = pk.id
+        end
+    end
+    for _, g in ipairs(snap.growth or EMPTY) do
+        self.growth[#self.growth + 1] = { id = g.id, stats = g.stats or {}, statsMult = g.statsMult or {} }
+    end
+    for _, id in ipairs(snap.used or EMPTY) do self.used = self.used or {}; self.used[id] = true end
+    self:applyStats()
+end
+
+return LevelUps

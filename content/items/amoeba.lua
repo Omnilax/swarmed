@@ -1,8 +1,14 @@
 -- Execute (RoR Old Guillotine): weak ants are simply swallowed.
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.7, 0.85, 0.9 }
+local PFX_2 = { 0.5, 0.65, 0.75 }
+local PFX_LIST_1 = { PFX_1, PFX_2 }
+
 return {
     name = "Amoeba",
     description = "Hitting an ant below 10% health (+4% per stack) engulfs it outright. Not bosses.",
     rarity = "uncommon",
+    category = "elemental",
     size = { 1, 1 },
     procs = {
         {
@@ -12,7 +18,7 @@ return {
                 if e.dead or e.def.boss or e.hp > e.maxHp * (0.06 + 0.04 * stacks) then return end
                 e.hp = 0
                 require("src.game.combat").damage(ctx.world, e, 1, { noCrit = true, procDepth = ctx.procDepth + 1 })
-                ctx.world.particles:burst(e.x, e.y, 6, { { 0.7, 0.85, 0.9 }, { 0.5, 0.65, 0.75 } }, 40, 30)
+                ctx.world.particles:burst(e.x, e.y, 6, PFX_LIST_1, 40, 30)
             end,
         },
     },

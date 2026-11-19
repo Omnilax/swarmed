@@ -1,11 +1,17 @@
 -- Molting: dropping low splits the old skin and you step out fresh.
 local ItemFx = require("src.game.itemfx")
 
+-- particle colours and options, made once (not a new table every frame)
+local PFX_1 = { 0.75, 0.55, 0.3 }
+local PFX_2 = { 0.55, 0.4, 0.2 }
+local PFX_LIST_1 = { PFX_1, PFX_2 }
+
 return {
     name = "Cicada Shell",
     description = "+6 Armor. Once per wave (+1 per stack), falling below 30% HP makes you molt: untouchable for 1.5 seconds and healed for 25% of Max HP.",
     effect = "Once per wave (+1 per stack), falling below 30% HP makes you molt: untouchable for 1.5 seconds and healed for 25% of Max HP.",
     rarity = "rare",
+    category = "guard",
     size = { 2, 2 },
     stats = { armor = 6 },
     procs = {
@@ -19,7 +25,7 @@ return {
                 p.iframes = math.max(p.iframes, 1.5)
                 p:heal(maxHp * 0.25)
                 ctx.world:floatText(p.x, p.y, "MOLT", { 0.95, 0.8, 0.5 }, true)
-                ctx.world.particles:burst(p.x, p.y, 12, { { 0.75, 0.55, 0.3 }, { 0.55, 0.4, 0.2 } }, 70, 60)
+                ctx.world.particles:burst(p.x, p.y, 12, PFX_LIST_1, 70, 60)
             end,
         },
         { trigger = "onWaveStart", effect = function(ctx) ItemFx.state(ctx.player, "cicada_shell").used = 0 end },

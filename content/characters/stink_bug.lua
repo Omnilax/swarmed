@@ -5,8 +5,11 @@ return {
     sprite = "stink_bug",
     model = { legs = "stink_bug_legs", body = "stink_bug_body", height = 3, lift = 2 },
     order = 19,
+    playstyle = "control",          -- src/config/playstyles.lua
+    tip = "Ants in your stink clouds take extra damage. {secondary} squirts acid pools that wall them off. {dash} hides you under a stink shield.",
     radius = 8,
-    stats = { maxHp = 65, armor = 4, moveSpeed = 95 },
+    scale = 1.05,
+    stats = { maxHp = 70, armor = 5, moveSpeed = 90, area = 20 },
     attack = { type = "stinkcloud", damage = 5, cooldown = 0.7, range = 40, radius = 22, life = 2.6, drift = 14, max = 8, weaken = 1.25, choke = 0.7 },
     secondary = { type = "acidpool", damage = 10, cooldown = 3, range = 130, radius = 34, life = 6, max = 3 },
     dash = { type = "stinkshield", time = 1.6, radius = 30, damage = 6 },

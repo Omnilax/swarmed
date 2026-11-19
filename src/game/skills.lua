@@ -1,7 +1,11 @@
--- Skill trees. Every kill gives XP (World:grantXP); XP fills levels and every level is one skill
--- point; points buy nodes in the character's own tree (content/skilltrees/<character>.lua, schema
--- in content/skilltrees/_template.lua). Trees cost far more points than a run can earn and
--- forks are either/or, so every run builds the bug a different way.
+-- Skill trees. Every kill gives XP (World:grantXP); XP fills levels and every level opens a
+-- level-up card pick (src/game/levelups.lua) plus one skill point. Cards are stat boosts only:
+-- SKIPPING a pick banks an extra skill point, so every level is a boost now or more tree. (With the
+-- "levelUps" run rule on "points", every level is simply a point.) Points buy nodes in the
+-- character's own tree (content/skilltrees/<character>.lua, schema in content/skilltrees/_template.lua)
+-- plus a 4th "kin" branch shared by its lineage (content/skillbranches), capped by a signature
+-- node only that bug has. Trees cost far more points than a run can earn and forks are
+-- either/or, so every run builds the bug a different way.
 --
 -- A node can:
 --   * change the bug's stats (stats / statsMult, like items),
@@ -20,10 +24,11 @@ Skills.__index = Skills
 Skills.MOVES = { "attack", "secondary", "dash" }
 Skills.TIER_COST = { 1, 1, 2, 2, 3, 3 }    -- default point cost per rank, by tier
 
--- XP to go from level-1 to level (every level is a skill point). Wave sizes grow with the run,
--- so this grows too: ~1 point a wave early on, ~11 by wave 10, ~20 by wave 20.
+-- XP to go from level-1 to level. Every level is a level-up card pick (src/game/levelups.lua;
+-- skipping it banks a skill point), or straight a skill point with the "levelUps" run rule on "points". The curve is in
+-- src/config/levelups.lua: the first level takes ~10 kills, a 15-wave run reaches ~level 35.
 function Skills.xpFor(level)
-    return math.floor(25 + 12 * level ^ 1.5)
+    return require("src.game.levelups").xpFor(level)
 end
 
 local EMPTY = {}
@@ -103,8 +108,67 @@ function Skills.validateTree(def)
     return true
 end
 
+-- The kin branch for a character: the content/skillbranches entry sharing one of its tags with
+-- the highest priority (an entry with no tags fits every bug, at its priority).
+function Skills.kinFor(charDef)
+    local Content = require("src.content")
+    if not (charDef and Content.skillbranches) then return nil end
+    local tags = {}
+    for _, t in ipairs(charDef.tags or EMPTY) do tags[t] = true end
+    local best
+    for _, b in ipairs(Content.skillbranches:all()) do
+        local fits = #b.tags == 0
+        for _, t in ipairs(b.tags) do if tags[t] then fits = true end end
+        if fits and (not best or b.priority > best.priority) then best = b end
+    end
+    return best
+end
+
+-- Called before a tree is validated: appends its bug's kin branch (a copy, so trees never share
+-- node tables) and the tree's own `signature` node on top of it (tier 5 by default). A tree can
+-- opt out with `kin = false`, or name a kin branch by id with `kin = "<id>"`.
+function Skills.attachKin(def, charDef)
+    if def.kin == false or def.kinAttached then return end
+    local Content = require("src.content")
+    local kin = type(def.kin) == "string" and Content.skillbranches:get(def.kin) or Skills.kinFor(charDef)
+    if not kin and not def.signature then return end
+    local br = { name = kin and kin.name or "Signature", color = kin and kin.color or { 1, 0.85, 0.4 },
+        blurb = kin and kin.blurb or "", kin = kin and kin.id, nodes = {} }
+    for _, n in ipairs(kin and kin.nodes or EMPTY) do br.nodes[#br.nodes + 1] = Skills.copy(n) end
+    local sig = def.signature
+    if sig then
+        local topTier = 0
+        for _, n in ipairs(br.nodes) do topTier = math.max(topTier, n.tier or 1) end
+        sig.tier = sig.tier or topTier + 1
+        sig.cost = sig.cost or 3
+        sig.signature = true
+        br.nodes[#br.nodes + 1] = sig
+    end
+    def.branches[#def.branches + 1] = br
+    def.kinAttached = true
+end
+
+-- Points spent in one branch (the tree screen shows it under the branch's name).
+function Skills:spentIn(bi)
+    local n = 0
+    local br = self.tree and self.tree.branches[bi]
+    for _, node in ipairs(br and br.nodes or EMPTY) do n = n + self:rank(node.id) * node.cost end
+    return n
+end
+
 function Skills.treeFor(charId)
     local Content = require("src.content")
+    -- a custom bug can borrow a built-in bug's tree (skillTree = "mantis")
+    local c = Content.characters:get(charId)
+    if c and c.custom then
+        if c.ownTree then return c.ownTree end      -- its own, written in its script
+        if not c.skillTree then
+            -- a ready-made tree (src/config/presettrees.lua), made once per bug
+            if not c._preset then c._preset = require("src.config.presettrees").make(c.presetTree or "brawler", c) end
+            return c._preset
+        end
+        charId = c.skillTree
+    end
     for _, t in ipairs(Content.skilltrees:all()) do
         if t.character == charId then return t end
     end
@@ -180,20 +244,36 @@ function Skills.new(player, xp)
     return self
 end
 
+-- Level-up cards instead of points? (Real runs, unless the "levelUps" run rule says points.)
+function Skills:cardsMode()
+    local w = self.player.world
+    return w and w.levelups and w.levelups:enabled() or false
+end
+
+-- silent: XP handed back quietly (resumed runs, practice, sandbox swaps). Silent levels always
+-- give skill points, so nothing is lost when no card pick can be shown. In card mode a level
+-- gives a point too, and skipping its card pick banks an extra one (LevelUps:take a "point" card).
 function Skills:gainXP(n, silent)
     self.xp = self.xp + n
     self.into = self.into + n
     while self.into >= self.toNext do
         self.into = self.into - self.toNext
         self.level = self.level + 1
-        self.points = self.points + 1
         self.toNext = Skills.xpFor(self.level + 1)
-        if not silent then
-            local p = self.player
+        local p = self.player
+        local lu = p.world and p.world.levelups
+        if not silent and self:cardsMode() then
+            -- every level is a skill point AND a card pick; skipping the pick banks one more
+            self.points = self.points + 1
+            lu:onLevel(self.level)
             self.flashT = 2.5
-            if p.world and not p.world.flags.demo then
-                p.world:floatText(p.x, p.y - 6, "SKILL POINT!", { 0.55, 0.9, 1 }, true)
-                Audio.play("ui_confirm", { pitch = 1.35 })
+            lu:fanfare(p, "LEVEL UP!")
+        else
+            self.points = self.points + 1
+            if not silent then
+                self.flashT = 2.5
+                if lu then lu:fanfare(p, "SKILL POINT!")
+                elseif p.world and not p.world.flags.demo then Audio.play("ui_confirm", { pitch = 1.35 }) end
             end
         end
     end
@@ -382,7 +462,9 @@ function Skills:trigger(name, ctx)
         if self.flashT > 0 then self.flashT = self.flashT - ctx.dt end
         if self.dashing and p.dashT <= 0 and not p.grapple and not p.holdMode then
             self.dashing = false
-            self:trigger("onDashEnd", { world = ctx.world, player = p, procDepth = 0 })
+            local ectx = { world = ctx.world, player = p, procDepth = 0 }
+            self:trigger("onDashEnd", ectx)
+            if p.def.custom then require("src.game.scriptmoves").event(p, "onDashEnd", ectx) end
         end
     elseif name == "onDash" then
         self.dashing = true
@@ -526,6 +608,14 @@ end
 -- A random live ant near a point.
 function fx.near(ctx, x, y, r)
     return require("src.game.itemfx").randomEnemy(ctx.world, x, y, r)
+end
+
+-- True on every nth call for this key (signature nodes: "every 4th punch..."). skills is the
+-- third argument a proc's effect gets.
+function fx.every(skills, key, n)
+    local c = (skills.counters[key] or 0) + 1
+    skills.counters[key] = c
+    return c % n == 0
 end
 
 -- Little text over the player.
