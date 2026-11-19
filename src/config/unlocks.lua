@@ -9,7 +9,7 @@
 -- A goal: { text = "One line.", goal = number, value = function(profile, run) -> number }.
 -- `run` is the run going on (nil between runs); see content/achievements/_template.lua for the
 -- fields of both. Helpers below build the common ones. A bug already played before unlocks
--- existed counts as unlocked. Settings > Gameplay > "Unlock Everything" opens it all.
+-- existed counts as unlocked. Settings > Developer > "Unlock Everything" opens it all.
 local U = {}
 
 U.starters = { "rhino_beetle", "stag_beetle", "wolf_spider", "scorpion", "mantis", "tiger_beetle",

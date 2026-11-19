@@ -51,6 +51,22 @@ local LOOKS = {
         set = { lightStyle = "soft", richDay = false, sunShadows = false, rimLight = false, cloudShadows = "off",
             wetGround = false, fallingLeaves = false, glowDecor = false, windGusts = false, heatHaze = false,
             deathStyles = false, ownEffects = 80, cameraPunch = 50 } },
+    -- Low-glare looks: dimmer glows on top of the scene so sparks and flashes never hide the fight.
+    { id = "softglow", label = "Soft Glow",
+        desc = "Standard, but gentler: lights a little weaker and sparks, swooshes and flashes at half glare. A good first try if the glare feels like too much.",
+        set = { lightStrength = 80, glareAmount = 50, ownEffects = 80, killLights = false, sunRays = false } },
+    { id = "overcast", label = "Overcast",
+        desc = "A cloudy day: even, flat light with almost no glare, light shadows and no sun rays. Very easy to read.",
+        set = { timeOfDay = "day", darkness = 80, lightStyle = "soft", lightStrength = 70, glareAmount = 40,
+            cloudShadows = "always", rimLight = false, sunRays = false, heatHaze = false, wetGround = false } },
+    { id = "noglare", label = "No Glare",
+        desc = "As little glow as the game allows: soft lights, the lowest glare, your own effects faded, no glowing decor or haze. Ants and attack warnings stay clear.",
+        set = { lightStyle = "soft", glareAmount = 20, ownEffects = 50, rimLight = false, glowDecor = false,
+            heatHaze = false, sunRays = false, killLights = false, threatOutlines = "elites" } },
+    { id = "brightclear", label = "Bright & Clear",
+        desc = "Always day, light shadows and low glare, with outlines on elites and queens. Bright without the dazzle.",
+        set = { timeOfDay = "day", darkness = 70, lightStrength = 80, glareAmount = 40, ownEffects = 70,
+            threatOutlines = "elites", heatHaze = false, sunRays = false } },
 }
 
 -- Fill each look out to every option it covers.

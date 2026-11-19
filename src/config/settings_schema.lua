@@ -102,8 +102,6 @@ add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type =
 add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "instant",
     options = { { value = "instant", label = "Right Away" }, { value = "wave", label = "At Wave End" } },
     desc = "Right Away: the moment you level up, the cards open (after a short fanfare) and you pick your reward on the spot; the wave's reward bloom then holds only the item. At Wave End: level-ups wait in the reward bloom and come just before the item choice." }
-add { key = "unlockAll", category = "Gameplay", label = "Unlock Everything", type = "toggle", default = false,
-    desc = "Open every bug, item, danger level and locked skin now, without meeting their goals. Turn it off to go back to earning them; goals still count in Records." }
 add { key = "autoAttack", category = "Gameplay", label = "Auto Attack", type = "toggle", default = true,
     desc = "Attack automatically. When off, hold the Attack button." }
 add { key = "aimMode", category = "Gameplay", label = "Aim Mode", type = "choice", default = "nearest",
@@ -185,6 +183,8 @@ add { key = "lightStrength", group = "Lights", category = "Lighting", label = "L
     desc = "How strong lights are with the Bold light style." }
 add { key = "glareGuard", group = "Lights", category = "Lighting", label = "Glare Guard", type = "toggle", default = true,
     desc = "Caps how bright sparks, swooshes, fireflies and lightning can get, so glare never hides your bug or the ants." }
+add { key = "glareAmount", group = "Lights", category = "Lighting", label = "Glare Amount", type = "slider", default = 80, min = 20, max = 100, step = 10, format = percent,
+    desc = "How bright sparks, swooshes, fireflies, pollen and lightning flashes glow on top of the scene. Lower it if glare hides the fight; it works with Glare Guard on or off." }
 add { key = "ownEffects", group = "Lights", category = "Lighting", label = "Own Effects Opacity", type = "slider", default = 100, min = 30, max = 100, step = 10, format = percent,
     desc = "Fade your own attack glows and sparks so you can see the ants inside them." }
 add { key = "richDay", group = "Lights", category = "Lighting", label = "Rich Day Palette", type = "toggle", default = true,
@@ -326,6 +326,8 @@ add { key = "touchAimSpecial", category = "Controls", label = "Touch Special Aim
 -- Developer -----------------------------------------------------------------------------
 add { key = "devMode", category = "Developer", label = "Developer Mode", type = "toggle", default = true,
     desc = "Enables the sandbox, console (`), overlay (F3) and debug hotkeys (F1 lists them)." }
+add { key = "unlockAll", category = "Developer", label = "Unlock Everything", type = "toggle", default = false,
+    desc = "Open every bug, item, danger level and locked skin now, without meeting their goals. Turn it off to go back to earning them; goals still count in Records. Meant for testing, so it lives here with the other developer tools." }
 add { key = "playtestLog", category = "Developer", label = "Playtest Log", type = "toggle", default = false,
     desc = "Write one line per wave (time, damage taken, KOs, level, items, nectar) to playtest_log.csv in the save folder, for comparing test runs." }
 add { key = "showHitboxes", category = "Developer", label = "Show Hitboxes", type = "toggle", default = false }

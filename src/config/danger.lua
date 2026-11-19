@@ -1,6 +1,6 @@
 -- Danger levels: a climb of difficulty per bug. Danger 0 is the normal game; each level adds
 -- one rule on top of the ones below it. Winning a run at a level opens the next one for that
--- bug (Settings > Gameplay > "Unlock Everything" opens them all). Records keep the highest
+-- bug (Settings > Developer > "Unlock Everything" opens them all). Records keep the highest
 -- level won per bug, shown as mastery stars on the bug select screen.
 --
 -- rules (all optional, multiplied together across levels; extraQueens adds up):

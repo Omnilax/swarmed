@@ -99,7 +99,12 @@ end
 -- Is the additive glow layer drawn on its own canvas (Glare Guard, or Own Effects Opacity < 100)?
 function Lighting.fxLayer(world)
     if world and #world.fx == 0 and (world.particles.n or 0) == 0 then return false end
-    return Settings.get("glareGuard") or Settings.get("ownEffects") < 100
+    return Settings.get("glareGuard") or Settings.get("ownEffects") < 100 or Lighting.glareAmount() < 1
+end
+
+-- Settings > Lighting > Glare Amount as 0..1 (scales every additive glow on top of the scene).
+function Lighting.glareAmount()
+    return (Settings.get("glareAmount") or 100) / 100
 end
 
 function Lighting.beginFx()
@@ -126,8 +131,8 @@ function Lighting.endFx()
     local cw, ch = Screen.canvas:getDimensions()
     Lighting.fxQuad = Lighting.fxQuad or lg.newQuad(0, 0, 1, 1, cw, ch)
     Lighting.fxQuad:setViewport(0, 0, Screen.viewW, Screen.viewH, cw, ch)
-    Lighting.soft:send("cap", Settings.get("glareGuard") and 0.5 or 4.0)
-    Lighting.soft:send("strength", Settings.get("ownEffects") / 100)
+    Lighting.soft:send("cap", (Settings.get("glareGuard") and 0.5 or 4.0) * Lighting.glareAmount())
+    Lighting.soft:send("strength", Settings.get("ownEffects") / 100 * Lighting.glareAmount())
     lg.setShader(Lighting.soft)
     lg.setBlendMode("add")
     lg.setColor(1, 1, 1, 1)
@@ -139,7 +144,7 @@ end
 
 -- Glows drawn straight over the scene (fireflies, pollen, lightning): softer with Glare Guard.
 function Lighting.glareMul()
-    return Settings.get("glareGuard") and 0.5 or 1
+    return (Settings.get("glareGuard") and 0.5 or 1) * Lighting.glareAmount()
 end
 
 -- An attack warning about to land (Env.warnCircle / warnLane): world x, y, radius, 0..1 charge.
