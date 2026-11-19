@@ -22,6 +22,7 @@ return {
         forest_floor = { "Queen of the Leaf Litter" },
         dappled_garden = { "Queen of the Garden" },
         puddle_patio = { "Queen of the Patio" },
+        tide_pools = { "Queen of the Tide Line", "the Salt-Crusted" },
     },
 
     -- Named champions: on these waves of each act (3rd wave of five), the first elite to show up

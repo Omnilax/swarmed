@@ -1227,6 +1227,109 @@ def driver_ant_mandible(I):     # a driver ant soldier's long hooked jaw, red-br
     I.paint(I.T([(0.58, 1.7), (0.6, 1.0)], 0.04), "#c06040", amt=0.6, soft=1)
     I.paint(I.E(0.3, 0.2, 0.06, 0.06), "#a01010", amt=0.8)
 
+# ---------------------------------------------------------------------------------------------
+# Shore items (beach finds for the crustaceans, src/game/shore.lua)
+
+@icon("spare_shell", 2, 2)
+def spare_shell(I):             # an empty whelk shell, the kind a hermit crab moves into
+    pts = [(0.62 + math.cos(t) * (0.05 + t * 0.05), 0.72 + math.sin(t) * (0.05 + t * 0.05) * 0.8) for t in np.linspace(0, 3.6 * pi, 60)]
+    I.add(I.E(0.95, 0.95, 0.72, 0.6, rot=0.6), "#d8b088", gloss=1.0, shin=30, mottle=0.12)
+    I.add(I.E(0.58, 0.6, 0.36, 0.32, rot=0.6), "#c89a70", gloss=1.0, shin=30, mode="max")
+    I.carve(I.T(pts, 0.03), 0.05)
+    for k in range(5):
+        a = 0.2 + k * 0.35
+        I.paint(I.T([(0.6 + math.cos(a) * 0.4, 0.6 + math.sin(a) * 0.35), (1.0 + math.cos(a) * 0.65, 1.0 + math.sin(a) * 0.55)], 0.04), "#8a5a34", amt=0.6, soft=1)
+    I.add(I.E(1.42, 1.42, 0.3, 0.24, rot=0.6), "#f4dcc0", gloss=1.6, shin=40, mode="max")    # the pearly mouth
+    I.carve(I.E(1.46, 1.46, 0.18, 0.13, rot=0.6), 0.16)
+    I.paint(I.E(1.46, 1.46, 0.16, 0.11, rot=0.6), "#3a2418", amt=0.8)
+    I.paint(I.E(0.7, 0.62, 0.16, 0.08, rot=0.6), "#ffffff", amt=0.35, soft=1)
+
+@icon("sand_dollar", 1, 1)
+def sand_dollar(I):             # a bleached sand dollar with its five-petal star
+    I.add(I.E(0.5, 0.5, 0.4, 0.4, z=0.4), "#ece2cc", gloss=0.5, shin=16, mottle=0.12, grain=0.006, gscale=0.02)
+    for k in range(5):
+        a = -pi / 2 + k * 2 * pi / 5
+        cx, cy = 0.5 + math.cos(a) * 0.16, 0.5 + math.sin(a) * 0.16
+        I.carve(I.E(cx, cy, 0.04, 0.13, rot=a + pi / 2), 0.03)
+        I.paint(I.E(cx, cy, 0.035, 0.12, rot=a + pi / 2), "#a89478", amt=0.7)
+    I.carve(I.E(0.5, 0.5, 0.03, 0.03), 0.03)
+    speck(I, 30, in_ell(0.5, 0.5, 0.38, 0.38), "#c8b898", seed=5, size=(0.01, 0.015), amt=0.6)
+
+@icon("sea_glass", 1, 1)
+def sea_glass(I):               # a frosted, tumbled shard of green bottle glass
+    pts = [(0.22, 0.38), (0.5, 0.18), (0.8, 0.3), (0.82, 0.66), (0.56, 0.84), (0.24, 0.7)]
+    I.add(I.P(pts, bevel=0.5, z=0.22), "#5ab89a", gloss=0.6, shin=10, mottle=0.25, op=0.85)
+    I.glow(I.E(0.52, 0.52, 0.2, 0.18), "#9af0d0", 0.4)
+    I.paint(I.E(0.4, 0.36, 0.1, 0.05, rot=-0.4), "#e8fff4", amt=0.5, soft=1)
+
+@icon("barnacle_cluster", 2, 2, ["X.", "XX"])
+def barnacle_cluster(I):        # little volcano-shaped barnacles crowded on a rock, an L of them
+    I.add(I.F(lambda X, Y: ((((X < 0.95) | (Y > 1.05)) & (X > 0.08) & (Y > 0.08) & (X < 1.92) & (Y < 1.92)), 0.04 + 0.0 * X)), "#5a5650", gloss=0.2, mottle=0.3)
+    rnd = R(21)
+    spots = [(0.5, 0.4), (0.4, 0.9), (0.7, 0.7), (0.45, 1.45), (0.95, 1.5), (1.45, 1.4), (1.5, 1.7), (0.8, 1.2), (0.3, 1.7), (1.2, 1.75)]
+    for (x, y) in spots:
+        r = rnd.uniform(0.16, 0.24)
+        I.add(I.E(x, y, r, r * 0.92, z=0.9), "#d8d2c2", gloss=0.6, shin=18, mottle=0.2, mode="max")
+        I.carve(I.E(x, y - 0.02, r * 0.38, r * 0.3), 0.14)
+        I.paint(I.E(x, y - 0.02, r * 0.34, r * 0.26), "#2a2420", amt=0.9)
+        for k in range(6):
+            a = k / 6 * 2 * pi
+            I.carve(I.T([(x + math.cos(a) * r * 0.45, y + math.sin(a) * r * 0.4), (x + math.cos(a) * r * 0.95, y + math.sin(a) * r * 0.88)], 0.008), 0.02)
+
+@icon("kelp_frond", 1, 2)
+def kelp_frond(I):              # a flat, ruffled blade of brown kelp on a thin stipe with a gas bladder
+    L, R_ = [], []
+    for t in np.linspace(0, 1, 28):
+        y = 0.1 + t * 1.42
+        cx = 0.5 + math.sin(t * 5) * 0.06
+        w = (0.1 + 0.26 * math.sin(min(1, t * 1.3) * pi * 0.9)) * (1 + 0.18 * math.sin(t * 40))
+        L.append((cx - w, y)); R_.append((cx + w, y))
+    I.add(I.P(L + list(reversed(R_)), bevel=0.25, z=0.05), "#5a5a1c", gloss=1.2, shin=26, mottle=0.25, op=0.95)
+    for t in np.linspace(0.05, 0.95, 10):
+        y = 0.1 + t * 1.42
+        I.carve(I.T([(0.5 - 0.2, y + 0.08), (0.5, y), (0.5 + 0.2, y + 0.08)], 0.008), 0.02)
+    I.paint(I.T([(0.5, 0.15), (0.5 + math.sin(5) * 0.06, 1.5)], 0.02), "#b0a050", amt=0.6, soft=1)
+    I.add(I.T([(0.5, 1.5), (0.52, 1.95)], 0.035), "#5a4a1a", gloss=0.6, mode="max")
+    I.add(I.E(0.5, 1.55, 0.11, 0.11), "#8a7a30", gloss=1.8, shin=40, mode="max")
+    I.paint(I.E(0.46, 1.51, 0.04, 0.03), "#ffffff", amt=0.4, soft=1)
+
+@icon("conch_shell", 2, 2)
+def conch_shell(I):             # a pink-lipped queen conch with its knobbed spire
+    I.add(I.E(0.85, 0.85, 0.62, 0.5, rot=0.75), "#e2c098", gloss=0.8, shin=24, mottle=0.15)
+    I.add(I.T([(0.6, 0.6), (0.25, 0.25)], [0.26, 0.05]), "#d0a878", gloss=0.8, shin=24, mode="max")   # spire
+    for k in range(6):
+        t = k / 6
+        x, y = 0.3 + t * 0.6, 0.3 + t * 0.6
+        I.add(I.E(x + 0.18 - t * 0.1, y - 0.12 + t * 0.06, 0.07, 0.07), "#e8cca4", gloss=0.8, mode="max")
+    I.add(I.E(1.3, 1.3, 0.62, 0.4, rot=-0.75, z=0.5), "#f4a8a0", gloss=1.8, shin=40, mode="max")   # the flared pink lip
+    I.carve(I.E(1.25, 1.25, 0.4, 0.2, rot=-0.75), 0.14)
+    I.paint(I.E(1.25, 1.25, 0.38, 0.18, rot=-0.75), "#b85a5a", amt=0.7, soft=1)
+    for k in range(5):
+        I.paint(I.T([(0.5 + k * 0.12, 1.1 - k * 0.04), (0.8 + k * 0.12, 0.6 - k * 0.04)], 0.03), "#9a6a44", amt=0.5, soft=1)
+
+@icon("starfish", 3, 3, [".X.", "XXX", "X.X"])
+def starfish(I):                # a knobbly orange sea star, one arm a little short (growing back)
+    for k in range(5):
+        a = -pi / 2 + k * 2 * pi / 5
+        L = 1.2 if k != 3 else 0.95
+        tip = (1.5 + math.cos(a) * L, 1.42 + math.sin(a) * L)
+        I.add(I.T([(1.5, 1.42), tip], [0.32, 0.08]), "#e0743a", gloss=0.8, shin=20, mottle=0.2, mode="max")
+        for j in range(1, 5):
+            t = j / 5
+            I.add(I.E(1.5 + math.cos(a) * L * t, 1.42 + math.sin(a) * L * t, 0.055 * (1.2 - t), 0.055 * (1.2 - t)), "#f4b070", gloss=1.0, mode="max")
+    I.add(I.E(1.5, 1.42, 0.34, 0.34), "#d8682e", gloss=0.8, shin=20, mode="max")
+    I.add(I.E(1.5, 1.42, 0.07, 0.07), "#f4c080", gloss=1.0, mode="max")
+    speck(I, 50, in_ell(1.5, 1.42, 1.1, 1.1), "#a8401a", seed=7, size=(0.012, 0.02), amt=0.5)
+
+@icon("pearl", 1, 1)
+def pearl(I):                   # a lustrous pearl sitting in half an oyster shell
+    I.add(I.E(0.5, 0.62, 0.42, 0.26, z=0.5), "#7a7a80", gloss=0.4, mottle=0.3)
+    I.add(I.E(0.5, 0.6, 0.34, 0.2, z=0.3), "#e8e4f0", gloss=1.6, shin=40, mottle=0.1, mode="max")
+    I.add(I.E(0.5, 0.48, 0.2, 0.2), "#f4ecf4", gloss=2.2, shin=60, mottle=0.04, mode="max")
+    I.glow(I.E(0.5, 0.48, 0.24, 0.24), "#ffe8f8", 0.4)
+    I.paint(I.E(0.44, 0.41, 0.06, 0.05), "#ffffff", amt=0.7, soft=1)
+    I.paint(I.E(0.56, 0.56, 0.08, 0.04), "#d0b8e0", amt=0.4, soft=1)
+
 
 def build(only=None):
     out = ["-- Inventory icons (generated by tools/make_item_icons.py; edit the generator, not this file).",

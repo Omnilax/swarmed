@@ -25,6 +25,7 @@ local GRADES = {
     sandstone_wash = { 1.06, 0.98, 0.9, 1.0 }, mown_lawn = { 0.98, 1.03, 0.95, 1.06 },
     puddle_patio = { 0.95, 0.99, 1.04, 0.98 }, rotting_log = { 1.0, 0.97, 0.93, 1.02 },
     wildflower_meadow = { 1.03, 1.0, 0.97, 1.1 }, dappled_garden = { 0.98, 1.02, 0.96, 1.06 },
+    tide_pools = { 1.0, 1.01, 1.03, 1.06 },
 }
 -- Per-act grades: lush, dry gold, dusky violet.
 local ACT = { { 0.97, 1.03, 0.96, 1.1 }, { 1.05, 1.0, 0.9, 0.98 }, { 1.0, 0.94, 1.04, 0.95 } }

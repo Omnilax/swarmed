@@ -315,8 +315,10 @@ function Inventory:recount()
     end
     for _, id in ipairs(self.order) do
         local def, n = Content.items:require(id), self.counts[id]
-        for stat, v in pairs(def.stats) do stats:addModifier("item:" .. id, stat, v * n, 0) end
-        for stat, v in pairs(def.statsMult) do stats:addModifier("item:" .. id, stat, 0, v * n) end
+        -- kin stats too when the bug is one of the item's kin (src/game/shore.lua)
+        local add, mult = require("src.game.shore").statsFor(def, self.player)
+        for stat, v in pairs(add) do stats:addModifier("item:" .. id, stat, v * n, 0) end
+        for stat, v in pairs(mult) do stats:addModifier("item:" .. id, stat, 0, v * n) end
     end
     -- bonuses an item's procs keep up (source "fx:<id>") go when the last copy leaves the bag
     for _, id in ipairs(old) do

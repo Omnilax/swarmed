@@ -74,6 +74,7 @@ function Player:setCharacter(def)
     self.def = def
     self.radius = def.radius
     self.stats = Stats.new(def.stats)
+    self.stats.owner = self        -- lets stat previews add an item's kin stats (src/game/shore.lua)
     self.inventory = Inventory.new(self)
     if oldInv then
         oldInv:transferTo(self.inventory)

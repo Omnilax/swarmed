@@ -25,6 +25,7 @@ local function make()
     Audio.addSynth("amb_bird", { wave = "sine", notes = { 2600, 3100, 2800, 3400 }, duration = 0.32, volume = 0.18, decay = 1, vibrato = { 30, 0.04 }, pitchVar = 0.25 })
     Audio.addSynth("amb_cricket", { wave = "square", freq = 4200, duration = 0.12, volume = 0.08, decay = 0.5, vibrato = { 60, 0.5 }, pitchVar = 0.05 })
     Audio.addSynth("amb_wind", { wave = "noise", freq = 200, duration = 1.6, volume = 0.12, attack = 0.6, decay = 2, pitchVar = 0.2 })
+    Audio.addSynth("amb_surf", { wave = "noise", freq = 320, duration = 2.4, volume = 0.13, attack = 1.0, decay = 1.6, pitchVar = 0.15 })
     Audio.addSynth("amb_drip", { wave = "sine", freq = 1400, to = 700, duration = 0.08, volume = 0.18, decay = 3, pitchVar = 0.3 })
 end
 
@@ -46,7 +47,8 @@ function Soundscape.update(world, dt)
     local w = world.weather
     local wid = w.def and w.def.id
     local pick
-    if (world.wetness or 0) > 0.3 and love.math.random() < 0.5 then pick = "amb_drip"
+    if world.stage.shore and love.math.random() < 0.6 then pick = "amb_surf"
+    elseif (world.wetness or 0) > 0.3 and love.math.random() < 0.5 then pick = "amb_drip"
     elseif DESERT[id] or wid == "windy" or wid == "dust" then pick = "amb_wind"
     elseif day < 0.4 then pick = "amb_cricket"
     else pick = "amb_bird" end
