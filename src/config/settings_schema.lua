@@ -330,6 +330,8 @@ add { key = "unlockAll", category = "Developer", label = "Unlock Everything", ty
     desc = "Open every bug, item, danger level and locked skin now, without meeting their goals. Turn it off to go back to earning them; goals still count in Records. Meant for testing, so it lives here with the other developer tools." }
 add { key = "playtestLog", category = "Developer", label = "Playtest Log", type = "toggle", default = false,
     desc = "Write one line per wave (time, damage taken, KOs, level, items, nectar) to playtest_log.csv in the save folder, for comparing test runs." }
+add { key = "scriptFullAccess", category = "Developer", label = "Full Lua Access (custom bugs)", type = "toggle", default = false,
+    desc = "Custom bug scripts get me.engine: the real player, world, require and love, with no safety net and a 10x bigger time budget. Anything is possible, including crashing the game or reading and writing your save folder. Only turn it on for scripts you wrote or trust." }
 add { key = "showHitboxes", category = "Developer", label = "Show Hitboxes", type = "toggle", default = false }
 add { key = "showSpatialGrid", category = "Developer", label = "Show Spatial Grid", type = "toggle", default = false }
 add { key = "showOverlay", category = "Developer", label = "Performance Overlay", type = "toggle", default = false }

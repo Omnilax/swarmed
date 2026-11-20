@@ -837,10 +837,10 @@ function CustomBugs.build(raw)
     if raw.hooks ~= nil then
         if type(raw.hooks) ~= "table" then errs[#errs + 1] = "hooks must be a table of functions"
         else
-            local known = {}
-            for _, k in ipairs(HOOKS) do known[k] = true end
+            local known = require("src.game.bugapi").known
             for k, fn in pairs(raw.hooks) do
-                if not known[k] then warns[#warns + 1] = "hooks: no event '" .. tostring(k) .. "' (" .. table.concat(HOOKS, ", ") .. ")"
+                -- any on<Name> works (me.emit calls your own); the engine calls the known ones
+                if not known[k] and not (type(k) == "string" and k:match("^on%u[%w_]*$")) then warns[#warns + 1] = "hooks: no event '" .. tostring(k) .. "' (" .. table.concat(HOOKS, ", ") .. ")"
                 elseif type(fn) ~= "function" then errs[#errs + 1] = "hooks." .. k .. " must be a function(me, ...)"
                 else def.hooks = def.hooks or {} def.hooks[k] = fn end
             end
@@ -915,6 +915,8 @@ function CustomBugs.build(raw)
     for _, t in ipairs(type(raw.tags) == "table" and raw.tags or {}) do
         if type(t) == "string" and #def.tags < 8 and t ~= "custom" then def.tags[#def.tags + 1] = t:sub(1, 20) end
     end
+    -- resources (ammo...), abilities, traits (src/game/bugapi.lua)
+    require("src.game.bugapi").build(rawIn, def, errs, warns)
     -- passives, looks, movement and music (src/game/bugtraits.lua)
     require("src.game.bugtraits").build(raw, def, errs, warns)
     -- hit look, sound pack, statuses, pets, ultimate, card, challenges, forms, molt
@@ -959,6 +961,8 @@ function CustomBugs.prepareArt(def)
     -- other versions of the bug (forms, the molt) with their own art
     for i, f in ipairs(def.forms or {}) do if i > 1 and f.art then CustomBugs.prepareArt(f) end end
     if def.molt and def.molt.def.art then CustomBugs.prepareArt(def.molt.def) end
+    for _, e in ipairs(def.evolution or {}) do if e.def.art then CustomBugs.prepareArt(e.def) end end
+    for _, st in ipairs(def.stances or {}) do if st.def and st.def.art then CustomBugs.prepareArt(st.def) end end
     -- own sounds (me.sound("name") plays "<id>:name")
     if def.sounds then
         local Audio = require("src.core.audio")

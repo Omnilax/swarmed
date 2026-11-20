@@ -276,6 +276,7 @@ function Extras.build(raw, def, errs, warns, rebuild)
             for k, v in pairs(raw) do merged[k] = v end
             for k, v in pairs(over) do merged[k] = v end
             merged.forms, merged.molt, merged.challenges, merged.card = nil, nil, false, nil
+            merged.evolution, merged.stances = nil, nil
             merged.stats = raw.stats            -- a version's stats add to the bug's own
             merged._artSuffix = suffix
             merged.name = raw.name
@@ -327,6 +328,61 @@ function Extras.build(raw, def, errs, warns, rebuild)
                     kills = raw.molt.kills and math.floor(clamp(raw.molt.kills, 10, 100000, 300)) or nil }
             end
         end
+        -- evolution: stages the bug grows through as it levels (or at kills / waves / from code).
+        -- Each stage adds to the ones before it: stats add up, limbs (addLimbs) pile onto the
+        -- art, and any other field (attack, art, look, scale, colors...) replaces the last one's.
+        if type(raw.evolution) == "table" then
+            local acc = {}          -- the stages so far, merged
+            local limbs = (type(raw.art) == "table" and type(raw.art.limbs) == "table") and raw.art.limbs or nil
+            def.evolution = {}
+            for i, st in ipairs(raw.evolution) do
+                if i > 12 then warns[#warns + 1] = "evolution: 12 stages at most" break end
+                if type(st) == "table" then
+                    -- a stage with its own art starts from that art's limbs
+                    if type(st.art) == "table" then limbs = type(st.art.limbs) == "table" and st.art.limbs or nil end
+                    for k, v in pairs(st) do
+                        if k == "stats" and type(v) == "table" then
+                            acc.stats = acc.stats or {}
+                            for sk, sv in pairs(v) do if type(sv) == "number" then acc.stats[sk] = (acc.stats[sk] or 0) + sv end end
+                        elseif k == "addLimbs" and type(v) == "table" then
+                            local l2 = {}
+                            for _, l in ipairs(limbs or {}) do l2[#l2 + 1] = l end
+                            for _, l in ipairs(v) do l2[#l2 + 1] = l end
+                            limbs = l2
+                        elseif not (k == "level" or k == "kills" or k == "wave" or k == "onEvolve") then
+                            acc[k] = v
+                        end
+                    end
+                    local over = {}
+                    for k, v in pairs(acc) do over[k] = v end
+                    -- extra limbs need art to hang on: the stage's own art, or the bug's
+                    if limbs then
+                        local art = type(over.art) == "table" and over.art or (type(raw.art) == "table" and raw.art)
+                        if art then
+                            local a2 = {}
+                            for k, v in pairs(art) do a2[k] = v end
+                            a2.limbs = limbs
+                            over.art = a2
+                        else
+                            warns[#warns + 1] = "evolution[" .. i .. "].addLimbs needs the bug's own art (art = {...}); dropped"
+                        end
+                    end
+                    local d = variant(over, "evolution[" .. i .. "]", "_e" .. i)
+                    if d then
+                        def.evolution[#def.evolution + 1] = { def = d, name = text(st.name, 24) or ("Stage " .. (i + 1)),
+                            level = st.level and math.floor(clamp(st.level, 1, 999, 5)) or nil,
+                            kills = st.kills and math.floor(clamp(st.kills, 1, 1000000, 100)) or nil,
+                            wave = st.wave and math.floor(clamp(st.wave, 1, 999, 5)) or nil,
+                            onEvolve = type(st.onEvolve) == "function" and st.onEvolve or nil, say = text(st.say, 30) }
+                        local e = def.evolution[#def.evolution]
+                        if not (e.level or e.kills or e.wave) then e.code = true end
+                    end
+                end
+            end
+            if #def.evolution == 0 then def.evolution = nil else def.scripted = true end
+        end
+        -- stances: modes the bug switches between (src/game/bugapi.lua)
+        require("src.game.bugapi").buildStances(raw, def, errs, warns, variant)
     end
 end
 
@@ -388,7 +444,7 @@ function Extras.setForm(player, n)
     if (player.formIndex or 1) == n then return true end
     player.formIndex = n
     -- after a molt, form 1 is the molted bug, and every form keeps the molted body
-    local molt = player.molted and base.molt and base.molt.def
+    local molt = player.evoDef or (player.molted and base.molt and base.molt.def)
     local d = (n == 1 and molt) or forms[n]
     local dash = player.dashParams
     Extras.swapDef(player, d, "form")
@@ -431,6 +487,61 @@ function Extras.doMolt(player)
         if w.camera then w.camera:shake(0.25) end
     end
     player.hp = math.min(player.stats:get("maxHp"), player.hp + player.stats:get("maxHp") * 0.3)
+end
+
+-- The version of the bug in use before forms / stances: its evolution stage, the molt, or itself.
+function Extras.currentDef(player)
+    local base = player.def.baseDef or player.def
+    return player.evoDef or (player.molted and base.molt and base.molt.def) or base
+end
+
+-- Evolution: grow into stage n (1 = the first stage after the bug itself; default: the next).
+-- Stages only go forwards. Returns true when it evolved.
+function Extras.evolve(player, n)
+    local base = player.def.baseDef or player.def
+    local evo = base.evolution
+    if not evo then return false end
+    local cur = player.evoStage or 0
+    n = math.floor(tonumber(n) or (cur + 1))
+    if n <= cur or n > #evo then return false end
+    player.evoStage = n
+    local st = evo[n]
+    local d = st.def
+    player.evoDef = d
+    local dash = player.dashParams
+    Extras.swapDef(player, d, "evolve")
+    if base.forms then player.dashParams = dash player.formIndex = 1 end
+    player.radius = d.radius or player.radius
+    -- a stance with its own moves keeps them (its stats stay on top)
+    if player.stanceIndex and base.stances then
+        local si = player.stanceIndex
+        player.stanceIndex = nil
+        require("src.game.bugapi").setStance(player, si)
+    end
+    local w = player.world
+    if w then
+        w.milestone = { text = (st.name or "EVOLVED"):upper() .. "!", t = 0 }
+        w:addFx({ kind = "ring", x = player.x, y = player.y, r = 70, life = 0.7, color = { 0.8, 1, 0.7 } })
+        w.particles:burst(player.x, player.y, 36, { { 0.85, 1, 0.75 }, { 1, 0.95, 0.6 } }, 180, 30, {})
+        if st.say then w:floatText(player.x, player.y - 14, st.say, { 0.85, 1, 0.7 }, true) end
+        require("src.core.audio").play("chime", { pitch = 0.7 })
+        if w.camera then w.camera:shake(0.25) end
+    end
+    if st.onEvolve then require("src.game.scriptmoves").run(st.onEvolve, player, nil, nil, nil, { label = "onEvolve" }, { stage = n, name = st.name }) end
+    require("src.game.bugapi").fire(player, "onEvolve", { stage = n, name = st.name })
+    return true
+end
+
+-- Has the bug met its next evolution stage's goal? (Every frame from Extras.tick.)
+local function checkEvolve(player, base)
+    local st = base.evolution[(player.evoStage or 0) + 1]
+    if not st or st.code then return end
+    local w = player.world
+    local level = player.skills and player.skills.level or 0
+    local wave = w and w.spawner and w.spawner.wave or 0
+    if (st.level and level >= st.level) or (st.kills and (player.killsRun or 0) >= st.kills) or (st.wave and wave >= st.wave) then
+        Extras.evolve(player)
+    end
 end
 
 -- Sounds from the bug's pack (falls back to the usual one).
@@ -721,6 +832,7 @@ function Extras.tick(player, world, dt)
         end
     end
     if base.molt and not player.molted and base.molt.kills and (player.killsRun or 0) >= base.molt.kills then Extras.doMolt(player) end
+    if base.evolution and world.mode ~= "menu" then checkEvolve(player, base) end
 end
 
 -- Game events (from SM.event).
