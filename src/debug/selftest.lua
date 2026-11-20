@@ -711,6 +711,7 @@ local function script(flags)
     if flags["--flow"] then require("src.debug.selftest_flow")(wait, shot) love.event.quit() return end
     if flags["--visuals"] then require("src.debug.selftest_visuals")(wait, shot) love.event.quit() return end
     if flags["--wiki"] then require("src.debug.selftest_wiki")(wait, shot) love.event.quit() return end
+    if flags["--creator4"] then require("src.debug.selftest_creator4")(wait, shot) love.event.quit() return end
     if flags["--creator2"] then require("src.debug.selftest_creator2")(wait, shot) love.event.quit() return end
     if flags["--discord"] then require("src.debug.selftest_discord")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end

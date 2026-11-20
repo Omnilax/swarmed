@@ -130,6 +130,10 @@ function Player:setCharacter(def)
     -- custom bug script state (src/game/scriptmoves.lua)
     self._me, self._cx, self.scriptHelpers, self.scriptHeld, self.scriptPending = nil, nil, nil, nil, nil
     self.scriptBlock, self.scriptWardOn, self.scriptSpeed, self.scriptSpeedT, self.scriptStarted = nil, nil, nil, nil, nil
+    -- Bug Creator round 4 state (src/game/bugapi.lua, bugextras.lua evolution)
+    self.stanceIndex, self.stanceSpeed, self.stanceHurt, self.evoStage, self.evoDef = nil, nil, nil, nil, nil
+    self.res, self.abil, self.killLog, self.killsTotal, self.spree, self.parryT, self.keyState = nil, nil, nil, nil, nil, nil, nil
+    self.seenLevel, self.seenPhase, self.seenNectar, self.seenBoss = nil, nil, nil, nil
     self.traits, self.traitShell, self.traitWardOn, self.traitSpeed, self.slideVX, self.slideVY = nil, nil, nil, nil, nil, nil
     -- round 3: hitboxes, forms, molt, pets, statuses, poses (src/game/hitshapes.lua, src/game/bugextras.lua)
     self.hitboxes, self.scriptStopAt, self.scriptCd, self.formIndex, self.molted = nil, nil, nil, nil, nil
@@ -318,7 +322,7 @@ function Player:update(dt)
         world.particles:spawn(self.x, self.y, 2, 0, 0, 20, 0.25, PFX_3, 1, PFX_4)
     else
         local speed = self.stats:get("moveSpeed") * (self.def.immune and 1 or self.slowMul or 1) * (self.blocking and (dp.slow or 0.35) or 1)
-            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1) * (self.traitSpeed or 1)
+            * (self.moveMul or 1) * (self.runMul or 1) * (self.scriptSpeed or 1) * (self.traitSpeed or 1) * (self.stanceSpeed or 1)
         -- the arena (src/game/director.lua): weather, water, sun and shade
         local env = world.env
         if env and not self.def.immune then
@@ -658,6 +662,11 @@ end
 function Player:hurt(amount, source)
     local world = self.world
     if self.dead or self.iframes > 0 or world.flags.god then return end
+    if self.def.custom then
+        -- a custom bug's parry window and stance (src/game/bugapi.lua)
+        if require("src.game.bugapi").ward(self, amount, source) then return end
+        amount = amount * (self.stanceHurt or 1)
+    end
     if self.ward and self.ward(self, amount, source) then return end
     if world.rewards and world.rewards.frenzy:shielded() then return end     -- mid frenzy move
     if self.blocking then
@@ -695,6 +704,8 @@ function Player:hurt(amount, source)
     self.inventory:trigger("onHurt", ctx)
     -- a perk card (Molt Reserve) can cheat death once
     if self.hp <= 0 and world.levelups and world.levelups:saveFromDeath(self) then return end
+    -- a custom bug's onDeath hook may revive it (me.revive / return true)
+    if self.hp <= 0 and self.def.custom and require("src.game.bugapi").onDeath(self) then return end
     if self.hp <= 0 then
         self.hp = 0
         self.dead = true

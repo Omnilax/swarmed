@@ -148,6 +148,8 @@ function Hud.draw(game, covered)
         bar(u(20), u(61), u(160), u(4), 1 - math.max(0, sc.timer) / sc.params.cooldown, { 1, 0.7, 0.35, alpha })
     end
 
+    -- a custom bug's ammo / resources, abilities, stance and its own onHud drawing
+    if p.def.custom then require("src.game.bugapi").drawHud(p, world, alpha) end
     if n >= 3 then
         lg.setFont(Theme.font(18))
         Theme.printShadow("SWARMED x" .. n, u(20), u(71), { 1, 0.35, 0.3, alpha })

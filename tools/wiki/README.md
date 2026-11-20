@@ -28,6 +28,6 @@ Everything is written to a work folder, `../swarmed-wiki` next to the game (set 
    It renders twice: once with hidden markers to find each heading's page, once with page numbers, then
    joins the volumes into `00_swarmed-design-bible-complete.pdf`.
 
-Hand-written chapters: `docs/wiki/*.md` (plus `docs/CUSTOM_BUGS.md` as an appendix). `{{IMG:file.png|caption}}`
+Hand-written chapters: `docs/wiki/*.md` (plus `docs/CUSTOM_BUGS.md` and `docs/BUG_API.md` as appendices). `{{IMG:file.png|caption}}`
 places a picture from `$WIKI_WORK/shots/` (the in-game wiki skips it). Generated volumes come from `gen.py`,
 which reads the dump and the comment block at the top of each content file.

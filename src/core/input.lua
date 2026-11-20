@@ -17,6 +17,9 @@ Input.actions = {
     { id = "pause", label = "Pause", keys = { "escape", "p" }, pad = { "start" }, rebind = true },
     { id = "inventory", label = "Inventory / Shop", keys = { "tab", "i" }, pad = { "y" }, rebind = true },
     { id = "frenzy", label = "Unleash Frenzy", keys = { "q", "c" }, pad = { "rightstick", "leftstick" }, rebind = true },
+    -- custom bugs (Bug Creator): abilities = { { key = "ability", ... } } and stances
+    { id = "ability", label = "Bug Ability (custom bugs)", keys = { "f" }, pad = {}, rebind = true },
+    { id = "stance", label = "Switch Stance (custom bugs)", keys = { "r" }, pad = {}, rebind = true },
     { id = "next_wave", label = "Next Wave / Send Ants Early", keys = { "e", "n" }, pad = { "back" }, rebind = true },
     { id = "inventory_alt", label = "Drop Item (inventory)", keys = { "f" }, pad = { "x" }, rebind = true },
     { id = "inventory_rotate", label = "Turn Item (inventory)", keys = { "r" }, pad = { "leftshoulder" }, rebind = true },

@@ -69,7 +69,7 @@ function Creator:buildTemplates(focusKey)
     end
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() self.page = nil self:build("Template Gallery") end }
     self.menu.opts.onBack = function() self.page = nil self:build("Template Gallery") end
-    self.menu:setItems(items)
+    self:setItems(items, "templates")
 end
 
 function Creator:build(focusKey)
@@ -100,6 +100,11 @@ function Creator:build(focusKey)
                 title = "Example Bug" }))
         end,
         desc = "Everything a script can do: a segmented body with feelers, a hold-to-charge glue squirt, a sticky wall, a stamina mode, code that runs when it kills or gets hurt, its own sounds, animations and skill tree." }
+    items[#items + 1] = { type = "button", label = "Example: Gunner Beetle", onActivate = function()
+            State.push(Editor().new({ text = love.filesystem.read("content/characters/_example_gunner_beetle.lua"),
+                title = "Example Bug" }))
+        end,
+        desc = "The newest systems in one bug: ammo and a rage meter, a Gun and a Brawl stance (R), extra buttons (F reloads, G parries), and an evolution that grows horns, claws and a cannon as it levels." }
 
     local bugs = CustomBugs.all()
     items[#items + 1] = { type = "header", label = ("Your bugs  (%d)"):format(#bugs) }
@@ -180,13 +185,20 @@ function Creator:build(focusKey)
     end
     items[#items + 1] = { type = "button", label = "Back", onActivate = function() State.pop() end }
 
-    self.menu:setItems(items)
+    self:setItems(items, "main")
     if focusKey then
         for i, it in ipairs(items) do
             if (it.bugId and it.bugId == focusKey) or it.label == focusKey then self.menu.focus = i break end
         end
     end
     if self.menu.items[self.menu.focus] and self.menu.items[self.menu.focus].disabled then self.menu:fixFocus(1) end
+end
+
+-- A rebuilt page keeps its scroll and focused row (opening a bug, the delete confirm...), so
+-- the list never jumps under the cursor; a new page starts at the top.
+function Creator:setItems(items, page)
+    self.menu:setItems(items, self.shownPage == page)
+    self.shownPage = page
 end
 
 -- Import a script: compile it, save it if it works, else open it in the editor to fix.
@@ -333,6 +345,11 @@ function Creator:draw()
         if def.pets then more[#more + 1] = "pets" end
         if def.statuses then more[#more + 1] = "status effects" end
         if def.ownFrenzy then more[#more + 1] = "ultimate: " .. def.ownFrenzy.name end
+        if def.evolution then more[#more + 1] = #def.evolution .. "-stage evolution" end
+        if def.stances then more[#more + 1] = #def.stances .. " stances" end
+        if def.abilities then more[#more + 1] = #def.abilities .. " abilities" end
+        if def.resourceOrder then more[#more + 1] = table.concat(def.resourceOrder, " / ") end
+        if def.traits then more[#more + 1] = #def.traits .. " traits" end
         if #more > 0 and not small then rows[#rows + 1] = { "Specials", table.concat(more, ", ") } end
         -- how it has done (Records keeps every bug's runs, custom ones too)
         local rec = require("src.game.records").get().characters[def.id]
