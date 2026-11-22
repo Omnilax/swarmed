@@ -89,7 +89,7 @@ Both are about which items **touch** in the bag (share a cell side).
 
 ## Level-ups and skill points
 
-`src/game/levelups.lua`, `src/game/skills.lua`. Kills give XP (`World:grantXP`). The curve is fast: the first level is about ten kills and a 15-wave run reaches about level 35. Each level plays a chime, half a second of slow motion and a ring of light, and opens **three cards right there, mid-wave** (setting: or at the wave's reward bloom).
+`src/game/levelups.lua`, `src/game/skills.lua`. Kills give XP (`World:grantXP`). The curve goes quick to slow but starts calm: the first level is about 45 kills, wave 1 gives about two levels, and a 15-wave run reaches about level 27. Each level plays a chime, half a second of slow motion and a ring of light, and opens **three cards right there, mid-wave** (setting: or at the wave's reward bloom).
 
 Cards come from `content/levelcards` in five families: **stat** (small boosts), **pact** (big boost with a cost), **growth** (grows every wave), **perk** (a lasting proc effect that ranks up) and **instant** (happens now). Each card rolls a rarity that multiplies its numbers: common ×1, uncommon ×1.33, rare ×1.66, legendary ×2; Luck tilts the odds.
 

@@ -12,17 +12,19 @@ return function(wait, shot)
     local LevelUp = require("src.states.levelup")
     local RunSave = require("src.game.runsave")
 
-    -- the curve: first level ~10 kills, ~3-6 levels from wave 1 (~150 XP), 30-40 levels a run
+    -- the curve: first level ~45 kills, ~1-3 levels from wave 1 (~150 XP), ~6-8 by wave 3
+    -- (~1100 XP), 24-32 levels a run (~15000 XP)
     local function levelsAt(total)
         local L, s = 0, 0
         while s + Skills.xpFor(L + 1) <= total do L = L + 1; s = s + Skills.xpFor(L) end
         return L
     end
-    assert(Skills.xpFor(1) >= 8 and Skills.xpFor(1) <= 12, "first level should take ~10 XP (got " .. Skills.xpFor(1) .. ")")
+    assert(Skills.xpFor(1) >= 30 and Skills.xpFor(1) <= 60, "first level should take ~45 XP (got " .. Skills.xpFor(1) .. ")")
     assert(Skills.xpFor(20) > Skills.xpFor(5), "the curve should climb")
-    local w1, run = levelsAt(150), levelsAt(15000)
-    assert(w1 >= 3 and w1 <= 6, "wave 1 should give 3-6 levels (got " .. w1 .. ")")
-    assert(run >= 30 and run <= 40, "a 15-wave run should give 30-40 levels (got " .. run .. ")")
+    local w1, w3, run = levelsAt(150), levelsAt(1100), levelsAt(15000)
+    assert(w1 >= 1 and w1 <= 3, "wave 1 should give 1-3 levels (got " .. w1 .. ")")
+    assert(w3 >= 6 and w3 <= 8, "waves 1-3 should give 6-8 levels (got " .. w3 .. ")")
+    assert(run >= 24 and run <= 32, "a 15-wave run should give 24-32 levels (got " .. run .. ")")
     print(("[levelups] curve: %d levels from wave 1, %d from a full run"):format(w1, run))
 
     local slowSetting, timing = Settings.get("slowMotion"), Settings.get("levelUpWhen")

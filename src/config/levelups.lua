@@ -1,13 +1,15 @@
 -- Level-up cards (src/game/levelups.lua). A game mode can change any of these with
 -- `levelUps = { cards = 4, ... }` in its file under content/modes.
 return {
-    -- XP to go from level L-1 to L: floor(base + scale * (L - 1) ^ pow). The first level takes
-    -- ~10 kills; a 15-wave run reaches roughly level 30-40 (about 5 levels in wave 1).
-    xp = { base = 10, scale = 5, pow = 1.5 },
+    -- XP to go from level L-1 to L: floor(base + scale * (L - 1) ^ pow). Quick to slow, but calm
+    -- at the start: the first level takes ~45 kills, wave 1 gives ~2 levels, waves 1-3 ~7, then
+    -- about 2 a wave; a 15-wave run reaches roughly level 25-30. (Was base 10, scale 5, pow 1.5:
+    -- 4-5 levels in wave 1, 12 by wave 3, ~35 a run, which kept interrupting the opening waves.)
+    xp = { base = 45, scale = 20, pow = 1.25 },
     cards = 3,              -- cards per level-up
     armTime = 0.5,          -- seconds before the cards accept input (anti-misclick, like items)
     -- cards are stat boosts only; skipping a pick banks 1 skill point for the SKILLS tab (a whole
-    -- tree costs ~45 points, a run levels ~35 times, so no run gets everything)
+    -- tree costs ~45 points, a run levels ~27 times, so no run gets everything)
     botSkip = 0.4,          -- how often the balance bot / autoPickAll skips for a point
     -- rarity rolls for stat cards: weight, and how much the card's numbers are multiplied by.
     -- Luck tilts the odds: tier k (0 = common) has its weight times (1 + luck / 100) ^ k.
