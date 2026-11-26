@@ -68,6 +68,7 @@ U.bugs = {
     vinegaroon = win("bombardier_beetle"),
     mantis_shrimp = win(),
     pistol_shrimp = win("mantis_shrimp"),
+    mole_cricket = clearWave(8, "camel_spider"),
 }
 
 U.items = {

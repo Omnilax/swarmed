@@ -189,7 +189,10 @@ function Hazards:update(dt)
                 if not e.dead and not s.hitSet[e] and dx * dx + dy * dy < rr * rr then
                     s.hitSet[e] = true
                     local nx, ny = util.normalize(s.vx, s.vy)
-                    Combat.damage(world, e, s.damage, { knockback = s.knockback or 70, kbx = nx, kby = ny, procDepth = s.procDepth or 1, slow = s.slow,
+                    -- falloff (0..1): the shot weakens as it flies, down to that share at the end (sand toss)
+                    local dmg = s.damage
+                    if s.falloff then dmg = dmg * (1 - s.falloff * math.min(1, s.t / math.max(0.01, s.life or 1))) end
+                    Combat.damage(world, e, dmg, { knockback = s.knockback or 70, kbx = nx, kby = ny, procDepth = s.procDepth or 1, slow = s.slow,
                         poison = s.poison, corrode = s.corrode, stun = s.stun, source = s._src, cstatus = s.cstatus, look = s.look })
                     s.pierce = s.pierce - 1
                     if s.pierce < 0 then done = true break end

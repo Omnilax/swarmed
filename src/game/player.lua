@@ -131,6 +131,7 @@ function Player:setCharacter(def)
     self._me, self._cx, self.scriptHelpers, self.scriptHeld, self.scriptPending = nil, nil, nil, nil, nil
     self.scriptBlock, self.scriptWardOn, self.scriptSpeed, self.scriptSpeedT, self.scriptStarted = nil, nil, nil, nil, nil
     self.traits, self.traitShell, self.traitWardOn, self.traitSpeed, self.slideVX, self.slideVY = nil, nil, nil, nil, nil, nil
+    self.slideNow = nil
     -- round 3: hitboxes, forms, molt, pets, statuses, poses (src/game/hitshapes.lua, src/game/bugextras.lua)
     self.hitboxes, self.scriptStopAt, self.scriptCd, self.formIndex, self.molted = nil, nil, nil, nil, nil
     self.pets, self.petsOut, self.statusTargets, self.killsRun, self.ultUses, self.idleClipT, self.wonPose = nil, nil, nil, nil, nil, nil, nil
@@ -334,8 +335,11 @@ function Player:update(dt)
             mvx = self.aimX * f * (sw.forward or 0.6) + sx * (sw.side or 1.15)
             mvy = self.aimY * f * (sw.forward or 0.6) + sy * (sw.side or 1.15)
         end
-        -- custom bugs can slide (movement.slide 0..0.95): steering eases in like on ice
+        -- custom bugs can slide (movement.slide 0..0.95): steering eases in like on ice.
+        -- A move can override it for a while with player.slideNow (false = sharp steering:
+        -- the mole cricket is clumsy on top but precise underground).
         local slide = self.def.movement and self.def.movement.slide
+        if self.slideNow ~= nil then slide = self.slideNow or nil end
         if slide then
             local k = 1 - math.exp(-dt * (1 - slide) * 25)
             self.slideVX = (self.slideVX or 0) + (mvx * speed - (self.slideVX or 0)) * k

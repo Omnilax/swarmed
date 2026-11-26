@@ -716,6 +716,7 @@ local function script(flags)
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
+    if flags["--molecricket"] then require("src.debug.selftest_molecricket")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
     if flags["--levelups"] then require("src.debug.selftest_levelups")(wait, shot) love.event.quit() return end
