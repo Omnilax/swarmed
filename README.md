@@ -903,6 +903,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/behaviors` | enemy AI (`update`, optional `draw`, `drawUnder`, `onHit`) | enemies |
 | `content/elites` | elite affixes: multipliers, tint, venom, armour, loot, death effects | runs, sandbox |
 | `content/characters` | playable bugs: stats, attack, starting items | character select |
+| `content/scripted` | built-in bugs written as Bug Creator scripts (docs/BUG_API.md), e.g. the Water Strider; id = file name, unlock goal in `src/config/unlocks.lua`; test `love . --selftest --strider` | character select |
 | `content/attacks` | attack patterns (`fire`) | characters |
 | `content/skilltrees` | per-character skill trees: nodes mod stats, move params, echoes, procs | bag SKILLS tab |
 | `content/skillbranches` | kin branches: the 4th skill tree branch shared by a lineage, matched by tags | bag SKILLS tab |

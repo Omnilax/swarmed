@@ -61,7 +61,9 @@ function love.load(args)
     Music.init()
     Presence.init(flags)  -- Discord status (src/game/presence.lua)
     Sprites.build(Content.sprites)
+    -- built-in scripted bugs (content/scripted, e.g. the Water Strider) and then the player's
     -- custom bugs load after the atlas: their own art is built as small images of its own
+    CustomBugs.loadBuiltIns()
     if not (Records.noSave or flags["--balance"]) then
         local okC, errC = pcall(CustomBugs.loadAll)
         if not okC then print("[custombugs] " .. tostring(errC)) end

@@ -158,7 +158,7 @@ local function bugsSection()
     local entries = {}
     for _, st in ipairs(styles) do
         for _, def in ipairs(Content.characters:all()) do
-            if def.playstyle == st.id and not def.custom then
+            if def.playstyle == st.id and (not def.custom or def.builtin) then
                 entries[#entries + 1] = { title = def.name, group = st.label, icon = def.sprite, def = def, build = bugEntry }
             end
         end
@@ -166,7 +166,7 @@ local function bugsSection()
     for _, def in ipairs(Content.characters:all()) do
         local known = false
         for _, st in ipairs(styles) do if def.playstyle == st.id then known = true end end
-        if not known or def.custom then
+        if not known or (def.custom and not def.builtin) then
             entries[#entries + 1] = { title = def.name, group = def.custom and "Your bugs" or "Other", icon = def.sprite, def = def, build = bugEntry }
         end
     end

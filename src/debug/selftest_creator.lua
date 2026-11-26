@@ -129,13 +129,14 @@ return function(wait, shot)
     assert(w.player.inventory:count("honeydew") == 1, "starting items not given")
     -- custom bugs don't count for the play-every-bug achievement or the daily run
     local n = 0
-    for _, c in ipairs(Content.characters:all()) do if not c.custom then n = n + 1 end end
+    for _, c in ipairs(Content.characters:all()) do if not c.custom or c.builtin then n = n + 1 end end
     for _, a in ipairs(Content.achievements:all()) do
         if a.id == "play_all" then assert(a.goal() == n, "custom bugs count for Menagerie") end
     end
     for d = 1, 40 do
         local info2 = require("src.game.daily").info(d * 86400)
-        assert(not Content.characters:get(info2.character).custom, "the daily run picked a custom bug")
+        local dc = Content.characters:get(info2.character)
+        assert(not dc.custom or dc.builtin, "the daily run picked a custom bug")
     end
     CustomBugs.delete(mixed.id)
 

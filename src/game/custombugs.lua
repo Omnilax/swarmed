@@ -739,7 +739,7 @@ local HOOKS = { "onStart", "onTick", "onHit", "onKill", "onHurt", "onDodge", "on
 
 -- raw (a script's result) -> def ready for Content.characters, or nil + errors. Warnings are
 -- things that were fixed up on the way (clamped numbers, unknown items dropped...).
-function CustomBugs.build(raw)
+function CustomBugs.build(raw, builtinId)
     local rawIn = raw
     local errs, warns = {}, {}
     if type(raw) ~= "table" then return nil, { "the script must return a table" }, warns end
@@ -769,6 +769,13 @@ function CustomBugs.build(raw)
     }
     def.id = raw.id and (CustomBugs.PREFIX .. slug(raw.id)) or CustomBugs.idFor(name)
     if def.id == CustomBugs.PREFIX then def.id = CustomBugs.PREFIX .. "bug" end
+    -- a built-in scripted bug (content/scripted): a real roster bug that runs on the script engine
+    if builtinId then
+        def.id, def.builtin = builtinId, true
+        def.order = tonumber(raw.order) or 99
+        def.tags = {}
+        if type(raw.family) == "string" then def.family = raw.family end
+    end
     -- own art instead of a built-in bug's look
     local art
     if raw.art ~= nil then
@@ -945,10 +952,10 @@ function CustomBugs.build(raw)
 end
 
 -- source text -> def or nil; info = { errors = {...}, warnings = {...}, line = n, log = {...} }
-function CustomBugs.compile(source, name)
+function CustomBugs.compile(source, name, builtinId)
     local raw, err, line, log = CustomBugs.run(source, name)
     if not raw then return nil, { errors = { err }, warnings = {}, line = line, log = log } end
-    local def, errs, warns = CustomBugs.build(raw)
+    local def, errs, warns = CustomBugs.build(raw, builtinId)
     return def, { errors = errs or {}, warnings = warns or {}, log = log }
 end
 
@@ -978,7 +985,7 @@ end
 function CustomBugs.register(def, source)
     local old = Content.characters:get(def.id)
     if old then
-        if not old.custom then return false, "that id belongs to a built-in bug" end
+        if not old.custom or old.builtin then return false, "that id belongs to a built-in bug" end
         Content.characters:unregister(def.id)
     end
     CustomBugs.prepareArt(def)
@@ -1097,6 +1104,40 @@ function CustomBugs.delete(id)
     for i = #CustomBugs.broken, 1, -1 do
         if CustomBugs.broken[i].id == id then table.remove(CustomBugs.broken, i) end
     end
+end
+
+-- Built-in scripted bugs: every content/scripted/<id>.lua is a Bug Creator script that ships with
+-- the game. It compiles like a custom bug (so it runs on the script engine: def.custom stays
+-- true), but its id is the file name, def.builtin = true, and it joins the roster like any
+-- other bug (its family by tags, unlocks in src/config/unlocks.lua, the daily run, the wiki).
+-- Loaded at start-up after the sprite atlas, in tests too. A broken one is an error.
+CustomBugs.BUILTIN_DIR = "content/scripted"
+CustomBugs.builtIns = {}
+-- compile and register them (Content.load, before the achievements)
+function CustomBugs.registerBuiltIns()
+    local dir = CustomBugs.BUILTIN_DIR
+    CustomBugs.builtIns = {}
+    if not love.filesystem.getInfo(dir, "directory") then return 0 end
+    local files = love.filesystem.getDirectoryItems(dir)
+    table.sort(files)
+    for _, file in ipairs(files) do
+        local base = file:match("^([%w][%w_]*)%.lua$")
+        if base then
+            local def, info = CustomBugs.compile(love.filesystem.read(dir .. "/" .. file), base, base)
+            if not def then error(("scripted bug %s/%s: %s"):format(dir, file, tostring(info.errors[1]))) end
+            for _, w in ipairs(info.warnings or {}) do print("[scripted] " .. base .. ": " .. w) end
+            if Content.characters:get(def.id) then Content.characters:unregister(def.id) end
+            Content.characters:register(def)
+            CustomBugs.builtIns[#CustomBugs.builtIns + 1] = def
+        end
+    end
+    Content.characters:sort()
+    return #CustomBugs.builtIns
+end
+-- their sprites and sounds (start-up, after the sprite atlas is built)
+function CustomBugs.loadBuiltIns()
+    for _, def in ipairs(CustomBugs.builtIns) do CustomBugs.prepareArt(def) end
+    return #CustomBugs.builtIns
 end
 
 -- Load every script in the save folder (at start-up, after Content.load).

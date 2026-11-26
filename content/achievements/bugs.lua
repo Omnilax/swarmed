@@ -7,12 +7,12 @@ add({ id = "play_all", name = "Menagerie", description = "Play a run with every 
     -- custom bugs (Bug Creator) don't count towards these
     goal = function()
         local n = 0
-        for _, c in ipairs(Content.characters:all()) do if not c.custom then n = n + 1 end end
+        for _, c in ipairs(Content.characters:all()) do if not c.custom or c.builtin then n = n + 1 end end
         return n
     end,
     value = function(p)
         local n = 0
-        for _, c in ipairs(Content.characters:all()) do if not c.custom and p.characters[c.id] and p.characters[c.id].runs > 0 then n = n + 1 end end
+        for _, c in ipairs(Content.characters:all()) do if (not c.custom or c.builtin) and p.characters[c.id] and p.characters[c.id].runs > 0 then n = n + 1 end end
         return n
     end })
 add({ id = "win_5bugs", name = "Diverse Portfolio", description = "Win with 5 different bugs.", goal = 5,

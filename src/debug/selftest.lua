@@ -716,6 +716,7 @@ local function script(flags)
     if flags["--discord"] then require("src.debug.selftest_discord")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
+    if flags["--strider"] then require("src.debug.selftest_strider")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end

@@ -16,7 +16,7 @@ function Daily.info(t)
     local key, seed = Daily.today(t)
     local rng = love.math.newRandomGenerator(seed)
     rng:random()     -- the first draw of a fresh generator barely moves with the seed
-    local chars, stages = Content.characters:filter(function(c) return not c.custom end), Content.stages:all()
+    local chars, stages = Content.characters:filter(function(c) return not c.custom or c.builtin end), Content.stages:all()
     local c = chars[rng:random(#chars)]
     local s = stages[rng:random(#stages)]
     return { key = key, seed = seed * 7919 + 17, character = c.id, stage = s.id, gameMode = "colony" }
@@ -42,7 +42,7 @@ function Daily.weekInfo(t)
     local key, seed = Daily.week(t)
     local rng = love.math.newRandomGenerator(seed * 31 + 5)
     rng:random()
-    local chars, stages = Content.characters:filter(function(c) return not c.custom end), Content.stages:all()
+    local chars, stages = Content.characters:filter(function(c) return not c.custom or c.builtin end), Content.stages:all()
     local c = chars[rng:random(#chars)]
     local s = stages[rng:random(#stages)]
     local pool = Content.artifacts:filter(function(a) return not a.params end)   -- not ones that change the bug
