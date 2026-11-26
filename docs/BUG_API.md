@@ -95,7 +95,7 @@ Every field is optional except `name`.
 | `molt` | table | One-time change at a wave / kill count (section 7.3). |
 | `pets`, `statuses`, `ultimate`, `hitFx`, `soundPack`, `card`, `challenges` | | See `docs/CUSTOM_BUGS.md`. |
 | `anims`, `poses`, `sounds` | | Own animations and synthesised sounds. |
-| `passives`, `effects`, `movement`, `music` | | No-code traits (`src/game/bugtraits.lua`). |
+| `passives`, `effects`, `movement`, `music` | | No-code traits (`src/game/bugtraits.lua`). `movement = { slide = 0..0.95 (no grip), glide = 0..1 (knocks and `me.knock` pushes coast on) }`. |
 | `lowHp` | 0.01 .. 0.99 | Health share that fires `onLowHp` (default 0.3). |
 | `spreeGap` | seconds | Gap without a kill that ends a spree (default 3). |
 | `spreeEvery` | count | `onSpree` fires every this many spree kills (default 5). |
@@ -111,7 +111,7 @@ A move is a built-in id (`attack = "mantis"` borrows that bug's attack), `{ from
 |---|---|---|
 | `fire = function(me)` | `scripted` | Attack / special: runs when pressed, or on its cooldown with auto-attack. |
 | `hold = function(me, dt, charge)`, `release = function(me, charge)`, `charge = seconds` | `scripted_charge` | Hold to charge (attack / special). `charge` 0..1. |
-| `start = function(me)`, `tick = function(me, dt)` | dash `scripted` | Pressed dash; spends a stamina charge (`charges`). |
+| `start = function(me)`, `tick = function(me, dt)` | dash `scripted` | Pressed dash; spends a stamina charge (`charges`). Optional `free = function(me)`: return true and this press costs nothing (e.g. pressing again to cancel a move that is still going). |
 | `hold = function(me, dt, held)` | dash `scripted_hold` | Runs every frame; `held` = dash key down. Blocks, sprints, aim modes. |
 | `mode = true`, `enter(me)`, `tick(me, dt)`, `exit(me, dry)`, `speed`, `stamina` | dash `scripted_mode` | A stamina mode on the dash key. |
 
@@ -175,6 +175,7 @@ before the isometric view). A unit vector `(cos a, sin a)` points along angle `a
 | `me.killsIn(seconds)` | Kills in the last N seconds (last 256 kills remembered). |
 | `me.cooldowns()` | `{ attack, secondary, [1..n] = ability cooldowns }` seconds left. |
 | `me.items()` | `{ itemId = count }` in the bag. `me.hasItem(id)` = count. |
+| `me.rank(id)` | Ranks bought in a node of this bug's own skill tree (the node `id` as written in the script); 0 = none. Lets a node change what a move's code does. |
 | `me.status()` | `{ poisoned, slowed, stunned, blinded, gummed, cloaked, dead, iframes }`. |
 | `me.waveInfo()` | `{ number, phase = "wave"/"break", time, left, alive, final, boss, breakTime }`. |
 | `me.run()` | `{ kills, combo, bestCombo, nectar, nectarEarned, xp, time, mode, frenzy (0..1), frenzyActive, stage, daylight }`. |
@@ -467,6 +468,10 @@ kneeUp, stride, limbs, chain, wings, antennae }`. Drawn top-down facing right.
 
 `skillTree = "preset:<id>"`, a built-in bug id, or an own tree (`branches` with `nodes`; node
 `procs` may hold code `effect(me, ev, rank)` / `condition(me, ev, rank)`). See the guide.
+An own tree may also have `signature = { id, name, desc, ... }`: one node of the same shape that
+tops the kin branch (the 4th branch, shared by the bug's lineage), like the built-in bugs have.
+Nodes that change a move's code are read with `me.rank("<node id>")`
+(content/scripted/water_strider.lua does this for most of its tree).
 
 ---
 

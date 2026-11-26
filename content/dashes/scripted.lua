@@ -5,9 +5,15 @@
 -- src/game/scriptmoves.lua runs the functions with their toolkit, in the sandbox.
 local SM = require("src.game.scriptmoves")
 
+--          free = function(me) return me.state.looping end      -- (optional) true: this press costs no stamina
 return {
     name = "Scripted Dash",
     description = "A dash written in a custom bug's script.",
+    free = function(player)
+        local p = player.dashParams
+        if not (p and type(p.free) == "function") then return false end
+        return SM.call(p.free, player, player.world, p, player.aimX, player.aimY) == true
+    end,
     start = function(player, world, dx, dy, params, px, py)
         if type(params.start) == "function" then SM.call(params.start, player, world, params, player.aimX, player.aimY, dx, dy) end
     end,

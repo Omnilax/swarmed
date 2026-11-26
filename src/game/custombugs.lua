@@ -256,7 +256,7 @@ local function text(v, max)
     return v
 end
 
-local SCRIPT_KEYS = { "fire", "start", "tick", "hold", "release", "enter", "exit" }
+local SCRIPT_KEYS = { "fire", "start", "tick", "hold", "release", "enter", "exit", "free" }
 
 -- One move slot (attack / secondary / dash). Returns params, mix info, or nil + error.
 local function buildMove(slot, v, reg, errs, warns)
@@ -663,6 +663,53 @@ local function wrapProc(fn, label)
         return SM.run(fn, p, ctx.params, ctx.ax, ctx.ay, { depth = (ctx.procDepth or 0) + 1, label = label }, SM.evOf(ctx), rank)
     end
 end
+-- one skill tree node of a script (data + proc code), or nil after adding an error
+local function buildNode(def, n, errs, warns, fallbackId)
+    local Stats = require("src.game.stats")
+    local node = CustomBugs.plain(n)     -- data only; proc code is added back below
+    node.id = def.id .. "_" .. slug(tostring(n.id or fallbackId))
+    node.name = text(n.name, 24) or "?"
+    node.desc = text(n.desc, 160) or ""
+    node.tier = math.floor(clamp(tonumber(n.tier) or 1, 1, 6))
+    node.ranks = math.floor(clamp(tonumber(n.ranks) or 1, 1, 5))
+    node.cost = tonumber(n.cost) and math.floor(clamp(tonumber(n.cost), 1, 6)) or nil
+    node.col = tonumber(n.col) and clamp(tonumber(n.col), -1, 1) or nil
+    -- requires / excludes name other nodes of this tree by their own ids
+    for _, f in ipairs({ "requires", "excludes" }) do
+        if type(n[f]) == "table" then
+            node[f] = {}
+            for _, r in ipairs(n[f]) do node[f][#node[f] + 1] = def.id .. "_" .. slug(tostring(r)) end
+        end
+    end
+    for _, f in ipairs({ "stats", "statsMult" }) do
+        if type(n[f]) == "table" then
+            node[f] = {}
+            for sid, v in pairs(n[f]) do
+                if Stats.byId[sid] and type(v) == "number" then node[f][sid] = clamp(v, -300, 300)
+                else warns[#warns + 1] = ("skillTree node '%s': stat '%s' dropped"):format(node.name, tostring(sid)) end
+            end
+        end
+    end
+    node.throw = nil
+    -- procs: code runs with the toolkit, effect(me, ev, rank) / condition(me, ev, rank)
+    if n.procs ~= nil then
+        node.procs = {}
+        for pi, pr in ipairs(type(n.procs) == "table" and n.procs or {}) do
+            if type(pr) ~= "table" or type(pr.trigger) ~= "string" or type(pr.effect) ~= "function" then
+                errs[#errs + 1] = ("skillTree node '%s' proc %d needs trigger = \"onKill\" and effect = function(me, ev, rank) ... end"):format(node.name, pi)
+                return nil
+            end
+            node.procs[pi] = { trigger = pr.trigger, move = pr.move, cooldown = tonumber(pr.cooldown) and clamp(tonumber(pr.cooldown), 0, 60) or nil,
+                chance = tonumber(pr.chance) and clamp(tonumber(pr.chance), 0, 1) or nil,
+                effect = wrapProc(pr.effect, node.name),
+                condition = type(pr.condition) == "function" and wrapProc(pr.condition, node.name) or nil }
+        end
+    end
+    -- every other function is dropped (the engine calls those directly)
+    for k, v in pairs(node) do if type(v) == "function" then node[k] = nil end end
+    return node
+end
+
 local function buildTree(def, t, errs, warns)
     local Skills = require("src.game.skills")
     local Stats = require("src.game.stats")
@@ -678,52 +725,20 @@ local function buildTree(def, t, errs, warns)
             nodeCount = nodeCount + 1
             if nodeCount > 40 then warns[#warns + 1] = "skillTree: 40 nodes at most" break end
             if type(n) ~= "table" then errs[#errs + 1] = ("skillTree branch %d node %d must be a table"):format(bi, ni) return nil end
-            local node = CustomBugs.plain(n)     -- data only; proc code is added back below
-            node.id = def.id .. "_" .. slug(tostring(n.id or (bi .. "_" .. ni)))
-            node.name = text(n.name, 24) or "?"
-            node.desc = text(n.desc, 160) or ""
-            node.tier = math.floor(clamp(tonumber(n.tier) or 1, 1, 6))
-            node.ranks = math.floor(clamp(tonumber(n.ranks) or 1, 1, 5))
-            node.cost = tonumber(n.cost) and math.floor(clamp(tonumber(n.cost), 1, 6)) or nil
-            node.col = tonumber(n.col) and clamp(tonumber(n.col), -1, 1) or nil
-            -- requires / excludes name other nodes of this tree by their own ids
-            for _, f in ipairs({ "requires", "excludes" }) do
-                if type(n[f]) == "table" then
-                    node[f] = {}
-                    for _, r in ipairs(n[f]) do node[f][#node[f] + 1] = def.id .. "_" .. slug(tostring(r)) end
-                end
-            end
-            for _, f in ipairs({ "stats", "statsMult" }) do
-                if type(n[f]) == "table" then
-                    node[f] = {}
-                    for sid, v in pairs(n[f]) do
-                        if Stats.byId[sid] and type(v) == "number" then node[f][sid] = clamp(v, -300, 300)
-                        else warns[#warns + 1] = ("skillTree node '%s': stat '%s' dropped"):format(node.name, tostring(sid)) end
-                    end
-                end
-            end
-            node.throw = nil
-            -- procs: code runs with the toolkit, effect(me, ev, rank) / condition(me, ev, rank)
-            if n.procs ~= nil then
-                node.procs = {}
-                for pi, pr in ipairs(type(n.procs) == "table" and n.procs or {}) do
-                    if type(pr) ~= "table" or type(pr.trigger) ~= "string" or type(pr.effect) ~= "function" then
-                        errs[#errs + 1] = ("skillTree node '%s' proc %d needs trigger = \"onKill\" and effect = function(me, ev, rank) ... end"):format(node.name, pi)
-                        return nil
-                    end
-                    node.procs[pi] = { trigger = pr.trigger, move = pr.move, cooldown = tonumber(pr.cooldown) and clamp(tonumber(pr.cooldown), 0, 60) or nil,
-                        chance = tonumber(pr.chance) and clamp(tonumber(pr.chance), 0, 1) or nil,
-                        effect = wrapProc(pr.effect, node.name),
-                        condition = type(pr.condition) == "function" and wrapProc(pr.condition, node.name) or nil }
-                end
-            end
-            -- every other function is dropped (the engine calls those directly)
-            for k, v in pairs(node) do if type(v) == "function" then node[k] = nil end end
+            local node = buildNode(def, n, errs, warns, bi .. "_" .. ni)
+            if not node then return nil end
             b.nodes[#b.nodes + 1] = node
         end
         tree.branches[#tree.branches + 1] = b
     end
     if #tree.branches == 0 then errs[#errs + 1] = "skillTree needs branches = { { name = ..., nodes = { ... } } }" return nil end
+    -- its own top node for the kin branch (like the built-in bugs' `signature`)
+    if type(t.signature) == "table" then
+        local sig = buildNode(def, t.signature, errs, warns, "signature")
+        if not sig then return nil end
+        sig.tier = tonumber(t.signature.tier) and sig.tier or nil
+        tree.signature = sig
+    end
     clampParams(tree, 0)
     -- the bug's kin branch (insect, beetle, spider...) joins as a 4th, unless kin = false
     if t.kin ~= false and #tree.branches < 4 then

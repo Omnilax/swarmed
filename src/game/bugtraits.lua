@@ -4,7 +4,7 @@
 --   passives = { camo = { after = 0.8 }, aura = { radius = 40, dps = 4 }, ... }   see PASSIVES
 --   effects  = { glow = { color = "#80ff60", radius = 50, pulse = 2 }, trail = { kind = "spark" },
 --                sparkle = { color = "#ffffff", rate = 4 } }
---   movement = { slide = 0.6, hover = 10, bob = 1.5, sideways = { forward = 0.6, side = 1.2 },
+--   movement = { slide = 0.6, glide = 0.5 (knocks and pushes coast on: 0 = normal, 1 = far), hover = 10, bob = 1.5, sideways = { forward = 0.6, side = 1.2 },
 --                sprint = { after = 1, speed = 1.4 } }
 --   music    = "creep" | { theme = "flute", key = 2 }
 --
@@ -129,7 +129,7 @@ function Traits.build(raw, def, errs, warns)
     if mv ~= nil then
         if type(mv) ~= "table" then errs[#errs + 1] = "movement must be a table"
         else
-            local m = { slide = clamp(mv.slide, 0, 0.95, nil), hover = clamp(mv.hover, 0, 30, nil), bob = clamp(mv.bob, 0, 8, nil) }
+            local m = { slide = clamp(mv.slide, 0, 0.95, nil), glide = clamp(mv.glide, 0, 1, nil), hover = clamp(mv.hover, 0, 30, nil), bob = clamp(mv.bob, 0, 8, nil) }
             if type(mv.sprint) == "table" then m.sprint = { after = clamp(mv.sprint.after, 0, 10, 1), speed = clamp(mv.sprint.speed, 1, 3, 1.4) } end
             if type(mv.sideways) == "table" then
                 def.sideways = { forward = clamp(mv.sideways.forward, 0.1, 2, 0.6), side = clamp(mv.sideways.side, 0.1, 2, 1.15) }

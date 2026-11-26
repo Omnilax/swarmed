@@ -696,6 +696,14 @@ function API.extend(me, player, cx, U, dirOf)
         return out
     end
     function me.hasItem(id) return player.inventory and player.inventory:count(tostring(id)) or 0 end
+    -- ranks bought in a node of this bug's own skill tree (its id as written in the script), 0 = none
+    function me.rank(id)
+        local sk = player.skills
+        if not sk or type(id) ~= "string" then return 0 end
+        local r = sk:rank(player.def.id .. "_" .. require("src.game.custombugs").slug(id))
+        if r == 0 then r = sk:rank(id) end
+        return r
+    end
     function me.status()
         return { poisoned = (player.venomT or 0) > 0, slowed = (player.slowMul or 1) < 1, stunned = (player.stunT or 0) > 0,
             blinded = (player.blindT or 0) > 0, gummed = (player.gumT or 0) > 0, iframes = player.iframes or 0,

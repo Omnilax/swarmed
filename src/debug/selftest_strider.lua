@@ -118,7 +118,7 @@ return function(wait, shot)
     world.pilot.pressed = { dash = true }
     world.pilot.down = { dash = true }
     world:update(1 / 60)
-    world.pilot.down = {}
+    world.pilot.pressed, world.pilot.down = {}, {}
     local far, hp = 0, pl.hp
     for f = 1, 75 do
         world:update(1 / 60)
@@ -138,7 +138,41 @@ return function(wait, shot)
     world.flags.freezeAI = false
     print(("[selftest] strider: figure 8 out %.0f px, back within %.0f px, touched %d ants, no damage"):format(far, home, hits))
 
-    -- a short fight with every move, no script errors
+    -- breaking out: Shift again mid-loop costs no stamina and skates off the way you steer
+    reset()
+    local Stamina = require("src.game.stamina")
+    world.pilot.pressed = { dash = true }
+    world:update(1 / 60)
+    world.pilot.pressed = {}
+    step(0.3)
+    assert(pl._me and pl._me.state.eight, "should be looping")
+    local st0 = Stamina.state(pl).cur
+    world.pilot.mx, world.pilot.my = -1, 0
+    world.pilot.pressed = { dash = true }
+    world:update(1 / 60)
+    world.pilot.pressed = {}
+    assert(not pl._me.state.eight, "Shift mid-loop should break out of the figure 8")
+    assert(Stamina.state(pl).cur >= st0 - 1e-6, "breaking out should not cost stamina")
+    local bx, by = pl.x, pl.y
+    step(0.3)
+    local dx, dy = pl.moveDirX, pl.moveDirY
+    local went = (pl.x - bx) * dx + (pl.y - by) * dy
+    assert(went > 25, ("should skate off the way you steer (%.0f px)"):format(went))
+    print(("[selftest] strider: broke out of the loop, skated %.0f px the chosen way"):format(went))
+
+    -- the skill tree: 3 branches of 6 like the main bugs, the kin branch topped by its signature,
+    -- and the move-changing nodes are read by the script (me.rank)
+    assert(#tree.branches[1].nodes == 6 and #tree.branches[2].nodes == 6 and #tree.branches[3].nodes == 6, "6 nodes per branch")
+    local sig
+    for _, n in ipairs(tree.branches[4].nodes) do if n.signature then sig = n end end
+    assert(sig and sig.id == "water_strider_pondskater", "signature node on the kin branch")
+    pl.skills.ranks["water_strider_longneedle"] = 1
+    assert(pl._me.rank("longneedle") == 1, "me.rank should read the strider's own node ids")
+    pl.skills.ranks["water_strider_longneedle"] = nil
+
+    -- a short fight with every move (and every node), no script errors
+    for _, br in ipairs(tree.branches) do for _, n in ipairs(br.nodes) do pl.skills.ranks[n.id] = n.ranks or 1 end end
+    pl.skills:apply()
     reset()
     world:spawnRing("worker_ant", 12, pl.x, pl.y, 70)
     for f = 1, 240 do

@@ -479,7 +479,9 @@ function Player:update(dt)
     self.flash = math.max(0, self.flash - dt)
     self.inventory:update(dt)
     self.lungeT = math.max(0, self.lungeT - dt)
-    local kd = 1 - util.damp(9, dt)
+    -- knocks fade fast; a custom bug with movement.glide coasts on them (water strider: 0..1)
+    local glide = self.def.movement and self.def.movement.glide
+    local kd = 1 - util.damp(glide and 9 - 7 * glide or 9, dt)
     self.kvx, self.kvy = self.kvx * kd, self.kvy * kd
     -- momentum (flung off a grapple line) carries on for a while
     local md = 1 - util.damp(self.momDamp or 2.5, dt)
