@@ -62,7 +62,7 @@ return {
             local list, n = world:queryEnemies(S, S * 0.5, S * 0.75)
             for i = 1, n do
                 local e = list[i]
-                if not e.dead and (e.z or 0) < 4 and not e.def.boss and not e.def.encounter and inSea(m, world, e.x, e.y) then
+                if not e.dead and (e.z or 0) < 4 and not e.def.boss and not e.def.encounter and not e.def.aquatic and inSea(m, world, e.x, e.y) then
                     e.x = min(S - 2, e.x + dt * 14)
                 end
             end
@@ -75,7 +75,7 @@ return {
             local list, n = world:queryEnemies(S, S * 0.5, S * 0.75)
             for i = 1, n do
                 local e = list[i]
-                if not e.dead and (e.z or 0) < 4 and e.radius <= 4.5 and not e.def.boss and not e.def.encounter
+                if not e.dead and (e.z or 0) < 4 and e.radius <= 4.5 and not e.def.boss and not e.def.encounter and not e.def.aquatic
                     and e.x > S - reach(m, e.y) + 18 then
                     Env.hurtAnt(world, e, 2 + wave * 0.25)
                 end
@@ -90,6 +90,7 @@ return {
             return Shore.amphibious(p) and (m.params.kinSpeed or 1.12) or 0.75
         end
         if (who.z or 0) > 4 or who.def.encounter then return 1 end
+        if who.def.aquatic then return m.params.kinSpeed or 1.12 end   -- shrimp, krill, plankton
         return 0.55
     end,
     drawGround = function(world, m)

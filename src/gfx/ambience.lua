@@ -212,7 +212,7 @@ end
 function Ambience.styleOf(def)
     local f = def.family
     if f == "bee" or f == "wasp" or f == "hornet" then return "spiral" end
-    if f == "termite" then return "flip" end
+    if f == "termite" or f == "crustacean" then return "flip" end
     return "curl"
 end
 

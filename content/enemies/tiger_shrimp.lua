@@ -1,0 +1,21 @@
+-- Tiger shrimp: big, striped and heavy. Kicks in long glides and lunges back after a flick.
+return {
+    name = "Tiger Shrimp",
+    description = "A big striped shrimp with a blue and gold tail fan. Swims in long, heavy kicks and shoves smaller bugs aside. Knock it back and it lunges straight back at you.",
+    lore = "Giant tiger prawns grow as long as your hand from wrist to fingertip, and they're far too heavy for any ant to lift.",
+    tip = "Heavy, so it barely flinches. Step aside from its lunge rather than trading bites with it.",
+    family = "crustacean",
+    sprite = "tiger_shrimp",
+    hp = 30,
+    speed = 50,
+    damage = 8,
+    radius = 4.6,
+    mass = 3,
+    behavior = "shrimp_dart",
+    behaviorParams = { kick = 2.2, glide = 1.6, rest = { 0.7, 1.2 }, wobble = 0.3, flee = 0.35, flick = 420, fleeCd = 2, lunge = 3.4, lungeTime = 0.4 },
+    aquatic = true,
+    spawn = { weight = 8, minWave = 6, groupSize = 0.25, habitat = "water" },
+    gibs = { "#3a2e22", "#b8aa8e", "#3a6ab0" },
+    splat = "#d0c0a0",
+    tags = { "crustacean", "shrimp", "aquatic", "heavy" },
+}

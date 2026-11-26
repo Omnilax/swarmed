@@ -1,0 +1,22 @@
+-- Cherry shrimp: a red dwarf shrimp that nips and darts off, in busy little crowds.
+return {
+    name = "Cherry Shrimp",
+    description = "A bright red dwarf shrimp. Darts in, nips you and flicks straight back out, so a crowd of them is a constant patter of little bites.",
+    lore = "Cherry shrimp were bred from a dull wild shrimp into this red. They spend all day picking at every surface for food, and anything that stands still counts.",
+    tip = "They leave right after a bite. Keep moving through them and swing as they come back in.",
+    family = "crustacean",
+    sprite = "cherry_shrimp",
+    hp = 7,
+    speed = 62,
+    damage = 4,
+    radius = 3,
+    mass = 0.8,
+    behavior = "shrimp_dart",
+    behaviorParams = { kick = 1.8, rest = { 0.35, 0.8 }, flee = 0.4, flick = 210, biteFlee = true, fleeCd = 0.8 },
+    biteRate = 0.6,
+    aquatic = true,
+    spawn = { weight = 22, minWave = 3, groupSize = 1.1, habitat = "water" },
+    gibs = { "#b82424", "#e0443a", "#5a0a10" },
+    splat = "#e86050",
+    tags = { "crustacean", "shrimp", "aquatic" },
+}

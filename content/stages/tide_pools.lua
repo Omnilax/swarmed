@@ -29,7 +29,7 @@ return {
     props = { seashell = 9, driftwood = 3 },
     events = { flood = 0, dew_drops = 2, acorns = 0, lawnmower = 0 },
     fauna = { first = "crazy_ant", crazy_ant = 4, fire_ant = 3, bigheaded_ant = 3, pharaoh_ant = 2, desert_ant = 2,
-        sand_wasp = 3, flying_ant = 2, honeypot_ant = 0.5, green_ant = 0.3, weaver_ant = 0.3, bee = 0.3, hornet = 0.2, other = 0.6 },
+        crustacean = 3, pink_krill = 4, copepod = 3, sand_wasp = 3, flying_ant = 2, honeypot_ant = 0.5, green_ant = 0.3, weaver_ant = 0.3, bee = 0.3, hornet = 0.2, other = 0.6 },
     spawn = { groups = 3, groupsPerWave = 1, group = { 14, 22 }, groupGap = 3, breakTime = 4, firstBreak = 2,
         maxAlive = 900, growth = 0.15, introEvery = 1, entries = { 2, 6 }, trickle = 6 },
 }
