@@ -25,7 +25,7 @@ return function(wait, shot)
     assert(w1 <= 1, "wave 1 should give at most 1 level (got " .. w1 .. ")")
     assert(w3 >= 2 and w3 <= 4, "waves 1-3 should give 2-4 levels (got " .. w3 .. ")")
     assert(run >= 13 and run <= 19, "a 15-wave run should give 13-19 levels (got " .. run .. ")")
-    assert(Settings.byKey.levelUpWhen.default == "wave", "level-up cards should wait for the wave's end by default")
+    assert(Settings.byKey.levelUpWhen.default == "instant", "level-up cards should open right on level-up by default")
     print(("[levelups] curve: %d levels from wave 1, %d from a full run"):format(w1, run))
 
     local slowSetting, timing = Settings.get("slowMotion"), Settings.get("levelUpWhen")

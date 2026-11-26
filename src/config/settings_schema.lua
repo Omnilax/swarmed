@@ -99,7 +99,7 @@ add { key = "waveBreak", category = "Gameplay", label = "Next Wave", type = "cho
 add { key = "waveRewards", category = "Gameplay", label = "Wave Rewards", type = "choice", default = "bloom",
     options = { { value = "bloom", label = "Walk to the Bloom" }, { value = "instant", label = "Open at Once" } },
     desc = "Walk to the Bloom: a cleared wave's rewards (level-up cards, then the item) sprout as a glowing bloom next to you; walk into it to open it (Next Wave brings it to you, and it rolls to you by itself after a few seconds). Open at Once: the reward screens pop up right after the wave." }
-add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "wave",
+add { key = "levelUpWhen", category = "Gameplay", label = "Level-Up Cards", type = "choice", default = "instant",
     options = { { value = "instant", label = "Right Away" }, { value = "wave", label = "At Wave End" } },
     desc = "Right Away: the moment you level up, the cards open (after a short fanfare) and you pick your reward on the spot; the wave's reward bloom then holds only the item. At Wave End: level-ups wait in the reward bloom and come just before the item choice." }
 add { key = "autoAttack", category = "Gameplay", label = "Auto Attack", type = "toggle", default = true,

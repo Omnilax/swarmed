@@ -6,9 +6,11 @@ local Settings = { schema = schema, byKey = {}, values = {}, listeners = {} }
 local FILE = "settings.lua"
 -- Bump when a default changes and old saves should pick up the new one. Keys listed under a
 -- version are reset to their default when loading a save older than that version.
-local VERSION = 2
+local VERSION = 3
 local RESET_AT = {
-    [2] = { "levelUpWhen" },   -- 2026-11-26: level-up cards wait for the wave's end by default
+    -- 2026-11-26: a test build briefly defaulted level-up cards to "At Wave End"; Ozy wants them
+    -- right on level-up, so saves from before this go back to the default (Right Away)
+    [3] = { "levelUpWhen" },
 }
 
 for _, s in ipairs(schema) do Settings.byKey[s.key] = s end

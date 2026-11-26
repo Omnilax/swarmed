@@ -421,7 +421,7 @@ switches tabs; Tab, Esc or pad B closes it. The sandbox panel moved to F2.
 Each level is a pick of 3 cards (`src/game/levelups.lua`, screen `src/states/levelup.lua`, numbers
 in `src/config/levelups.lua`): global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
 common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
-The XP curve is about one level a wave: the first level is ~100 kills (late in wave 1), ~3 levels by wave 3, and a 15-wave run reaches about level 15. Level-up cards wait for the end of the wave by default (Settings: Level-Up Cards).
+The XP curve is about one level a wave: the first level is ~100 kills (late in wave 1), ~3 levels by wave 3, and a 15-wave run reaches about level 15.
 Levels play a chime, half a second of slow motion and a ring of light; the cards open right
 there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
 At Wave End** saves them for the wave's reward bloom instead). The skill tree is never on the cards:
