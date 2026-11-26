@@ -26,10 +26,16 @@ function Shore.isKin(player, def)
     return false
 end
 
--- True for crustaceans and anything else tagged as at home in water.
+-- Bugs at home on the water that aren't crustaceans (by character id).
+Shore.WATER_BUGS = { water_strider = true }
+
+-- True for crustaceans, the water bugs above and anything else tagged as at home in water
+-- (a Bug Creator bug can take the "amphibious" or "aquatic" tag).
 function Shore.amphibious(player)
     local cdef = player and (player.def or player)
-    return cdef and (hasTag(cdef.tags, "crustacean") or hasTag(cdef.tags, "amphibious")) or false
+    if not cdef then return false end
+    return Shore.WATER_BUGS[cdef.id] or hasTag(cdef.tags, "crustacean") or hasTag(cdef.tags, "amphibious")
+        or hasTag(cdef.tags, "aquatic") or false
 end
 
 -- Item choice weight multiplier for def in this world.

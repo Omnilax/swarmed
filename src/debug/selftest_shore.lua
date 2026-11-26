@@ -58,6 +58,14 @@ return function(wait, shot)
     end
     print(("[shore] %d seashells, %d driftwood"):format(nShell, nDrift))
     assert(nShell >= 6 and nDrift >= 2, "the beach should be strewn with shells and driftwood")
+    -- (the run starts at low tide with the sea out and the pools dry: bring the tide in)
+    local function flood(world)
+        local mm = world.director.mechanic
+        mm.st.t = (mm.params.period or 45) * 0.5
+        mm.def.update(world, mm, 0.05)
+        mm.st.depth = world.size * (mm.params.high or 0.22)
+    end
+    flood(w)
     local f = m.def.field
     local p = w.player
     p.x, p.y = S - 8, S * 0.5
@@ -72,11 +80,13 @@ return function(wait, shot)
     local ant = w:spawnEnemy(Content.enemies:require("worker_ant"), S - 10, S * 0.5)
     assert(f(w, m, ant.x, ant.y, ant) < 1, "ants struggle in the sea")
     local wb = run("rhino_beetle")
+    flood(wb)
     assert(wb.director.mechanic.def.field(wb, wb.director.mechanic, S - 8, S * 0.5, "player") < 1, "a beetle wades")
 
     -- pictures: the beach with a crab at the water's edge, then the shore item cards
     local g
     w, g = run("crab")
+    flood(w)
     w.player.x, w.player.y = S * 0.78, S * 0.55
     w.camera.x, w.camera.y = require("src.core.iso").toScreen(w.player.x, w.player.y)
     if w.camera.snap then w.camera:snap() end
