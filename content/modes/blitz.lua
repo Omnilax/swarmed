@@ -14,5 +14,5 @@ return {
     enemyHp = 0.7,
     enemyDamage = 0.9,
     hpPerWave = 0.18,
-    levelUps = { xp = { base = 32, scale = 14, pow = 1.25 } },   -- levels come faster (0.7x the normal curve)
+    levelUps = { xp = { base = 70, scale = 80, pow = 1 } },   -- levels come faster (0.7x the normal curve)
 }

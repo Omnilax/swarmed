@@ -2,7 +2,7 @@
 -- Engine: src/game/skills.lua. Kills give XP and every level opens a level-up card pick; the
 -- cards are stat boosts, and SKIPPING a pick banks one skill point (setting "Level-Ups: Skill
 -- Points": every level is a point). Points are spent in the bag screen (Tab or the SKILLS tab).
--- A whole tree costs ~45 points and a run levels ~27 times (and you won't skip them all), and
+-- A whole tree costs ~45 points and a run levels ~15 times (and you won't skip them all), and
 -- forks are either/or, so no run gets everything: make each branch a different way to play.
 --
 -- Layout: 3 branches side by side (usually: main attack, special, dash/body), plus a 4th KIN

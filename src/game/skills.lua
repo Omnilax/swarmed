@@ -26,7 +26,7 @@ Skills.TIER_COST = { 1, 1, 2, 2, 3, 3 }    -- default point cost per rank, by ti
 
 -- XP to go from level-1 to level. Every level is a level-up card pick (src/game/levelups.lua;
 -- skipping it banks a skill point), or straight a skill point with the "levelUps" run rule on "points". The curve is in
--- src/config/levelups.lua: the first level takes ~45 kills, a 15-wave run reaches ~level 27.
+-- src/config/levelups.lua: about one level a wave, a 15-wave run reaches ~level 15.
 function Skills.xpFor(level)
     return require("src.game.levelups").xpFor(level)
 end
