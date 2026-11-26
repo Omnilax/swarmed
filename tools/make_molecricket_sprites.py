@@ -1,4 +1,4 @@
-# Generates the Mole Cricket (playable) as text-grid Lua.
+# Generates the Mole Cricket and the Velvet Worm (playable) as text-grid Lua.
 #   python3 tools/make_molecricket_sprites.py   ->  content/sprites/molecricket.lua
 # Reuses the drawing helpers of tools/make_batch2_sprites.py (everything above its
 # "Batch 2 playable bugs" line), so the look matches the rest of the cast. The big digging
@@ -48,9 +48,47 @@ def mole_cricket(part=None):
     return critter(w, h, cy, [seg(10, 8.4, 5.0), seg(23.5, 5.6, 5.4, RAMP2), seg(29.6, 2.6, 3.0, RAMP2)],
                    legs, deco, extra, part, stride=0.9)
 
+def velvet_worm(part=None):
+    """Velvet worm: a soft, velvety tube of a body in deep plum-brown, peppered with orange
+    papillae, many stubby clawed lobopod legs, and two thick ringed antennae."""
+    n = 12
+    w, h, cy = 50, 20, 10
+    xs = [5 + i * 3.1 for i in range(n)]
+    def deco(g):
+        for i, x in enumerate(xs):
+            line(g, [(x - 1.5, cy - 2.6), (x - 1.5, cy + 2.6)], 'S')
+            put(g, x, cy - 1.4 + (i % 2) * 2.4, 'd')
+        for sg in (-1, 1): put(g, 44.6, cy + sg * 1.3, 'e')
+    legs = [((x, cy - 2.6), (x - 0.2, cy - 3.8), (x - 0.6, cy - 4.8)) for x in xs]
+    segs = [seg(x, 2.0, 3.0, RAMP1 if i % 2 else RAMP2, spec=False) for i, x in enumerate(xs)] + [seg(43.8, 2.4, 2.8, RAMP2, spec=False)]
+    return critter(w, h, cy, segs, legs, deco, antennae([(46, cy - 1.2), (47.8, cy - 2.4), (49, cy - 2.6)], cy), part, stride=0.3)
+
+def velvet_part(kind):
+    """Pieces of the chain-drawn velvet worm: a soft ring (two tones) or the head."""
+    if kind in ("seg", "seg2"):
+        w, h, cy = 7, 10, 4.5
+        def body(g):
+            blob(g, 3, cy, 2.2, 3.3, RAMP1 if kind == "seg" else RAMP2, spec=False)
+            line(g, [(1.0, cy - 2.6), (1.0, cy + 2.6)], 'S')
+            put(g, 3, cy - 1.5 if kind == "seg" else cy + 1.5, 'd')
+            put(g, 4, cy + 0.5 if kind == "seg" else cy - 0.5, 'd')
+    else:
+        w, h, cy = 13, 10, 4.5
+        def body(g):
+            blob(g, 4, cy, 2.7, 3.0, RAMP2, spec=False)
+            for sg in (-1, 1):
+                put(g, 5.4, cy + sg * 1.3, 'e')
+                put(g, 6.8, cy + sg * 0.6, 'w')                          # slime papillae
+                line(g, [(6, cy + sg * 1.6), (8.5, cy + sg * 2.6), (11.5, cy + sg * 3.0)], 'l')   # antennae
+                for k in (8, 10): put(g, k, cy + sg * (2.0 + (k - 6) * 0.25), 'm')
+    g = blank(w, h); body(g); outline(g)
+    return [[''.join(r) for r in g]]
+
 CHARS = [
     ("mole_cricket", mole_cricket, 10, 18, dict(o="#0a0603" + SOFT, l="#7a4e2a", m="#a0724a", t="#3e2412", T="#d8b082", e="#080504", w="#e8d2a8", S="#b8905e",
         **ramp("#3e2614", "#5c3a1e", "#7c522c", "#9c6c3c", "#e6c49c"), **ramp2("#2e1a0c", "#4a2c16", "#684022", "#86582e", "#dcb88e"))),
+    ("velvet_worm", velvet_worm, 8, 24, dict(o="#100608" + SOFT, l="#6a3a48", m="#a0606e", t="#3a1a24", T="#c08890", e="#060304", w="#f0e0c0", S="#2a1018", d="#e0883a",
+        **ramp("#2a121c", "#3e1c2a", "#56283a", "#70384c", "#c890a0"), **ramp2("#321620", "#4a2232", "#643044", "#7e4258", "#d098a8"))),
 ]
 
 SPRITES = []
@@ -58,6 +96,8 @@ for cid, fn, fps, lfps, pal in CHARS:
     SPRITES.append((cid, fps, pal, fn()))
     SPRITES.append((cid + "_legs", lfps, cid, fn("legs")[:1], {"rotate": False}))
     SPRITES.append((cid + "_body", fps, cid, fn("body")))
+for part in ("seg", "seg2", "head"):
+    SPRITES.append(("velvet_worm_" + part, 1, "velvet_worm", velvet_part(part)))
 
 RIGS = {}
 for cid, fn in [(c[0], c[1]) for c in CHARS]:
