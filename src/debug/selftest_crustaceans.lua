@@ -49,6 +49,10 @@ return function(wait, shot)
 
     -- the sea: crustaceans go faster in it, ants slower, and it never drowns them
     local m = w.director.mechanic
+    -- the tide comes and goes now: bring it in so the edge is sea
+    m.st.t = m.params.period * 0.5
+    m.def.update(w, m, 0.05)
+    m.st.depth = w.size * m.params.high
     w.flags.freezeAI = true
     local krill = w:spawnEnemy("pink_krill", S - 6, S * 0.5)
     local ant = w:spawnEnemy("worker_ant", S - 6, S * 0.52)
