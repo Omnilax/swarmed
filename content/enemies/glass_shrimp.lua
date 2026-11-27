@@ -1,0 +1,22 @@
+-- Glass shrimp: see-through and frail, swims at you in quick kicks and tail-flips away when hit.
+return {
+    name = "Glass Shrimp",
+    description = "So clear you can see its supper inside it. Swims at you in quick kicks, and when you hit it, it snaps its tail and shoots away backwards, then comes right back.",
+    lore = "Ghost shrimp hide by having almost nothing to see. Their one giveaway is a little orange gut, and the shadow they cast on the sand.",
+    tip = "Its escape flick is fast but short. Hit it again as it drifts back in, or catch it in a sweep with others.",
+    family = "crustacean",
+    sprite = "glass_shrimp",
+    hp = 4,
+    speed = 68,
+    damage = 3,
+    radius = 2.6,
+    mass = 0.6,
+    behavior = "shrimp_dart",
+    behaviorParams = { kick = 1.9, rest = { 0.3, 0.7 }, wobble = 0.6, flee = 0.75, flick = 200 },
+    personalSpace = 1.1,
+    aquatic = true,
+    spawn = { weight = 26, minWave = 2, groupSize = 1.0, habitat = "water" },
+    gibs = { "#bcd4d8", "#dceef0", "#c8783a" },
+    splat = "#c8dce0",
+    tags = { "crustacean", "shrimp", "aquatic" },
+}

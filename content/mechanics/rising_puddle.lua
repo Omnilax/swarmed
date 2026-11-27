@@ -31,7 +31,7 @@ return {
             local list, n = world:queryEnemies(st.x, st.y, st.r)
             for i = 1, n do
                 local e = list[i]
-                if not e.dead and (e.z or 0) < 4 and e.radius <= 4.5 and not e.def.boss and not e.def.encounter and inside(m, e.x, e.y) then
+                if not e.dead and (e.z or 0) < 4 and e.radius <= 4.5 and not e.def.boss and not e.def.encounter and not e.def.aquatic and inside(m, e.x, e.y) then
                     Env.hurtAnt(world, e, 2 + wave * 0.25)
                 end
             end
@@ -41,6 +41,7 @@ return {
         if not inside(m, x, y) then return 1 end
         if who == "player" then return (world.player.z or 0) > 4 and 1 or 0.75 end
         if (who.z or 0) > 4 or who.def.encounter then return 1 end
+        if who.def.aquatic then return 1.12 end   -- shrimp, krill, plankton
         return 0.5
     end,
     drawGround = function(world, m)

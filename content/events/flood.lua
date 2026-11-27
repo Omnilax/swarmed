@@ -53,7 +53,7 @@ return {
                 local e = world.enemies[i]
                 if not e.dead and (e.z or 0) < 4 and not e.hidden and inWater(world, st, e.x, e.y) then
                     e.kvx, e.kvy = e.kvx + st.dx * 25 / e.mass, e.kvy + st.dy * 25 / e.mass
-                    if e.radius <= 4.5 and not e.def.boss then
+                    if e.radius <= 4.5 and not e.def.boss and not e.def.aquatic then
                         Env.hurtAnt(world, e, 2.5 + world.spawner.wave * 0.3)
                         if love.math.random() < 0.3 then world.particles:spawn(e.x, e.y, 2, 0, 0, 25, 0.4, { 0.7, 0.85, 1 }, 1, { grav = 80 }) end
                     end
@@ -65,6 +65,7 @@ return {
         if not inWater(world, ev.st, x, y) then return 1 end
         if who == "player" then return world.player.z > 4 and 1 or 0.72 end
         if (who.z or 0) > 4 or who.def.encounter then return 1 end
+        if who.def.aquatic then return 1.12 end   -- shrimp, krill, plankton
         return 0.5
     end,
     drawGround = function(world, ev)

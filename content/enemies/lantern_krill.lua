@@ -1,0 +1,23 @@
+-- Lantern krill: glows blue, and the krill in its light swim faster.
+return {
+    name = "Lantern Krill",
+    description = "A blue krill lit up like a lantern. Krill swimming in its light speed up and close in faster. Put the light out and the school slows down.",
+    lore = "Krill carry little lights along their bodies. Nobody is quite sure why: to hide their shadow from below, or to keep the school together in the dark.",
+    tip = "Pick the glowing one out of the school first, and the rest lose their rush.",
+    family = "crustacean",
+    sprite = "lantern_krill",
+    hp = 4,
+    speed = 66,
+    damage = 2,
+    radius = 2.3,
+    mass = 0.5,
+    behavior = "krill_school",
+    behaviorParams = { wobble = 0.5, wobbleSpeed = 4, lantern = 70, litSpeed = 1.35 },
+    flock = 0.6,
+    light = { radius = 14, color = "#5ae0ff", intensity = 0.5 },
+    aquatic = true,
+    spawn = { weight = 10, minWave = 4, groupSize = 0.25, habitat = "water" },
+    gibs = { "#5a8ac0", "#5ae0ff" },
+    splat = "#80b0e0",
+    tags = { "crustacean", "krill", "aquatic" },
+}

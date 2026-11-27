@@ -1,0 +1,21 @@
+-- Cleaner shrimp: hangs back and cleans the wounded, mending them; flicks away if you come near.
+return {
+    name = "Cleaner Shrimp",
+    description = "Red with a white stripe and long white feelers. It stays out of the fight and picks over the wounded, mending whoever it is cleaning. Come close and it flicks away.",
+    lore = "On a reef, fish queue up at a cleaner shrimp's station and let it pick parasites from their gills, even from inside their mouths.",
+    tip = "Kill it first. Chase it into a corner or hit it while it's busy cleaning.",
+    family = "crustacean",
+    sprite = "cleaner_shrimp",
+    hp = 9,
+    speed = 58,
+    damage = 2,
+    radius = 3.2,
+    mass = 0.8,
+    behavior = "shrimp_cleaner",
+    behaviorParams = { heal = 4, search = 170, keep = 120, shy = 46, flick = 240 },
+    aquatic = true,
+    spawn = { weight = 6, minWave = 5, groupSize = 0.15, habitat = "water" },
+    gibs = { "#b82018", "#f4f0ec", "#e03a28" },
+    splat = "#f0a090",
+    tags = { "crustacean", "shrimp", "aquatic", "healer" },
+}

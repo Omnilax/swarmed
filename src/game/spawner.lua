@@ -88,7 +88,11 @@ end
 -- here (1 = normal, 0 = never; keys are enemy ids or family ids, the id wins).
 function Spawner:faunaMul(d)
     local f = self.world.stage and self.world.stage.fauna
-    if not f or not d then return 1 end
+    if not d then return 1 end
+    -- water creatures (spawn.habitat = "water": shrimp, krill, plankton) only live on maps
+    -- whose fauna names them or their family
+    if d.spawn.habitat == "water" and not (f and (f[d.id] or f[d.family])) then return 0 end
+    if not f then return 1 end
     local m = f[d.id]
     if m == nil then m = f[d.family] end
     if m == nil then m = f.other end
@@ -652,6 +656,11 @@ function Spawner:spawnGroup(def, count, x, y, opts)
     def = def or self:pickEnemy()
     if not def then return end
     count = count or math.max(1, math.floor(love.math.random(self.cfg.group[1], self.cfg.group[2]) * (def.spawn.groupSize or 1)))
+    if not x and def.aquatic and self.world.stage and self.world.stage.shore then
+        -- sea creatures swim in from the sea (the beach's x = size edge, content/mechanics/tide.lua)
+        local S = self.world.size
+        x, y = S - 6, S * (0.1 + 0.8 * love.math.random())
+    end
     if not x then x, y = unpack(self:edgePoint()) end
     local st = { def = def, x = x, y = y, left = count, timer = 0, rate = math.max(0.03, math.min(0.12, 2.2 / count)),
         noElites = opts and opts.noElites }

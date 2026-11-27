@@ -1,0 +1,21 @@
+-- Blue velvet shrimp: tougher; when hit it flicks away and then lunges straight back at you.
+return {
+    name = "Blue Velvet Shrimp",
+    description = "A deep blue shrimp with a pale stripe down its back. Hit it and it flicks away, then lunges straight back in. Tougher than the red ones.",
+    lore = "The same little shrimp as the cherry, bred blue. The colour sits in its shell, and it gets deeper the better it eats.",
+    tip = "Its lunge comes back along the line it left on. Swing just as it returns.",
+    family = "crustacean",
+    sprite = "blue_shrimp",
+    hp = 11,
+    speed = 60,
+    damage = 5,
+    radius = 3.2,
+    mass = 1,
+    behavior = "shrimp_dart",
+    behaviorParams = { kick = 1.7, rest = { 0.4, 0.9 }, flee = 0.7, flick = 230, lunge = 3.2, lungeTime = 0.3 },
+    aquatic = true,
+    spawn = { weight = 14, minWave = 5, groupSize = 0.7, habitat = "water" },
+    gibs = { "#1e4ca8", "#3a74d0", "#c0dcff" },
+    splat = "#80b0ff",
+    tags = { "crustacean", "shrimp", "aquatic" },
+}

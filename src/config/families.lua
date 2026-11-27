@@ -8,4 +8,5 @@ return {
     { id = "wasp", label = "Wasps", single = "Wasp" },
     { id = "hornet", label = "Hornets", single = "Hornet" },
     { id = "termite", label = "Termites", single = "Termite" },
+    { id = "crustacean", label = "Crustaceans", single = "Crustacean" },   -- shrimp, krill, plankton (water maps)
 }
