@@ -35,6 +35,11 @@ function Profile.start(flags)
     local Game = require("src.states.game")
     local game = State.switch(Game.new({ mode = "sandbox", character = "wolf_spider" }))
     local world = game.world
+    if flags["--stress"] then
+        local ok, err = xpcall(require("src.debug.stress").run, debug.traceback, game, world, flags)
+        if not ok then print("[stress] error: " .. tostring(err)) love.event.quit() end
+        return
+    end
     if flags["--crowd"] then -- --crowd: a repeatable crowd benchmark. The same mixed horde (every non-boss species) stands
 -- around a god-mode player who doesn't attack, so nothing dies and every run does the same work.
 -- Prints update and draw ms per frame at several crowd sizes.
