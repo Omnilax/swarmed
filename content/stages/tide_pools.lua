@@ -1,5 +1,6 @@
 -- Beach: a strip of sand above the tide line. The sea comes in along the front edge
--- (content/mechanics/tide.lua) and rock pools stay full; crustaceans are at home in the water,
+-- (content/mechanics/tide.lua) and goes out, the rock pools fill and drain with it; water bugs
+-- (crustaceans, the Water Strider) are at home in the water and the salt stings the rest,
 -- and shore items (src/game/shore.lua) turn up more often here (shore = true).
 return {
     name = "Tide Pools",
@@ -24,7 +25,7 @@ return {
     ambient = "#8a90a0",
     ambients = { day = "#fff8ec", sunset = "#f8a070", night = "#3a4a80", dawn = "#e8bcb0" },
     weather = { clear = 50, windy = 20, drizzle = 10, fog = 10, storm = 4, rain = 0, petals = 0, fireflies = 0, dust = 0, pollen = 0 },
-    mechanic = { type = "tide", low = 0.08, high = 0.22, period = 50, surge = 22, mend = 1, kinSpeed = 1.12,
+    mechanic = { type = "tide", low = -0.1, high = 0.22, period = 50, surge = 22, mend = 1, kinSpeed = 1.12, sting = 2.5, deep = 6,
         pools = { { 0.3, 0.7, 26 }, { 0.62, 0.22, 22 }, { 0.48, 0.48, 18 } } },
     props = { seashell = 9, driftwood = 3 },
     events = { flood = 0, dew_drops = 2, acorns = 0, lawnmower = 0 },

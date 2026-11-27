@@ -18,6 +18,7 @@ love . --roster       # model viewer: every bug walking in place
 love . --anims        # attack animation viewer (--shot saves anims_<id>.png contact sheets)
 love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
+love . --selftest --tide        # just the beach tide: comes and goes, salt water stings non-water bugs
 love . --selftest --arttour     # pictures of every bug, prop and the antlion for an art check
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
