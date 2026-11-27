@@ -4,7 +4,7 @@ return {
     params = function(params)
         local Content = require("src.content")
         local Unlocks = require("src.game.unlocks")
-        local pool = Content.characters:filter(function(c) return not c.custom and Unlocks.bug(c.id) end)
+        local pool = Content.characters:filter(function(c) return (not c.custom or c.builtin) and Unlocks.bug(c.id) end)
         if #pool > 0 then params.character = pool[love.math.random(#pool)].id end
     end,
 }

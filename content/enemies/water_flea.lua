@@ -1,0 +1,21 @@
+-- Water flea: freshwater plankton that rows itself along in little hops.
+return {
+    name = "Water Flea",
+    description = "A see-through green blob with a dark eye, rowing itself along with two big feelers in little hops. You can watch its heart beat.",
+    lore = "Daphnia live in every pond and puddle. In a warm summer a few can turn into millions in weeks, all of them daughters.",
+    tip = "Swing where it lands, not where it is: it can't steer mid-hop.",
+    family = "crustacean",
+    sprite = "water_flea",
+    hp = 2,
+    speed = 40,
+    damage = 2,
+    radius = 2.2,
+    mass = 0.4,
+    behavior = "hop",
+    behaviorParams = { distance = 26, airtime = 0.28, rest = { 0.15, 0.45 }, height = 5 },
+    aquatic = true,
+    spawn = { weight = 16, minWave = 2, groupSize = 1.1, habitat = "water" },
+    gibs = { "#8aaa5c", "#e8a030" },
+    splat = "#aac87a",
+    tags = { "crustacean", "plankton", "aquatic" },
+}

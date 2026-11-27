@@ -195,8 +195,9 @@ local function crossCheck()
         for id in pairs(e.elites or {}) do need(Content.elites, id, "enemy '" .. e.id .. "' elite variant") end
     end
     for _, c in ipairs(Content.characters:all()) do
-        need(Content.sprites, c.sprite, "character '" .. c.id .. "'")
-        if c.model then
+        -- a scripted bug with its own art builds its sprites itself (CustomBugs.prepareArt)
+        if not c.art then need(Content.sprites, c.sprite, "character '" .. c.id .. "'") end
+        if c.model and not c.art then
             need(Content.sprites, c.model.legs, "character '" .. c.id .. "' model")
             for _, k in ipairs(c.model.kind == "chain" and { "head", "segment" } or { "body" }) do
                 need(Content.sprites, c.model[k], "character '" .. c.id .. "' model")
@@ -256,6 +257,9 @@ end
 
 function Content.load()
     for _, kind in ipairs(Content.order) do
+        -- built-in scripted bugs (content/scripted, src/game/custombugs.lua) join the roster
+        -- before the achievements, so their unlock and champion achievements exist
+        if kind == "achievements" then require("src.game.custombugs").registerBuiltIns() end
         Content[kind]:loadDirectory("content/" .. kind)
     end
     crossCheck()

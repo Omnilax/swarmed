@@ -34,7 +34,7 @@ end
 -- Attract mode: a real arena in the background where a bug holds off the colony by itself.
 function MainMenu:newDemo()
     local World = require("src.game.world")
-    local chars = Content.characters:filter(function(c) return not c.custom end)
+    local chars = Content.characters:filter(function(c) return not c.custom or c.builtin end)
     self.demo = World.new({ mode = "run", character = chars[love.math.random(#chars)].id })
     self.demo.flags.god, self.demo.flags.demo = true, true
     -- start mid-fight: jump to wave 2 and fast-forward a few seconds

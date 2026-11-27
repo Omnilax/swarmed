@@ -68,6 +68,10 @@ U.bugs = {
     vinegaroon = win("bombardier_beetle"),
     mantis_shrimp = win(),
     pistol_shrimp = win("mantis_shrimp"),
+    -- built-in scripted bugs (content/scripted)
+    water_strider = clearWave(6, "assassin_bug"),
+    mole_cricket = clearWave(8, "camel_spider"),
+    velvet_worm = clearWave(8, "orb_weaver"),
 }
 
 U.items = {

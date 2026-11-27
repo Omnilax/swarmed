@@ -224,6 +224,8 @@ class Doc:
         path = os.path.join(CH, name)
         if not os.path.exists(path) and name == "21_custom_bugs.md":
             path = os.path.join(GAME, "docs", "CUSTOM_BUGS.md")
+        if not os.path.exists(path) and name == "22_bug_api.md":
+            path = os.path.join(GAME, "docs", "BUG_API.md")
         txt = open(path, encoding="utf-8").read()
         txt = re.sub(r"\{\{IMG:([^|}]+)\|?([^}]*)\}\}",
                      lambda m: f"<figure>{img(os.path.join(ROOT, 'shots', m.group(1)), 'shot')}"
@@ -887,6 +889,8 @@ def build():
     wiki_reference(v)
     if os.path.exists(os.path.join(CH, "21_custom_bugs.md")) or os.path.exists(os.path.join(GAME, "docs", "CUSTOM_BUGS.md")):
         v.md("21_custom_bugs.md")
+    if os.path.exists(os.path.join(CH, "22_bug_api.md")) or os.path.exists(os.path.join(GAME, "docs", "BUG_API.md")):
+        v.md("22_bug_api.md")       # the full Bug Creator API reference
     VOLS.append(v)
 
 

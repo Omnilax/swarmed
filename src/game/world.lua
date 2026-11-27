@@ -1281,12 +1281,25 @@ function World:draw()
             if o.chain then
                 -- segment screen offsets from the head, with a travelling side-to-side ripple
                 pose.chain = pose.chain or {}
-                local ripple = math.min(1, spd / 100) * 0.9
+                -- model.ripple scales it (velvet worm: a big wormy wriggle), model.rippleLen is
+                -- how far along the body one wave travels per segment
+                local m = o.model or {}
+                -- rippleIdle keeps a share of it going when standing still, and squirm makes the
+                -- body stretch and bunch up along its length like a worm crawling
+                local ripple = math.max(m.rippleIdle or 0, math.min(1, spd / (m.rippleSpeed or 100))) * 0.9 * (m.ripple or 1)
+                local rlen = m.rippleLen or 0.75
+                local ph = o.anim * 0.9 + (m.rippleIdle and self.time * 2.5 or 0)
+                local sq = m.squirm
                 local prev = o
                 for i, seg in ipairs(o.chain) do
                     local a = math.atan2(prev.y - seg.y, prev.x - seg.x)
-                    local w = math.sin(o.anim * 0.9 - i * 0.75) * ripple * math.min(1, i / 3)
-                    local wx, wy = seg.x - o.x - math.sin(a) * w, seg.y - o.y + math.cos(a) * w
+                    local w = math.sin(ph - i * rlen) * ripple * math.min(1, i / 3)
+                    local ox, oy = seg.x - o.x, seg.y - o.y
+                    if sq then
+                        local k = 1 + sq * math.sin(self.time * 3 - i * 0.35)
+                        ox, oy = ox * k, oy * k
+                    end
+                    local wx, wy = ox - math.sin(a) * w, oy + math.cos(a) * w
                     -- tail stab: the last segments lunge out backwards
                     local ts = o.tailStab
                     if ts then

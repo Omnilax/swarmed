@@ -256,7 +256,7 @@ local function text(v, max)
     return v
 end
 
-local SCRIPT_KEYS = { "fire", "start", "tick", "hold", "release", "enter", "exit" }
+local SCRIPT_KEYS = { "fire", "start", "tick", "hold", "release", "enter", "exit", "free" }
 
 -- One move slot (attack / secondary / dash). Returns params, mix info, or nil + error.
 local function buildMove(slot, v, reg, errs, warns)
@@ -663,6 +663,53 @@ local function wrapProc(fn, label)
         return SM.run(fn, p, ctx.params, ctx.ax, ctx.ay, { depth = (ctx.procDepth or 0) + 1, label = label }, SM.evOf(ctx), rank)
     end
 end
+-- one skill tree node of a script (data + proc code), or nil after adding an error
+local function buildNode(def, n, errs, warns, fallbackId)
+    local Stats = require("src.game.stats")
+    local node = CustomBugs.plain(n)     -- data only; proc code is added back below
+    node.id = def.id .. "_" .. slug(tostring(n.id or fallbackId))
+    node.name = text(n.name, 24) or "?"
+    node.desc = text(n.desc, 160) or ""
+    node.tier = math.floor(clamp(tonumber(n.tier) or 1, 1, 6))
+    node.ranks = math.floor(clamp(tonumber(n.ranks) or 1, 1, 5))
+    node.cost = tonumber(n.cost) and math.floor(clamp(tonumber(n.cost), 1, 6)) or nil
+    node.col = tonumber(n.col) and clamp(tonumber(n.col), -1, 1) or nil
+    -- requires / excludes name other nodes of this tree by their own ids
+    for _, f in ipairs({ "requires", "excludes" }) do
+        if type(n[f]) == "table" then
+            node[f] = {}
+            for _, r in ipairs(n[f]) do node[f][#node[f] + 1] = def.id .. "_" .. slug(tostring(r)) end
+        end
+    end
+    for _, f in ipairs({ "stats", "statsMult" }) do
+        if type(n[f]) == "table" then
+            node[f] = {}
+            for sid, v in pairs(n[f]) do
+                if Stats.byId[sid] and type(v) == "number" then node[f][sid] = clamp(v, -300, 300)
+                else warns[#warns + 1] = ("skillTree node '%s': stat '%s' dropped"):format(node.name, tostring(sid)) end
+            end
+        end
+    end
+    node.throw = nil
+    -- procs: code runs with the toolkit, effect(me, ev, rank) / condition(me, ev, rank)
+    if n.procs ~= nil then
+        node.procs = {}
+        for pi, pr in ipairs(type(n.procs) == "table" and n.procs or {}) do
+            if type(pr) ~= "table" or type(pr.trigger) ~= "string" or type(pr.effect) ~= "function" then
+                errs[#errs + 1] = ("skillTree node '%s' proc %d needs trigger = \"onKill\" and effect = function(me, ev, rank) ... end"):format(node.name, pi)
+                return nil
+            end
+            node.procs[pi] = { trigger = pr.trigger, move = pr.move, cooldown = tonumber(pr.cooldown) and clamp(tonumber(pr.cooldown), 0, 60) or nil,
+                chance = tonumber(pr.chance) and clamp(tonumber(pr.chance), 0, 1) or nil,
+                effect = wrapProc(pr.effect, node.name),
+                condition = type(pr.condition) == "function" and wrapProc(pr.condition, node.name) or nil }
+        end
+    end
+    -- every other function is dropped (the engine calls those directly)
+    for k, v in pairs(node) do if type(v) == "function" then node[k] = nil end end
+    return node
+end
+
 local function buildTree(def, t, errs, warns)
     local Skills = require("src.game.skills")
     local Stats = require("src.game.stats")
@@ -678,52 +725,20 @@ local function buildTree(def, t, errs, warns)
             nodeCount = nodeCount + 1
             if nodeCount > 40 then warns[#warns + 1] = "skillTree: 40 nodes at most" break end
             if type(n) ~= "table" then errs[#errs + 1] = ("skillTree branch %d node %d must be a table"):format(bi, ni) return nil end
-            local node = CustomBugs.plain(n)     -- data only; proc code is added back below
-            node.id = def.id .. "_" .. slug(tostring(n.id or (bi .. "_" .. ni)))
-            node.name = text(n.name, 24) or "?"
-            node.desc = text(n.desc, 160) or ""
-            node.tier = math.floor(clamp(tonumber(n.tier) or 1, 1, 6))
-            node.ranks = math.floor(clamp(tonumber(n.ranks) or 1, 1, 5))
-            node.cost = tonumber(n.cost) and math.floor(clamp(tonumber(n.cost), 1, 6)) or nil
-            node.col = tonumber(n.col) and clamp(tonumber(n.col), -1, 1) or nil
-            -- requires / excludes name other nodes of this tree by their own ids
-            for _, f in ipairs({ "requires", "excludes" }) do
-                if type(n[f]) == "table" then
-                    node[f] = {}
-                    for _, r in ipairs(n[f]) do node[f][#node[f] + 1] = def.id .. "_" .. slug(tostring(r)) end
-                end
-            end
-            for _, f in ipairs({ "stats", "statsMult" }) do
-                if type(n[f]) == "table" then
-                    node[f] = {}
-                    for sid, v in pairs(n[f]) do
-                        if Stats.byId[sid] and type(v) == "number" then node[f][sid] = clamp(v, -300, 300)
-                        else warns[#warns + 1] = ("skillTree node '%s': stat '%s' dropped"):format(node.name, tostring(sid)) end
-                    end
-                end
-            end
-            node.throw = nil
-            -- procs: code runs with the toolkit, effect(me, ev, rank) / condition(me, ev, rank)
-            if n.procs ~= nil then
-                node.procs = {}
-                for pi, pr in ipairs(type(n.procs) == "table" and n.procs or {}) do
-                    if type(pr) ~= "table" or type(pr.trigger) ~= "string" or type(pr.effect) ~= "function" then
-                        errs[#errs + 1] = ("skillTree node '%s' proc %d needs trigger = \"onKill\" and effect = function(me, ev, rank) ... end"):format(node.name, pi)
-                        return nil
-                    end
-                    node.procs[pi] = { trigger = pr.trigger, move = pr.move, cooldown = tonumber(pr.cooldown) and clamp(tonumber(pr.cooldown), 0, 60) or nil,
-                        chance = tonumber(pr.chance) and clamp(tonumber(pr.chance), 0, 1) or nil,
-                        effect = wrapProc(pr.effect, node.name),
-                        condition = type(pr.condition) == "function" and wrapProc(pr.condition, node.name) or nil }
-                end
-            end
-            -- every other function is dropped (the engine calls those directly)
-            for k, v in pairs(node) do if type(v) == "function" then node[k] = nil end end
+            local node = buildNode(def, n, errs, warns, bi .. "_" .. ni)
+            if not node then return nil end
             b.nodes[#b.nodes + 1] = node
         end
         tree.branches[#tree.branches + 1] = b
     end
     if #tree.branches == 0 then errs[#errs + 1] = "skillTree needs branches = { { name = ..., nodes = { ... } } }" return nil end
+    -- its own top node for the kin branch (like the built-in bugs' `signature`)
+    if type(t.signature) == "table" then
+        local sig = buildNode(def, t.signature, errs, warns, "signature")
+        if not sig then return nil end
+        sig.tier = tonumber(t.signature.tier) and sig.tier or nil
+        tree.signature = sig
+    end
     clampParams(tree, 0)
     -- the bug's kin branch (insect, beetle, spider...) joins as a 4th, unless kin = false
     if t.kin ~= false and #tree.branches < 4 then
@@ -739,7 +754,7 @@ local HOOKS = { "onStart", "onTick", "onHit", "onKill", "onHurt", "onDodge", "on
 
 -- raw (a script's result) -> def ready for Content.characters, or nil + errors. Warnings are
 -- things that were fixed up on the way (clamped numbers, unknown items dropped...).
-function CustomBugs.build(raw)
+function CustomBugs.build(raw, builtinId)
     local rawIn = raw
     local errs, warns = {}, {}
     if type(raw) ~= "table" then return nil, { "the script must return a table" }, warns end
@@ -769,6 +784,13 @@ function CustomBugs.build(raw)
     }
     def.id = raw.id and (CustomBugs.PREFIX .. slug(raw.id)) or CustomBugs.idFor(name)
     if def.id == CustomBugs.PREFIX then def.id = CustomBugs.PREFIX .. "bug" end
+    -- a built-in scripted bug (content/scripted): a real roster bug that runs on the script engine
+    if builtinId then
+        def.id, def.builtin = builtinId, true
+        def.order = tonumber(raw.order) or 99
+        def.tags = {}
+        if type(raw.family) == "string" then def.family = raw.family end
+    end
     -- own art instead of a built-in bug's look
     local art
     if raw.art ~= nil then
@@ -837,10 +859,10 @@ function CustomBugs.build(raw)
     if raw.hooks ~= nil then
         if type(raw.hooks) ~= "table" then errs[#errs + 1] = "hooks must be a table of functions"
         else
-            local known = {}
-            for _, k in ipairs(HOOKS) do known[k] = true end
+            local known = require("src.game.bugapi").known
             for k, fn in pairs(raw.hooks) do
-                if not known[k] then warns[#warns + 1] = "hooks: no event '" .. tostring(k) .. "' (" .. table.concat(HOOKS, ", ") .. ")"
+                -- any on<Name> works (me.emit calls your own); the engine calls the known ones
+                if not known[k] and not (type(k) == "string" and k:match("^on%u[%w_]*$")) then warns[#warns + 1] = "hooks: no event '" .. tostring(k) .. "' (" .. table.concat(HOOKS, ", ") .. ")"
                 elseif type(fn) ~= "function" then errs[#errs + 1] = "hooks." .. k .. " must be a function(me, ...)"
                 else def.hooks = def.hooks or {} def.hooks[k] = fn end
             end
@@ -915,6 +937,8 @@ function CustomBugs.build(raw)
     for _, t in ipairs(type(raw.tags) == "table" and raw.tags or {}) do
         if type(t) == "string" and #def.tags < 8 and t ~= "custom" then def.tags[#def.tags + 1] = t:sub(1, 20) end
     end
+    -- resources (ammo...), abilities, traits (src/game/bugapi.lua)
+    require("src.game.bugapi").build(rawIn, def, errs, warns)
     -- passives, looks, movement and music (src/game/bugtraits.lua)
     require("src.game.bugtraits").build(raw, def, errs, warns)
     -- hit look, sound pack, statuses, pets, ultimate, card, challenges, forms, molt
@@ -943,10 +967,10 @@ function CustomBugs.build(raw)
 end
 
 -- source text -> def or nil; info = { errors = {...}, warnings = {...}, line = n, log = {...} }
-function CustomBugs.compile(source, name)
+function CustomBugs.compile(source, name, builtinId)
     local raw, err, line, log = CustomBugs.run(source, name)
     if not raw then return nil, { errors = { err }, warnings = {}, line = line, log = log } end
-    local def, errs, warns = CustomBugs.build(raw)
+    local def, errs, warns = CustomBugs.build(raw, builtinId)
     return def, { errors = errs or {}, warnings = warns or {}, log = log }
 end
 
@@ -959,6 +983,8 @@ function CustomBugs.prepareArt(def)
     -- other versions of the bug (forms, the molt) with their own art
     for i, f in ipairs(def.forms or {}) do if i > 1 and f.art then CustomBugs.prepareArt(f) end end
     if def.molt and def.molt.def.art then CustomBugs.prepareArt(def.molt.def) end
+    for _, e in ipairs(def.evolution or {}) do if e.def.art then CustomBugs.prepareArt(e.def) end end
+    for _, st in ipairs(def.stances or {}) do if st.def and st.def.art then CustomBugs.prepareArt(st.def) end end
     -- own sounds (me.sound("name") plays "<id>:name")
     if def.sounds then
         local Audio = require("src.core.audio")
@@ -974,7 +1000,7 @@ end
 function CustomBugs.register(def, source)
     local old = Content.characters:get(def.id)
     if old then
-        if not old.custom then return false, "that id belongs to a built-in bug" end
+        if not old.custom or old.builtin then return false, "that id belongs to a built-in bug" end
         Content.characters:unregister(def.id)
     end
     CustomBugs.prepareArt(def)
@@ -1093,6 +1119,40 @@ function CustomBugs.delete(id)
     for i = #CustomBugs.broken, 1, -1 do
         if CustomBugs.broken[i].id == id then table.remove(CustomBugs.broken, i) end
     end
+end
+
+-- Built-in scripted bugs: every content/scripted/<id>.lua is a Bug Creator script that ships with
+-- the game. It compiles like a custom bug (so it runs on the script engine: def.custom stays
+-- true), but its id is the file name, def.builtin = true, and it joins the roster like any
+-- other bug (its family by tags, unlocks in src/config/unlocks.lua, the daily run, the wiki).
+-- Loaded at start-up after the sprite atlas, in tests too. A broken one is an error.
+CustomBugs.BUILTIN_DIR = "content/scripted"
+CustomBugs.builtIns = {}
+-- compile and register them (Content.load, before the achievements)
+function CustomBugs.registerBuiltIns()
+    local dir = CustomBugs.BUILTIN_DIR
+    CustomBugs.builtIns = {}
+    if not love.filesystem.getInfo(dir, "directory") then return 0 end
+    local files = love.filesystem.getDirectoryItems(dir)
+    table.sort(files)
+    for _, file in ipairs(files) do
+        local base = file:match("^([%w][%w_]*)%.lua$")
+        if base then
+            local def, info = CustomBugs.compile(love.filesystem.read(dir .. "/" .. file), base, base)
+            if not def then error(("scripted bug %s/%s: %s"):format(dir, file, tostring(info.errors[1]))) end
+            for _, w in ipairs(info.warnings or {}) do print("[scripted] " .. base .. ": " .. w) end
+            if Content.characters:get(def.id) then Content.characters:unregister(def.id) end
+            Content.characters:register(def)
+            CustomBugs.builtIns[#CustomBugs.builtIns + 1] = def
+        end
+    end
+    Content.characters:sort()
+    return #CustomBugs.builtIns
+end
+-- their sprites and sounds (start-up, after the sprite atlas is built)
+function CustomBugs.loadBuiltIns()
+    for _, def in ipairs(CustomBugs.builtIns) do CustomBugs.prepareArt(def) end
+    return #CustomBugs.builtIns
 end
 
 -- Load every script in the save folder (at start-up, after Content.load).

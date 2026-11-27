@@ -568,6 +568,8 @@ local function build(player)
             return out
         end)
     end
+    -- round 4: the wide read / write API, resources, stances, evolution (src/game/bugapi.lua)
+    require("src.game.bugapi").extend(me, player, cx, U, dirOf)
     return me, cx
 end
 
@@ -599,7 +601,8 @@ local function refresh(player, me, cx, params, ax, ay, dx, dy)
     me.params = cx.params
     me.moving = player.moving and true or false
     me.flying = (player.liftZ or 0) > 0
-    me.blocking = player.scriptBlock and true or false
+    me.blocking = (player.scriptBlock or player.blocking) and true or false
+    require("src.game.bugapi").refresh(me, player)
 end
 
 -- Call a script function with the toolkit. opts: depth (proc depth of hits it makes), label.
@@ -612,7 +615,8 @@ function SM.run(fn, player, params, ax, ay, opts, ...)
     local saved = { cx.params, cx.ax, cx.ay, cx.depth, cx.shots, me.x, me.y, me.aimX, me.aimY, me.moveX, me.moveY }
     refresh(player, me, cx, params, ax, ay, opts and opts.dx, opts and opts.dy)
     cx.depth = opts and opts.depth or 0
-    local ok, res = CB().protect(fn, SM.CALL_BUDGET, 16, me, ...)
+    local full = require("src.game.bugapi").fullAccess()
+    local ok, res = CB().protect(fn, SM.CALL_BUDGET * (full and 10 or 1), full and 128 or 16, me, ...)
     cx.params, cx.ax, cx.ay, cx.depth, cx.shots = saved[1], saved[2], saved[3], saved[4], saved[5]
     me.x, me.y, me.aimX, me.aimY, me.moveX, me.moveY = saved[6], saved[7], saved[8], saved[9], saved[10], saved[11]
     me.params = cx.params
@@ -731,6 +735,8 @@ function SM.tick(player, world, dt)
         end
         if hooks.onTick then SM.run(hooks.onTick, player, nil, nil, nil, { label = "onTick" }, dt) end
     end
+    -- resources, abilities, stances, traits, sprees, level ups... (src/game/bugapi.lua)
+    require("src.game.bugapi").tick(player, world, dt)
     -- a held ant rides over the bug's head
     local h = player.scriptHeld
     if h then
@@ -775,6 +781,7 @@ end
 
 -- Drawn in the world (World:draw): helpers.
 function SM.draw(player, world)
+    if player.def.hooks and player.def.hooks.onDraw then require("src.game.bugapi").drawWorld(player, world) end
     if player.hitboxes then require("src.game.hitshapes").draw(player, world) end
     if player.pets or player.statusTargets then require("src.game.bugextras").draw(player, world) end
     local list = player.scriptHelpers
@@ -796,23 +803,26 @@ function SM.draw(player, world)
 end
 
 -- Game events (Inventory:trigger) -> the bug's hooks. ev is a copy: never engine tables.
-local EVENTS = { onHit = true, onKill = true, onHurt = true, onDodge = true, onBlock = true, onDash = true,
-    onDashEnd = true, onWaveStart = true, onEat = true, onAttack = true, onSpecial = true }
+local EVENTS = require("src.game.bugapi").known     -- every hook the engine calls
 function SM.evOf(ctx)
     local t = ctx.target
     return { x = ctx.x or (t and t.x), y = ctx.y or (t and t.y), damage = ctx.damage, crit = ctx.crit and true or false,
         wave = ctx.wave, dt = ctx.dt, boss = t and t.def and t.def.boss and true or false,
-        hp = t and t.hp, maxHp = t and t.maxHp, move = type(ctx.move) == "string" and ctx.move or nil }
+        hp = t and t.hp, maxHp = t and t.maxHp, move = type(ctx.move) == "string" and ctx.move or nil,
+        id = t and t.def and t.def.id, elite = t and t.elite and true or false,
+        killed = t and (t.dead or (t.hp or 1) <= 0) and true or false,
+        fromX = type(ctx.source) == "table" and ctx.source.x or nil, fromY = type(ctx.source) == "table" and ctx.source.y or nil }
 end
 function SM.event(player, name, ctx)
     if player.def.passives then require("src.game.bugtraits").event(player, name, ctx) end
     require("src.game.bugextras").event(player, name, ctx)
     if name == "onKill" then require("src.game.bugextras").sfx(player, "kill") end
-    local hooks = player.def.hooks
-    local fn = hooks and EVENTS[name] and hooks[name]
-    if not fn then return end
+    local API = require("src.game.bugapi")
+    API.event(player, name, ctx)
+    if not EVENTS[name] then return end
     if (ctx.procDepth or 0) >= 3 then return end      -- hits made by hooks can set off hooks, a few deep
-    SM.run(fn, player, nil, nil, nil, { depth = (ctx.procDepth or 0) + 1, label = name }, SM.evOf(ctx))
+    -- the bug's hooks, its traits' and its stance's
+    API.dispatch(player, name, SM.evOf(ctx), (ctx.procDepth or 0) + 1)
 end
 
 return SM

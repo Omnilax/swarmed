@@ -18,6 +18,7 @@ love . --roster       # model viewer: every bug walking in place
 love . --anims        # attack animation viewer (--shot saves anims_<id>.png contact sheets)
 love . --selftest --animtest    # just the attack animation checks
 love . --selftest --polish      # just music, event sounds, hints and off-screen markers
+love . --selftest --tide        # just the beach tide: comes and goes, salt water stings non-water bugs
 love . --selftest --arttour     # pictures of every bug, prop and the antlion for an art check
 love . --selftest --entries     # just the ways into the arena (burrows, drops, nest holes, rings)
 love . --selftest --runinfo     # just the HUD run info, run summary, death recap and palettes
@@ -421,7 +422,7 @@ switches tabs; Tab, Esc or pad B closes it. The sandbox panel moved to F2.
 Each level is a pick of 3 cards (`src/game/levelups.lua`, screen `src/states/levelup.lua`, numbers
 in `src/config/levelups.lua`): global stat cards (`content/levelcards`, e.g. +6% Speed, +1 Armor). Stat cards roll a rarity,
 common x1 / uncommon x1.33 / rare x1.66 / legendary x2, and Luck makes the rarer rolls likelier.
-The XP curve is fast: the first level is ~10 kills and a 15-wave run reaches about level 35.
+The XP curve is about one level a wave: the first level is ~100 kills (late in wave 1), ~3 levels by wave 3, and a 15-wave run reaches about level 15.
 Levels play a chime, half a second of slow motion and a ring of light; the cards open right
 there, mid-wave, so each level's reward is picked the moment you earn it (setting **Level-Up Cards:
 At Wave End** saves them for the wave's reward bloom instead). The skill tree is never on the cards:
@@ -903,6 +904,7 @@ Files starting with `_` are ignored, and every folder has a commented `_template
 | `content/behaviors` | enemy AI (`update`, optional `draw`, `drawUnder`, `onHit`) | enemies |
 | `content/elites` | elite affixes: multipliers, tint, venom, armour, loot, death effects | runs, sandbox |
 | `content/characters` | playable bugs: stats, attack, starting items | character select |
+| `content/scripted` | built-in bugs written as Bug Creator scripts (docs/BUG_API.md), e.g. the Water Strider; id = file name, unlock goal in `src/config/unlocks.lua`; test `love . --selftest --strider` | character select |
 | `content/attacks` | attack patterns (`fire`) | characters |
 | `content/skilltrees` | per-character skill trees: nodes mod stats, move params, echoes, procs | bag SKILLS tab |
 | `content/skillbranches` | kin branches: the 4th skill tree branch shared by a lineage, matched by tags | bag SKILLS tab |

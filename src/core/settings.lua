@@ -4,6 +4,14 @@ local schema = require("src.config.settings_schema")
 
 local Settings = { schema = schema, byKey = {}, values = {}, listeners = {} }
 local FILE = "settings.lua"
+-- Bump when a default changes and old saves should pick up the new one. Keys listed under a
+-- version are reset to their default when loading a save older than that version.
+local VERSION = 3
+local RESET_AT = {
+    -- 2026-11-26: a test build briefly defaulted level-up cards to "At Wave End"; Ozy wants them
+    -- right on level-up, so saves from before this go back to the default (Right Away)
+    [3] = { "levelUpWhen" },
+}
 
 for _, s in ipairs(schema) do Settings.byKey[s.key] = s end
 
@@ -18,7 +26,7 @@ local function valid(s, v)
 end
 
 function Settings.defaults()
-    local t = { binds = {} }
+    local t = { binds = {}, version = VERSION }
     for k, s in pairs(Settings.byKey) do t[k] = util.deepcopy(s.default) end
     return t
 end
@@ -30,6 +38,10 @@ function Settings.load()
     if not ok or not chunk then return end
     local ok2, data = pcall(chunk)
     if not ok2 or type(data) ~= "table" then return end
+    local old = tonumber(data.version) or 1
+    for ver = old + 1, VERSION do
+        for _, k in ipairs(RESET_AT[ver] or {}) do data[k] = nil end
+    end
     for k, v in pairs(data) do
         local s = Settings.byKey[k]
         if s and valid(s, v) then

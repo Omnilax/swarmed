@@ -682,6 +682,8 @@ local function script(flags)
     if flags["--amber"] then require("src.debug.selftest_amber")(wait, shot) love.event.quit() return end
     if flags["--artifacts"] then require("src.debug.selftest_artifacts")(wait, shot) love.event.quit() return end
     if flags["--shore"] then require("src.debug.selftest_shore")(wait, shot) love.event.quit() return end
+    if flags["--tide"] then require("src.debug.selftest_tide")(wait, shot) love.event.quit() return end
+    if flags["--crustaceans"] then require("src.debug.selftest_crustaceans")(wait, shot) love.event.quit() return end
     if flags["--maps"] then require("src.debug.selftest_maps")(wait, shot) love.event.quit() return end
     if flags["--gentle"] then require("src.debug.selftest_gentle")(wait, shot) love.event.quit() return end
     if flags["--parasites"] then require("src.debug.selftest_parasites")(wait, shot) love.event.quit() return end
@@ -711,11 +713,15 @@ local function script(flags)
     if flags["--flow"] then require("src.debug.selftest_flow")(wait, shot) love.event.quit() return end
     if flags["--visuals"] then require("src.debug.selftest_visuals")(wait, shot) love.event.quit() return end
     if flags["--wiki"] then require("src.debug.selftest_wiki")(wait, shot) love.event.quit() return end
+    if flags["--creator4"] then require("src.debug.selftest_creator4")(wait, shot) love.event.quit() return end
     if flags["--creator2"] then require("src.debug.selftest_creator2")(wait, shot) love.event.quit() return end
     if flags["--discord"] then require("src.debug.selftest_discord")(wait, shot) love.event.quit() return end
     if flags["--hudsize"] then require("src.debug.selftest_hudsize")(wait, shot) love.event.quit() return end
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
+    if flags["--strider"] then require("src.debug.selftest_strider")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
+    if flags["--velvetworm"] then require("src.debug.selftest_velvetworm")(wait, shot) love.event.quit() return end
+    if flags["--molecricket"] then require("src.debug.selftest_molecricket")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
     if flags["--levelups"] then require("src.debug.selftest_levelups")(wait, shot) love.event.quit() return end

@@ -124,9 +124,20 @@ return {
 --      challenges = { { goal = "nohit" }, { goal = "kills", n = 2000 } }
 --      art.wings = { size = 5, flap = 30 }, art.antennae = { length = 5 }
 --
+--  Round 4 (full reference: docs/BUG_API.md):
+--      evolution = { { level = 3, name = "Horned", stats = { damage = 10 }, addLimbs = { ... } },
+--                    { level = 6, scale = 1.2, attack = { ... } } }      grows as it levels
+--      stances = { { name = "Gun" }, { name = "Brawl", stats = { armor = 4 }, damageTaken = 0.8 } }  (R)
+--      resources = { ammo = { max = 6, reload = 1.2 } }    me.spend("ammo") / me.reload("ammo")
+--      abilities = { { name = "Parry", key = "ability", cooldown = 2, fire = function(me) me.parry(0.3) end } }  (F)
+--      traits = { { name = "Bloodlust", onSpree = function(me, ev) end } }
+--      hooks: onLevelUp, onEvolve, onSpree, onLowHp, onDeath (me.revive), onParry, onHud, onDraw...
+--      me.cursor(), me.facingCursor(), me.speedNow, me.kills, me.spree, me.waveInfo(), me.enemiesNear{}
+--
 --  Worked examples (Bug Creator > Examples):
 --      content/characters/_example_stick_insect.lua   own art + three moves in code
 --      content/characters/_example_velvet_worm.lua    everything else
+--      content/characters/_example_gunner_beetle.lua  ammo, stances, abilities, evolution
 --      content/bugtemplates/*.lua                     ten more (Bug Creator > Template Gallery)
 -- ===========================================================================================
 

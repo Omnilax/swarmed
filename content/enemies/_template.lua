@@ -5,7 +5,7 @@ return {
     description = "",
     lore = "",                      -- optional longer flavour text for the Bug Catalogue
     tip = "",                       -- optional how-to-beat-it hint for the Bug Catalogue
-    family = "ant",                 -- ant | bee | wasp | termite (src/config/families.lua): groups it in menus
+    family = "ant",                 -- ant | bee | wasp | hornet | termite | crustacean (src/config/families.lua): groups it in menus
     sprite = "worker_ant",          -- id from content/sprites
     scale = 1,                      -- draw scale
     hp = 10,                        -- scaled by difficulty and wave
@@ -21,6 +21,7 @@ return {
     light = nil,                    -- e.g. { radius = 10, color = "#ff6a2a", intensity = 0.4 }
     biteRate = 0.9,                 -- seconds between bites while touching the player (every ant bites)
     -- shred = { armor = 2, time = 4, max = 10 },  -- optional: every bite cracks the player's armor (stacks to max, src/config/defense.lua)
+    -- aquatic = true,              -- at home in water (tide, flood, puddle): a little faster there, never drowns
     -- solid = true,                -- the player can't walk through it (dashing still can)
     -- shield = { block = 0.75, width = 2.2 },  -- soaks hits aimed at ants behind it
     -- boss = true,                 -- a queen/boss: shows a boss bar; spawned by boss waves, not normally
@@ -30,6 +31,7 @@ return {
         weight = 10,                -- relative spawn chance (0 = never spawns naturally)
         minWave = 1,                -- first wave it can appear in
         groupSize = 1,              -- multiplier on horde size
+        -- habitat = "water",       -- only on maps whose fauna names it or its family (beach, puddles)
         -- entries = { "burrow", "edge" },  -- ways it may arrive (edge, burrow, drop), first = most
                                             -- likely; default: "flying" tag drops, "burrower" digs
     },

@@ -29,9 +29,10 @@ function Menu.new(opts)
     return self
 end
 
+-- keepFocus: keep the focused row number and the scroll (a rebuilt list doesn't jump).
 function Menu:setItems(items, keepFocus)
     self.items = items
-    if not keepFocus then self.focus, self.scroll = 1, 0 end
+    if not keepFocus then self.focus, self.scroll, self.mouseFocus = 1, 0, false end
     self.focus = math.min(self.focus, #items)
     self:fixFocus(1)
 end
@@ -53,6 +54,7 @@ function Menu:move(dir)
     repeat
         self.focus = (self.focus - 1 + dir) % n + 1
     until selectable(self.items[self.focus]) or self.focus == start
+    self.mouseFocus = false          -- keys / pad moved the focus: scroll it into view
     Audio.play("ui_move")
 end
 
@@ -134,12 +136,17 @@ function Menu:update(dt)
     self:ensureVisible()
 end
 
+-- Keeps the focused row on screen. A row the mouse picked is NOT scrolled to: scrolling it
+-- would slide the list under a still cursor, which then hovers (and clicks) another row
+-- (the "clicking moves the screen" bug). The wheel scrolls instead.
 function Menu:ensureVisible()
     local _, _, _, h = self:rect()
     local rh = self:rowH()
-    local top = (self.focus - 1) * rh
-    if top < self.scroll then self.scroll = top end
-    if top + rh > self.scroll + h then self.scroll = top + rh - h end
+    if not self.mouseFocus then
+        local top = (self.focus - 1) * rh
+        if top < self.scroll then self.scroll = top end
+        if top + rh > self.scroll + h then self.scroll = top + rh - h end
+    end
     self.scroll = util.clamp(self.scroll, 0, math.max(0, #self.items * rh - h))
 end
 
@@ -172,7 +179,7 @@ end
 function Menu:mousemoved(mx, my)
     if self.capturing then return end
     local i = self:itemAt(mx, my)
-    if i and i ~= self.focus then self.focus = i end
+    if i and i ~= self.focus then self.focus = i self.mouseFocus = true end
 end
 
 function Menu:mousepressed(mx, my, button)
@@ -183,10 +190,12 @@ function Menu:mousepressed(mx, my, button)
     -- opts.touchConfirm: a tap on a new button only focuses it (to preview), a second tap presses
     if self.opts.touchConfirm and Input.lastDevice == "touch" and i ~= self.focus and it.type == "button" then
         self.focus = i
+        self.mouseFocus = true
         Audio.play("ui_move")
         return true
     end
     self.focus = i
+    self.mouseFocus = true
     if it.type == "slider" and button == 1 then
         self.dragging = it
         self:dragTo(it, mx)

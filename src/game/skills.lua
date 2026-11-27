@@ -26,7 +26,7 @@ Skills.TIER_COST = { 1, 1, 2, 2, 3, 3 }    -- default point cost per rank, by ti
 
 -- XP to go from level-1 to level. Every level is a level-up card pick (src/game/levelups.lua;
 -- skipping it banks a skill point), or straight a skill point with the "levelUps" run rule on "points". The curve is in
--- src/config/levelups.lua: the first level takes ~10 kills, a 15-wave run reaches ~level 35.
+-- src/config/levelups.lua: about one level a wave, a 15-wave run reaches ~level 15.
 function Skills.xpFor(level)
     return require("src.game.levelups").xpFor(level)
 end
@@ -345,6 +345,11 @@ function Skills:apply()
             self.procs[pr.trigger] = self.procs[pr.trigger] or {}
             table.insert(self.procs[pr.trigger], { proc = pr, rank = r, node = n })
         end
+    end
+    -- a character's own innate procs (def.procs: velvet worm's bursting ants), always on
+    for _, pr in ipairs(def.procs or EMPTY) do
+        self.procs[pr.trigger] = self.procs[pr.trigger] or {}
+        table.insert(self.procs[pr.trigger], { proc = pr, rank = 1 })
     end
     p.attack.params = applyMods(deepCopy(def.attack), mods.attack)
     if p.secondary and def.secondary then p.secondary.params = applyMods(deepCopy(def.secondary), mods.secondary) end

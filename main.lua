@@ -7,6 +7,12 @@
 --                  love . --touch      show the phone touch controls (the mouse presses them)
 --                  love . --balance    bot plays runs with several bugs, prints how far each gets
 love.graphics.setDefaultFilter("nearest", "nearest")
+-- roomier LuaJIT limits, so big fights stay compiled (src/core/jittune.lua); --jitdefault skips it
+do
+    local skip = false
+    for _, a in ipairs(arg or {}) do if a == "--jitdefault" then skip = true end end
+    if not skip then require("src.core.jittune").apply() end
+end
 
 local Settings = require("src.core.settings")
 local Input = require("src.core.input")
@@ -61,7 +67,9 @@ function love.load(args)
     Music.init()
     Presence.init(flags)  -- Discord status (src/game/presence.lua)
     Sprites.build(Content.sprites)
+    -- built-in scripted bugs (content/scripted, e.g. the Water Strider) and then the player's
     -- custom bugs load after the atlas: their own art is built as small images of its own
+    CustomBugs.loadBuiltIns()
     if not (Records.noSave or flags["--balance"]) then
         local okC, errC = pcall(CustomBugs.loadAll)
         if not okC then print("[custombugs] " .. tostring(errC)) end

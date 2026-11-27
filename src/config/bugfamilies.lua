@@ -1,6 +1,7 @@
 -- Bug families: how bug select groups the playable bugs (a tab and a section each, in this
 -- order). A character joins the first family whose tag it has (content/characters `tags`), or
--- names one itself with `family = "<id>"`. Bugs made in the Bug Creator always sit in "custom".
+-- names one itself with `family = "<id>"`. Bugs made in the Bug Creator always sit in "custom"
+-- (built-in scripted bugs from content/scripted, def.builtin, use their tags like any bug).
 -- A new family is one more row here; a bug that fits none lands in "other".
 --   id, label (tab and section heading), tags, color (tile tint and heading), blurb (section line)
 local F = {}
@@ -33,7 +34,7 @@ end
 -- The family a character belongs to (a row of F.list).
 function F.of(def)
     if not def then return F.byId.other end
-    if def.custom then return F.byId.custom end
+    if def.custom and not def.builtin then return F.byId.custom end
     if type(def.family) == "string" and F.byId[def.family] then return F.byId[def.family] end
     local tags = {}
     for _, t in ipairs(def.tags or {}) do tags[t] = true end

@@ -1,0 +1,22 @@
+-- Copepod: plankton. Drifts in clouds on the current and jumps in sharp little kicks.
+return {
+    name = "Copepod",
+    description = "A speck of plankton with one red eye and two long feelers. Drifts in clouds on a swirling current and jumps in sharp little kicks. Barely bites, but there are always more.",
+    lore = "Copepods may be the most numerous animals on Earth. For their size they're among the fastest swimmers there are: one kick and they're gone.",
+    tip = "Any hit kills one. Don't chase the cloud, let it drift into your swings.",
+    family = "crustacean",
+    sprite = "copepod",
+    hp = 1,
+    speed = 52,
+    damage = 1,
+    radius = 1.8,
+    mass = 0.3,
+    behavior = "plankton_drift",
+    behaviorParams = { drift = 0.4, kick = 3, every = { 0.5, 1.2 }, swirl = 1.1 },
+    personalSpace = 0.9,
+    aquatic = true,
+    spawn = { weight = 24, minWave = 1, groupSize = 1.5, habitat = "water" },
+    gibs = { "#d0801e", "#eca440" },
+    splat = "#e8b060",
+    tags = { "crustacean", "plankton", "aquatic" },
+}

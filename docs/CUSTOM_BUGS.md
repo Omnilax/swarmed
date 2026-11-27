@@ -543,6 +543,39 @@ hooks = {
 
 Hits made by event code can set off more events, a few deep, so nothing loops forever.
 
+### Evolution, stances, ammo, abilities and reading the game (round 4)
+
+The full, exact reference for everything below (every field, every `me` call, every event and
+what its `ev` holds, the order things run in) is **`docs/BUG_API.md`**. The worked example is
+**Example: Gunner Beetle** in the Bug Creator (`content/characters/_example_gunner_beetle.lua`).
+
+* **Evolution**: `evolution = { { level = 3, name = "Horned", stats = {...}, addLimbs = {...} },
+  { level = 6, scale = 1.15, attack = {...} }, { kills = 500, art = {...} } }`. Stages happen at
+  a level, a kill count or a wave (or only from code with `me.evolve()`), add up as the bug
+  grows (stats sum, limbs pile on) and can swap any move, the body, the size or the colours.
+* **Stances**: `stances = { { name = "Gun", speed = 0.9 }, { name = "Brawl", stats = { armor = 4 },
+  damageTaken = 0.8, onEnter = function(me) end } }`. The Stance key (R) cycles them, or switch in
+  code with `me.stance("Brawl")`. Moves read `me.stanceName`, or a stance brings its own moves.
+* **Resources**: `resources = { ammo = { max = 6, reload = 1.1 }, rage = { max = 100, regen = -4 } }`,
+  used with `me.spend`, `me.gain`, `me.res`, `me.reload`, shown on the HUD by themselves.
+* **Abilities**: extra buttons, `abilities = { { name, key = "ability" | "g" | "mouse4", cooldown,
+  cost = { stamina = 0.25, ammo = 1 }, fire(me), hold(me, dt, t), release(me, t) } }`. The
+  Ability key is F (Settings > Controls).
+* **Traits**: named code passives, `traits = { { name = "Bloodlust", onSpree = function(me, ev) end } }`.
+* **More events**: `onLevelUp`, `onEvolve`, `onStanceChange`, `onWaveEnd`, `onSpree`, `onSpreeEnd`,
+  `onCombo`, `onLowHp`, `onDeath` (return true or `me.revive(0.4)` to live), `onParry`, `onNectar`,
+  `onBossSpawn`, `onAbility`, `onReload`, `onEmpty`, and any `on<Name>` of your own via `me.emit`.
+* **Reading the game**: `me.vx, me.vy, me.speedNow, me.facing, me.kills, me.spree, me.combo,
+  me.nectar, me.stage, me.hpFrac`, and `me.cursor()`, `me.isFacing(x, y)`, `me.facingCursor()`,
+  `me.moveVsFacing()`, `me.killsIn(s)`, `me.waveInfo()`, `me.run()`, `me.enemiesNear{...}`,
+  `me.propsNear(r)`, `me.pickupsNear(r)`, `me.stat(id)`, `me.items()`, `me.status()`, input with
+  `me.keyDown("1")`, `me.keyPressed("e")`, `me.action("dash")`.
+* **Changing the bug**: `me.buff(stat, add, mult, seconds)`, `me.teleport`, `me.knock`, `me.face`,
+  `me.parry(s)`, `me.drop()`, `me.setHp`, `me.giveItem`, `me.addNectar`, `me.addXP`, `me.frenzy`.
+* **Drawing**: `hooks.onHud(me, ui)` draws on the HUD, `hooks.onDraw(me, gfx)` in the world.
+* **No limits**: Settings > Developer > **Full Lua Access** gives scripts `me.engine` (the real
+  player, world, `require` and `love`). Off by default: only for scripts you trust.
+
 ### An own skill tree
 
 A whole tree of its own (points come from skipping level-up cards, like every bug):
@@ -577,7 +610,7 @@ fight first, so most mistakes are caught before you play.
 
 ### Safety limits
 
-Scripts can't harm the game or your computer:
+Scripts can't harm the game or your computer (unless you turn on Settings > Developer > Full Lua Access, see `docs/BUG_API.md`):
 
 * They run in a **sandbox**: `math`, `string`, `table`, `pairs`, `ipairs`, `print`... work; files,
   `love`, `require`, `load`, `os`, `io`, `debug` and metatables don't exist.
