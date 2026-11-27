@@ -346,6 +346,11 @@ function Skills:apply()
             table.insert(self.procs[pr.trigger], { proc = pr, rank = r, node = n })
         end
     end
+    -- a character's own innate procs (def.procs: velvet worm's bursting ants), always on
+    for _, pr in ipairs(def.procs or EMPTY) do
+        self.procs[pr.trigger] = self.procs[pr.trigger] or {}
+        table.insert(self.procs[pr.trigger], { proc = pr, rank = 1 })
+    end
     p.attack.params = applyMods(deepCopy(def.attack), mods.attack)
     if p.secondary and def.secondary then p.secondary.params = applyMods(deepCopy(def.secondary), mods.secondary) end
     p.dashParams = applyMods(deepCopy(def.dash or { type = "dash" }), mods.dash)

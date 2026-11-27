@@ -720,6 +720,8 @@ local function script(flags)
     if flags["--batch1"] then require("src.debug.selftest_batch1")(wait, shot) love.event.quit() return end
     if flags["--strider"] then require("src.debug.selftest_strider")(wait, shot) love.event.quit() return end
     if flags["--rework2"] then require("src.debug.selftest_rework2")(wait, shot) love.event.quit() return end
+    if flags["--velvetworm"] then require("src.debug.selftest_velvetworm")(wait, shot) love.event.quit() return end
+    if flags["--molecricket"] then require("src.debug.selftest_molecricket")(wait, shot) love.event.quit() return end
     if flags["--rework3"] then require("src.debug.selftest_rework3")(wait, shot) love.event.quit() return end
     if flags["--dashes"] then require("src.debug.selftest_dashes")(wait, shot) love.event.quit() return end
     if flags["--levelups"] then require("src.debug.selftest_levelups")(wait, shot) love.event.quit() return end
